@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#0e211f" />
+  <meta name="description" content="Os Peregrinos: um RPG online de fantasia 16-bit. Crie seu peregrino, explore as Crônicas da Aurora e encontre outros jogadores no navegador." />
+  <title>Os Peregrinos — Crônicas da Aurora | RPG Online</title>
+  <link rel="stylesheet" href="/site.css" />
+</head>
+<body>
+  <div class="glow glow-a"></div><div class="glow glow-b"></div>
+  <header class="topbar">
+    <a href="/" class="brand" aria-label="Os Peregrinos, início"><span class="sigil">✦</span><span><strong>OS PEREGRINOS</strong><small>CRÔNICAS DA AURORA</small></span></a>
+    <nav aria-label="Navegação"><a href="#mundo">O mundo</a><a href="#jornada">A jornada</a><a href="#entrar" class="nav-cta">Entrar no reino <span>↗</span></a></nav>
+  </header>
+
+  <main>
+    <section class="hero" id="mundo">
+      <div class="hero-copy">
+        <div class="eyebrow"><span class="tiny-star">✧</span> UMA NOVA HISTÓRIA COMEÇA <span class="rule"></span></div>
+        <h1>Há lugar para <em>mais um</em> na jornada.</h1>
+        <p class="lead">Um mundo que perdeu sua aurora. Seis brasas espalhadas pelas terras de Auren. Agora, cada peregrino escreve o próprio nome na história.</p>
+        <div class="hero-actions"><a class="primary" href="#entrar">Criar meu peregrino <span>→</span></a><a class="secondary" href="#jornada">Conhecer a jornada ↓</a></div>
+        <div class="hero-ministats"><div><b>06</b><span>CAPÍTULOS</span></div><i></i><div><b>07</b><span>TRILHAS ORIGINAIS</span></div><i></i><div><b id="onlineNumber">—</b><span>ONLINE AGORA</span></div></div>
+      </div>
+      <div class="scene-frame">
+        <div class="scene-head"><span><b class="lamp"></b> VALE DAS OLIVEIRAS</span><span>REGIÃO 01 / 06</span></div>
+        <div class="scene-image"><img src="/assets/cenario-real.jpg" alt="Captura de cenário pixel art do jogo Os Peregrinos" /><div class="scene-shade"></div><div class="scene-logo"><span>CRÔNICAS DA</span><strong>AURORA</strong><span>✦ ✦ ✦</span></div></div>
+        <div class="scene-foot"><span><i>◆</i> EXPLORAÇÃO 16-BIT</span><span>PC · NAVEGADOR</span></div>
+      </div>
+    </section>
+
+    <section class="join-panel" id="entrar">
+      <div class="join-intro"><div class="eyebrow"><span class="tiny-star">✦</span> PORTÕES DE AUREN</div><h2>Qual será o seu nome, peregrino?</h2><p>Escolha como os outros jogadores vão te conhecer. Sem instalação e sem precisar criar uma conta nesta versão de testes.</p></div>
+      <form id="joinForm" class="join-form" autocomplete="off">
+        <label for="playerName">NOME DO PERSONAGEM</label>
+        <div class="join-row"><input id="playerName" type="text" placeholder="Ex.: Elian, Sophia, Gustavo..." spellcheck="false" minlength="3" maxlength="18" required aria-describedby="joinHint joinError"/><button type="submit">Entrar no mundo <span>→</span></button></div>
+        <div class="form-bottom"><span id="joinHint">De 3 a 18 caracteres · Letras, números, espaço, hífen ou _</span><span id="onlineState" class="status"><span class="status-dot"></span> Verificando servidor...</span></div>
+        <div class="join-error" id="joinError" role="alert" aria-live="polite"></div>
+      </form>
+    </section>
+
+    <section class="features" id="jornada"><div class="section-label">DIÁRIO DA AURORA <span>◆</span></div><h2>Uma aventura para ser vivida <i>em companhia.</i></h2><div class="cards">
+      <article><span class="feature-icon">♜</span><h3>Seis terras, uma promessa</h3><p>Parta do Vale das Oliveiras, atravesse florestas, desertos e ruínas e descubra os mistérios da luz perdida.</p></article>
+      <article><span class="feature-icon">⚔</span><h3>RPG de verdade</h3><p>Combate com dados d20, evolução de personagem, itens, missões e decisões de misericórdia.</p></article>
+      <article><span class="feature-icon">✦</span><h3>Outros peregrinos</h3><p>Encontre jogadores da mesma região, veja os nomes sobre os personagens e converse pelo chat global.</p></article>
+    </div></section>
+    <div class="notes">VERSÃO MULTIPLAYER EXPERIMENTAL · Exploração e chat compartilhados; combate e missões ainda são individuais. <a href="/sobre.html">Detalhes e privacidade</a></div>
+  </main>
+  <footer><span><b>✦ OS PEREGRINOS</b> — CRÔNICAS DA AURORA</span><span>Um lugar à mesa para cada viajante.</span></footer>
+  <script src="/site.js" defer></script>
+</body>
+</html>
