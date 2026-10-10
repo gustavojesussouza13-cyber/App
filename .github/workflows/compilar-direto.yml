@@ -1,0 +1,44 @@
+name: Compilar APK diretamente do codigo
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - app/src/main/assets/index.html
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - name: Preparar Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Preparar Android SDK
+        uses: android-actions/setup-android@v3
+      - name: Instalar API 36 e ferramentas
+        run: sdkmanager --install 'platforms;android-36' 'build-tools;35.0.0'
+      - name: Preparar Gradle 8.13
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+      - name: Verificar recursos do RPG
+        run: |
+          test -s app/src/main/assets/index.html
+          test -s app/src/main/java/com/aurora/gustavoperegrino/MainActivity.java
+      - name: Compilar APK debug
+        run: gradle --no-daemon --stacktrace :app:assembleDebug
+      - name: Disponibilizar APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Gustavo-O-Peregrino-APK
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 30
