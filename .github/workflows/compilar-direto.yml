@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - app/src/main/assets/index.html
+      - .github/workflows/compilar-direto.yml
   workflow_dispatch:
 
 permissions:
@@ -21,10 +22,15 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - name: Preparar Android SDK
-        uses: android-actions/setup-android@v3
-      - name: Instalar API 36 e ferramentas
-        run: sdkmanager --install 'platforms;android-36' 'build-tools;35.0.0'
+      - name: Instalar Android API 36 usando SDK do runner
+        shell: bash
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -name sdkmanager -type f | head -n 1)"
+          test -n "$SDKMANAGER"
+          echo "SDKMANAGER=$SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" --install 'platforms;android-36' 'build-tools;35.0.0'
       - name: Preparar Gradle 8.13
         uses: gradle/actions/setup-gradle@v4
         with:
