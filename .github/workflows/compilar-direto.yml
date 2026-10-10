@@ -31,6 +31,13 @@ jobs:
           echo "SDKMANAGER=$SDKMANAGER"
           yes | "$SDKMANAGER" --licenses >/dev/null || true
           "$SDKMANAGER" --install 'platforms;android-36' 'build-tools;35.0.0'
+      - name: Diagnosticar acesso Maven
+        shell: bash
+        run: |
+          for u in 'https://repo.maven.apache.org/maven2/commons-io/commons-io/2.16.1/commons-io-2.16.1.pom' 'https://repo1.maven.org/maven2/commons-io/commons-io/2.16.1/commons-io-2.16.1.pom' 'https://maven-central.storage-download.googleapis.com/maven2/commons-io/commons-io/2.16.1/commons-io-2.16.1.pom'; do
+            echo "URL: $u"
+            curl -IL --max-time 15 -sS -o /dev/null -w 'HTTP %{http_code} | bytes %{size_download}\\n' "$u" || true
+          done
       - name: Preparar Gradle 8.13
         uses: gradle/actions/setup-gradle@v4
         with:
