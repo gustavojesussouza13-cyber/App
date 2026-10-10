@@ -12,7 +12,7 @@ const MAX_PLAYERS = 80; // protótipo; não é capacidade garantida de produçã
 const PUBLIC = path.join(__dirname, 'public');
 const players = new Map();
 const sockets = new Set();
-const MIME = {'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'application/javascript; charset=utf-8','.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.svg':'image/svg+xml','.ico':'image/x-icon'};
+const MIME = {'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'application/javascript; charset=utf-8','.png':'image/png','.webp':'image/webp','.jpg':'image/jpeg','.jpeg':'image/jpeg','.svg':'image/svg+xml','.ico':'image/x-icon'};
 const decoder = new TextDecoder('utf-8', {fatal:true});
 
 function reply(res, status, body, type='text/plain; charset=utf-8') {
