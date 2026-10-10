@@ -5,15 +5,17 @@ const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const { TextDecoder } = require('node:util');
+const {World} = require('./world-engine');
 
 const PORT = Number(process.env.PORT || 3000);
 const HOST = process.env.HOST || '0.0.0.0';
-const MAX_PLAYERS = 10; // número máximo de personagens conectados simultaneamente
+const MAX_PLAYERS = 10; // limite total compartilhado entre campanha e mundo aberto
 const PUBLIC = path.join(__dirname, 'public');
 const players = new Map();
 const sockets = new Set();
 const MIME = {'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'application/javascript; charset=utf-8','.png':'image/png','.webp':'image/webp','.jpg':'image/jpeg','.jpeg':'image/jpeg','.svg':'image/svg+xml','.ico':'image/x-icon'};
 const decoder = new TextDecoder('utf-8', {fatal:true});
+const world=new World({send,getOnline:()=>players.size,hasClassicName:name=>[...players.values()].some(p=>p.name.toLocaleLowerCase('pt-BR')===name.toLocaleLowerCase('pt-BR')),dataFile:process.env.DATA_FILE||path.join(__dirname,'data','world.sqlite'),autosave:true});
 
 function reply(res, status, body, type='text/plain; charset=utf-8') {
   res.writeHead(status, {'Content-Type':type,'Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','X-Frame-Options':'SAMEORIGIN'});
@@ -22,9 +24,9 @@ function reply(res, status, body, type='text/plain; charset=utf-8') {
 const httpServer = http.createServer((req,res)=>{
   const u = new URL(req.url||'/', 'http://localhost');
   if(req.method !== 'GET') return reply(res,405,'Método não permitido');
-  if(u.pathname==='/api/status') return reply(res,200,JSON.stringify({online:players.size,maxPlayers:MAX_PLAYERS,availableSlots:Math.max(0,MAX_PLAYERS-players.size),regions:[...new Set([...players.values()].map(p=>p.zone))].length,version:'0.1.0-beta'}),'application/json; charset=utf-8');
+  if(u.pathname==='/api/status') return reply(res,200,JSON.stringify({online:players.size+world.count,maxPlayers:MAX_PLAYERS,availableSlots:Math.max(0,MAX_PLAYERS-players.size-world.count),regions:[...new Set([...players.values()].map(p=>p.zone))].length,world:world.status(),version:'2.0-5.0-alpha'}),'application/json; charset=utf-8');
   if(u.pathname==='/health') return reply(res,200,'ok');
-  const routes={'/':'/index.html','/jogar':'/jogo.html','/jogo':'/jogo.html'};
+  const routes={'/':'/index.html','/jogar':'/jogo.html','/jogo':'/jogo.html','/mundo':'/mundo.html','/online':'/mundo.html'};
   let pathname=routes[u.pathname] || u.pathname;
   let decoded;
   try{decoded=decodeURIComponent(pathname)}catch{return reply(res,400,'Rota inválida')}
@@ -55,6 +57,7 @@ function refuse(c,obj){send(c.socket,obj);setTimeout(()=>terminate(c),250).unref
 function terminate(c){
   if(c.terminated)return;c.terminated=true;
   sockets.delete(c);
+  if(c.mode==='world')world.leave(c);
   if(c.profile){players.delete(c.profile.id);emitAll({type:'leave',id:c.profile.id,name:c.profile.name,zone:c.profile.zone});}
   try{c.socket.end(frame(Buffer.alloc(0),8))}catch{}
   c.socket.destroy();
@@ -65,12 +68,12 @@ function join(c,data){
   if(c.profile)return;
   const name=typeof data.name==='string'?data.name.trim().normalize('NFC'):'';
   if(!validName(name)){return refuse(c,{type:'error',code:'invalid_name',message:'Use de 3 a 18 caracteres: letras, números, espaço ou hífen.'})}
+  if(players.size+world.count>=MAX_PLAYERS){return refuse(c,{type:'error',code:'full',message:'Servidor cheio (10/10). Aguarde uma vaga.'})}
   const token=typeof data.token==='string'&&/^[a-f0-9-]{20,60}$/i.test(data.token)?data.token:'';
   for(const other of sockets)if(other!==c&&other.profile&&other.profile.name.toLocaleLowerCase('pt-BR')===name.toLocaleLowerCase('pt-BR')){
     if(token && token===other.profile.token){terminate(other);break;}
     return refuse(c,{type:'error',code:'name_taken',message:'Este nome já está sendo usado agora. Escolha outro nome.'});
   }
-  if(players.size>=MAX_PLAYERS){return refuse(c,{type:'error',code:'full',message:'Servidor cheio (10/10). Aguarde uma vaga para entrar.'})}
   const zone=Number.isInteger(data.zone)?clamp(data.zone,0,5):0;
   const profile={id:crypto.randomUUID(),name,token,zone,x:clamp(Number(data.x)||184,18,1230),y:clamp(Number(data.y)||512,20,810),dir:2,step:0,attack:false,defending:false,joined:Date.now(),lastMove:Date.now(),lastChat:0,lastZone:Date.now()};
   c.profile=profile;players.set(profile.id,profile);
@@ -80,6 +83,7 @@ function join(c,data){
 }
 function publicPlayer(p){return {id:p.id,name:p.name,zone:p.zone,x:Math.round(p.x),y:Math.round(p.y),dir:p.dir,step:p.step,attack:p.attack,defending:p.defending}}
 function receive(c,data){
+  if(c.mode==='world'){world.receive(c,data);return}
   if(!data||typeof data!=='object'||Array.isArray(data))return;
   if(!c.profile){if(data.type==='hello')join(c,data);return}
   const p=c.profile;
@@ -130,15 +134,15 @@ httpServer.on('upgrade',(req,socket,head)=>{
   const u=new URL(req.url||'/', 'http://localhost');
   const origin=req.headers.origin;
   try {if(origin&&new URL(origin).host!==req.headers.host){socket.destroy();return}}catch{socket.destroy();return}
-  if(u.pathname!=='/ws'||req.headers.upgrade?.toLowerCase()!=='websocket'||!req.headers['sec-websocket-key'])return socket.destroy();
+  if(!['/ws','/world-ws'].includes(u.pathname)||req.headers.upgrade?.toLowerCase()!=='websocket'||!req.headers['sec-websocket-key'])return socket.destroy();
   const key=req.headers['sec-websocket-key'];
   if(!/^[\w+/]{22}==$/.test(key))return socket.destroy();
   const digest=crypto.createHash('sha1').update(key+'258EAFA5-E914-47DA-95CA-C5AB0DC85B11').digest('base64');
   socket.write('HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: '+digest+'\r\n\r\n');
-  const c={socket,profile:null,pending:Buffer.alloc(0),terminated:false,lastPong:Date.now()};sockets.add(c);
+  const c={socket,mode:u.pathname==='/world-ws'?'world':'classic',profile:null,pending:Buffer.alloc(0),terminated:false,lastPong:Date.now()};sockets.add(c);
   socket.on('data',b=>handleFrame(c,b));socket.on('error',()=>terminate(c));socket.on('end',()=>terminate(c));socket.on('close',()=>terminate(c));
   if(head?.length)handleFrame(c,head);
-  setTimeout(()=>{if(!c.profile&&!c.terminated)terminate(c)},8000).unref();
+  setTimeout(()=>{if(!c.profile&&!c.worldPlayer&&!c.terminated)terminate(c)},8000).unref();
 });
 setInterval(()=>{
   for(const c of sockets){
@@ -148,5 +152,6 @@ setInterval(()=>{
     if(c.profile){const peers=[...players.values()].filter(p=>p.zone===c.profile.zone&&p.id!==c.profile.id).map(publicPlayer);send(c.socket,{type:'snapshot',players:peers,online:players.size,zone:c.profile.zone})}
   }
 },250).unref();
+setInterval(()=>world.tick(),350).unref();
 const server=httpServer.listen(PORT,HOST,()=>console.log(`Os Peregrinos online em http://localhost:${PORT}`));
-for(const sig of ['SIGTERM','SIGINT'])process.on(sig,()=>{for(const c of sockets)terminate(c);server.close(()=>process.exit(0));setTimeout(()=>process.exit(0),4000).unref()});
+for(const sig of ['SIGTERM','SIGINT'])process.on(sig,()=>{world.stop();for(const c of sockets)terminate(c);server.close(()=>process.exit(0));setTimeout(()=>process.exit(0),4000).unref()});

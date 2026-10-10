@@ -1,0 +1,26 @@
+<!doctype html><html lang="pt-BR"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0e211f">
+<meta name="description" content="Os Peregrinos — Mundo Aberto. MMORPG experimental 16-bit, sem cadastro: nomeie seu personagem e explore as Crônicas da Aurora com amigos.">
+<title>Os Peregrinos — Mundo Aberto | Crônicas da Aurora</title>
+<link rel="stylesheet" href="/mmo.css"></head>
+<body>
+<header class="bar"><a class="brand" href="/">✦ <strong>OS PEREGRINOS</strong><span>CRÔNICAS DA AURORA</span></a><div class="online-pill"><span class="status-dot" id="statusDot"></span><span id="status">Conectando…</span></div><a href="/jogo.html" class="campaign-link">Campanha clássica ↗</a></header>
+<main class="layout">
+<section class="play-area">
+<div class="world-title"><div><span class="tag">MUNDO ABERTO · ALFA</span><h1 id="zoneTitle">Vale das Oliveiras</h1></div><div class="clock"><span id="latency">✦ Aurora</span><small>PC · WASD · J ATACAR · K HABILIDADE</small></div></div>
+<div class="canvas-shell" id="canvasShell"><canvas id="game" width="960" height="576" tabindex="0" aria-label="Mundo aberto: use WASD para mover, clique no monstro para selecionar e J para atacar"></canvas>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<div class="game-overlay" id="welcomeOverlay"><div class="intro-panel"><div class="ornament">✦ ✧ ✦</div><h2>Uma nova jornada se abre.</h2><p>Escolha seu nome e entre no mundo com outros peregrinos. <strong>Sem contas e sem senhas.</strong> Seu progresso neste modo é reconhecido pelo navegador e salvo no servidor enquanto o armazenamento estiver disponível.</p><form id="nameForm"><label for="name">NOME DO PEREGRINO</label><input id="name" minlength="3" maxlength="18" placeholder="Seu nome no reino" autocomplete="off" required><label for="role">ESCOLHA SUA CLASSE</label><select id="role"><option value="peregrino">Peregrino — equilibrado</option><option value="guardiao">Guardião — defesa e vida</option><option value="arqueiro">Arqueiro — ataques de longe</option><option value="curandeiro">Curandeiro — cura aliados</option></select><button type="submit">✦ ENTRAR NO MUNDO</button><p class="tiny" id="connectionError"></p></form><a class="intro-link" href="/">← Voltar ao portal</a></div></div>
+<div id="deathVeil" hidden class="death-flash"></div>
+</div>
+<div class="hotbar"><div class="hint">WASD / SETAS <small>Mover</small></div><button id="attackBtn">⚔ <span>J</span> Atacar</button><button id="skillBtn">✦ <span>K</span> Habilidade</button><button id="potionBtn">♥ <span>H</span> Poção</button><button id="questBtn">📜 Missões</button><button id="mapBtn">🧭 Mapa</button><button id="chatFocusBtn">✉ Chat <span>ENTER</span></button></div>
+<div class="travel-panel"><b>PASSAGENS ENTRE REGIÕES</b><div id="travelButtons"></div><small>As regiões vizinhas são acessíveis pelo menu. Masmorras exigem uma chave comprada na loja.</small></div>
+</section>
+<aside class="sidebar">
+<section class="panel hero-status"><div class="panel-top"><span>✦ FICHA DO PEREGRINO</span><span id="playerClass">Peregrino</span></div><h2 id="charName">—</h2><div class="level"><b id="playerLevel">Nível 1</b><span id="playerCoins">◈ 0 moedas</span></div><div class="statline">VIDA <span id="hpText">135 / 135</span></div><div class="progress"><div id="hpBar" class="hp-bar"></div></div><div class="statline">EXPERIÊNCIA <span id="xpText">0 / 105</span></div><div class="progress"><div id="xpBar" class="xp-bar"></div></div><div class="character-more"><div><small>CRIATURAS DERROTADAS</small><b id="kills">0</b></div><div><small>REGIÕES EXPLORADAS</small><b id="visited">1/16</b></div><div><small>JOGADORES ONLINE</small><b id="playerCount">0/10</b></div></div></section>
+<section class="panel action-panel"><div class="panel-top"><span>GUIA DO PEREGRINO</span></div><div class="tabrow" role="tablist" aria-label="Sistemas do mundo"><button class="tab active" data-tab="inventory">Bolsa</button><button class="tab" data-tab="quests">Missões</button><button class="tab" data-tab="social">Social</button><button class="tab" data-tab="shop">Loja</button></div><div id="tabContent" class="tabcontent" aria-live="polite"></div></section>
+<section class="panel chat-panel"><div class="panel-top"><span>CONVERSAS EM AUREN</span><span id="chatChannelLabel">Global</span></div><div id="chatLog" role="log" aria-live="polite"></div><form id="chatForm"><select id="chatChannel" aria-label="Canal"><option value="global">🌎 Geral</option><option value="party">⚔ Grupo</option><option value="guild">✦ Guilda</option></select><input id="chatInput" maxlength="160" placeholder="Diga algo…" autocomplete="off"><button aria-label="Enviar" type="submit">➤</button></form></section>
+</aside>
+</main>
+<footer><span>OS PEREGRINOS · MMORPG 16-BIT EXPERIMENTAL</span><span>Entrar apenas com nome · 10 jogadores por servidor · Combate e progressão compartilhados</span></footer>
+<script src="/mmo.js" defer></script></body></html>

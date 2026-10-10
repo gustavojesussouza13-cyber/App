@@ -1,68 +1,72 @@
-# Os Peregrinos — Crônicas da Aurora
+# OS PEREGRINOS — CRÔNICAS DA AURORA: MMORPG 16-bit (alfa 2.0–5.0)
 
-**Protótipo experimental de RPG multiplayer em navegador para PC**, adaptado do jogo solo *Gustavo, O Peregrino*.
+Jogo MMORPG **experimental** para PC no navegador, preservando a campanha original em `/jogo.html` e introduzindo o modo **Mundo Aberto** em `/mundo.html`.
 
-## O que já funciona
+## Sem contas
 
-- Site de entrada em português, com nome de jogador (3–18 caracteres).
-- Mesmo cenário, as seis regiões, narrativa, espada, missões d20, sete músicas originais e itens do jogo-base.
-- Multiplayer real via WebSocket: ver jogadores na **mesma região**, com movimento, direção e nomes sincronizados; chat global em tempo real.
-- Número de jogadores conectados, chat aberto com **Enter**, fechar com **Esc**, nome salvo no navegador.
-- Salvamento por personagem **no navegador local**. O servidor não mantém conta nem salva progresso online.
-- Apenas uma versão para **computador no navegador**. Não necessita APK.
+Para entrar, basta escolher um **nome de 3 a 18 caracteres**. Não existem cadastro, e-mail ou senha. O navegador cria um token secreto e aleatório (armazenado em `localStorage`) que identifica o progresso daquele navegador no servidor. O servidor só armazena o **hash SHA-256** do token, não o token bruto. Apelidos são exclusivos **durante a conexão**, mas não são identidades verificadas. Se limpar os dados do navegador ou trocar de PC, **não há recuperação garantida**. Outros podem usar seu apelido quando você estiver desconectado, mas não recebem automaticamente seu progresso.
 
-### Limitações importantes
+## O que funciona nesta alfa
 
-**Isto é uma alpha multiplayer, não um MMORPG completo.** As batalhas, os inimigos, os itens e a conclusão de missões continuam individuais e calculados pelo navegador. Não há autenticação por senha, proteção definitiva do nome, banco de dados permanente, sistemas de guildas ou moderação robusta. O servidor é um protótipo com até 80 conexões simultâneas configuradas (não é capacidade garantida em produção). Não anuncie como jogo final para centenas de jogadores antes de testar carga e segurança.
+- **16 regiões** de exploração 16-bit em canvas, com 4 masmorras e passagens guiadas.
+- **456 criaturas** instanciadas no mundo: 32 espécies, criaturas comuns e 16 chefes, respawn e IA executada por região ativa.
+- **Combate cooperativo**: vários jogadores podem atacar o mesmo monstro, com vida e recompensas controladas pelo servidor; armas e habilidades por classe, inclusive cura em área do curandeiro.
+- **Níveis 1–100**, XP, vida, moedas, saques, inventário, poções e mercado NPC.
+- **Quatro classes**: Peregrino, Guardião, Arqueiro e Curandeiro.
+- **Missões de progresso**, regiões visitadas e recompensas por chefes.
+- **Equipes** de até 5, convites, XP e moedas repartidos por proximidade.
+- **Guildas**, convites e chat de guilda.
+- **Transferência consentida** de itens e moedas entre jogadores próximos (uma direção por operação, não uma bolsa de ofertas bilateral).
+- **Chat global, de equipe e de guilda**, posição de jogadores em mesma região e minimapa.
+- **No máximo 10 jogadores simultâneos**, somando campanha clássica e Mundo Aberto, no processo Node.js.
+- **Persistência SQLite local** em `data/world.sqlite`, com gravação periódica e ao desconectar; pode-se usar `DATA_FILE` para outra localização.
+- Nenhuma dependência externa de npm além do Node.js 22+.
 
-## Executar no computador (sem instalar dependências)
+## Muito importante: limites antes de chamar MMORPG completo
 
-1. Instale o Node.js 20 ou superior.
-2. Extraia este ZIP em uma pasta.
-3. Abra um terminal dentro da pasta e rode: `npm start` (ou `node server.js`).
-4. Abra **http://localhost:3000** no navegador do PC.
-5. Para testar com mais de um usuário, abra a página em dois navegadores ou dispositivos **na mesma rede** usando o IP local do computador: `http://SEU-IP:3000`. É necessário permitir acesso no firewall do Windows.
+Este projeto **não é um MMORPG comercial 5.0 pronto**. A versão entregue implementa sistemas-jogáveis inspirados nas etapas 2.0–5.0. Para muitos jogadores simultâneos / centenas de monstros com IA ativa, ainda precisa de testes de carga, mapas artísticos finais, múltiplos processos, serviço central de identidade por token, database persistente gerenciada, sincronização entre regiões, filtros fortes contra trapaça, denúncias, políticas de comunidade, auditorias, recuperação e backups.
 
-Se quiser mudar a porta, defina a variável de ambiente `PORT`.
+**Hospedagem atual:** o Render Free usa **sistema de arquivos efêmero**. O SQLite local pode ser perdido em suspensões/reimplantações, portanto **o progresso NÃO é garantido de forma permanente no site hospedado**, apesar de funcionar e ser preservado enquanto o arquivo continua disponível. Não exija compras reais nem confie no progresso como definitivo. Próximo requisito operacional crítico: configurar banco durável externo / disco persistente (pode exigir plano pago), exportações e backups verificáveis. SQLite local é adequado para desenvolvimento, não para escalonamento multi-instância.
 
-## Hospedar como site público (Render)
+Os salvamentos existentes da **campanha clássica** continuam separados no `localStorage` original, não são transferidos automaticamente para o novo mundo.
 
-1. Crie um repositório no GitHub, por exemplo `Os-Peregrinos-Online`.
-2. Envie **o conteúdo extraído** do ZIP para a raiz do repositório: `server.js`, `package.json`, `render.yaml`, a pasta `public` etc.
-3. Entre em https://dashboard.render.com/ e escolha **New → Web Service**.
-4. Conecte esse repositório. Escolha o plano **Free** para testes.
-5. Configure **Build Command**: `npm install --omit=dev` e **Start Command**: `npm start` (ou use a configuração `render.yaml` pelo recurso Blueprint).
-6. Após o deploy, copie a URL pública `https://SEU-SERVICO.onrender.com`. Esse endereço será seu site de jogo. A conexão WebSocket usa a mesma URL automaticamente, sem ajustes no código.
+## Executar / testar
 
-**Aviso Render Free:** pode suspender após 15 minutos sem tráfego; o primeiro acesso após a suspensão pode demorar. Reinicializações desconectam jogadores. Não oferece disponibilidade constante. Para produção, use um serviço pago, monitoramento, moderação e banco de dados externo.
+```bash
+node --version     # Node.js 22+
+npm test           # testes automatizados de rede, combate e economia
+npm start          # http://localhost:3000
+```
 
-## Controles PC
+Ambiente opcional:
 
-- **WASD ou setas:** mover
-- **J ou Espaço:** atacar
-- **K:** defender
-- **E:** conversar / interagir
-- **F:** poção
-- **C:** ficha
-- **M:** diário
-- **P:** salvar
-- **Enter:** abrir chat / enviar mensagem
-- **Esc:** fechar chat
+```bash
+PORT=3000 DATA_FILE=/tmp/os-peregrinos-world.sqlite npm start
+```
 
-A campanha solo da versão antiga (`gustavo-peregrino-v2`) permanece intacta. Este projeto usa novas chaves de salvamento separadas por nome (`os-peregrinos-save-<nome>`). Para importar um salvamento antigo, utilize o botão **Importar campanha**, após criar o personagem no site, com o código exportado na versão antiga.
+**WebSocket:** `/world-ws` (mundo aberto) e `/ws` (campanha clássica). API `/api/status` mostra lotação, número de regiões e monstros configurados.
 
-## Arquivos
+## Controles
 
-- `server.js`: servidor HTTP e WebSocket, sem bibliotecas de terceiros.
-- `public/index.html`: site de apresentação e escolha de nome.
-- `public/site.css`, `public/site.js`: design e comportamento do site.
-- `public/jogo.html`: jogo completo com músicas e assets incorporados; cliente multiplayer.
-- `public/sobre.html`: informações sobre a versão experimental e dados de conexão.
-- `render.yaml`: configuração opcional para deploy.
-- `tests`: testes do protocolo multiplayer.
+| Tecla | Ação |
+|---|---|
+| WASD / Setas | Andar |
+| Clique em monstro | Selecionar alvo |
+| J / Espaço | Atacar |
+| K | Habilidade de classe |
+| H | Usar poção |
+| I | Inventário |
+| Q | Missões |
+| M | Mapa |
+| P / G | Social |
+| Enter | Chat |
 
-## Segurança e comunidade
+## Arquitetura / evolução
 
-O nick não é uma conta verificada. O chat é público para todos os conectados e tem controles simples de tamanho/frequência. Antes de abrir inscrições em escala, providencie autenticação, denúncias, bloqueios, termos de uso e canal de contato do responsável, além de revisar a política de privacidade e aplicar regras apropriadas para jogadores menores de idade. Evite compartilhar informações pessoais no chat.
+- `world-engine.js`: servidor autoritativo, progressão, criaturas, AI, mapa, equipes, guildas, economia e persistência SQLite.
+- `server.js`: HTTP estático, WebSocket e coexistência com a campanha original.
+- `public/mundo.html`, `public/mmo.css`, `public/mmo.js`: interface de jogo multiplayer 16-bit.
+- `public/jogo.html`: campanha clássica preservada.
+- `tests/world.test.js`, `tests/world-online.test.js`: testes de segurança básica, economia, protocolo e limite.
 
-© Projeto original **Os Peregrinos — Crônicas da Aurora**. Protótipo em desenvolvimento.
+**Próxima fase para escalar:** persistência fora do servidor, autoritatividade de colisão por tile, navegação entre regiões por portais dentro do mapa, combate com PvE mais sofisticado, instâncias isoladas de masmorras, segurança anti-bot, moderação, canais privados, observabilidade e infraestrutura com ownership distribuído por zonas e fila para lotação.

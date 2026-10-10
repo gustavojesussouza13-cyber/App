@@ -1,0 +1,255 @@
+'use strict';
+/** Mundo persistente experimental: combate e recompensas validados no servidor. */
+const fs=require('node:fs');
+const path=require('node:path');
+const crypto=require('node:crypto');
+
+const ZONES=[
+ ['Vale das Oliveiras','pradaria'],['Floresta da Promessa','floresta'],['Riacho do Alvorecer','rio'],['Deserto das Provações','deserto'],
+ ['Montanhas da Fé','montanha'],['Ruínas do Crepúsculo','ruinas'],['Campos da Esperança','pradaria'],['Pântano dos Sussurros','pantano'],
+ ['Costa da Aurora','costa'],['Bosque da Misericórdia','floresta'],['Cidadela de Auren','cidade'],['Terra da Última Luz','ruinas'],
+ ['Masmorra da Raiz','masmorra'],['Masmorra das Cinzas','masmorra'],['Templo Esquecido','masmorra'],['Câmara da Aurora','masmorra']
+];
+const ZONE_W=1536, ZONE_H=1024;
+const CLASSES={guardiao:{name:'Guardião',hp:165,attack:17,range:85,defense:7},arqueiro:{name:'Arqueiro',hp:112,attack:21,range:250,defense:2},curandeiro:{name:'Curandeiro',hp:125,attack:12,range:160,defense:4},peregrino:{name:'Peregrino',hp:135,attack:16,range:118,defense:4}};
+const SPECIES=[
+ ['Limo do Vale',25,5,15,8],['Lobo Faminto',46,8,23,14],['Morcego das Sombras',32,7,21,11],['Esqueleto Errante',64,11,42,23],
+ ['Aranha Sombria',51,9,36,18],['Guardião das Pedras',110,14,60,34],['Serpente das Dunas',78,13,48,25],['Corvo do Ocaso',36,10,30,13],
+ ['Sentinela Antiga',95,15,62,37],['Espinho Vivo',57,11,37,19],['Escorpião do Deserto',82,14,50,29],['Sombra Errante',106,17,68,40],
+ ['Javali Selvagem',67,11,44,24],['Golem de Areia',117,17,80,45],['Espírito Nebuloso',86,15,67,35],['Guerreiro Esquecido',123,18,85,48],
+ ['Vespa Gigante',48,12,45,17],['Trepa-Sombra',72,13,55,30],['Caranguejo de Cristal',81,13,62,33],['Espectro das Ruínas',140,22,107,55],
+ ['Lobo de Gelo',90,17,77,43],['Aranha Cristalina',93,18,82,39],['Cavaleiro de Bronze',150,23,120,62],['Elemental da Água',118,19,99,45],
+ ['Salamandra',110,19,100,52],['Fera do Pântano',145,25,130,67],['Dragão Jovem',230,29,190,99],['Gigante das Colinas',200,26,151,88],
+ ['Sentinela da Noite',174,25,138,81],['Basilisco',192,27,175,95],['Anjo Caído',225,32,203,118],['Guardião da Aurora',280,38,252,142]
+];
+const GOODS={pocao:{name:'Poção de vida',price:18,heal:65},superpocao:{name:'Poção radiante',price:60,heal:165},espada:{name:'Espada temperada',price:170,attack:7},arco:{name:'Arco dos ventos',price:170,attack:6},amuleto:{name:'Amuleto da esperança',price:250,defense:4},chave:{name:'Chave da masmorra',price:110}};
+const QUESTS=[
+ {id:'primeiro-passo',name:'O primeiro passo',target:5,reward:75,coins:45,description:'Derrote cinco monstros nas terras de Auren'},
+ {id:'guardiao-do-vale',name:'A guarda do vale',target:14,reward:250,coins:110,description:'Defenda o reino e derrote mais criaturas'},
+ {id:'peregrino-valoroso',name:'Peregrino valoroso',target:36,reward:650,coins:275,description:'Vença 36 criaturas nas jornadas'},
+ {id:'luz-renovada',name:'A luz renovada',target:90,reward:1600,coins:700,description:'Enfrente noventa ameaças pelo mundo'}
+];
+const assertName=n=>typeof n==='string'&&n.trim()===n&&n.length>=3&&n.length<=18&&/^[\p{L}\p{N}][\p{L}\p{N} _-]*$/u.test(n);
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+const cap=(s,n=90)=>String(s||'').slice(0,n);
+const defaultSave=()=>({level:1,xp:0,hp:135,coins:60,zone:0,x:ZONE_W/2,y:ZONE_H/2,role:'peregrino',inventory:{pocao:3},kills:0,quests:[],visited:[0],guild:null,achievements:[]});
+function hpMax(s){return CLASSES[s.role].hp+(s.level-1)*12}
+function xpNeed(level){return 70+level*level*35}
+function safeSave(s){return {level:s.level,xp:s.xp,hp:s.hp,coins:s.coins,zone:s.zone,x:s.x,y:s.y,role:s.role,inventory:s.inventory,kills:s.kills,quests:s.quests,visited:s.visited,guild:s.guild,achievements:s.achievements}}
+function hash32(n){n|=0;n=Math.imul(n^(n>>>16),0x7feb352d);n=Math.imul(n^(n>>>15),0x846ca68b);return (n^(n>>>16))>>>0}
+class World {
+ constructor({send,getOnline,hasClassicName,dataFile,autosave=false}){
+  this.send=send;this.getOnline=getOnline;this.hasClassicName=hasClassicName;
+  this.players=new Map();this.monsters=new Map();this.parties=new Map();this.guilds=new Map();this.pendingTrades=new Map();
+  this.dirty=false;this.lastTick=Date.now();this.day=1;
+  this.dataFile=dataFile||path.join(__dirname,'data','world.sqlite');
+  this.db=null;this.saved={version:3,characters:{},guilds:{},day:1};this.load();
+  this.initMonsters();
+  if(autosave)this.saveTimer=setInterval(()=>this.persist(),30000).unref();
+ }
+ get count(){return this.players.size}
+ load(){
+  try{
+   if(this.dataFile.endsWith('.sqlite')){
+    const {DatabaseSync}=require('node:sqlite');
+    fs.mkdirSync(path.dirname(this.dataFile),{recursive:true});
+    this.db=new DatabaseSync(this.dataFile);
+    this.db.exec('PRAGMA journal_mode=WAL; CREATE TABLE IF NOT EXISTS characters(uid TEXT PRIMARY KEY, data TEXT NOT NULL); CREATE TABLE IF NOT EXISTS guilds(key TEXT PRIMARY KEY, data TEXT NOT NULL); CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY, value TEXT NOT NULL);');
+    this.saved.characters=Object.fromEntries(this.db.prepare('SELECT uid, data FROM characters').all().map(r=>[r.uid,JSON.parse(r.data)]));
+    this.saved.guilds=Object.fromEntries(this.db.prepare('SELECT key, data FROM guilds').all().map(r=>[r.key,JSON.parse(r.data)]));
+    this.day=Number(this.db.prepare("SELECT value FROM meta WHERE key='day'").get()?.value||1);
+   }else{
+    const o=JSON.parse(fs.readFileSync(this.dataFile,'utf8'));
+    if(o&&o.version>=2&&o.characters&&o.guilds)this.saved=o;
+    this.day=Number(this.saved.day||1);
+   }
+  }catch(e){if(e.code!=='ENOENT')console.error('[world] dados existentes ignorados:',e.message)}
+  this.guilds=new Map(Object.entries(this.saved.guilds||{}));
+ }
+ persist(){if(!this.dirty)return;for(const p of this.players.values())this.saved.characters[p.uid]=safeSave(p.save);this.saved.guilds=Object.fromEntries(this.guilds);this.saved.day=this.day;
+  try{
+   if(this.db){
+    this.db.exec('BEGIN IMMEDIATE');
+    try{
+     const putChar=this.db.prepare('INSERT INTO characters(uid,data) VALUES (?,?) ON CONFLICT(uid) DO UPDATE SET data=excluded.data');
+     for(const [uid,value] of Object.entries(this.saved.characters))putChar.run(uid,JSON.stringify(value));
+     this.db.exec('DELETE FROM guilds');const putGuild=this.db.prepare('INSERT INTO guilds(key,data) VALUES (?,?)');
+     for(const [key,value] of Object.entries(this.saved.guilds))putGuild.run(key,JSON.stringify(value));
+     this.db.prepare("INSERT INTO meta(key,value) VALUES ('day',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").run(String(this.day));
+     this.db.exec('COMMIT');
+    }catch(e){this.db.exec('ROLLBACK');throw e}
+   }else{
+    fs.mkdirSync(path.dirname(this.dataFile),{recursive:true});const temp=this.dataFile+'.'+process.pid+'.tmp';fs.writeFileSync(temp,JSON.stringify(this.saved));fs.renameSync(temp,this.dataFile);
+   }
+   this.dirty=false
+  }catch(e){console.error('[world] falha ao salvar:',e.message)}
+ }
+ initMonsters(){for(let zone=0;zone<ZONES.length;zone++){
+   const mons=[];const dungeon=zone>=12;
+   const count=dungeon?24:30;
+   for(let i=0;i<count;i++){
+    const boss=i===count-1;const seed=hash32(zone*9217+i*5711+77);
+    const speciesId=boss?(dungeon?31:(zone+11)%32):(zone*2+i*7+((seed>>4)%5))%SPECIES.length;
+    const sp=SPECIES[speciesId],tier=1+Math.floor(zone/3),mult=boss?5.5:1+(zone%3)*.12;
+    const home={x:130+hash32(seed+1)%(ZONE_W-260),y:130+hash32(seed+2)%(ZONE_H-260)};
+    mons.push({id:`m-${zone}-${i}`,zone,name:(boss?'★ ':'')+sp[0],species:speciesId,boss,x:home.x,y:home.y,home,hp:Math.floor(sp[1]*mult*tier),maxHp:Math.floor(sp[1]*mult*tier),damage:Math.ceil(sp[2]*tier*(boss?2:1)),xp:Math.ceil(sp[3]*tier*(boss?4:1)),coins:Math.ceil(sp[4]*tier*(boss?5:1)),lastAttack:0,deadUntil:0,damageFrom:new Map(),wander:0});
+   }
+   this.monsters.set(zone,mons);
+  }}
+ totalMonsters(){return [...this.monsters.values()].reduce((n,a)=>n+a.length,0)}
+ publicPlayer(p){return {id:p.id,name:p.name,zone:p.zone,x:Math.round(p.x),y:Math.round(p.y),dir:p.dir,level:p.save.level,role:p.save.role,hp:p.save.hp,maxHp:hpMax(p.save),guild:p.save.guild,party:p.party||null}}
+ publicMonster(m){return {id:m.id,name:m.name,species:m.species,zone:m.zone,x:Math.round(m.x),y:Math.round(m.y),hp:m.hp,maxHp:m.maxHp,boss:m.boss}}
+ zoneInfo(){return ZONES.map((z,i)=>({id:i,name:z[0],biome:z[1],count:this.monsters.get(i).length}))}
+ ownStatus(p){const s=p.save;return {type:'character',id:p.id,name:p.name,level:s.level,xp:s.xp,nextXp:xpNeed(s.level),hp:s.hp,maxHp:hpMax(s),coins:s.coins,role:s.role,inventory:s.inventory,kills:s.kills,quests:s.quests,visited:s.visited,guild:s.guild,party:p.party||null,zone:p.zone,x:p.x,y:p.y}}
+ tell(p,msg,type='notice'){this.send(p.socket,{type,text:msg})}
+ broadcast(obj,filter=()=>true){for(const p of this.players.values())if(filter(p))this.send(p.socket,obj)}
+ join(c,d){if(c.worldPlayer)return;
+  const name=cap(d.name,40).trim().normalize('NFC');const token=typeof d.token==='string'&&/^[a-f0-9-]{24,100}$/i.test(d.token)?d.token:null;
+  if(!assertName(name)||!token){this.send(c.socket,{type:'error',code:'invalid_name',message:'Escolha um nome válido e habilite o armazenamento do navegador.'});return}
+  const uid=crypto.createHash('sha256').update(token).digest('hex');
+  // A titularidade é baseada no token deste navegador; o nome é apenas um apelido.
+  for(const existing of this.players.values())if(existing.uid===uid){this.tell(existing,'Sua sessão foi aberta em outra aba.');this.leave(existing.socket._worldClient||{worldPlayer:existing});try{existing.socket.destroy()}catch{}break}
+  if(this.players.size+this.getOnline()>=10){this.send(c.socket,{type:'error',code:'full',message:'Servidor cheio: 10 de 10 peregrinos. Aguarde uma vaga.'});return}
+  if([...this.players.values()].some(p=>p.name.toLocaleLowerCase('pt-BR')===name.toLocaleLowerCase('pt-BR'))||this.hasClassicName(name)){
+   this.send(c.socket,{type:'error',code:'name_taken',message:'Esse nome já está em uso agora. Escolha outro.'});return}
+  let raw=this.saved.characters[uid]||defaultSave();const s={...defaultSave(),...raw};
+  if(!CLASSES[s.role])s.role='peregrino';if(!Number.isInteger(s.zone)||s.zone<0||s.zone>=ZONES.length)s.zone=0;
+  s.level=clamp(Math.floor(Number(s.level)||1),1,100);s.hp=clamp(Math.floor(Number(s.hp)||hpMax(s)),1,hpMax(s));s.x=clamp(Number(s.x)||ZONE_W/2,28,ZONE_W-28);s.y=clamp(Number(s.y)||ZONE_H/2,28,ZONE_H-28);
+  s.inventory={...defaultSave().inventory,...(s.inventory||{})};if(!Array.isArray(s.quests))s.quests=[];if(!Array.isArray(s.visited))s.visited=[0];
+  const p={id:crypto.randomUUID(),uid,name,socket:c.socket,save:s,x:s.x,y:s.y,zone:s.zone,dir:2,lastMove:Date.now(),lastAttack:0,lastSpell:0,lastChat:0,lastUse:0,party:null,live:true};
+  c.worldPlayer=p;c.socket._worldClient=c;this.players.set(p.id,p);
+  this.send(c.socket,{type:'welcome',self:this.ownStatus(p),zones:this.zoneInfo(),shop:GOODS,quests:QUESTS,maxPlayers:10,online:this.players.size+this.getOnline(),monsterTotal:this.totalMonsters()});
+  this.broadcast({type:'system',text:p.name+' chegou ao mundo.'},q=>q.id!==p.id);
+  this.dirty=true;this.snapshotTo(p);
+ }
+ leave(c){const p=c.worldPlayer;if(!p||!p.live)return;p.live=false;
+  this.saved.characters[p.uid]=safeSave(p.save);this.dirty=true;
+  this.players.delete(p.id);c.worldPlayer=null;
+  if(p.party)this.partyLeave(p,false);
+  for(const k of this.pendingTrades.keys())if(k.includes(p.id))this.pendingTrades.delete(k);
+  this.broadcast({type:'system',text:p.name+' deixou o reino.'});this.persist();
+ }
+ snapshotTo(p){const near=[...this.players.values()].filter(o=>o.id!==p.id&&o.zone===p.zone&&dist(o,p)<680).map(o=>this.publicPlayer(o));
+  const mons=(this.monsters.get(p.zone)||[]).filter(m=>m.hp>0&&dist(m,p)<740).map(m=>this.publicMonster(m));
+  this.send(p.socket,{type:'snapshot',online:this.players.size+this.getOnline(),zone:p.zone,players:near,monsters:mons,day:this.day});
+ }
+ receive(c,d){if(!d||typeof d!=='object'||Array.isArray(d))return;if(!c.worldPlayer){if(d.type==='hello')this.join(c,d);return}
+  const p=c.worldPlayer;const now=Date.now();
+  switch(d.type){
+   case 'move':{
+    if(now-p.lastMove<20)break;const x=Number(d.x),y=Number(d.y);if(!Number.isFinite(x)||!Number.isFinite(y))break;
+    const dt=clamp((now-p.lastMove)/1000,.02,.25);const speed=195;const dd=Math.hypot(x-p.x,y-p.y);const limit=speed*dt+8;
+    const f=dd>limit?limit/dd:1;
+    p.x=clamp(p.x+(x-p.x)*f,24,ZONE_W-24);p.y=clamp(p.y+(y-p.y)*f,24,ZONE_H-24);
+    p.dir=Number.isInteger(d.dir)?clamp(d.dir,0,3):2;p.lastMove=now;
+    p.save.x=p.x;p.save.y=p.y;this.dirty=true;break;
+   }
+   case 'travel':this.travel(p,d.zone);break;
+   case 'attack':this.attack(p,d.target,false);break;
+   case 'skill':this.attack(p,d.target,true);break;
+   case 'class':this.chooseClass(p,d.role);break;
+   case 'use':this.use(p,cap(d.item,30));break;
+   case 'buy':this.buy(p,cap(d.item,30));break;
+   case 'quest':this.claimQuests(p);break;
+   case 'chat':this.chat(p,d);break;
+   case 'party':this.party(p,d);break;
+   case 'guild':this.guild(p,d);break;
+   case 'trade':this.trade(p,d);break;
+   case 'ping':this.send(p.socket,{type:'pong',now});break;
+  }
+ }
+ chooseClass(p,role){if(!CLASSES[role])return;if(p.save.level>1||p.save.kills>0){this.tell(p,'A classe não pode ser alterada após começar a evolução.');return}const previous=hpMax(p.save);p.save.role=role;p.save.hp=clamp(p.save.hp+hpMax(p.save)-previous,1,hpMax(p.save));this.dirty=true;this.send(p.socket,this.ownStatus(p));this.tell(p,'Classe alterada para '+CLASSES[role].name+'.')}
+ travel(p,z){z=Number(z);if(!Number.isInteger(z)||z<0||z>=ZONES.length)return;
+  if(z===p.zone)return;const a=p.zone,b=z;const legal=(a<12&&b<12&&Math.abs(a-b)<=2)||(a<12&&b>=12&&[1,3,5,11][b-12]===a)||(a>=12&&b===[1,3,5,11][a-12]);
+  if(!legal){this.tell(p,'Siga para uma região vizinha ou para a entrada de uma masmorra.');return}
+  if(b>=12&&(p.save.inventory.chave||0)<1){this.tell(p,'Você precisa de uma Chave da masmorra (comprável na loja).');return}
+  if(b>=12){p.save.inventory.chave--;}
+  p.zone=b;p.save.zone=b;p.x=ZONE_W/2;p.y=ZONE_H/2;p.save.x=p.x;p.save.y=p.y;if(!p.save.visited.includes(b))p.save.visited.push(b);this.dirty=true;
+  this.send(p.socket,{type:'travel',zone:b,name:ZONES[b][0],x:p.x,y:p.y});this.send(p.socket,this.ownStatus(p));this.snapshotTo(p);
+ }
+ attack(p,tid,skill){const now=Date.now(),role=CLASSES[p.save.role];const cooldown=skill?4000:600;
+  if(now-(skill?p.lastSpell:p.lastAttack)<cooldown)return;
+  let m=(this.monsters.get(p.zone)||[]).find(x=>x.id===tid&&x.hp>0);if(!m||dist(m,p)>(skill?role.range*1.4:role.range))return;
+  if(skill)p.lastSpell=now;else p.lastAttack=now;
+  const level=p.save.level,weapon=(p.save.inventory.espada||0)>0?7:(p.save.inventory.arco||0)>0?6:0;
+  let damage=Math.round(role.attack+level*2+weapon+(skill?role.attack*.9:0));
+  if(skill&&p.save.role==='curandeiro'){
+   for(const ally of this.players.values())if(ally.zone===p.zone&&dist(p,ally)<230){ally.save.hp=clamp(ally.save.hp+28+level*4,1,hpMax(ally.save));this.send(ally.socket,this.ownStatus(ally));}
+  }
+  m.hp=Math.max(0,m.hp-damage);m.damageFrom.set(p.id,(m.damageFrom.get(p.id)||0)+damage);
+  this.broadcast({type:'hit',monster:m.id,zone:m.zone,damage,remaining:m.hp,by:p.name,skill},q=>q.zone===p.zone&&dist(q,m)<780);
+  if(m.hp===0){m.deadUntil=now+(m.boss?45000:14000);let recipients=new Map();for(const [pid] of m.damageFrom){const x=this.players.get(pid);if(x&&x.zone===p.zone&&dist(x,m)<690)recipients.set(x.id,x)}
+   for(const x of [...recipients.values()])if(x.party){for(const ally of this.players.values())if(ally.party===x.party&&ally.zone===x.zone&&dist(ally,m)<500)recipients.set(ally.id,ally)}
+   for(const x of recipients.values())this.award(x,Math.round(m.xp/Math.max(1,recipients.size)*1.3),Math.ceil(m.coins/Math.max(1,recipients.size)),m.boss);
+   this.broadcast({type:'defeated',monster:m.id,zone:m.zone,by:p.name,boss:m.boss},q=>q.zone===p.zone);
+   m.damageFrom.clear();this.dirty=true;
+  }
+ }
+ award(p,xp,gold,boss=false){const s=p.save;s.xp+=xp;s.coins+=gold;s.kills++;while(s.level<100&&s.xp>=xpNeed(s.level)){s.xp-=xpNeed(s.level);s.level++;s.hp=hpMax(s);this.tell(p,'✦ Você alcançou o nível '+s.level+'!')}
+  if(boss){s.inventory.superpocao=(s.inventory.superpocao||0)+1;this.tell(p,'★ Chefe derrotado! Você recebeu uma poção radiante.');}
+  this.send(p.socket,{type:'reward',xp,gold,boss});this.send(p.socket,this.ownStatus(p));this.dirty=true;
+ }
+ use(p,id){if(!['pocao','superpocao'].includes(id)||(p.save.inventory[id]||0)<=0)return;const now=Date.now();if(now-p.lastUse<600)return;p.lastUse=now;p.save.inventory[id]--;p.save.hp=clamp(p.save.hp+GOODS[id].heal,0,hpMax(p.save));this.send(p.socket,this.ownStatus(p));this.dirty=true}
+ buy(p,id){const item=GOODS[id];if(!item||p.save.coins<item.price){this.tell(p,'Moedas insuficientes ou item desconhecido.');return}
+  p.save.coins-=item.price;p.save.inventory[id]=(p.save.inventory[id]||0)+1;this.send(p.socket,this.ownStatus(p));this.tell(p,item.name+' comprado!');this.dirty=true}
+ claimQuests(p){let completed=0;for(const q of QUESTS){if(p.save.kills>=q.target&&!p.save.quests.includes(q.id)){
+  p.save.quests.push(q.id);p.save.xp+=q.reward;p.save.coins+=q.coins;completed++;
+  while(p.save.level<100&&p.save.xp>=xpNeed(p.save.level)){p.save.xp-=xpNeed(p.save.level);p.save.level++;p.save.hp=hpMax(p.save)}
+ }}this.tell(p,completed?'Missões concluídas: '+completed+'!':'Ainda não há missões para resgatar.');this.send(p.socket,this.ownStatus(p));this.dirty=true}
+ chat(p,d){const now=Date.now();if(now-p.lastChat<1100)return;p.lastChat=now;const txt=cap(d.text,161).replace(/[\u0000-\u001f\u007f]/g,'').trim();if(txt.length<1||txt.length>160)return;
+  if(d.channel==='party'&&p.party)this.broadcast({type:'chat',channel:'party',name:p.name,text:txt},x=>x.party===p.party);
+  else if(d.channel==='guild'&&p.save.guild)this.broadcast({type:'chat',channel:'guild',name:p.name,text:txt},x=>x.save.guild===p.save.guild);
+  else this.broadcast({type:'chat',channel:'global',name:p.name,text:txt});
+ }
+ party(p,d){const mode=cap(d.action,20);if(mode==='create'){if(p.party)return;const id=crypto.randomUUID();this.parties.set(id,{leader:p.id,members:[p.id],invited:[]});p.party=id;this.partyUpdate(id)}
+  else if(mode==='invite'){const pt=this.parties.get(p.party);if(!pt||pt.leader!==p.id)return;const target=[...this.players.values()].find(x=>x.name.toLowerCase()===cap(d.target,20).toLowerCase());if(!target||target.party||pt.members.length>=5)return;pt.invited.push(target.id);this.tell(target,p.name+' convidou você para a equipe. Use “Aceitar convite”.');this.send(target.socket,{type:'partyInvite',party:p.party,by:p.name})}
+  else if(mode==='accept'){const pt=this.parties.get(d.party);if(!pt||!pt.invited.includes(p.id)||p.party||pt.members.length>=5)return;pt.invited=pt.invited.filter(x=>x!==p.id);pt.members.push(p.id);p.party=d.party;this.partyUpdate(d.party)}
+  else if(mode==='leave')this.partyLeave(p,true);
+ }
+ partyLeave(p,notify){const id=p.party,pt=this.parties.get(id);p.party=null;if(!pt)return;pt.members=pt.members.filter(x=>x!==p.id);if(pt.leader===p.id)pt.leader=pt.members[0];if(!pt.members.length)this.parties.delete(id);else this.partyUpdate(id);if(notify)this.send(p.socket,this.ownStatus(p))}
+ partyUpdate(id){const pt=this.parties.get(id);if(!pt)return;const names=pt.members.map(pid=>this.players.get(pid)?.name).filter(Boolean);for(const pid of pt.members){const p=this.players.get(pid);if(p){this.send(p.socket,{type:'partyInfo',leader:this.players.get(pt.leader)?.name,members:names,id});this.send(p.socket,this.ownStatus(p));}}}
+ guild(p,d){const mode=cap(d.action,15),name=cap(d.name,30).trim(),key=name.toLocaleLowerCase('pt-BR');
+  if(mode==='create'){if(p.save.guild||p.save.coins<250||!/^[\p{L}\p{N}][\p{L}\p{N} -]{2,23}$/u.test(name)||this.guilds.has(key))return this.tell(p,'Guilda indisponível. Precisa de 250 moedas e um nome exclusivo.');
+   p.save.coins-=250;p.save.guild=name;this.guilds.set(key,{name,leader:p.uid,members:[p.uid],invitations:[]});this.tell(p,'Guilda criada: '+name);this.dirty=true;
+  } else if(mode==='invite'){const g=this.guilds.get(p.save.guild?.toLowerCase());if(!g||g.leader!==p.uid)return;const other=[...this.players.values()].find(o=>o.name.toLowerCase()===cap(d.target,20).toLowerCase());if(!other||other.save.guild)return;g.invitations.push(other.uid);this.send(other.socket,{type:'guildInvite',name:g.name,by:p.name});this.dirty=true;
+  } else if(mode==='accept'){const g=this.guilds.get(key);if(!g||!g.invitations.includes(p.uid)||p.save.guild)return;g.invitations=g.invitations.filter(x=>x!==p.uid);g.members.push(p.uid);p.save.guild=g.name;this.dirty=true;
+  } else if(mode==='leave'){const g=this.guilds.get(p.save.guild?.toLowerCase());if(g){g.members=g.members.filter(x=>x!==p.uid);if(g.leader===p.uid)g.leader=g.members[0]||null;if(!g.members.length)this.guilds.delete(p.save.guild.toLowerCase())}p.save.guild=null;this.dirty=true}
+  this.send(p.socket,this.ownStatus(p));
+ }
+ trade(p,d){const mode=cap(d.action,15),other=[...this.players.values()].find(o=>o.name.toLowerCase()===cap(d.target,20).toLowerCase());
+  if(!other||other.id===p.id||other.zone!==p.zone||dist(p,other)>200)return this.tell(p,'O outro jogador precisa estar perto de você.');
+  const key=[p.id,other.id].sort().join(':');
+  if(mode==='offer'){
+   const item=cap(d.item,30),count=Math.floor(Number(d.count)),gold=Math.floor(Number(d.gold)||0);
+   if(!GOODS[item]||!Number.isInteger(count)||count<1||count>10||!Number.isInteger(gold)||gold<0||gold>10000||p.save.inventory[item]<count||p.save.coins<gold)return this.tell(p,'Oferta inválida ou saldo insuficiente.');
+   this.pendingTrades.set(key,{from:p.id,to:other.id,item,count,gold,expires:Date.now()+30000});
+   this.send(other.socket,{type:'tradeOffer',from:p.name,item,count,gold});this.tell(p,'Oferta enviada a '+other.name+'.');
+  } else if(mode==='accept'){
+   const trade=this.pendingTrades.get(key);if(!trade||trade.to!==p.id||trade.expires<Date.now())return;
+   const giver=this.players.get(trade.from);if(!giver||giver.zone!==p.zone||dist(giver,p)>200)return;
+   if((giver.save.inventory[trade.item]||0)<trade.count||giver.save.coins<trade.gold)return;
+   giver.save.inventory[trade.item]-=trade.count;p.save.inventory[trade.item]=(p.save.inventory[trade.item]||0)+trade.count;
+   giver.save.coins-=trade.gold;p.save.coins+=trade.gold;
+   this.pendingTrades.delete(key);this.send(p.socket,this.ownStatus(p));this.send(giver.socket,this.ownStatus(giver));this.tell(p,'Troca recebida com sucesso.');this.tell(giver,'Troca confirmada por '+p.name+'.');this.dirty=true;
+  } else if(mode==='reject'){this.pendingTrades.delete(key);this.tell(other,'Troca recusada.')}
+ }
+ tick(){const now=Date.now(),dt=clamp((now-this.lastTick)/1000,.01,.5);this.lastTick=now;
+  // IA processada por zonas com jogadores: regiões vazias não consomem recursos de combate.
+  const activeZones=new Set([...this.players.values()].map(p=>p.zone));
+  for(const zone of activeZones){const crowd=[...this.players.values()].filter(p=>p.zone===zone);for(const m of this.monsters.get(zone)||[]){
+   if(m.hp<=0){if(now>=m.deadUntil){m.hp=m.maxHp;m.x=m.home.x;m.y=m.home.y;m.damageFrom.clear()}else continue}
+   const closest=crowd.reduce((best,p)=>dist(p,m)<dist(best||{x:1e7,y:1e7},m)?p:best,null);
+   if(closest&&dist(closest,m)<240){const d=dist(closest,m);if(d>42){m.x+=((closest.x-m.x)/d)*Math.min(58*dt,d);m.y+=((closest.y-m.y)/d)*Math.min(58*dt,d)}
+    if(d<53&&now-m.lastAttack>2200){m.lastAttack=now;const defense=CLASSES[closest.save.role].defense+(closest.save.inventory.amuleto?4:0);const damage=Math.max(1,m.damage-defense);closest.save.hp-=damage;
+     this.send(closest.socket,{type:'hurt',damage,monster:m.name});if(closest.save.hp<=0){closest.save.hp=hpMax(closest.save);closest.x=ZONE_W/2;closest.y=ZONE_H/2;closest.save.x=closest.x;closest.save.y=closest.y;closest.save.coins=Math.max(0,closest.save.coins-10);this.tell(closest,'Você caiu em batalha e voltou ao santuário.');}
+     this.send(closest.socket,this.ownStatus(closest));this.dirty=true;
+    }
+   } else if(now>m.wander){m.wander=now+1400+hash32(now+m.x)%3200;const dir=hash32(now+m.y+m.x)%4;m.x=clamp(m.x+(dir===0?35:dir===1?-35:0),42,ZONE_W-42);m.y=clamp(m.y+(dir===2?35:dir===3?-35:0),42,ZONE_H-42)}
+  }}
+  for(const p of this.players.values())this.snapshotTo(p);
+ }
+ status(){return {connected:this.count,monsters:this.totalMonsters(),regions:ZONES.length,guilds:this.guilds.size,version:'mmo-2-5-alpha'}}
+ stop(){clearInterval(this.saveTimer);for(const p of this.players.values())this.saved.characters[p.uid]=safeSave(p.save);this.dirty=true;this.persist();try{this.db?.close()}catch{}}
+}
+module.exports={World,ZONES,ZONE_W,ZONE_H,GOODS,QUESTS,SPECIES,CLASSES,xpNeed};
