@@ -25,7 +25,7 @@ test('servidor pronto',ready);
 test('serve o site, o jogo e a API de status',async()=>{
  const h=await fetch(BASE+'/');assert.equal(h.status,200);assert.match(await h.text(),/Os Peregrinos/);
  const g=await fetch(BASE+'/jogo.html');assert.equal(g.status,200);assert.match(await g.text(),/netRemotePlayers/);
- const status=await fetch(BASE+'/api/status');assert.equal((await status.json()).online,0);
+ const status=await fetch(BASE+'/api/status');const info=await status.json();assert.equal(info.online,0);assert.equal(info.maxPlayers,10);assert.equal(info.availableSlots,10);
  assert.equal((await fetch(BASE+'/../server.js')).status,404);
 });
 test('dois peregrinos no mesmo mapa se veem e conversam',async()=>{
@@ -52,4 +52,24 @@ test('áreas diferentes compartilham servidor, mas não sprites',async()=>{
  await sleep(350);
  const snap=a.messages.findLast(m=>m.type==='snapshot');assert.ok(snap);assert.equal(snap.players.length,0);
  a.ws.close();b.ws.close();await sleep(80);
+});
+
+test('servidor permite no máximo 10 jogadores conectados e libera vaga ao sair',async()=>{
+ const clients=[];
+ try {
+  for(let i=0;i<10;i++)clients.push(await connect('LimiteTeste'+i));
+  const fullStatus=await (await fetch(BASE+'/api/status')).json();
+  assert.equal(fullStatus.online,10);
+  assert.equal(fullStatus.availableSlots,0);
+  await assert.rejects(()=>connect('LimiteTesteExtra'),{code:'full'});
+  assert.equal((await (await fetch(BASE+'/api/status')).json()).online,10);
+  clients[9].ws.close();
+  await sleep(120);
+  const newcomer=await connect('NovoPeregrino');
+  assert.equal(newcomer.welcome.online,10);
+  newcomer.ws.close();
+ } finally {
+  for(const c of clients)try{c.ws.close()}catch{}
+  await sleep(120);
+ }
 });

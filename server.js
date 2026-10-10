@@ -8,7 +8,7 @@ const { TextDecoder } = require('node:util');
 
 const PORT = Number(process.env.PORT || 3000);
 const HOST = process.env.HOST || '0.0.0.0';
-const MAX_PLAYERS = 80; // protótipo; não é capacidade garantida de produção
+const MAX_PLAYERS = 10; // número máximo de personagens conectados simultaneamente
 const PUBLIC = path.join(__dirname, 'public');
 const players = new Map();
 const sockets = new Set();
@@ -22,7 +22,7 @@ function reply(res, status, body, type='text/plain; charset=utf-8') {
 const httpServer = http.createServer((req,res)=>{
   const u = new URL(req.url||'/', 'http://localhost');
   if(req.method !== 'GET') return reply(res,405,'Método não permitido');
-  if(u.pathname==='/api/status') return reply(res,200,JSON.stringify({online:players.size,regions:[...new Set([...players.values()].map(p=>p.zone))].length,version:'0.1.0-beta'}),'application/json; charset=utf-8');
+  if(u.pathname==='/api/status') return reply(res,200,JSON.stringify({online:players.size,maxPlayers:MAX_PLAYERS,availableSlots:Math.max(0,MAX_PLAYERS-players.size),regions:[...new Set([...players.values()].map(p=>p.zone))].length,version:'0.1.0-beta'}),'application/json; charset=utf-8');
   if(u.pathname==='/health') return reply(res,200,'ok');
   const routes={'/':'/index.html','/jogar':'/jogo.html','/jogo':'/jogo.html'};
   let pathname=routes[u.pathname] || u.pathname;
@@ -65,12 +65,12 @@ function join(c,data){
   if(c.profile)return;
   const name=typeof data.name==='string'?data.name.trim().normalize('NFC'):'';
   if(!validName(name)){return refuse(c,{type:'error',code:'invalid_name',message:'Use de 3 a 18 caracteres: letras, números, espaço ou hífen.'})}
-  if(players.size>=MAX_PLAYERS){return refuse(c,{type:'error',code:'full',message:'Servidor de testes lotado.'})}
   const token=typeof data.token==='string'&&/^[a-f0-9-]{20,60}$/i.test(data.token)?data.token:'';
   for(const other of sockets)if(other!==c&&other.profile&&other.profile.name.toLocaleLowerCase('pt-BR')===name.toLocaleLowerCase('pt-BR')){
     if(token && token===other.profile.token){terminate(other);break;}
     return refuse(c,{type:'error',code:'name_taken',message:'Este nome já está sendo usado agora. Escolha outro nome.'});
   }
+  if(players.size>=MAX_PLAYERS){return refuse(c,{type:'error',code:'full',message:'Servidor cheio (10/10). Aguarde uma vaga para entrar.'})}
   const zone=Number.isInteger(data.zone)?clamp(data.zone,0,5):0;
   const profile={id:crypto.randomUUID(),name,token,zone,x:clamp(Number(data.x)||184,18,1230),y:clamp(Number(data.y)||512,20,810),dir:2,step:0,attack:false,defending:false,joined:Date.now(),lastMove:Date.now(),lastChat:0,lastZone:Date.now()};
   c.profile=profile;players.set(profile.id,profile);
