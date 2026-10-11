@@ -127,3 +127,8 @@ test('páginas de token não carregam scripts publicitários e preservam o modo 
  assert.match(html,/recuperar-senha.html/);
  assert.match(fs.readFileSync(path.join(__dirname,'../server.js'),'utf8'),/\/api\/auth\/password\/forgot/);
 });
+
+test('chave Resend configurada como resend_api_key também é reconhecida',()=>{
+ const source=fs.readFileSync(path.join(__dirname,'../email-service.js'),'utf8');
+ assert.match(source,/process\.env\.RESEND_API_KEY\s*\|\|\s*process\.env\.resend_api_key/);
+});

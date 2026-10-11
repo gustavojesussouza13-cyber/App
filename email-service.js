@@ -3,7 +3,7 @@
 const {validEmail}=require('./account-store');
 const HTML_SAFE=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 class MailService{
- constructor({apiKey=process.env.RESEND_API_KEY,from=process.env.RESEND_FROM_EMAIL,origin=process.env.PUBLIC_SITE_URL||'https://cronicasdaaurora.com.br',fetchFn=globalThis.fetch}={}){
+ constructor({apiKey=process.env.RESEND_API_KEY || process.env.resend_api_key,from=process.env.RESEND_FROM_EMAIL,origin=process.env.PUBLIC_SITE_URL||'https://cronicasdaaurora.com.br',fetchFn=globalThis.fetch}={}){
   this.key=apiKey;this.from=from;this.fetchFn=fetchFn;
   try{const u=new URL(origin);this.origin=u.protocol==='https:'&&u.pathname==='/'&&!u.username&&!u.password?u.origin:''}catch{this.origin=''}
   this.ready=Boolean(apiKey && /^re_[a-zA-Z0-9_]+$/.test(apiKey) && from && from.length<255 && !/[\r\n]/.test(from) && validEmail((from.match(/<([^<>]+)>/)||[])[1]||from) && this.origin);
