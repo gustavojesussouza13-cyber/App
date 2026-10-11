@@ -68,7 +68,14 @@ class World {
   }catch(e){if(e.code!=='ENOENT')console.error('[world] dados existentes ignorados:',e.message)}
   this.guilds=new Map(Object.entries(this.saved.guilds||{}));
  }
- persist(){if(!this.dirty)return;for(const p of this.players.values())this.saved.characters[p.uid]=safeSave(p.save);this.saved.guilds=Object.fromEntries(this.guilds);this.saved.day=this.day;
+ persist(){
+  // Reenvia instantâneos pendentes mesmo sem novas ações do jogador.
+  // Uma falha transitória do Postgres não pode esperar por outra movimentação.
+  if(!this.dirty){
+   if(this.persistentStore?.pending)void this.persistentStore.flush().catch(err=>console.error('[world] repetição do salvamento falhou:',err.message));
+   return;
+  }
+  for(const p of this.players.values())this.saved.characters[p.uid]=safeSave(p.save);this.saved.guilds=Object.fromEntries(this.guilds);this.saved.day=this.day;
   if(this.persistentStore){this.dirty=false;this.persistentStore.enqueue(this.saved);return;}
   try{
    if(this.db){
