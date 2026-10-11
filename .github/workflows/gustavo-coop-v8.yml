@@ -1,4 +1,4 @@
-name: Compilar Gustavo O Peregrino Android V8.1 Cooperativo 5
+name: Compilar Gustavo O Peregrino Android V8.2 Cooperativo 5
 on:
   push:
     branches: [gustavo-peregrino-coop-v8]
@@ -7,7 +7,7 @@ permissions:
   contents: read
 jobs:
   android:
-    name: Build e testes APK Android V8.1
+    name: Build e testes APK Android V8.2
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -16,14 +16,15 @@ jobs:
         with:
           node-version: '22'
       - name: Testar servidor cooperativo (até 5)
-        run: npm test
+        run: node --test tests/android-coop-five.test.js
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Gerar HTML Android V8.1 com coop para cinco
+      - name: Gerar HTML Android V8.2 com coop para cinco
         run: |
           python3 scripts/apply_coop_patch.py
           python3 scripts/apply_v81_patch.py
+          python3 scripts/apply_v82_patch.py
           python3 - <<'PYCODE'
           from pathlib import Path
           import re
@@ -31,7 +32,7 @@ jobs:
           assert 'wss://gustavo-peregrino-coop.onrender.com/coop-ws' in s
           assert 'cooperativo-cinco-jogadores' in s
           assert 'Cooperativo online (até 5)' in s
-          assert 'EDIÇÃO 16-BIT V8.1' in s
+          assert 'EDIÇÃO 16-BIT V8.2' in s
           assert 'wss://cronicasdaaurora.com.br/mobile-coop-ws' not in s
           # A primeira tag <script> e o motor JavaScript executavel; as demais sao audios em base64.
           import subprocess, tempfile
@@ -41,6 +42,8 @@ jobs:
               f.write(gamejs.group(1)); f.flush()
               subprocess.run(['node','--check',f.name],check=True)
           PYCODE
+      - name: Testar interface Android V8.2 e protocolo da sala
+        run: npm test
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -60,7 +63,7 @@ jobs:
         run: gradle --no-daemon :app:assembleDebug
       - uses: actions/upload-artifact@v4
         with:
-          name: Gustavo_O_Peregrino_V8_1_Cooperativo_5_APK
+          name: Gustavo_O_Peregrino_V8_2_Cooperativo_5_APK
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 30

@@ -18,7 +18,7 @@ def replace_once(s,a,b):
     return s.replace(a,b,1)
 
 s=asset.read_text(encoding='utf-8')
-if 'EDIÇÃO 16-BIT V8.1' in s and '✦ Cooperativo online (até 5)' in s:
+if ('EDIÇÃO 16-BIT V8.1' in s or 'EDIÇÃO 16-BIT V8.2' in s) and '✦ Cooperativo online (até 5)' in s:
     print('V8.1 já instalada; nenhum arquivo alterado')
     raise SystemExit(0)
 if sha(s)!=expected_v8:
