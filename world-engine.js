@@ -87,13 +87,15 @@ class World {
  }
  initMonsters(){for(let zone=0;zone<ZONES.length;zone++){
    const mons=[];const dungeon=zone>=12;
-   const count=dungeon?24:30;
+   // Densidade inspirada na campanha clássica: 13 criaturas comuns + chefe por área,
+   // e um pouco mais nas masmorras (em vez das antigas 24–30 por região).
+   const count=dungeon?18:14;
    for(let i=0;i<count;i++){
     const boss=i===count-1;const seed=hash32(zone*9217+i*5711+77);
     const speciesId=boss?(dungeon?31:(zone+11)%32):(zone*2+i*7+((seed>>4)%5))%SPECIES.length;
     const sp=SPECIES[speciesId],tier=1+Math.floor(zone/3),mult=boss?5.5:1+(zone%3)*.12;
     const home={x:130+hash32(seed+1)%(ZONE_W-260),y:130+hash32(seed+2)%(ZONE_H-260)};
-    mons.push({id:`m-${zone}-${i}`,zone,name:(boss?'★ ':'')+sp[0],species:speciesId,boss,x:home.x,y:home.y,home,hp:Math.floor(sp[1]*mult*tier),maxHp:Math.floor(sp[1]*mult*tier),damage:Math.ceil(sp[2]*tier*(boss?2:1)),xp:Math.ceil(sp[3]*tier*(boss?4:1)),coins:Math.ceil(sp[4]*tier*(boss?5:1)),lastAttack:0,deadUntil:0,damageFrom:new Map(),wander:0});
+    mons.push({id:`m-${zone}-${i}`,zone,name:(boss?'★ ':'')+sp[0],species:speciesId,boss,x:home.x,y:home.y,home,hp:Math.floor(sp[1]*mult*tier),maxHp:Math.floor(sp[1]*mult*tier),damage:Math.ceil(sp[2]*tier*(boss?2:1)),xp:Math.ceil(sp[3]*tier*(boss?4:1)),coins:Math.ceil(sp[4]*tier*(boss?5:1)),lastAttack:0,deadUntil:0,damageFrom:new Map(),wander:0,aggroTarget:null,aggroUntil:0});
    }
    this.monsters.set(zone,mons);
   }}
@@ -178,8 +180,11 @@ class World {
    for(const ally of this.players.values())if(ally.zone===p.zone&&dist(p,ally)<230){ally.save.hp=clamp(ally.save.hp+28+level*4,1,hpMax(ally.save));this.send(ally.socket,this.ownStatus(ally));}
   }
   m.hp=Math.max(0,m.hp-damage);m.damageFrom.set(p.id,(m.damageFrom.get(p.id)||0)+damage);
+  // Sem agressividade por proximidade: o monstro só enfrenta quem o atacou.
+  // Um novo golpe renova a reação; outros peregrinos próximos ficam em paz.
+  if(m.hp>0){m.aggroTarget=p.id;m.aggroUntil=now+16000}
   this.broadcast({type:'hit',monster:m.id,zone:m.zone,damage,remaining:m.hp,by:p.name,skill},q=>q.zone===p.zone&&dist(q,m)<780);
-  if(m.hp===0){m.deadUntil=now+(m.boss?45000:14000);let recipients=new Map();for(const [pid] of m.damageFrom){const x=this.players.get(pid);if(x&&x.zone===p.zone&&dist(x,m)<690)recipients.set(x.id,x)}
+  if(m.hp===0){m.aggroTarget=null;m.aggroUntil=0;m.deadUntil=now+(m.boss?45000:14000);let recipients=new Map();for(const [pid] of m.damageFrom){const x=this.players.get(pid);if(x&&x.zone===p.zone&&dist(x,m)<690)recipients.set(x.id,x)}
    for(const x of [...recipients.values()])if(x.party){for(const ally of this.players.values())if(ally.party===x.party&&ally.zone===x.zone&&dist(ally,m)<500)recipients.set(ally.id,ally)}
    for(const x of recipients.values())this.award(x,Math.round(m.xp/Math.max(1,recipients.size)*1.3),Math.ceil(m.coins/Math.max(1,recipients.size)),m.boss);
    this.broadcast({type:'defeated',monster:m.id,zone:m.zone,by:p.name,boss:m.boss},q=>q.zone===p.zone);
@@ -235,17 +240,44 @@ class World {
   } else if(mode==='reject'){this.pendingTrades.delete(key);this.tell(other,'Troca recusada.')}
  }
  tick(){const now=Date.now(),dt=clamp((now-this.lastTick)/1000,.01,.5);this.lastTick=now;
-  // IA processada por zonas com jogadores: regiões vazias não consomem recursos de combate.
+  // Apenas regiões ocupadas têm IA ativa. O servidor controla quem provocou cada monstro.
   const activeZones=new Set([...this.players.values()].map(p=>p.zone));
-  for(const zone of activeZones){const crowd=[...this.players.values()].filter(p=>p.zone===zone);for(const m of this.monsters.get(zone)||[]){
-   if(m.hp<=0){if(now>=m.deadUntil){m.hp=m.maxHp;m.x=m.home.x;m.y=m.home.y;m.damageFrom.clear()}else continue}
-   const closest=crowd.reduce((best,p)=>dist(p,m)<dist(best||{x:1e7,y:1e7},m)?p:best,null);
-   if(closest&&dist(closest,m)<240){const d=dist(closest,m);if(d>42){m.x+=((closest.x-m.x)/d)*Math.min(58*dt,d);m.y+=((closest.y-m.y)/d)*Math.min(58*dt,d)}
-    if(d<53&&now-m.lastAttack>2200){m.lastAttack=now;const defense=CLASSES[closest.save.role].defense+(closest.save.inventory.amuleto?4:0);const damage=Math.max(1,m.damage-defense);closest.save.hp-=damage;
-     this.send(closest.socket,{type:'hurt',damage,monster:m.name});if(closest.save.hp<=0){closest.save.hp=hpMax(closest.save);closest.x=ZONE_W/2;closest.y=ZONE_H/2;closest.save.x=closest.x;closest.save.y=closest.y;closest.save.coins=Math.max(0,closest.save.coins-10);this.tell(closest,'Você caiu em batalha e voltou ao santuário.');}
-     this.send(closest.socket,this.ownStatus(closest));this.dirty=true;
+  for(const zone of activeZones){for(const m of this.monsters.get(zone)||[]){
+   if(m.hp<=0){
+    if(now>=m.deadUntil){m.hp=m.maxHp;m.x=m.home.x;m.y=m.home.y;m.damageFrom.clear();m.aggroTarget=null;m.aggroUntil=0;m.lastAttack=0}
+    else continue;
+   }
+   const target=m.aggroTarget?this.players.get(m.aggroTarget):null;
+   const hostile=!!(target&&target.zone===zone&&now<m.aggroUntil&&dist(target,m.home)<400&&dist(m,m.home)<440);
+   if(!hostile){
+    m.aggroTarget=null;m.aggroUntil=0;
+    // Caminhada tranquila em um pequeno raio do local de origem, sem perseguir quem passa.
+    const homeDist=dist(m,m.home);
+    if(homeDist>90){const step=Math.min(40*dt,homeDist);m.x+=(m.home.x-m.x)/homeDist*step;m.y+=(m.home.y-m.y)/homeDist*step}
+    else if(now>m.wander){
+     m.wander=now+1400+hash32(now+Math.floor(m.x))%3200;
+     const dir=hash32(now+Math.floor(m.y)+Math.floor(m.x))%4;
+     m.x=clamp(m.x+(dir===0?24:dir===1?-24:0),m.home.x-70,m.home.x+70);
+     m.y=clamp(m.y+(dir===2?24:dir===3?-24:0),m.home.y-70,m.home.y+70);
     }
-   } else if(now>m.wander){m.wander=now+1400+hash32(now+m.x)%3200;const dir=hash32(now+m.y+m.x)%4;m.x=clamp(m.x+(dir===0?35:dir===1?-35:0),42,ZONE_W-42);m.y=clamp(m.y+(dir===2?35:dir===3?-35:0),42,ZONE_H-42)}
+    continue;
+   }
+   const d=dist(target,m);
+   if(d>42){const step=Math.min(58*dt,d);m.x+=(target.x-m.x)/d*step;m.y+=(target.y-m.y)/d*step}
+   if(d<53&&now-m.lastAttack>2200){
+    m.lastAttack=now;
+    const defense=CLASSES[target.save.role].defense+(target.save.inventory.amuleto?4:0);
+    const damage=Math.max(1,m.damage-defense);target.save.hp-=damage;
+    this.send(target.socket,{type:'hurt',damage,monster:m.name});
+    if(target.save.hp<=0){
+     target.save.hp=hpMax(target.save);target.x=ZONE_W/2;target.y=ZONE_H/2;
+     target.save.x=target.x;target.save.y=target.y;
+     target.save.coins=Math.max(0,target.save.coins-10);
+     m.aggroTarget=null;m.aggroUntil=0;
+     this.tell(target,'Você caiu em batalha e voltou ao santuário.');
+    }
+    this.send(target.socket,this.ownStatus(target));this.dirty=true;
+   }
   }}
   for(const p of this.players.values())this.snapshotTo(p);
  }

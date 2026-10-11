@@ -19,11 +19,11 @@ function wsConnect(endpoint,name){return new Promise((resolve,reject)=>{
  sock.addEventListener('message',e=>{const o=JSON.parse(e.data);all.push(o);if(o.type==='welcome'||o.type==='error'){clearTimeout(timer);resolve({sock,all,result:o})}});
  sock.addEventListener('error',()=>{clearTimeout(timer);reject(new Error('Falha WS'))});
 })}
-test('mundo novo é servido com scripts, css, status e 456 criaturas',async()=>{
+test('mundo novo é servido com scripts, css, status e 240 criaturas',async()=>{
  await ready();const [home,script,style,status]=await Promise.all([
  fetch(`http://127.0.0.1:${PORT}/mundo`),fetch(`http://127.0.0.1:${PORT}/mmo.js`),fetch(`http://127.0.0.1:${PORT}/mmo.css`),fetch(`http://127.0.0.1:${PORT}/api/status`)]);
  assert.equal(home.status,200);assert.match(await home.text(),/MUNDO ABERTO/);assert.equal(script.status,200);assert.match(await script.text(),/OsPeregrinosMundo/);assert.equal(style.status,200);
- const data=await status.json();assert.equal(data.maxPlayers,10);assert.equal(data.world.monsters,456);assert.equal(data.world.regions,16);
+ const data=await status.json();assert.equal(data.maxPlayers,10);assert.equal(data.world.monsters,240);assert.equal(data.world.regions,16);
 });
 test('dois jogadores sem conta entram no mundo, compartilham monstros e conversam',async()=>{
  const a=await wsConnect('world-ws','AmigoCerto'),b=await wsConnect('world-ws','AmigaCerta');
@@ -42,4 +42,18 @@ test('limite de 10 é compartilhado entre jogo original e mundo MMO',async()=>{
   const overflow=await wsConnect('world-ws','ExtraNovo');assert.equal(overflow.result.code,'full');overflow.sock.close();
   const overflowOld=await wsConnect('ws','ExtraAntigo');assert.equal(overflowOld.result.code,'full');overflowOld.sock.close();
  }finally{for(const c of con)c.sock.close();await delay(120)}
+});
+test('campanha clássica mostra retorno ao Mundo Online sem perder o jogo original',async()=>{
+ await ready();
+ const game=await fetch(`http://127.0.0.1:${PORT}/jogo.html`);
+ assert.equal(game.status,200);
+ const html=await game.text();
+ assert.match(html,/<script defer src="\/classic-return\.js"><\/script>/);
+ assert.match(html,/function intro\(/);
+ assert.match(html,/id="originalMusic0"/);
+ const script=await fetch(`http://127.0.0.1:${PORT}/classic-return.js`);
+ assert.equal(script.status,200);
+ const js=await script.text();
+ assert.match(js,/VOLTAR À VERSÃO ONLINE \(MMORPG\)/);
+ assert.match(js,/header\.href=url/);
 });

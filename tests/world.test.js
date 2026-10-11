@@ -15,8 +15,10 @@ const mk=()=>{
  }
  return {server,dir,deliveries,add,cleanup(){server.stop();fs.rmSync(dir,{recursive:true,force:true})}};
 };
-test('mundo 16-bit contém 16 regiões e mais de 400 monstros compartilhados',t=>{
- const w=mk();t.after(w.cleanup);assert.equal(ZONES.length,16);assert.ok(w.server.totalMonsters()>=400);
+test('mundo 16-bit mantém 16 regiões com densidade da campanha clássica',t=>{
+ const w=mk();t.after(w.cleanup);assert.equal(ZONES.length,16);assert.equal(w.server.totalMonsters(),240);
+ for(let i=0;i<12;i++)assert.equal(w.server.monsters.get(i).length,14);
+ for(let i=12;i<16;i++)assert.equal(w.server.monsters.get(i).length,18);
  for(let i=0;i<16;i++)assert.ok(w.server.monsters.get(i).some(m=>m.boss));
 });
 test('sem conta: token local carrega progresso salvo; tokens diferentes não herdam progresso',t=>{
@@ -79,4 +81,39 @@ test('personagem e guilda são preservados no banco SQLite, quando disponível',
  c.worldPlayer.save.level=17;c.worldPlayer.save.coins=1234;a.guild(c.worldPlayer,{action:'create',name:'Luz Eterna'});a.stop();
  const b=new World({send,getOnline:()=>0,hasClassicName:()=>false,dataFile:file});
  const d={socket:{},worldPlayer:null};b.join(d,{name:'PersistenteTeste',token});assert.equal(d.worldPlayer.save.level,17);assert.equal(d.worldPlayer.save.coins,984);assert.equal(d.worldPlayer.save.guild,'Luz Eterna');b.stop();
+});
+
+test('monstros não perseguem nem atacam jogadores que apenas se aproximam',t=>{
+ const w=mk();t.after(w.cleanup);
+ const a=w.add('PacifistaTeste');const m=w.server.monsters.get(0)[0];
+ a.p.x=m.x+8;a.p.y=m.y+8;const hp=a.p.save.hp;
+ m.lastAttack=0;
+ for(let i=0;i<5;i++)w.server.tick();
+ assert.equal(a.p.save.hp,hp);
+ assert.equal(m.aggroTarget,null);
+ assert.equal(m.lastAttack,0);
+ assert.ok(!a.events().some(e=>e.type==='hurt'));
+});
+test('monstro atacado reage apenas ao agressor, mesmo com outro peregrino mais próximo',t=>{
+ const w=mk();t.after(w.cleanup);
+ const a=w.add('Provocador'),b=w.add('Observador');const m=w.server.monsters.get(0)[0];
+ a.p.x=m.x+12;a.p.y=m.y+12;b.p.x=m.x+1;b.p.y=m.y+1;
+ const ha=a.p.save.hp,hb=b.p.save.hp;
+ w.server.attack(a.p,m.id,false);
+ assert.equal(m.aggroTarget,a.p.id);
+ w.server.tick();
+ assert.ok(a.p.save.hp<ha,'monstro revida após ter sido atacado');
+ assert.equal(b.p.save.hp,hb,'peregrino inocente não é atacado');
+ m.lastAttack=0;m.aggroUntil=Date.now()-1;
+ const after=a.p.save.hp;w.server.tick();
+ assert.equal(a.p.save.hp,after,'monstro volta à paz após fim da provocação');
+ assert.equal(m.aggroTarget,null);
+});
+test('morte e renascimento apagam agressividade e não causam ataques espontâneos',t=>{
+ const w=mk();t.after(w.cleanup);const a=w.add('NovoPeregrino');const m=w.server.monsters.get(0)[0];
+ a.p.x=m.x+10;a.p.y=m.y+10;m.hp=1;
+ w.server.attack(a.p,m.id,false);assert.equal(m.hp,0);assert.equal(m.aggroTarget,null);
+ m.deadUntil=Date.now()-1;w.server.tick();
+ assert.equal(m.hp,m.maxHp);assert.equal(m.aggroTarget,null);
+ const hp=a.p.save.hp;w.server.tick();assert.equal(a.p.save.hp,hp);
 });

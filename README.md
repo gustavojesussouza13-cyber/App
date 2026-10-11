@@ -9,7 +9,7 @@ Para entrar, basta escolher um **nome de 3 a 18 caracteres**. Não existem cadas
 ## O que funciona nesta alfa
 
 - **16 regiões** de exploração 16-bit em canvas, com 4 masmorras e passagens guiadas.
-- **456 criaturas** instanciadas no mundo: 32 espécies, criaturas comuns e 16 chefes, respawn e IA executada por região ativa.
+- **240 criaturas** instanciadas no mundo: 32 espécies, criaturas comuns e 16 chefes, respawn e IA executada por região ativa.
 - **Combate cooperativo**: vários jogadores podem atacar o mesmo monstro, com vida e recompensas controladas pelo servidor; armas e habilidades por classe, inclusive cura em área do curandeiro.
 - **Níveis 1–100**, XP, vida, moedas, saques, inventário, poções e mercado NPC.
 - **Quatro classes**: Peregrino, Guardião, Arqueiro e Curandeiro.
@@ -77,3 +77,9 @@ PORT=3000 DATA_FILE=/tmp/os-peregrinos-world.sqlite npm start
 O **Mundo Aberto** usa agora o atlas de 78 ilustrações `public/assets/classic-atlas.png`, com os 66 recursos extraídos do jogo clássico (texturas de grama, terra, água, árvores, construções, animações de personagens e inimigos), além de 12 sprites complementares de criaturas em pixel art. O mapa é desenhado por `public/art16.js`, incorporado antes de `public/mmo.js` em `public/mundo.html`.
 
 Ao editar o atlas, mantenha o mapeamento de coordenadas em `public/art16.js` sincronizado com `public/assets/classic-atlas-map.json`. Os PNGs-fonte originais estão na pasta `public/assets/original16/` do **pacote ZIP completo para desenvolvimento**; o site publicado usa apenas o atlas otimizado. A campanha original `/jogo.html` permanece independente. A correção gráfica não altera combate, missões, salvamento ou o limite de dez jogadores.
+
+
+## Comportamento de monstros e navegação entre modos
+- Regiões externas: **13 criaturas comuns e 1 chefe**; masmorras: **17 criaturas comuns e 1 chefe**; são **240 monstros em 16 regiões**, menos que os 456 anteriores.
+- Monstros **não iniciam combate por proximidade**. Atacam exclusivamente o peregrino que acertou o primeiro golpe, durante até 16 segundos desde o último ataque; voltam à paz ao vencer/falhar a perseguição, trocar de região ou renascer.
+- Campanha clássica servida em `/jogo.html` recebe o script `/classic-return.js` que adiciona **“Voltar à versão online (MMORPG)”** ao menu inicial e deixa o atalho no topo da tela. O HTML grande original permanece intacto.

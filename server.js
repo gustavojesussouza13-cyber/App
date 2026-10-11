@@ -35,6 +35,18 @@ const httpServer = http.createServer((req,res)=>{
   fs.stat(filename,(err,stat)=>{
     if(err||!stat.isFile())return reply(res,404,'Não encontrado');
     const ext=path.extname(filename).toLowerCase();
+    // Adiciona botão de retorno sem reescrever a campanha clássica de 3 MB.
+    if(decoded==='/jogo.html'){
+      return fs.readFile(filename,(readErr,raw)=>{
+        if(readErr)return reply(res,500,'Falha ao abrir a campanha');
+        const html=raw.toString('utf8');
+        const htmlWithNav=html.replace('</head>','<script defer src="/classic-return.js"></script></head>');
+        if(htmlWithNav===html)return reply(res,500,'Documento da campanha inválido');
+        const body=Buffer.from(htmlWithNav,'utf8');
+        res.writeHead(200,{'Content-Type':MIME['.html'],'Content-Length':body.length,'Cache-Control':'no-cache','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','X-Frame-Options':'SAMEORIGIN'});
+        res.end(body);
+      });
+    }
     res.writeHead(200,{'Content-Type':MIME[ext]||'application/octet-stream','Content-Length':stat.size,'Cache-Control':ext==='.html'?'no-cache':'public, max-age=600','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','X-Frame-Options':'SAMEORIGIN'});
     const stream=fs.createReadStream(filename);
     stream.on('error',()=>res.destroy());
