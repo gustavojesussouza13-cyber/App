@@ -2,6 +2,12 @@
 
 Jogo MMORPG **experimental** para PC no navegador, preservando a campanha original em `/jogo.html` e introduzindo o modo **Mundo Aberto** em `/mundo.html`, com **contas opcionais** e acesso como visitante.
 
+## Criador e informações atuais — outubro de 2026
+
+**Responsável pelo projeto:** Gustavo de Jesus Souza, 25 anos, natural de Curitiba (PR), cristão e fã de RPG. O universo de fantasia é aberto a jogadores de diferentes crenças ou sem religião.
+
+**Banco em produção:** PostgreSQL pago Render, plano `0.1c-256mb`, com 1 GB de disco e estado disponível (verificado em 11/10/2026). O jogo continua hospedado no serviço web gratuito. O banco pago não tem a expiração de 30 dias do PostgreSQL gratuito; backups testados continuam essenciais. A recuperação de senha por e-mail depende de remetente transacional autorizado e verificado.
+
 ## Visitante (sem cadastro)
 
 Para entrar como visitante, basta escolher um **nome de 3 a 18 caracteres**. Não existem cadastro, e-mail ou senha. O navegador cria um token secreto e aleatório (armazenado em `localStorage`) que identifica o progresso daquele navegador no servidor. O servidor só armazena o **hash SHA-256** do token, não o token bruto. Apelidos são exclusivos **durante a conexão**, mas não são identidades verificadas. Se limpar os dados do navegador ou trocar de PC, **não há recuperação garantida**. Outros podem usar seu apelido quando você estiver desconectado, mas não recebem automaticamente seu progresso.
@@ -163,7 +169,7 @@ O login utiliza cookie `HttpOnly`, `SameSite=Lax` e `Secure` em produção; as s
 
 **Para ativar contas em produção:** configure a variável `DATABASE_URL` com a **Internal Database URL** de um banco PostgreSQL externo (na mesma região do Render). O servidor não inicia caso `DATABASE_URL` esteja configurada, mas o banco esteja indisponível, evitando carregar progresso vazio e substituí-lo. Sem `DATABASE_URL`, o modo visitante usa o salvamento SQLite legado, e cadastro/login ficam desativados.
 
-**Atenção ao plano Render:** o PostgreSQL gratuito **expira em 30 dias**, tem limite de 1 GB e não inclui backups. Ele evita a perda por cada deploy, mas **não oferece persistência permanente**. Antes do vencimento, atualize o banco para um plano persistente e implemente backups verificados. As mudanças de plano, que podem cobrar, precisam ser autorizadas pelo proprietário.
+**Plano atual:** PostgreSQL pago Render `0.1c-256mb`, com 1 GB de disco. Não há a expiração automática de 30 dias do plano gratuito. Mesmo assim, dados importantes exigem backups verificados e plano de restauração; a hospedagem web permanece no plano gratuito.
 
 Rotas HTTP: `GET /api/auth/session`, `POST /api/auth/register`, `POST /api/auth/login`, `POST /api/auth/logout`. O WebSocket `/world-ws` continua preservado, agora aceitando `mode: account` para sessões autenticadas ou `mode: guest` para o acesso livre.
 
