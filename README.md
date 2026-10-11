@@ -115,3 +115,28 @@ Arquivos novos: `story-data.js` (história e catálogo de NPCs) e `tests/story.t
 O site passou a ter páginas reais de apresentação (`/sobre.html`), história (`/historia.html`), controles (`/guia.html`), contato por issues públicas (`/contato.html`), privacidade (`/privacidade.html`) e regras (`/termos.html`), além de navegação responsiva, FAQ, `robots.txt` e `sitemap.xml`. O identificador AdSense continua sendo `ca-pub-3095137602580835`, com `ads.txt`. A campanha clássica e o servidor do MMORPG não tiveram seus controles modificados.
 
 **Importante:** o canal GitHub Issues é PÚBLICO e exige conta GitHub. Não o utilize para dados sensíveis; falta ao operador disponibilizar um endereço privado de contato antes de atender solicitações de privacidade individuais. A CMP certificada para públicos do EEE, Reino Unido e Suíça deve ser configurada pelo operador no painel Google AdSense, conforme aplicável. Essas melhorias não garantem aprovação pelo Google.
+
+
+## Publicação para revisão do AdSense: etapas restantes
+
+As páginas incluem o código `ca-pub-3095137602580835` e o arquivo `/ads.txt`. Um botão **Preferências de privacidade** reabre a mensagem da **CMP certificada do Google** via `googlefc.callbackQueue.push(googlefc.showRevocationMessage)` quando a mensagem está configurada no painel. Caso não exista, mostra links alternativos e avisa que a mensagem não está disponível — não finge registrar consentimento.
+
+O servidor agora envia `Referrer-Policy: strict-origin-when-cross-origin`, necessário para que a mensagem de regulamentações europeias possa funcionar em páginas com o AdSense. Configuração da mensagem certificada: **AdSense → Privacidade e mensagens → Regulamentações europeias → Criar/Publicar**, com política `https://os-peregrinos-online.onrender.com/privacidade.html` (ou domínio próprio verificado).
+
+### Configurar domínio próprio no Render (após a compra)
+
+1. Registrar um domínio que você controla. Não registrar nem reservar domínios de terceiros sem autorização.
+2. Em **Render → os-peregrinos-online → Settings → Custom Domains**, adicionar o domínio.
+3. Configurar os registros DNS fornecidos pelo Render no painel da empresa de domínio e clicar **Verify** no Render.
+4. Em **Render → Environment**, adicionar `PUBLIC_SITE_URL=https://SEU-DOMINIO.COM.BR`. O site gera URLs canônicas, `robots.txt` e `sitemap.xml` com a origem escolhida sem editar manualmente todos os HTMLs.
+5. Adicionar o domínio aprovado na lista de **Sites** do AdSense, com os passos que o Google indicar para verificação.
+
+### Configurar canal de contato privado
+
+1. Criar/controlar um e-mail próprio do projeto.
+2. Em **Render → Environment**, adicionar `SUPPORT_EMAIL=contato@SEU-DOMINIO.COM.BR` (ou outro endereço de suporte autorizado).
+3. O servidor mostrará automaticamente o link `mailto:` na página `/contato.html` e na política `/privacidade.html`. **Não configurar e-mail inventado ou não pertencente ao responsável.**
+
+### O que NÃO está automatizado
+
+Aprovação do AdSense, cadastro/pagamento de domínio, criação de caixa de e-mail e ativação/publicação da CMP certificada no painel do Google precisam da ação do titular da conta. O código preparado não substitui essas etapas, e anúncios não são garantidos.

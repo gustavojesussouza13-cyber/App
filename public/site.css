@@ -28,3 +28,6 @@
 
 /* Evitar rolagem horizontal criada pelo brilho decorativo além da tela */
 .glow-b{right:0;width:min(540px,40vw)}
+
+/* Preferências da CMP certificada do Google e contato privado opcional */
+.privacy-pref-button{background:transparent;border:1px solid #aa9466;color:#f4d69d;padding:8px 10px;border-radius:4px;cursor:pointer;font:600 12px/1.5 system-ui,sans-serif;white-space:normal;text-align:left}.privacy-pref-button:hover{background:#204436;color:#fff2c8}.privacy-pref-button:focus-visible{outline:3px solid #f1d188;outline-offset:2px}.privacy-pref-inline{display:inline-block;margin:7px 0 4px}.privacy-notice{display:block;flex-basis:100%;color:#e9d4a8;line-height:1.65;margin-top:7px;font-size:12px;max-width:680px}.privacy-notice a{color:#f9dda8;margin-right:8px}.private-support-placeholder{padding:12px 14px;margin:17px 0;background:#17352b;border-left:3px solid #bba36d;overflow-wrap:anywhere}.private-support-placeholder a{color:#f1d59f}

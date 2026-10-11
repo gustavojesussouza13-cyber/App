@@ -11,6 +11,27 @@ const PORT = Number(process.env.PORT || 3000);
 const HOST = process.env.HOST || '0.0.0.0';
 const MAX_PLAYERS = 10; // limite total compartilhado entre campanha e mundo aberto
 const PUBLIC = path.join(__dirname, 'public');
+
+// Configure PUBLIC_SITE_URL depois de verificar um domínio próprio no Render.
+const DEFAULT_SITE_ORIGIN='https://os-peregrinos-online.onrender.com';
+function configuredOrigin(raw){
+  try{
+    if(!raw)return DEFAULT_SITE_ORIGIN;
+    const u=new URL(raw);
+    if(u.protocol!=='https:'||u.username||u.password||u.pathname!=='/'||u.search||u.hash)throw Error('origem inválida');
+    return u.origin;
+  }catch{console.warn('PUBLIC_SITE_URL inválida; utilizando domínio Render');return DEFAULT_SITE_ORIGIN}
+}
+const SITE_ORIGIN=configuredOrigin(process.env.PUBLIC_SITE_URL);
+const SUPPORT_EMAIL=/^[a-z0-9.!#$%&'*+\/=?^_`{|}~-]+@[a-z0-9-]+(?:\.[a-z0-9-]+)+$/i.test(process.env.SUPPORT_EMAIL||'') && (process.env.SUPPORT_EMAIL||'').length<=254 ? process.env.SUPPORT_EMAIL : '';
+function contactHtml(){
+  if(!SUPPORT_EMAIL)return '<p><strong>Canal reservado em preparação.</strong> O responsável ainda não cadastrou um e-mail de suporte. Não envie dados pessoais pelas Issues públicas. O site disponibilizará o endereço aqui assim que ele for configurado.</p>';
+  // Email validado, mas escapamos caracteres para evitar HTML/atributos inesperados.
+  const safe=SUPPORT_EMAIL.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+  return '<p><strong>Canal privado de atendimento:</strong> <a href="mailto:'+safe+'">'+safe+'</a>. Para pedidos sobre dados pessoais, utilize este e-mail. Evite enviar senhas ou tokens de acesso.</p>';
+}
+function renderPublicText(source){return source.replaceAll(DEFAULT_SITE_ORIGIN,SITE_ORIGIN).replaceAll('<!-- PRIVATE_SUPPORT_EMAIL -->',contactHtml())}
+
 const players = new Map();
 const sockets = new Set();
 const MIME = {'.xml':'application/xml; charset=utf-8','.txt':'text/plain; charset=utf-8','.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'application/javascript; charset=utf-8','.png':'image/png','.webp':'image/webp','.jpg':'image/jpeg','.jpeg':'image/jpeg','.svg':'image/svg+xml','.ico':'image/x-icon'};
@@ -18,7 +39,7 @@ const decoder = new TextDecoder('utf-8', {fatal:true});
 const world=new World({send,getOnline:()=>players.size,hasClassicName:name=>[...players.values()].some(p=>p.name.toLocaleLowerCase('pt-BR')===name.toLocaleLowerCase('pt-BR')),dataFile:process.env.DATA_FILE||path.join(__dirname,'data','world.sqlite'),autosave:true});
 
 function reply(res, status, body, type='text/plain; charset=utf-8') {
-  res.writeHead(status, {'Content-Type':type,'Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','X-Frame-Options':'SAMEORIGIN'});
+  res.writeHead(status, {'Content-Type':type,'Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'strict-origin-when-cross-origin','X-Frame-Options':'SAMEORIGIN'});
   res.end(body);
 }
 const httpServer = http.createServer((req,res)=>{
@@ -35,6 +56,20 @@ const httpServer = http.createServer((req,res)=>{
   fs.stat(filename,(err,stat)=>{
     if(err||!stat.isFile())return reply(res,404,'Não encontrado');
     const ext=path.extname(filename).toLowerCase();
+    // XML e robots acompanham o domínio próprio configurado, sem precisar editar arquivos novamente.
+    if(decoded==='/sitemap.xml'||decoded==='/robots.txt'){
+      return fs.readFile(filename,'utf8',(readErr,source)=>{
+        if(readErr)return reply(res,500,'Erro ao carregar metadados');
+        reply(res,200,renderPublicText(source),MIME[ext]);
+      });
+    }
+    // Atualiza automaticamente links canônicos e o contato reservado quando houver configuração.
+    if(ext==='.html'&&decoded!=='/jogo.html'){
+      return fs.readFile(filename,'utf8',(readErr,source)=>{
+        if(readErr)return reply(res,500,'Erro ao carregar página');
+        reply(res,200,renderPublicText(source),MIME[ext]);
+      });
+    }
     // Adiciona botão de retorno sem reescrever a campanha clássica de 3 MB.
     if(decoded==='/jogo.html'){
       return fs.readFile(filename,(readErr,raw)=>{
@@ -43,11 +78,11 @@ const httpServer = http.createServer((req,res)=>{
         const htmlWithNav=html.replace('</head>','<script defer src="/classic-return.js"></script></head>');
         if(htmlWithNav===html)return reply(res,500,'Documento da campanha inválido');
         const body=Buffer.from(htmlWithNav,'utf8');
-        res.writeHead(200,{'Content-Type':MIME['.html'],'Content-Length':body.length,'Cache-Control':'no-cache','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','X-Frame-Options':'SAMEORIGIN'});
+        res.writeHead(200,{'Content-Type':MIME['.html'],'Content-Length':body.length,'Cache-Control':'no-cache','X-Content-Type-Options':'nosniff','Referrer-Policy':'strict-origin-when-cross-origin','X-Frame-Options':'SAMEORIGIN'});
         res.end(body);
       });
     }
-    res.writeHead(200,{'Content-Type':MIME[ext]||'application/octet-stream','Content-Length':stat.size,'Cache-Control':ext==='.html'?'no-cache':'public, max-age=600','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','X-Frame-Options':'SAMEORIGIN'});
+    res.writeHead(200,{'Content-Type':MIME[ext]||'application/octet-stream','Content-Length':stat.size,'Cache-Control':ext==='.html'?'no-cache':'public, max-age=600','X-Content-Type-Options':'nosniff','Referrer-Policy':'strict-origin-when-cross-origin','X-Frame-Options':'SAMEORIGIN'});
     const stream=fs.createReadStream(filename);
     stream.on('error',()=>res.destroy());
     stream.pipe(res);
