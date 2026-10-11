@@ -28,7 +28,7 @@ test('servidor pronto para domínio e contato e com referenciador compatível co
  assert.match(s,/PUBLIC_SITE_URL/);assert.match(s,/SUPPORT_EMAIL/);
  assert.match(s,/strict-origin-when-cross-origin/);
  assert.doesNotMatch(s,/'Referrer-Policy':'no-referrer'/);
- assert.match(s,/renderPublicText\(source\)/);
+ assert.match(s,/renderPublicText\(source,req\)/);
  assert.match(read('sitemap.xml'),/os-peregrinos-online.onrender.com/);
  assert.match(read('robots.txt'),/os-peregrinos-online.onrender.com/);
 });

@@ -30,7 +30,19 @@ function contactHtml(){
   const safe=SUPPORT_EMAIL.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
   return '<p><strong>Canal privado de atendimento:</strong> <a href="mailto:'+safe+'">'+safe+'</a>. Para pedidos sobre dados pessoais, utilize este e-mail. Evite enviar senhas ou tokens de acesso.</p>';
 }
-function renderPublicText(source){return source.replaceAll(DEFAULT_SITE_ORIGIN,SITE_ORIGIN).replaceAll('<!-- PRIVATE_SUPPORT_EMAIL -->',contactHtml())}
+// Enquanto o domínio próprio não for verificado, mantém o endereço Render como canônico.
+// Quando o Render receber o novo Host, as URLs públicas passam automaticamente ao novo domínio.
+// Host estritamente permitido: não usar valores arbitrários recebidos do navegador.
+const OWNED_DOMAIN='cronicasdaaurora.com.br';
+function originForRequest(req){
+  if(process.env.PUBLIC_SITE_URL)return SITE_ORIGIN;
+  const host=String(req.headers.host||'').toLowerCase().split(':')[0];
+  if(host===OWNED_DOMAIN||host==='www.'+OWNED_DOMAIN)return 'https://'+OWNED_DOMAIN;
+  return SITE_ORIGIN;
+}
+function renderPublicText(source,req){
+  return source.replaceAll(DEFAULT_SITE_ORIGIN,originForRequest(req)).replaceAll('<!-- PRIVATE_SUPPORT_EMAIL -->',contactHtml());
+}
 
 const players = new Map();
 const sockets = new Set();
@@ -60,14 +72,14 @@ const httpServer = http.createServer((req,res)=>{
     if(decoded==='/sitemap.xml'||decoded==='/robots.txt'){
       return fs.readFile(filename,'utf8',(readErr,source)=>{
         if(readErr)return reply(res,500,'Erro ao carregar metadados');
-        reply(res,200,renderPublicText(source),MIME[ext]);
+        reply(res,200,renderPublicText(source,req),MIME[ext]);
       });
     }
     // Atualiza automaticamente links canônicos e o contato reservado quando houver configuração.
     if(ext==='.html'&&decoded!=='/jogo.html'){
       return fs.readFile(filename,'utf8',(readErr,source)=>{
         if(readErr)return reply(res,500,'Erro ao carregar página');
-        reply(res,200,renderPublicText(source),MIME[ext]);
+        reply(res,200,renderPublicText(source,req),MIME[ext]);
       });
     }
     // Adiciona botão de retorno sem reescrever a campanha clássica de 3 MB.

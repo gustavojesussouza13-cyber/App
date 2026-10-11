@@ -140,3 +140,12 @@ O servidor agora envia `Referrer-Policy: strict-origin-when-cross-origin`, neces
 ### O que NÃO está automatizado
 
 Aprovação do AdSense, cadastro/pagamento de domínio, criação de caixa de e-mail e ativação/publicação da CMP certificada no painel do Google precisam da ação do titular da conta. O código preparado não substitui essas etapas, e anúncios não são garantidos.
+
+
+### Integração do domínio `cronicasdaaurora.com.br` (11/10/2026)
+
+O servidor reconhece automaticamente **somente** `cronicasdaaurora.com.br` e `www.cronicasdaaurora.com.br` a partir do cabeçalho HTTP `Host`, substituindo os metadados públicos (canonical, sitemap, robots e links absolutos) pelo domínio principal. O endereço `onrender.com` continua servido e com URLs originais enquanto o DNS e a verificação do domínio ainda não estiverem concluídos. O parâmetro `PUBLIC_SITE_URL` continua disponível para definir manualmente o endereço canônico depois da verificação.
+
+**Bloqueio operacional:** somente o proprietário pode adicionar o domínio em Render Settings > Custom Domains, configurar o DNS no Registro.br e concluir Verify porque esses comandos não são expostos pelas integrações atuais. Não é seguro apontar todo o SEO para um domínio que ainda não serve o site.
+
+Registros de DNS esperados para Registro.br (DNS padrão): `A @ → 216.24.57.1` e `CNAME www → os-peregrinos-online.onrender.com`. Se usar outros servidores de nomes ou Cloudflare, siga as instruções específicas do provedor. Não remova MX/TXT de serviços de e-mail existentes.
