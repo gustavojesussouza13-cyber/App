@@ -90,7 +90,11 @@ class MobileCoop {
    if(this.rooms.size>=this.maxRooms){this.error(c,'busy','Salas ocupadas; tente mais tarde.');return;}
    const code=this.roomCode();if(!code){this.error(c,'busy','Não foi possível criar a sala.');return;}
    const chapter=integer(msg.chapter)!==null?bounded(msg.chapter,0,maxChapter):0;
-   room={code,chapter,hostId:'',members:new Map(),enemies:this.enemies(chapter),fragments:new Set(),bossDead:false,lastAdvance:0,lastEnemies:0};this.rooms.set(code,room);
+   room={code,chapter,hostId:'',members:new Map(),enemies:this.enemies(chapter),fragments:new Set(),bossDead:false,lastAdvance:0,lastEnemies:0};
+   const cleared=Array.isArray(msg.cleared)?msg.cleared.slice(0,32):[];
+   for(let i=0;i<3;i++)if(cleared.includes(chapter+':'+i))room.fragments.add(i);
+   if(cleared.includes(chapter+':boss')){room.bossDead=true;room.enemies.at(-1).alive=false;room.enemies.at(-1).hp=0;}
+   this.rooms.set(code,room);
   }else{
    const code=String(msg.code||'').toUpperCase().replace(/[^A-Z0-9]/g,'');room=this.rooms.get(code);
    if(!room){this.error(c,'unknown_room','Sala não encontrada. Confira o código.');return;}

@@ -50,3 +50,8 @@ test('códigos inválidos, salas desconhecidas e dano desproporcional são rejei
  svc.receive(a,{type:'state',x:200,y:200});svc.receive(a,{type:'enemies',items:[{i:0,x:200,y:200}]});svc.receive(a,{type:'hit',i:0,damage:9999});assert.equal(list(a).filter(x=>x.type==='enemy_hit').length,0);
  assert.equal(maxHp(5,countEnemies(5)-1),97);
 });
+
+test('salvamento cooperativo do anfitrião restaura centelhas e boss',()=>{
+ const {svc,a,latest}=setup();svc.receive(a,{type:'create',name:'Gustavo',chapter:1,cleared:['1:0','1:1','1:boss']});
+ const joined=latest(a,'joined');assert.deepEqual(joined.fragments,[0,1]);assert.equal(joined.bossDead,true);assert.equal(joined.enemies.at(-1).alive,false);
+});
