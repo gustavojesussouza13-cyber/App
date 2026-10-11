@@ -83,3 +83,10 @@ Ao editar o atlas, mantenha o mapeamento de coordenadas em `public/art16.js` sin
 - Regiões externas: **13 criaturas comuns e 1 chefe**; masmorras: **17 criaturas comuns e 1 chefe**; são **240 monstros em 16 regiões**, menos que os 456 anteriores.
 - Monstros **não iniciam combate por proximidade**. Atacam exclusivamente o peregrino que acertou o primeiro golpe, durante até 16 segundos desde o último ataque; voltam à paz ao vencer/falhar a perseguição, trocar de região ou renascer.
 - Campanha clássica servida em `/jogo.html` recebe o script `/classic-return.js` que adiciona **“Voltar à versão online (MMORPG)”** ao menu inicial e deixa o atalho no topo da tela. O HTML grande original permanece intacto.
+
+
+## Interface: tela cheia e retorno ao Mundo Aberto
+
+- **Mundo Aberto (`/mundo`)**: botão **⛶ Tela cheia** no canto superior direito do mapa, com entrada e saída pela API Fullscreen do navegador. O mapa preserva proporção 5:3 e pixel art sem distorcer a imagem. Para sair, clique **Sair da tela cheia** ou pressione **Esc**. Se o navegador bloquear a API, o jogo indica a alternativa **F11** para tela cheia do navegador.
+- **Campanha clássica (`/jogo.html`)**: botão **🌐 VOLTAR À VERSÃO ONLINE (MMORPG)** visível na própria tela inicial, além do retorno no cabeçalho. Os dois levam para `/mundo` e não exigem iniciar a campanha.
+- O acesso continua apenas pelo nome, com limite total de 10 jogadores. Os sistemas de missões, monstros, classes e combate não foram modificados por esta atualização de interface.

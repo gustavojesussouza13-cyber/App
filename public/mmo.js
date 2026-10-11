@@ -65,6 +65,28 @@ function connect(){if(!progressToken){alert('Armazenamento indisponível');retur
 }
 $('nameForm').addEventListener('submit',e=>{e.preventDefault();const name=$('name').value.trim().normalize('NFC');if(!/^[\p{L}\p{N}][\p{L}\p{N} _-]{2,17}$/u.test(name)){alert('Escolha um nome válido de 3–18 caracteres');return}
  session.name=name;session.formClass=$('role').value;try{localStorage.setItem('os-peregrinos-last-name',name)}catch{};connect();});
+// Tela cheia nativa: apenas o mapa, sem ampliar/desfocar o canvas nem alterar o estado do jogador.
+const fullScreenContainer=$('canvasShell'), fullScreenBtn=$('fullscreenBtn');
+function updateFullscreenButton(){
+ const active=document.fullscreenElement===fullScreenContainer;
+ fullScreenBtn.textContent=active?'⤢ Sair da tela cheia':'⛶ Tela cheia';
+ fullScreenBtn.setAttribute('aria-pressed',String(active));
+ fullScreenBtn.setAttribute('aria-label',active?'Sair da tela cheia do Mundo Aberto':'Ativar tela cheia do Mundo Aberto');
+ fullScreenBtn.title=active?'Voltar ao modo janela (Esc)':'Expandir o jogo para a tela inteira';
+}
+fullScreenBtn.addEventListener('click',async()=>{
+ try{
+  if(document.fullscreenElement===fullScreenContainer)await document.exitFullscreen();
+  else if(document.fullscreenElement)await document.exitFullscreen();
+  else if(fullScreenContainer.requestFullscreen)await fullScreenContainer.requestFullscreen();
+  else throw new Error('fullscreen indisponível');
+ }catch{alert('Tela cheia não disponível neste navegador. Use F11 no computador.');}
+});
+document.addEventListener('fullscreenchange',()=>{
+ updateFullscreenButton();
+ if(document.fullscreenElement===fullScreenContainer&&$('welcomeOverlay').hidden)cvs.focus({preventScroll:true});
+});
+updateFullscreenButton();
 const keyAction=e=>{if(e.target.matches('input,textarea,select'))return;
  if(['ArrowDown','ArrowUp','ArrowLeft','ArrowRight','Space'].includes(e.code))e.preventDefault();keys.add(e.code);
  if(e.repeat)return;

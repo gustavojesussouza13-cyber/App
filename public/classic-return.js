@@ -1,25 +1,24 @@
-/* Botão de retorno ao MMO: injetado apenas na campanha clássica no servidor web. */
+/* Retorno visível ao MMORPG na tela da campanha clássica — sem modificar jogo.html. */
 (()=>{
  'use strict';
- const url='/mundo';
+ const target='/mundo';
  const header=document.querySelector('#multiplayerHeader .homeLink');
- if(header){header.href=url;header.textContent='↩ VOLTAR AO MUNDO ONLINE';header.setAttribute('aria-label','Voltar para o MMORPG Mundo Aberto');}
+ if(header){header.href=target;header.textContent='↩ VOLTAR AO MUNDO ONLINE';header.setAttribute('aria-label','Voltar para o Mundo Aberto MMORPG');}
  const panel=document.getElementById('panel');
- const paper=document.getElementById('paper');
- if(!panel||!paper)return;
- const render=()=>{
-  const title=paper.querySelector('h1');
-  const opts=paper.querySelector('.opts');
-  if(!title||!opts||panel.hidden||!title.textContent.includes('Os Peregrinos')||opts.querySelector('.classic-return'))return;
-  const link=document.createElement('a');
-  link.className='classic-return';
-  link.href=url;
-  link.textContent='🌐 VOLTAR À VERSÃO ONLINE (MMORPG)';
-  link.setAttribute('aria-label','Sair da campanha clássica e jogar Mundo Aberto online');
-  link.style.cssText='display:inline-flex;justify-content:center;align-items:center;text-align:center;min-height:43px;padding:10px 15px;border:2px solid #e2c885;background:linear-gradient(#255648,#14392e);color:#ffeab6;font:bold 14px Georgia,serif;text-decoration:none;box-shadow:2px 3px #091914;border-radius:3px;';
-  opts.appendChild(link);
- };
- const observer=new MutationObserver(render);
- observer.observe(paper,{childList:true,subtree:false});
- render();
+ if(!panel)return;
+ const style=document.createElement('style');
+ style.textContent=`
+ #classicReturnFixed{position:fixed;top:56px;right:13px;z-index:30;display:inline-flex;align-items:center;justify-content:center;min-height:42px;max-width:min(300px,65vw);padding:9px 15px;border:2px solid #e8c987;border-radius:5px;background:linear-gradient(125deg,#285f4a,#11382d);box-shadow:0 5px 18px #000b;color:#fff0bf;text-align:center;font:bold 12px/1.35 ui-monospace,monospace;text-decoration:none;letter-spacing:.03em;pointer-events:auto;text-shadow:1px 1px 3px #000;touch-action:manipulation}
+ #classicReturnFixed:hover,#classicReturnFixed:focus-visible{background:#3b7857;outline:2px solid #fbe6af;outline-offset:1px}
+ @media(max-width:700px){#classicReturnFixed{top:auto;bottom:8px;right:9px;max-width:calc(100vw - 18px);font-size:11px;min-height:36px;padding:7px 9px}}
+ `;
+ document.head.appendChild(style);
+ // O link fica dentro do painel inicial e, por isso, aparece imediatamente
+ // no menu mostrado na captura, mesmo que os botões da aventura mudem de lugar.
+ const link=document.createElement('a');
+ link.id='classicReturnFixed';
+ link.href=target;
+ link.textContent='🌐 VOLTAR À VERSÃO ONLINE (MMORPG)';
+ link.setAttribute('aria-label','Sair da campanha clássica e jogar o Mundo Aberto online');
+ panel.appendChild(link);
 })();

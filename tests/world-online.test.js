@@ -55,5 +55,5 @@ test('campanha clássica mostra retorno ao Mundo Online sem perder o jogo origin
  assert.equal(script.status,200);
  const js=await script.text();
  assert.match(js,/VOLTAR À VERSÃO ONLINE \(MMORPG\)/);
- assert.match(js,/header\.href=url/);
+ assert.match(js,/header\.href=target/);
 });
