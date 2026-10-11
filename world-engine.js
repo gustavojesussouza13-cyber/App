@@ -96,7 +96,7 @@ class World {
     const speciesId=boss?(dungeon?31:(zone+11)%32):(zone*2+i*7+((seed>>4)%5))%SPECIES.length;
     const sp=SPECIES[speciesId],tier=1+Math.floor(zone/3),mult=boss?5.5:1+(zone%3)*.12;
     const home={x:130+hash32(seed+1)%(ZONE_W-260),y:130+hash32(seed+2)%(ZONE_H-260)};
-    mons.push({id:`m-${zone}-${i}`,zone,name:(boss?'★ ':'')+sp[0],species:speciesId,boss,x:home.x,y:home.y,home,hp:Math.floor(sp[1]*mult*tier),maxHp:Math.floor(sp[1]*mult*tier),damage:Math.ceil(sp[2]*tier*(boss?2:1)),xp:Math.ceil(sp[3]*tier*(boss?4:1)),coins:Math.ceil(sp[4]*tier*(boss?5:1)),lastAttack:0,deadUntil:0,damageFrom:new Map(),wander:0,aggroTarget:null,aggroUntil:0});
+    mons.push({id:`m-${zone}-${i}`,zone,name:(boss?'★ ':'')+sp[0],species:speciesId,boss,x:home.x,y:home.y,home,hp:Math.floor(sp[1]*mult*tier),maxHp:Math.floor(sp[1]*mult*tier),damage:Math.ceil(sp[2]*tier*(boss?2:1)),xp:Math.ceil(sp[3]*tier*(boss?4:1)),coins:Math.ceil(sp[4]*tier*(boss?5:1)),lastAttack:0,deadUntil:0,damageFrom:new Map(),wander:0,wanderGoal:null,aggroTarget:null,aggroUntil:0});
    }
    this.monsters.set(zone,mons);
   }}
@@ -306,7 +306,7 @@ class World {
   const activeZones=new Set([...this.players.values()].map(p=>p.zone));
   for(const zone of activeZones){for(const m of this.monsters.get(zone)||[]){
    if(m.hp<=0){
-    if(now>=m.deadUntil){m.hp=m.maxHp;m.x=m.home.x;m.y=m.home.y;m.damageFrom.clear();m.aggroTarget=null;m.aggroUntil=0;m.lastAttack=0}
+    if(now>=m.deadUntil){m.hp=m.maxHp;m.x=m.home.x;m.y=m.home.y;m.damageFrom.clear();m.aggroTarget=null;m.aggroUntil=0;m.lastAttack=0;m.wanderGoal=null;m.wander=now+1500}
     else continue;
    }
    const target=m.aggroTarget?this.players.get(m.aggroTarget):null;
@@ -316,14 +316,33 @@ class World {
     // Caminhada tranquila em um pequeno raio do local de origem, sem perseguir quem passa.
     const homeDist=dist(m,m.home);
     if(homeDist>90){const step=Math.min(40*dt,homeDist);m.x+=(m.home.x-m.x)/homeDist*step;m.y+=(m.home.y-m.y)/homeDist*step}
-    else if(now>m.wander){
-     m.wander=now+1400+hash32(now+Math.floor(m.x))%3200;
-     const dir=hash32(now+Math.floor(m.y)+Math.floor(m.x))%4;
-     m.x=clamp(m.x+(dir===0?24:dir===1?-24:0),m.home.x-70,m.home.x+70);
-     m.y=clamp(m.y+(dir===2?24:dir===3?-24:0),m.home.y-70,m.home.y+70);
+    else {
+     // A caminhada era um salto de 24px no instante de escolher direção.
+     // Agora a IA escolhe um destino e percorre a distância gradualmente.
+     if(m.wanderGoal&&dist(m,m.wanderGoal)<=.5)m.wanderGoal=null;
+     if(!m.wanderGoal&&now>=m.wander){
+      const seed=hash32(now+Math.floor(m.y)*17+Math.floor(m.x));
+      const dir=seed%4;
+      const stride=22+(hash32(seed+1)%19);
+      m.wanderGoal={
+       x:clamp(m.x+(dir===0?stride:dir===1?-stride:0),m.home.x-70,m.home.x+70),
+       y:clamp(m.y+(dir===2?stride:dir===3?-stride:0),m.home.y-70,m.home.y+70)
+      };
+      m.wander=now+1700+hash32(seed+2)%2600;
+     }
+     if(m.wanderGoal){
+      const remaining=dist(m,m.wanderGoal);
+      if(remaining>0){
+       const step=Math.min(30*dt,remaining);
+       m.x+=(m.wanderGoal.x-m.x)/remaining*step;
+       m.y+=(m.wanderGoal.y-m.y)/remaining*step;
+       if(remaining-step<=.5)m.wanderGoal=null;
+      }
+     }
     }
     continue;
    }
+   m.wanderGoal=null; // Inimigo provocado cancela o passeio; depois volta a andar normalmente.
    const d=dist(target,m);
    if(d>42){const step=Math.min(58*dt,d);m.x+=(target.x-m.x)/d*step;m.y+=(target.y-m.y)/d*step}
    if(d<53&&now-m.lastAttack>2200){

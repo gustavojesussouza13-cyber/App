@@ -6,6 +6,7 @@ const cvs=$('game'),ctx=cvs.getContext('2d',{alpha:false});ctx.imageSmoothingEna
 const W=cvs.width,H=cvs.height,ZONE_W=1536,ZONE_H=1024;
 const session={id:'',name:'',connected:false,characters:null,online:0,zones:[],shop:{},quests:[],npcs:[],story:null,monsters:new Map(),players:new Map(),zone:0,x:768,y:512,dir:2,target:null,partyInvite:null,guildInvite:null,tradeOffer:null,role:'peregrino',cameraX:0,cameraY:0,formClass:'peregrino'};
 const keys=new Set(),moves={up:['KeyW','ArrowUp'],down:['KeyS','ArrowDown'],left:['KeyA','ArrowLeft'],right:['KeyD','ArrowRight']};
+const monsterMotion=window.OsPeregrinosMonsterMotion.create();
 let socket=null,reconnectMs=1000,reconnectTimer=null,movingAt=0,lastDraw=0,fx=[],toastTimer=0,lastAction=0,tab='inventory',authed=false;
 let progressToken=null;
 try{progressToken=localStorage.getItem('os-peregrinos-world-token');if(!progressToken){progressToken=Array.from(crypto.getRandomValues(new Uint8Array(32)),b=>b.toString(16).padStart(2,'0')).join('');localStorage.setItem('os-peregrinos-world-token',progressToken)}$('name').value=localStorage.getItem('os-peregrinos-last-name')||''}catch{$('connectionError').textContent='O armazenamento precisa estar habilitado para reconhecer seu progresso.'}
@@ -37,12 +38,13 @@ function dispatch(msg){if(msg.type==='welcome'){
  }else if(msg.type==='character'){character(msg);
  }else if(msg.type==='snapshot'){
   session.zone=msg.zone;displayOnline(msg.online);
-  const now=new Map();for(const m of msg.monsters||[])now.set(m.id,m);session.monsters=now;
+  const now=new Map();for(const m of msg.monsters||[])now.set(m.id,m);
+  monsterMotion.sync([...now.values()]);session.monsters=now;
   const people=new Map();for(const p of msg.players||[])people.set(p.id,p);session.players=people;
- }else if(msg.type==='travel'){session.zone=msg.zone;session.x=msg.x;session.y=msg.y;session.target=null;session.monsters.clear();$('zoneTitle').textContent=msg.name;alert('✦ '+msg.name);drawTravel();
+ }else if(msg.type==='travel'){session.zone=msg.zone;session.x=msg.x;session.y=msg.y;session.target=null;session.monsters.clear();monsterMotion.clear();$('zoneTitle').textContent=msg.name;alert('✦ '+msg.name);drawTravel();
  }else if(msg.type==='hit'){if(msg.zone===session.zone){let m=session.monsters.get(msg.monster);if(m)m.hp=msg.remaining;fx.push({x:m?.x||session.x,y:m?.y||session.y,text:'−'+msg.damage,t:performance.now(),color:'#ffe5a6'})}
  }else if(msg.type==='hurt'){fx.push({x:session.x,y:session.y,text:'−'+msg.damage,t:performance.now(),color:'#ff8d83'});if(session.characters?.hp<=0)$('deathVeil').hidden=false;
- }else if(msg.type==='defeated'){if(msg.zone===session.zone){fx.push({x:session.monsters.get(msg.monster)?.x||session.x,y:session.monsters.get(msg.monster)?.y||session.y,text:msg.boss?'★ CHEFE!':'✦ VITÓRIA!',t:performance.now(),color:'#f5d587'});session.monsters.delete(msg.monster)}
+ }else if(msg.type==='defeated'){if(msg.zone===session.zone){fx.push({x:session.monsters.get(msg.monster)?.x||session.x,y:session.monsters.get(msg.monster)?.y||session.y,text:msg.boss?'★ CHEFE!':'✦ VITÓRIA!',t:performance.now(),color:'#f5d587'});session.monsters.delete(msg.monster);monsterMotion.sync([...session.monsters.values()])}
  }else if(msg.type==='reward'){alert('+'+msg.xp+' EXP  ·  +'+msg.gold+' moedas'+(msg.boss?' ★ CHEFE':''));
  }else if(msg.type==='chat'){say('['+msg.channel+'] '+msg.name,msg.text,msg.channel);
  }else if(msg.type==='notice'||msg.type==='system'){say('',msg.text,'sys');if(msg.type==='notice')alert(msg.text);
@@ -61,7 +63,7 @@ function connect(){if(!progressToken){alert('Armazenamento indisponível');retur
  try{const sock=new WebSocket(url);socket=sock;
   sock.onopen=()=>{reconnectMs=1000;send('hello',{name:session.name,role:session.formClass,token:progressToken})};
   sock.onmessage=e=>{try{dispatch(JSON.parse(e.data))}catch(err){console.warn('Resposta inválida',err)}};
-  sock.onclose=()=>{if(socket!==sock)return;closeDialogue();setOnline(false,'Desconectado');session.monsters.clear();session.players.clear();if(!authed)return;clearTimeout(reconnectTimer);reconnectTimer=setTimeout(connect,reconnectMs);reconnectMs=Math.min(14000,reconnectMs*1.7)};
+  sock.onclose=()=>{if(socket!==sock)return;closeDialogue();setOnline(false,'Desconectado');session.monsters.clear();monsterMotion.clear();session.players.clear();if(!authed)return;clearTimeout(reconnectTimer);reconnectTimer=setTimeout(connect,reconnectMs);reconnectMs=Math.min(14000,reconnectMs*1.7)};
   sock.onerror=()=>setOnline(false,'Conexão instável');
  }catch{setOnline(false,'Falha de conexão')}
 }
@@ -108,7 +110,10 @@ window.addEventListener('keydown',keyAction);window.addEventListener('keyup',e=>
 function attack(skill){if(!session.connected||!session.target){alert('Clique sobre um monstro para selecioná-lo.');return}send(skill?'skill':'attack',{target:session.target});lastAction=performance.now()}
 $('talkBtn').onclick=talkToNearest;$('attackBtn').onclick=()=>attack(false);$('skillBtn').onclick=()=>attack(true);$('potionBtn').onclick=()=>send('use',{item:'pocao'});$('questBtn').onclick=()=>selectTab('quests');$('mapBtn').onclick=showWorldMap;$('chatFocusBtn').onclick=()=>$('chatInput').focus();
 cvs.addEventListener('click',e=>{if(!session.connected)return;const rect=cvs.getBoundingClientRect(),wx=(e.clientX-rect.left)*W/rect.width+session.cameraX,wy=(e.clientY-rect.top)*H/rect.height+session.cameraY;
- let candidate=null,best=50;for(const mon of session.monsters.values()){const d=Math.hypot(mon.x-wx,mon.y-wy);if(d<best){candidate=mon;best=d}}
+ let candidate=null,best=50;for(const mon of session.monsters.values()){
+  const p=monsterMotion.position(mon.id)||mon;
+  const d=Math.hypot(p.x-wx,p.y-wy);if(d<best){candidate=mon;best=d}
+ }
  const npc=session.npcs.filter(n=>n.zone===session.zone).find(n=>Math.hypot(n.x-wx,n.y-wy)<38);
  if(npc){tryTalk(npc);return}
  if(candidate){session.target=candidate.id;alert('Alvo: '+candidate.name+' · J para atacar')}});
@@ -192,14 +197,14 @@ function showWorldMap(){if(!session.zones.length)return;const content=session.zo
 $('chatForm').addEventListener('submit',e=>{e.preventDefault();const input=$('chatInput'),text=input.value.trim();if(!text)return;send('chat',{text,channel:$('chatChannel').value});input.value='';$('game').focus()});
 // A renderização do mundo aberto reutiliza o atlas 16-bit da campanha original.
 const classicRenderer=window.PeregrinoArt16.create({ctx,W,H});
-function canvasDraw(now){
+function canvasDraw(now,dt){
   ctx.imageSmoothingEnabled=false;
   session.cameraX=clamp(Math.floor(session.x-W/2),0,ZONE_W-W);
   session.cameraY=clamp(Math.floor(session.y-H/2),0,ZONE_H-H);
   fx=fx.filter(f=>now-f.t<1100);
   classicRenderer.render({zone:session.zone,zones:session.zones,x:session.x,y:session.y,
     name:session.name||'PEREGRINO',role:session.role,dir:session.dir,
-    monsters:[...session.monsters.values()],players:[...session.players.values()],
+    monsters:monsterMotion.draw([...session.monsters.values()],dt),players:[...session.players.values()],
     npcs:session.npcs.filter(n=>n.zone===session.zone),storyStage:session.story?.stage||0,
     cameraX:session.cameraX,cameraY:session.cameraY,target:session.target,now,fx,lastAction,
     moving:Math.hypot(session.x-lastFrameX,session.y-lastFrameY)>0.06});
@@ -211,7 +216,7 @@ let lastFrame=0;function tick(t){const dt=Math.min(.065,(t-lastFrame)/1000||0);l
   if(dx||dy){const l=Math.hypot(dx,dy);session.x=clamp(session.x+dx/l*166*dt,24,ZONE_W-24);session.y=clamp(session.y+dy/l*166*dt,24,ZONE_H-24);session.dir=Math.abs(dx)>Math.abs(dy)?dx>0?1:3:dy>0?2:0}
   if(t-movingAt>85){send('move',{x:Math.round(session.x),y:Math.round(session.y),dir:session.dir});movingAt=t}
  }
- canvasDraw(t);requestAnimationFrame(tick)}requestAnimationFrame(tick);
+ canvasDraw(t,dt);requestAnimationFrame(tick)}requestAnimationFrame(tick);
 window.addEventListener('pagehide',()=>{try{socket?.close()}catch{}});
 if(new URLSearchParams(location.search).get('auto')==='1'&&$('name').value.trim()&&progressToken){
  session.name=$('name').value.trim().normalize('NFC');session.formClass=$('role').value;connect();
