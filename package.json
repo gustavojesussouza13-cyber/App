@@ -1,0 +1,12 @@
+{
+  "name": "gustavo-peregrino-android-coop",
+  "private": true,
+  "version": "8.0.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node coop-server.js",
+    "test": "node --test tests/*.test.js"
+  }
+}
