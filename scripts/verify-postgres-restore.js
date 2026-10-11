@@ -64,5 +64,5 @@ async function main(){
   else console.log('RESTAURAÇÃO VALIDADA: tabelas e conteúdo coincidem com a origem no instante da leitura.');
  }finally{await Promise.allSettled([origin.end(),target.end()])}
 }
-if(require.main===module)main().catch(e=>{console.error('Validação interrompida: '+e.message.replace(/postgres(?:ql)?:\\/\\/[^\\s]+/gi,'[CONEXÃO OCULTA]'));process.exitCode=1});
+if(require.main===module)main().catch(()=>{console.error('Validação interrompida. Verifique acesso privado, tabelas e configuração das conexões sem expor credenciais.');process.exitCode=1});
 module.exports={checkTargets,details};
