@@ -27,7 +27,7 @@ test('ads.txt autoriza somente o identificador fornecido',()=>{
 test('a campanha clássica preserva o HTML sem anúncios sobre controles',()=>{
  const game=fs.readFileSync(path.join(root,'public','jogo.html'),'utf8');
  assert.doesNotMatch(game,/adsbygoogle\.js\?client=ca-pub-3095137602580835/);
- const policy=fs.readFileSync(path.join(root,'public','sobre.html'),'utf8');
- assert.match(policy,/Publicidade e Google AdSense/);
+ const policy=fs.readFileSync(path.join(root,'public','privacidade.html'),'utf8');
+ assert.match(policy,/Google AdSense/);
  assert.match(policy,/consentimento/);
 });

@@ -108,3 +108,10 @@ O Mundo Aberto recebeu uma história autoral, **16 capítulos em sequência**, *
 **Limite de hospedagem:** assim como o restante do personagem, o progresso narrativo pode ser perdido após uma reinicialização/reimplantação do Render gratuito sem armazenamento durável. A campanha clássica continua independente.
 
 Arquivos novos: `story-data.js` (história e catálogo de NPCs) e `tests/story.test.js` (validação de escolhas, distâncias, recompensas, persistência e fluxo completo). Todos os recursos do jogo são entregues no ZIP completo; nenhum serviço adicional é necessário para executar localmente.
+
+
+## Portal público e preparo para revisão do AdSense (11/10/2026)
+
+O site passou a ter páginas reais de apresentação (`/sobre.html`), história (`/historia.html`), controles (`/guia.html`), contato por issues públicas (`/contato.html`), privacidade (`/privacidade.html`) e regras (`/termos.html`), além de navegação responsiva, FAQ, `robots.txt` e `sitemap.xml`. O identificador AdSense continua sendo `ca-pub-3095137602580835`, com `ads.txt`. A campanha clássica e o servidor do MMORPG não tiveram seus controles modificados.
+
+**Importante:** o canal GitHub Issues é PÚBLICO e exige conta GitHub. Não o utilize para dados sensíveis; falta ao operador disponibilizar um endereço privado de contato antes de atender solicitações de privacidade individuais. A CMP certificada para públicos do EEE, Reino Unido e Suíça deve ser configurada pelo operador no painel Google AdSense, conforme aplicável. Essas melhorias não garantem aprovação pelo Google.

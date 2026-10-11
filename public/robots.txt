@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://os-peregrinos-online.onrender.com/sitemap.xml
