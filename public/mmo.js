@@ -8,7 +8,7 @@ const session={id:'',name:'',connected:false,characters:null,online:0,zones:[],s
 const keys=new Set(),moves={up:['KeyW','ArrowUp'],down:['KeyS','ArrowDown'],left:['KeyA','ArrowLeft'],right:['KeyD','ArrowRight']};
 const monsterMotion=window.OsPeregrinosMonsterMotion.create();
 let socket=null,reconnectMs=1000,reconnectTimer=null,movingAt=0,lastDraw=0,fx=[],toastTimer=0,lastAction=0,tab='inventory',authed=false;
-let progressToken=null;
+let progressToken=null,accountMode=false,accountReady=false;
 try{progressToken=localStorage.getItem('os-peregrinos-world-token');if(!progressToken){progressToken=Array.from(crypto.getRandomValues(new Uint8Array(32)),b=>b.toString(16).padStart(2,'0')).join('');localStorage.setItem('os-peregrinos-world-token',progressToken)}$('name').value=localStorage.getItem('os-peregrinos-last-name')||''}catch{$('connectionError').textContent='O armazenamento precisa estar habilitado para reconhecer seu progresso.'}
 const tint=['#6d9a68','#345947','#44818a','#d4b578','#8f938e','#5f6b59','#97b673','#4a735c','#4b8ba3','#477b58','#9c8a6c','#655970','#536453','#8b6b54','#647a92','#c4a975'];
 const shade=['#427444','#25573d','#37737b','#b38f4e','#697a76','#445d55','#698d55','#365b50','#35738d','#306b47','#7d6d58','#554b68','#425146','#65503e','#566b81','#a58f59'];
@@ -55,20 +55,71 @@ function dispatch(msg){if(msg.type==='welcome'){
  }else if(msg.type==='dialogue'){openDialogue(msg);
  }else if(msg.type==='storyResolved'){closeDialogue();say('',msg.message,'sys');alert(msg.complete?'✦ O SINO DA AURORA VOLTOU A TOCAR!':msg.reward?'✦ Novo capítulo! +'+msg.reward.xp+' EXP · +'+msg.reward.coins+' moedas':msg.message);if(msg.epilogue)showEpilogue(msg);
  }else if(msg.type==='error'){say('','Servidor: '+msg.message,'sys');$('connectionError').textContent=msg.message||'Erro de conexão';
-  if(msg.code==='full'||msg.code==='name_taken'||msg.code==='invalid_name'){authed=false;$('welcomeOverlay').hidden=false;clearTimeout(reconnectTimer);socket?.close();}
+  if(['full','name_taken','invalid_name','login_required','name_reserved','auth_unavailable'].includes(msg.code)){authed=false;$('welcomeOverlay').hidden=false;clearTimeout(reconnectTimer);socket?.close();if(msg.code==='login_required')setAuthTab('login');}
  }}
 function connect(){if(!progressToken){alert('Armazenamento indisponível');return}
  if(socket&&socket.readyState===WebSocket.OPEN)return;
  setOnline(false,'Conectando…');const url=(location.protocol==='https:'?'wss://':'ws://')+location.host+'/world-ws';
  try{const sock=new WebSocket(url);socket=sock;
-  sock.onopen=()=>{reconnectMs=1000;send('hello',{name:session.name,role:session.formClass,token:progressToken})};
+  sock.onopen=()=>{reconnectMs=1000;send('hello',{name:session.name,role:session.formClass,token:progressToken,mode:accountMode?'account':'guest'})};
   sock.onmessage=e=>{try{dispatch(JSON.parse(e.data))}catch(err){console.warn('Resposta inválida',err)}};
   sock.onclose=()=>{if(socket!==sock)return;closeDialogue();setOnline(false,'Desconectado');session.monsters.clear();monsterMotion.clear();session.players.clear();if(!authed)return;clearTimeout(reconnectTimer);reconnectTimer=setTimeout(connect,reconnectMs);reconnectMs=Math.min(14000,reconnectMs*1.7)};
   sock.onerror=()=>setOnline(false,'Conexão instável');
  }catch{setOnline(false,'Falha de conexão')}
 }
-$('nameForm').addEventListener('submit',e=>{e.preventDefault();const name=$('name').value.trim().normalize('NFC');if(!/^[\p{L}\p{N}][\p{L}\p{N} _-]{2,17}$/u.test(name)){alert('Escolha um nome válido de 3–18 caracteres');return}
+$('nameForm').addEventListener('submit',e=>{e.preventDefault();accountMode=false;$('logoutBtn').hidden=true;const name=$('name').value.trim().normalize('NFC');if(!/^[\p{L}\p{N}][\p{L}\p{N} _-]{2,17}$/u.test(name)){alert('Escolha um nome válido de 3–18 caracteres');return}
  session.name=name;session.formClass=$('role').value;try{localStorage.setItem('os-peregrinos-last-name',name)}catch{};connect();});
+// Autenticação opcional. Sessão via cookie HttpOnly, nunca salvamos senha no navegador.
+const AUTH_TAB_IDS={guest:'nameForm',login:'loginForm',register:'registerForm'};
+function setAuthTab(tab){
+ if(!AUTH_TAB_IDS[tab])return;
+ for(const [key,id] of Object.entries(AUTH_TAB_IDS)){$(id).hidden=key!==tab;$(key+'Tab').classList.toggle('active',key===tab)}
+ $('authMessage').textContent='';$('connectionError').textContent='';
+}
+for(const tab of Object.keys(AUTH_TAB_IDS))$(tab+'Tab').addEventListener('click',()=>setAuthTab(tab));
+function authError(message){$('authMessage').textContent=message;}
+async function authPost(route,data){
+ const r=await fetch('/api/auth/'+route,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+ const result=await r.json();if(!r.ok)throw Error(result.error||'Não foi possível entrar.');return result;
+}
+function playAccount(account,role='peregrino'){
+ accountMode=true;session.name=account.username;session.formClass=role;
+ $('logoutBtn').hidden=false;try{localStorage.setItem('os-peregrinos-last-name',account.username)}catch{}
+ authed=false;connect();
+}
+$('loginForm').addEventListener('submit',async e=>{
+ e.preventDefault();if(!accountReady)return authError('O armazenamento de contas está indisponível.');
+ const btn=e.currentTarget.querySelector('[type=submit]');btn.disabled=true;authError('');
+ try{const r=await authPost('login',{username:$('loginName').value,password:$('loginPassword').value});$('loginPassword').value='';playAccount(r.account)}
+ catch(err){authError(err.message)}finally{btn.disabled=false}
+});
+$('registerForm').addEventListener('submit',async e=>{
+ e.preventDefault();if(!accountReady)return authError('O armazenamento de contas está indisponível.');
+ if($('registerPassword').value!==$('registerConfirm').value)return authError('As senhas não coincidem.');
+ const btn=e.currentTarget.querySelector('[type=submit]');btn.disabled=true;authError('');
+ try{const r=await authPost('register',{username:$('registerName').value,password:$('registerPassword').value,guestToken:$('importGuest').checked?progressToken:null});
+ $('registerPassword').value='';$('registerConfirm').value='';playAccount(r.account,$('registerRole').value)}
+ catch(err){authError(err.message)}finally{btn.disabled=false}
+});
+$('logoutBtn').addEventListener('click',async()=>{
+ try{await authPost('logout',{})}catch(err){authError(err.message);return}
+ authed=false;accountMode=false;socket?.close();location.href='/mundo.html?auth=login';
+});
+async function setupLogin(){
+ const params=new URLSearchParams(location.search),requested=params.get('auth');
+ if(requested==='register')setAuthTab('register');else if(requested==='login'||requested==='account')setAuthTab('login');else setAuthTab('guest');
+ try{
+  const r=await fetch('/api/auth/session',{credentials:'same-origin',cache:'no-store'});const result=await r.json();
+  accountReady=Boolean(result.persistent);
+  $('authStorageStatus').textContent=accountReady?'Contas e progresso vinculados ao banco externo.':'Cadastro temporariamente indisponível. Você ainda pode jogar como visitante.';
+  $('authStorageStatus').classList.toggle('warning',!accountReady);
+  if(!accountReady)return;
+  if(result.authenticated && requested!=='guest' && params.get('auto')!=='1'){
+   $('authStorageStatus').textContent='Conta identificada: '+result.account.username+'. Retomando seu personagem…';
+   playAccount(result.account);
+  }
+ }catch{$('authStorageStatus').textContent='Falha ao consultar contas. O modo visitante continua disponível.';$('authStorageStatus').classList.add('warning')}
+}
 // Tela cheia nativa: apenas o mapa, sem ampliar/desfocar o canvas nem alterar o estado do jogador.
 const fullScreenContainer=$('canvasShell'), fullScreenBtn=$('fullscreenBtn');
 function updateFullscreenButton(){
@@ -221,5 +272,6 @@ window.addEventListener('pagehide',()=>{try{socket?.close()}catch{}});
 if(new URLSearchParams(location.search).get('auto')==='1'&&$('name').value.trim()&&progressToken){
  session.name=$('name').value.trim().normalize('NFC');session.formClass=$('role').value;connect();
 }
+void setupLogin();
 window.OsPeregrinosMundo=Object.freeze({get online(){return session.online},get zone(){return session.zone},get connected(){return session.connected},get monsters(){return session.monsters.size},get name(){return session.name}});
 })();

@@ -33,7 +33,7 @@ test('conteúdo narrativo e guias correspondem aos recursos do projeto',()=>{
  for(const name of ['Lia, a Acendedora','Cálen','Sino da Aurora'])assert.ok(history.includes(name));
  for(const k of ['Peregrino','Guardião','Arqueiro','Curandeiro','WASD','Mundo Aberto'])assert.ok(guide.includes(k));
  assert.match(about,/10 jogadores simultâneos/);
- assert.match(about,/armazenamento local/);
+ assert.match(about,/banco externo|armazenamento local/);
 });
 test('política contém cookies, personalização e contatos sem expor informações sensíveis',()=>{
  const policy=read('privacidade.html'),contact=read('contato.html');

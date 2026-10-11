@@ -13,7 +13,7 @@ form.addEventListener('submit',e=>{
  if(availableSlots===0){error.textContent='Servidor cheio: 10 de 10 peregrinos online. Tente novamente quando surgir uma vaga.';return}
  error.textContent='';
  try{sessionStorage.setItem('os-peregrinos-name',name);localStorage.setItem('os-peregrinos-last-name',name)}catch{}
- location.href='/mundo.html?auto=1';
+ location.href='/mundo.html?auto=1&auth=guest';
 });
 async function status(){
  try{const r=await fetch('/api/status',{cache:'no-store'});if(!r.ok)throw Error('offline');const d=await r.json();

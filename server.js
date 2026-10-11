@@ -6,6 +6,7 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const { TextDecoder } = require('node:util');
 const {World} = require('./world-engine');
+const {AccountStore,AuthError,authCookie,clearCookie}=require('./account-store');
 
 const PORT = Number(process.env.PORT || 3000);
 const HOST = process.env.HOST || '0.0.0.0';
@@ -48,7 +49,62 @@ const players = new Map();
 const sockets = new Set();
 const MIME = {'.xml':'application/xml; charset=utf-8','.txt':'text/plain; charset=utf-8','.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'application/javascript; charset=utf-8','.png':'image/png','.webp':'image/webp','.jpg':'image/jpeg','.jpeg':'image/jpeg','.svg':'image/svg+xml','.ico':'image/x-icon'};
 const decoder = new TextDecoder('utf-8', {fatal:true});
-const world=new World({send,getOnline:()=>players.size,hasClassicName:name=>[...players.values()].some(p=>p.name.toLocaleLowerCase('pt-BR')===name.toLocaleLowerCase('pt-BR')),dataFile:process.env.DATA_FILE||path.join(__dirname,'data','world.sqlite'),autosave:true});
+const accountStore=process.env.DATABASE_URL?new AccountStore({databaseUrl:process.env.DATABASE_URL}):null;
+const world=new World({send,getOnline:()=>players.size,hasClassicName:name=>[...players.values()].some(p=>p.name.toLocaleLowerCase('pt-BR')===name.toLocaleLowerCase('pt-BR')),dataFile:process.env.DATA_FILE||path.join(__dirname,'data','world.sqlite'),autosave:true,persistentStore:accountStore});
+const authRate=new Map();
+const jsonResponse=(res,status,data,cookie)=>{
+ const headers={'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'};
+ if(cookie)headers['Set-Cookie']=cookie;
+ res.writeHead(status,headers);res.end(JSON.stringify(data));
+};
+function limited(ip){
+ const now=Date.now();if(authRate.size>1500)for(const [k,v] of authRate)if(v.until<now)authRate.delete(k);
+ const entry=authRate.get(ip)||{count:0,until:now+15*60000};
+ if(now>entry.until){entry.count=0;entry.until=now+15*60000}
+ entry.count++;authRate.set(ip,entry);return entry.count>16;
+}
+function bodyJson(req){return new Promise((resolve,reject)=>{
+ let size=0,parts=[];
+ req.on('data',chunk=>{size+=chunk.length;if(size>2048){reject(new AuthError('Dados de formulário muito longos.',413));req.destroy();return}parts.push(chunk)});
+ req.on('end',()=>{try{resolve(JSON.parse(Buffer.concat(parts).toString('utf8')))}catch{reject(new AuthError('Dados inválidos.'))}});
+ req.on('error',reject);
+ })}
+async function handleAuth(req,res,route){
+ const secure=process.env.NODE_ENV==='production' || !/^localhost(?::\d+)?$|^127\.0\.0\.1(?::\d+)?$/.test(String(req.headers.host||''));
+ if(!accountStore||!accountStore.ready)return jsonResponse(res,503,{error:'Cadastro indisponível: aguardando banco persistente.',code:'storage_offline'});
+ try{
+  if(route==='/api/auth/session'&&req.method==='GET'){
+   const account=await accountStore.session(req.headers.cookie);
+   return jsonResponse(res,200,{authenticated:!!account,account,persistent:true});
+  }
+  if(!['/api/auth/register','/api/auth/login','/api/auth/logout'].includes(route)||req.method!=='POST')return jsonResponse(res,405,{error:'Operação não permitida.'});
+  const origin=req.headers.origin;
+  if(origin&&new URL(origin).host!==req.headers.host)throw new AuthError('Origem não permitida.',403);
+  if(req.headers['sec-fetch-site']==='cross-site')throw new AuthError('Origem não permitida.',403);
+  if(limited(req.socket.remoteAddress||'unknown'))throw new AuthError('Muitas tentativas. Tente novamente em alguns minutos.',429,'rate_limited');
+  if(route==='/api/auth/logout'){
+   await accountStore.logout(req.headers.cookie);
+   return jsonResponse(res,200,{ok:true},clearCookie(secure));
+  }
+  if(!(req.headers['content-type']||'').startsWith('application/json'))throw new AuthError('Envie dados em JSON.',415);
+  const body=await bodyJson(req);
+  if(!body||typeof body!=='object'||Array.isArray(body))throw new AuthError('Dados inválidos.');
+  if(route==='/api/auth/register'){
+   const token=typeof body.guestToken==='string'?body.guestToken:null;
+   const guestUid=token&&/^[a-f0-9]{64}$/.test(token)?crypto.createHash('sha256').update(token).digest('hex'):null;
+   if(guestUid&&[...world.players.values()].some(p=>p.uid===guestUid))throw new AuthError('Saia do modo Visitante antes de transferir o progresso.',409);
+   world.persist();if(accountStore.saving)await accountStore.saving;
+   const result=await accountStore.register(body.username,body.password,token);
+   return jsonResponse(res,201,{ok:true,account:result.account,persistent:true},authCookie(result.token,secure));
+  }
+  const result=await accountStore.login(body.username,body.password);
+  return jsonResponse(res,200,{ok:true,account:result.account,persistent:true},authCookie(result.token,secure));
+ }catch(err){
+  if(!(err instanceof AuthError))console.error('[autenticação] operação falhou:',err.message);
+  return jsonResponse(res,err.status||503,{error:err instanceof AuthError?err.message:'O banco de dados está indisponível. Tente mais tarde.',code:err.code||'storage_error'});
+ }
+}
+
 
 function reply(res, status, body, type='text/plain; charset=utf-8') {
   res.writeHead(status, {'Content-Type':type,'Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'strict-origin-when-cross-origin','X-Frame-Options':'SAMEORIGIN'});
@@ -56,8 +112,9 @@ function reply(res, status, body, type='text/plain; charset=utf-8') {
 }
 const httpServer = http.createServer((req,res)=>{
   const u = new URL(req.url||'/', 'http://localhost');
+  if(u.pathname.startsWith('/api/auth/')){void handleAuth(req,res,u.pathname);return}
   if(req.method !== 'GET') return reply(res,405,'Método não permitido');
-  if(u.pathname==='/api/status') return reply(res,200,JSON.stringify({online:players.size+world.count,maxPlayers:MAX_PLAYERS,availableSlots:Math.max(0,MAX_PLAYERS-players.size-world.count),regions:[...new Set([...players.values()].map(p=>p.zone))].length,world:world.status(),version:'2.0-5.0-alpha'}),'application/json; charset=utf-8');
+  if(u.pathname==='/api/status') return reply(res,200,JSON.stringify({online:players.size+world.count,maxPlayers:MAX_PLAYERS,availableSlots:Math.max(0,MAX_PLAYERS-players.size-world.count),regions:[...new Set([...players.values()].map(p=>p.zone))].length,world:world.status(),registeredAccounts:!!accountStore?.ready,persistentStorage:!!accountStore?.ready,version:'2.0-5.1-auth'}),'application/json; charset=utf-8');
   if(u.pathname==='/health') return reply(res,200,'ok');
   const routes={'/':'/index.html','/jogar':'/jogo.html','/jogo':'/jogo.html','/mundo':'/mundo.html','/online':'/mundo.html'};
   let pathname=routes[u.pathname] || u.pathname;
@@ -141,8 +198,29 @@ function join(c,data){
   emitAll({type:'join',player:publicPlayer(profile),online:players.size},c);
 }
 function publicPlayer(p){return {id:p.id,name:p.name,zone:p.zone,x:Math.round(p.x),y:Math.round(p.y),dir:p.dir,step:p.step,attack:p.attack,defending:p.defending}}
+async function worldHello(c,data){
+ if(c.terminated||c.worldPlayer||c.joinPending)return;
+ c.joinPending=true;
+ try{
+  const accountMode=data.mode==='account';
+  if(accountMode){
+   if(!accountStore?.ready)return send(c.socket,{type:'error',code:'auth_unavailable',message:'Contas indisponíveis no momento.'});
+   const account=await accountStore.session(c.cookieHeader);
+   if(!account)return send(c.socket,{type:'error',code:'login_required',message:'Sua sessão expirou. Faça login novamente.'});
+   c.authUser=account;
+  }else{
+   const name=typeof data.name==='string'?data.name.trim().normalize('NFC'):'';
+   if(accountStore?.ready&&await accountStore.nameReserved(name))return send(c.socket,{type:'error',code:'name_reserved',message:'Esse nome pertence a uma conta. Use o login ou escolha outro apelido.'});
+  }
+  if(!c.terminated)world.receive(c,data);
+ }catch(err){console.error('[contas] falha ao validar sessão:',err.message);send(c.socket,{type:'error',code:'auth_unavailable',message:'Não foi possível verificar a conta.'});}
+ finally{c.joinPending=false}
+}
 function receive(c,data){
-  if(c.mode==='world'){world.receive(c,data);return}
+  if(c.mode==='world'){
+   if(!c.worldPlayer){if(data&&data.type==='hello')void worldHello(c,data);return}
+   world.receive(c,data);return
+  }
   if(!data||typeof data!=='object'||Array.isArray(data))return;
   if(!c.profile){if(data.type==='hello')join(c,data);return}
   const p=c.profile;
@@ -198,7 +276,7 @@ httpServer.on('upgrade',(req,socket,head)=>{
   if(!/^[\w+/]{22}==$/.test(key))return socket.destroy();
   const digest=crypto.createHash('sha1').update(key+'258EAFA5-E914-47DA-95CA-C5AB0DC85B11').digest('base64');
   socket.write('HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: '+digest+'\r\n\r\n');
-  const c={socket,mode:u.pathname==='/world-ws'?'world':'classic',profile:null,pending:Buffer.alloc(0),terminated:false,lastPong:Date.now()};sockets.add(c);
+  const c={socket,mode:u.pathname==='/world-ws'?'world':'classic',profile:null,cookieHeader:req.headers.cookie||'',pending:Buffer.alloc(0),terminated:false,lastPong:Date.now()};sockets.add(c);
   socket.on('data',b=>handleFrame(c,b));socket.on('error',()=>terminate(c));socket.on('end',()=>terminate(c));socket.on('close',()=>terminate(c));
   if(head?.length)handleFrame(c,head);
   setTimeout(()=>{if(!c.profile&&!c.worldPlayer&&!c.terminated)terminate(c)},8000).unref();
@@ -212,5 +290,21 @@ setInterval(()=>{
   }
 },250).unref();
 setInterval(()=>world.tick(),350).unref();
-const server=httpServer.listen(PORT,HOST,()=>console.log(`Os Peregrinos online em http://localhost:${PORT}`));
-for(const sig of ['SIGTERM','SIGINT'])process.on(sig,()=>{world.stop();for(const c of sockets)terminate(c);server.close(()=>process.exit(0));setTimeout(()=>process.exit(0),4000).unref()});
+const start=async()=>{
+ try{
+  if(accountStore){await accountStore.initialize(world);console.log('[contas] Postgres conectado: contas e progresso no armazenamento externo');}
+  else console.warn('[contas] DATABASE_URL ausente: visitantes podem jogar, mas cadastro durável está indisponível');
+  httpServer.listen(PORT,HOST,()=>console.log(`Os Peregrinos online em http://localhost:${PORT}`));
+ }catch(err){console.error('[contas] Não foi possível iniciar com segurança o banco:',err.message);process.exitCode=1;await accountStore?.pool.end().catch(()=>{});}
+};
+void start();
+let shuttingDown=false;
+for(const sig of ['SIGTERM','SIGINT'])process.on(sig,()=>{
+ if(shuttingDown)return;shuttingDown=true;
+ for(const c of [...sockets])terminate(c);
+ world.stop();
+ const kill=setTimeout(()=>process.exit(1),14000);kill.unref();
+ Promise.resolve(accountStore?.close()).catch(e=>console.error('[contas] flush final falhou:',e.message)).finally(()=>{
+  httpServer.close(()=>{clearTimeout(kill);process.exit(0)});
+ });
+});

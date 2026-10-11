@@ -1,10 +1,10 @@
 # OS PEREGRINOS — CRÔNICAS DA AURORA: MMORPG 16-bit (alfa 2.0–5.0)
 
-Jogo MMORPG **experimental** para PC no navegador, preservando a campanha original em `/jogo.html` e introduzindo o modo **Mundo Aberto** em `/mundo.html`.
+Jogo MMORPG **experimental** para PC no navegador, preservando a campanha original em `/jogo.html` e introduzindo o modo **Mundo Aberto** em `/mundo.html`, com **contas opcionais** e acesso como visitante.
 
-## Sem contas
+## Visitante (sem cadastro)
 
-Para entrar, basta escolher um **nome de 3 a 18 caracteres**. Não existem cadastro, e-mail ou senha. O navegador cria um token secreto e aleatório (armazenado em `localStorage`) que identifica o progresso daquele navegador no servidor. O servidor só armazena o **hash SHA-256** do token, não o token bruto. Apelidos são exclusivos **durante a conexão**, mas não são identidades verificadas. Se limpar os dados do navegador ou trocar de PC, **não há recuperação garantida**. Outros podem usar seu apelido quando você estiver desconectado, mas não recebem automaticamente seu progresso.
+Para entrar como visitante, basta escolher um **nome de 3 a 18 caracteres**. Não existem cadastro, e-mail ou senha. O navegador cria um token secreto e aleatório (armazenado em `localStorage`) que identifica o progresso daquele navegador no servidor. O servidor só armazena o **hash SHA-256** do token, não o token bruto. Apelidos são exclusivos **durante a conexão**, mas não são identidades verificadas. Se limpar os dados do navegador ou trocar de PC, **não há recuperação garantida**. Outros podem usar seu apelido quando você estiver desconectado, mas não recebem automaticamente seu progresso.
 
 ## O que funciona nesta alfa
 
@@ -149,3 +149,20 @@ O servidor reconhece automaticamente **somente** `cronicasdaaurora.com.br` e `ww
 **Bloqueio operacional:** somente o proprietário pode adicionar o domínio em Render Settings > Custom Domains, configurar o DNS no Registro.br e concluir Verify porque esses comandos não são expostos pelas integrações atuais. Não é seguro apontar todo o SEO para um domínio que ainda não serve o site.
 
 Registros de DNS esperados para Registro.br (DNS padrão): `A @ → 216.24.57.1` e `CNAME www → os-peregrinos-online.onrender.com`. Se usar outros servidores de nomes ou Cloudflare, siga as instruções específicas do provedor. Não remova MX/TXT de serviços de e-mail existentes.
+
+
+## Contas opcionais e armazenamento externo (v2.1 alfa)
+
+Na página `/mundo.html`, os jogadores podem:
+
+1. **Visitante** — continuar com nome e identificador local; não precisa criar conta.
+2. **Criar conta** — nome de 3–18 caracteres e senha de 10–128; opção de transferir progresso do mesmo navegador.
+3. **Entrar** — nome e senha, para retomar o personagem em outro navegador.
+
+O login utiliza cookie `HttpOnly`, `SameSite=Lax` e `Secure` em produção; as senhas são derivadas com `crypto.scrypt` e salt aleatório; os tokens de sessão são armazenados como hash SHA-256 no PostgreSQL. Sessões válidas por sete dias. Não há recuperação de senha automatizada, confirmação de e-mail ou autenticação de dois fatores nesta versão. A campanha clássica mantém salvamento separado no navegador.
+
+**Para ativar contas em produção:** configure a variável `DATABASE_URL` com a **Internal Database URL** de um banco PostgreSQL externo (na mesma região do Render). O servidor não inicia caso `DATABASE_URL` esteja configurada, mas o banco esteja indisponível, evitando carregar progresso vazio e substituí-lo. Sem `DATABASE_URL`, o modo visitante usa o salvamento SQLite legado, e cadastro/login ficam desativados.
+
+**Atenção ao plano Render:** o PostgreSQL gratuito **expira em 30 dias**, tem limite de 1 GB e não inclui backups. Ele evita a perda por cada deploy, mas **não oferece persistência permanente**. Antes do vencimento, atualize o banco para um plano persistente e implemente backups verificados. As mudanças de plano, que podem cobrar, precisam ser autorizadas pelo proprietário.
+
+Rotas HTTP: `GET /api/auth/session`, `POST /api/auth/register`, `POST /api/auth/login`, `POST /api/auth/logout`. O WebSocket `/world-ws` continua preservado, agora aceitando `mode: account` para sessões autenticadas ou `mode: guest` para o acesso livre.

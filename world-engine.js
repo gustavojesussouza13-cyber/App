@@ -40,12 +40,12 @@ function xpNeed(level){return 70+level*level*35}
 function safeSave(s){return {level:s.level,xp:s.xp,hp:s.hp,coins:s.coins,zone:s.zone,x:s.x,y:s.y,role:s.role,inventory:s.inventory,kills:s.kills,quests:s.quests,visited:s.visited,guild:s.guild,achievements:s.achievements,story:s.story}}
 function hash32(n){n|=0;n=Math.imul(n^(n>>>16),0x7feb352d);n=Math.imul(n^(n>>>15),0x846ca68b);return (n^(n>>>16))>>>0}
 class World {
- constructor({send,getOnline,hasClassicName,dataFile,autosave=false}){
+ constructor({send,getOnline,hasClassicName,dataFile,autosave=false,persistentStore=null}){
   this.send=send;this.getOnline=getOnline;this.hasClassicName=hasClassicName;
   this.players=new Map();this.monsters=new Map();this.parties=new Map();this.guilds=new Map();this.pendingTrades=new Map();
   this.dirty=false;this.lastTick=Date.now();this.day=1;
   this.dataFile=dataFile||path.join(__dirname,'data','world.sqlite');
-  this.db=null;this.saved={version:3,characters:{},guilds:{},day:1};this.load();
+  this.db=null;this.persistentStore=persistentStore;this.saved={version:3,characters:{},guilds:{},day:1};if(!persistentStore)this.load();
   this.initMonsters();
   if(autosave)this.saveTimer=setInterval(()=>this.persist(),30000).unref();
  }
@@ -69,6 +69,7 @@ class World {
   this.guilds=new Map(Object.entries(this.saved.guilds||{}));
  }
  persist(){if(!this.dirty)return;for(const p of this.players.values())this.saved.characters[p.uid]=safeSave(p.save);this.saved.guilds=Object.fromEntries(this.guilds);this.saved.day=this.day;
+  if(this.persistentStore){this.dirty=false;this.persistentStore.enqueue(this.saved);return;}
   try{
    if(this.db){
     this.db.exec('BEGIN IMMEDIATE');
@@ -108,9 +109,9 @@ class World {
  tell(p,msg,type='notice'){this.send(p.socket,{type,text:msg})}
  broadcast(obj,filter=()=>true){for(const p of this.players.values())if(filter(p))this.send(p.socket,obj)}
  join(c,d){if(c.worldPlayer)return;
-  const name=cap(d.name,40).trim().normalize('NFC');const token=typeof d.token==='string'&&/^[a-f0-9-]{24,100}$/i.test(d.token)?d.token:null;
-  if(!assertName(name)||!token){this.send(c.socket,{type:'error',code:'invalid_name',message:'Escolha um nome válido e habilite o armazenamento do navegador.'});return}
-  const uid=crypto.createHash('sha256').update(token).digest('hex');
+  const owner=c.authUser||null;const name=owner?owner.username:cap(d.name,40).trim().normalize('NFC');const token=typeof d.token==='string'&&/^[a-f0-9-]{24,100}$/i.test(d.token)?d.token:null;
+  if(!assertName(name)||(!owner&&!token)){this.send(c.socket,{type:'error',code:'invalid_name',message:'Escolha um nome válido e habilite o armazenamento do navegador.'});return}
+  const uid=owner?owner.uid:crypto.createHash('sha256').update(token).digest('hex');
   // A titularidade é baseada no token deste navegador; o nome é apenas um apelido.
   for(const existing of this.players.values())if(existing.uid===uid){this.tell(existing,'Sua sessão foi aberta em outra aba.');this.leave(existing.socket._worldClient||{worldPlayer:existing});try{existing.socket.destroy()}catch{}break}
   if(this.players.size+this.getOnline()>=10){this.send(c.socket,{type:'error',code:'full',message:'Servidor cheio: 10 de 10 peregrinos. Aguarde uma vaga.'});return}
