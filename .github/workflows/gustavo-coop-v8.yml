@@ -1,0 +1,53 @@
+name: Compilar Gustavo O Peregrino Android V8 Cooperativo 5
+on:
+  push:
+    branches: [gustavo-peregrino-coop-v8]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  android:
+    name: Build e testes APK Android V8
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Testar servidor cooperativo (até 5)
+        run: npm test
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Gerar HTML original com coop para cinco
+        run: |
+          python3 scripts/apply_coop_patch.py
+          python3 - <<'PYCODE'
+          from pathlib import Path
+          import re
+          s=Path('app/src/main/assets/index.html').read_text()
+          assert 'wss://gustavo-peregrino-coop.onrender.com/coop-ws' in s
+          assert 'cooperativo-cinco-jogadores' in s
+          assert 'wss://cronicasdaaurora.com.br/mobile-coop-ws' not in s
+          PYCODE
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Android SDK 36
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager --install 'platforms;android-36' 'build-tools;35.0.0' 'platform-tools'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+      - name: Compilar APK
+        run: gradle --no-daemon :app:assembleDebug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Gustavo_O_Peregrino_V8_Cooperativo_5_APK
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 30
