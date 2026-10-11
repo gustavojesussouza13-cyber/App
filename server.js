@@ -6,6 +6,7 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const { TextDecoder } = require('node:util');
 const {World} = require('./world-engine');
+const {MobileCoop} = require('./mobile-coop');
 const {AccountStore,AuthError,authCookie,clearCookie,cleanEmail,validEmail}=require('./account-store');
 const {MailService}=require('./email-service');
 
@@ -47,6 +48,8 @@ function renderPublicText(source,req){
 }
 
 const players = new Map();
+// Salas do APK V7, sem alterar os personagens do MMORPG online.
+const mobileCoop=new MobileCoop({send:(c,msg)=>send(c.socket,msg),maxRooms:5,canJoin:()=>players.size+world.count+mobileCoop.countPlayers()<MAX_PLAYERS});
 const sockets = new Set();
 const MIME = {'.xml':'application/xml; charset=utf-8','.txt':'text/plain; charset=utf-8','.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'application/javascript; charset=utf-8','.png':'image/png','.webp':'image/webp','.jpg':'image/jpeg','.jpeg':'image/jpeg','.svg':'image/svg+xml','.ico':'image/x-icon'};
 const decoder = new TextDecoder('utf-8', {fatal:true});
@@ -224,6 +227,7 @@ function refuse(c,obj){send(c.socket,obj);setTimeout(()=>terminate(c),250).unref
 function terminate(c){
   if(c.terminated)return;c.terminated=true;
   sockets.delete(c);
+  if(c.mode==='mobile')mobileCoop.leave(c);
   if(c.mode==='world')world.leave(c);
   if(c.profile){players.delete(c.profile.id);emitAll({type:'leave',id:c.profile.id,name:c.profile.name,zone:c.profile.zone});}
   try{c.socket.end(frame(Buffer.alloc(0),8))}catch{}
@@ -268,6 +272,7 @@ async function worldHello(c,data){
  finally{c.joinPending=false}
 }
 function receive(c,data){
+  if(c.mode==='mobile'){mobileCoop.receive(c,data);return}
   if(c.mode==='world'){
    if(!c.worldPlayer){if(data&&data.type==='hello')void worldHello(c,data);return}
    world.receive(c,data);return
@@ -321,16 +326,16 @@ function handleFrame(c,buf){
 httpServer.on('upgrade',(req,socket,head)=>{
   const u=new URL(req.url||'/', 'http://localhost');
   const origin=req.headers.origin;
-  try {if(origin&&new URL(origin).host!==req.headers.host){socket.destroy();return}}catch{socket.destroy();return}
-  if(!['/ws','/world-ws'].includes(u.pathname)||req.headers.upgrade?.toLowerCase()!=='websocket'||!req.headers['sec-websocket-key'])return socket.destroy();
+  try {if(origin&&!(u.pathname==='/mobile-coop-ws'&&origin==='https://appassets.androidplatform.net')&&new URL(origin).host!==req.headers.host){socket.destroy();return}}catch{socket.destroy();return}
+  if(!['/ws','/world-ws','/mobile-coop-ws'].includes(u.pathname)||req.headers.upgrade?.toLowerCase()!=='websocket'||!req.headers['sec-websocket-key'])return socket.destroy();
   const key=req.headers['sec-websocket-key'];
   if(!/^[\w+/]{22}==$/.test(key))return socket.destroy();
   const digest=crypto.createHash('sha1').update(key+'258EAFA5-E914-47DA-95CA-C5AB0DC85B11').digest('base64');
   socket.write('HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: '+digest+'\r\n\r\n');
-  const c={socket,mode:u.pathname==='/world-ws'?'world':'classic',profile:null,cookieHeader:req.headers.cookie||'',pending:Buffer.alloc(0),terminated:false,lastPong:Date.now()};sockets.add(c);
+  const c={socket,mode:u.pathname==='/world-ws'?'world':u.pathname==='/mobile-coop-ws'?'mobile':'classic',profile:null,cookieHeader:req.headers.cookie||'',pending:Buffer.alloc(0),terminated:false,lastPong:Date.now()};sockets.add(c);
   socket.on('data',b=>handleFrame(c,b));socket.on('error',()=>terminate(c));socket.on('end',()=>terminate(c));socket.on('close',()=>terminate(c));
   if(head?.length)handleFrame(c,head);
-  setTimeout(()=>{if(!c.profile&&!c.worldPlayer&&!c.terminated)terminate(c)},8000).unref();
+  setTimeout(()=>{if(!c.profile&&!c.worldPlayer&&!c.mobilePlayer&&!c.terminated)terminate(c)},8000).unref();
 });
 setInterval(()=>{
   for(const c of sockets){
