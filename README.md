@@ -1,29 +1,39 @@
-# Gustavo, O Peregrino — V8.0 Android · Cooperativo até 5
+# Gustavo, O Peregrino — APK Android V8.1 · Cooperativo para até 5
 
-**APK Android independente do site Os Peregrinos.** O modo solo preserva a campanha e funciona offline. O cooperativo funciona por internet com até **5 jogadores por sala** (1 anfitrião + 4 convidados), por código de 6 caracteres.
+**Projeto Android independente.** Nenhum arquivo do site Os Peregrinos ou de suas páginas é utilizado ou modificado por esta atualização. O servidor cooperativo também é separado.
 
-## Como jogar
+## O que existe nesta versão
 
-1. Todos instalam o APK V8.0.
-2. No menu, selecione **Cooperativo → Criar sala** e escolha um apelido.
-3. Compartilhe o código de seis caracteres com até quatro amigos.
-4. Cada amigo toca **Entrar com código** e utiliza o mesmo código.
-5. Na mesma fase, vocês veem os personagens e sincronizam movimento, inimigos, combate, XP, ouro, centelhas e avanço de capítulo.
-6. Se o anfitrião sair, outro jogador assume a coordenação. As salas são temporárias.
+- **Modo solo offline** com a campanha 16-bit original, missões, combate, diálogos, trilhas e salvamentos no próprio aparelho.
+- **Modo cooperativo pela internet com salas privadas de no máximo 5 pessoas**: 1 anfitrião + até 4 convidados.
+- Salas por **código de seis caracteres**; status da sala, participantes, compartilhamento do código e reconexão.
+- Na mesma fase, visualização de outros jogadores e sincronização de inimigos, combate, XP, moedas, centelhas e passagem de capítulo.
+- O anfitrião pode sair e a coordenação é transferida automaticamente. Cada jogador guarda seu progresso cooperativo no próprio celular, em área separada do solo.
+- Melhorias V8.1: título e botão de cooperativo corrigidos (a V8 exibia erroneamente “para dois”), instruções para exatamente 5 aparelhos, textos de conexão/convite e versão Android `1.4.1` (`versionCode 8`).
 
-**Serviço exclusivo do aplicativo**: `wss://gustavo-peregrino-coop.onrender.com/coop-ws` (HTTP `/health`). O servidor do site não é alterado. Código backend: branch `gustavo-peregrino-coop-v8` no repositório GitHub. A hospedagem Render Free pode hibernar e reiniciar, apagando salas; não apaga automaticamente os salvamentos locais.
+## Como jogar com amigos
 
-## Salvamentos e instalação
+1. Instale o **mesmo APK V8.1** em cada celular Android.
+2. Abra o jogo e escolha **✦ Cooperativo online (até 5)**.
+3. Um jogador escolhe **Criar sala** e informa seu apelido; o jogo entrega um código de 6 caracteres.
+4. Os outros quatro escolhem **Entrar com código** e digitam o código e um apelido diferente.
+5. Todos jogam na mesma sala. A sexta tentativa de entrada é rejeitada pelo servidor.
 
-O modo individual usa `gustavo-peregrino-v2`; coop usa `gustavo-peregrino-coop-v1`, preservando o avanço solo original. **Antes de substituir/desinstalar o APK anterior, use Transferir campanha para guardar seu código de recuperação.** APKs de testes podem ter chaves de assinatura diferentes; não desinstale antes de exportar o progresso, porque os dados locais serão apagados.
+O serviço opcional de rede usado **somente pelo APK** é `wss://gustavo-peregrino-coop.onrender.com/coop-ws`. Trata-se de um serviço Render próprio do app Android, **não** do site. Salas são temporárias e podem desaparecer quando o servidor gratuito é reiniciado ou entra em suspensão. Para jogar sozinho não é preciso internet.
 
-## Compilar
+## Salvamento e atualizações
 
-O repositório do APK usa o arquivo original `app/src/main/assets/index.html` como base V6.3; o script `scripts/apply_coop_patch.py` reconstitui o jogo V8.0 de forma verificável, preservando imagens e sons. GitHub Actions usa Java 17, Android SDK 36, Gradle 8.13. Executar `npm test`, `python3 scripts/apply_coop_patch.py`, `gradle :app:assembleDebug`.
+O solo utiliza o armazenamento `gustavo-peregrino-v2`; o modo cooperativo usa `gustavo-peregrino-coop-v1`. Os dados ficam no aparelho, não na nuvem. **Antes de remover um APK antigo, abra o menu “Transferir campanha” e copie/guarde o código de recuperação**. APKs de teste compilados em GitHub Actions podem ter assinaturas diferentes, impedindo a atualização sobre instalações antigas. Nesse caso, somente após realizar a cópia do progresso desinstale a versão antiga e instale a nova, importando o progresso pelo menu.
 
-## Limitações
+A versão atual não fornece contas, recuperação automática de personagens nem backup remoto.
 
-- Somente o modo cooperativo exige internet. O jogo individual continua offline.
-- Salas e entidades compartilhadas são experimentais, não há contas nem sincronização permanente de progresso com o servidor.
-- A capacidade de 5 foi testada no protocolo; ainda é necessário validar em cinco aparelhos Android reais.
-- O servidor deve permanecer ligado para as partidas. Em plano gratuito, acordar o serviço pode demorar.
+## Como compilar no Android Studio / CI
+
+- Java 17, Android SDK 36, Gradle 8.13.
+- O arquivo `app/src/main/assets/index.html` deste ZIP **já está na V8.1**, pronto para Android Studio. Para reconstruir a partir da base V6.3 no repositório de código, rode `python3 scripts/apply_coop_patch.py` e depois `python3 scripts/apply_v81_patch.py`.
+- Execute `gradle :app:assembleDebug` em ambiente Android SDK configurado; a integração CI na branch independente `gustavo-peregrino-coop-v8` também gera o APK.
+- Backend separado: `coop-server.js`, `mobile-coop.js` e `tests/android-coop-five.test.js` na mesma branch. Execute `npm test` para validar o limite de cinco e o protocolo.
+
+## Estado da validação
+
+Os testes automatizados verificam salas com cinco participantes, bloqueio da sexta conexão, progresso compartilhado e migração do anfitrião. Não equivale a teste em cinco aparelhos físicos. O instalador precisa ser assinado pelo Android Gradle Plugin (o APK entregue vem do build do GitHub Actions).

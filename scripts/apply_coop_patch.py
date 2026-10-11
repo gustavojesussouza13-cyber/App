@@ -9,7 +9,9 @@ source=root/'app/src/main/assets/index.html'
 patch=json.loads((root/'patches/coop-v8-5-jogadores.json').read_text(encoding='utf-8'))
 base=source.read_text(encoding='utf-8')
 digest=lambda s:hashlib.sha256(s.encode('utf-8')).hexdigest()
-if digest(base)==patch['target_sha256']:
+if digest(base)=='dd5557ce596c452c49bb80d675ff130cf6b27bdde3d6ca9f2634af4a182d2f04':
+ print('V8.1 already prepared; nothing to do')
+elif digest(base)==patch['target_sha256']:
  print('V8 already prepared; nothing to do')
 elif digest(base)!=patch['base_sha256']:
  raise SystemExit('Source SHA differs: refusing to overwrite original game asset')

@@ -1,4 +1,4 @@
-name: Compilar Gustavo O Peregrino Android V8 Cooperativo 5
+name: Compilar Gustavo O Peregrino Android V8.1 Cooperativo 5
 on:
   push:
     branches: [gustavo-peregrino-coop-v8]
@@ -7,7 +7,7 @@ permissions:
   contents: read
 jobs:
   android:
-    name: Build e testes APK Android V8
+    name: Build e testes APK Android V8.1
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -20,16 +20,26 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Gerar HTML original com coop para cinco
+      - name: Gerar HTML Android V8.1 com coop para cinco
         run: |
           python3 scripts/apply_coop_patch.py
+          python3 scripts/apply_v81_patch.py
           python3 - <<'PYCODE'
           from pathlib import Path
           import re
           s=Path('app/src/main/assets/index.html').read_text()
           assert 'wss://gustavo-peregrino-coop.onrender.com/coop-ws' in s
           assert 'cooperativo-cinco-jogadores' in s
+          assert 'Cooperativo online (até 5)' in s
+          assert 'EDIÇÃO 16-BIT V8.1' in s
           assert 'wss://cronicasdaaurora.com.br/mobile-coop-ws' not in s
+          # A primeira tag <script> e o motor JavaScript executavel; as demais sao audios em base64.
+          import subprocess, tempfile
+          gamejs=re.search(r'<script>([\s\S]*?)</script>',s)
+          assert gamejs, 'Motor do jogo não encontrado'
+          with tempfile.NamedTemporaryFile(mode='w', suffix='.js', encoding='utf-8') as f:
+              f.write(gamejs.group(1)); f.flush()
+              subprocess.run(['node','--check',f.name],check=True)
           PYCODE
       - uses: actions/setup-java@v4
         with:
@@ -50,7 +60,7 @@ jobs:
         run: gradle --no-daemon :app:assembleDebug
       - uses: actions/upload-artifact@v4
         with:
-          name: Gustavo_O_Peregrino_V8_Cooperativo_5_APK
+          name: Gustavo_O_Peregrino_V8_1_Cooperativo_5_APK
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 30
