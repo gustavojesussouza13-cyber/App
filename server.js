@@ -54,6 +54,8 @@ const accountStore=process.env.DATABASE_URL?new AccountStore({databaseUrl:proces
 const world=new World({send,getOnline:()=>players.size,hasClassicName:name=>[...players.values()].some(p=>p.name.toLocaleLowerCase('pt-BR')===name.toLocaleLowerCase('pt-BR')),dataFile:process.env.DATA_FILE||path.join(__dirname,'data','world.sqlite'),autosave:true,persistentStore:accountStore});
 const authRate=new Map();
 const mailService=new MailService();
+console.info('[e-mail] recuperação de senha: '+(mailService.ready?'pronta':'indisponível; conferir variáveis privadas do Render'));
+
 const mailRate=new Map();
 function mailLimited(key){
  const hash=crypto.createHash('sha256').update(String(key)).digest('hex'),now=Date.now();
