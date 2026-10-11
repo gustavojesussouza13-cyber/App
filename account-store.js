@@ -226,6 +226,10 @@ class AccountStore{
   finally{client.release()}
  }
  async logout(cookieHeader){const token=parseCookie(cookieHeader);if(token)await this.pool.query('DELETE FROM game_sessions WHERE token_hash=$1',[sha(token)])}
- async close(){await this.flush();await this.pool.end()}
+ async close(){
+  const saved=await this.flush();
+  if(!saved||this.pending)throw new Error('Falha ao persistir o progresso pendente; desligamento não pode confirmar salvamento.');
+  await this.pool.end();
+ }
 }
 module.exports={AccountStore,AuthError,COOKIE,authCookie,clearCookie,parseCookie,validName,validPassword,validEmail,cleanEmail,keyFor};
