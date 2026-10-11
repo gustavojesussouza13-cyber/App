@@ -360,7 +360,10 @@ for(const sig of ['SIGTERM','SIGINT'])process.on(sig,()=>{
  for(const c of [...sockets])terminate(c);
  world.stop();
  const kill=setTimeout(()=>process.exit(1),14000);kill.unref();
- Promise.resolve(accountStore?.close()).catch(e=>console.error('[contas] flush final falhou:',e.message)).finally(()=>{
+ Promise.resolve(accountStore?.close()).then(()=>{
   httpServer.close(()=>{clearTimeout(kill);process.exit(0)});
+ }).catch(e=>{
+  console.error('[contas] flush final falhou:',e.message);
+  httpServer.close(()=>{clearTimeout(kill);process.exit(1)});
  });
 });
