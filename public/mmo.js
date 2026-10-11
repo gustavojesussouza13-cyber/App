@@ -4,7 +4,7 @@
 const $=id=>document.getElementById(id);
 const cvs=$('game'),ctx=cvs.getContext('2d',{alpha:false});ctx.imageSmoothingEnabled=false;
 const W=cvs.width,H=cvs.height,ZONE_W=1536,ZONE_H=1024;
-const session={id:'',name:'',connected:false,characters:null,online:0,zones:[],shop:{},quests:[],monsters:new Map(),players:new Map(),zone:0,x:768,y:512,dir:2,target:null,partyInvite:null,guildInvite:null,tradeOffer:null,role:'peregrino',cameraX:0,cameraY:0,formClass:'peregrino'};
+const session={id:'',name:'',connected:false,characters:null,online:0,zones:[],shop:{},quests:[],npcs:[],story:null,monsters:new Map(),players:new Map(),zone:0,x:768,y:512,dir:2,target:null,partyInvite:null,guildInvite:null,tradeOffer:null,role:'peregrino',cameraX:0,cameraY:0,formClass:'peregrino'};
 const keys=new Set(),moves={up:['KeyW','ArrowUp'],down:['KeyS','ArrowDown'],left:['KeyA','ArrowLeft'],right:['KeyD','ArrowRight']};
 let socket=null,reconnectMs=1000,reconnectTimer=null,movingAt=0,lastDraw=0,fx=[],toastTimer=0,lastAction=0,tab='inventory',authed=false;
 let progressToken=null;
@@ -26,13 +26,13 @@ function character(c){session.characters=c;session.zone=c.zone;session.role=c.ro
  $('charName').textContent=c.name||session.name;$('playerClass').textContent={peregrino:'Peregrino',guardiao:'Guardião',arqueiro:'Arqueiro',curandeiro:'Curandeiro'}[c.role]||c.role;
  $('playerLevel').textContent='Nível '+c.level;$('playerCoins').textContent='◈ '+c.coins+' moedas';$('hpText').textContent=c.hp+' / '+c.maxHp;
  $('xpText').textContent=c.xp+' / '+c.nextXp;$('hpBar').style.width=clamp(c.hp/c.maxHp*100,0,100)+'%';$('xpBar').style.width=clamp(c.xp/c.nextXp*100,0,100)+'%';
- $('kills').textContent=c.kills;$('visited').textContent=c.visited.length+'/16';$('zoneTitle').textContent=session.zones[c.zone]?.name||('Região '+c.zone);drawTravel();drawTab();
+ session.story=c.story||null;$('kills').textContent=c.kills;$('visited').textContent=c.visited.length+'/16';$('zoneTitle').textContent=session.zones[c.zone]?.name||('Região '+c.zone);drawTravel();drawTab();
 }
 function displayOnline(n){session.online=n;$('playerCount').textContent=n+'/10';setOnline(true,'✦ '+n+'/10 peregrinos online')}
 function dispatch(msg){if(msg.type==='welcome'){
- session.id=msg.self.id;session.name=msg.self.name;session.zones=msg.zones;session.shop=msg.shop;session.quests=msg.quests;
+ session.id=msg.self.id;session.name=msg.self.name;session.zones=msg.zones;session.shop=msg.shop;session.quests=msg.quests;session.npcs=Array.isArray(msg.npcs)?msg.npcs:[];
  $('welcomeOverlay').hidden=true;setOnline(true,'Conectado');displayOnline(msg.online);character(msg.self);
- if(!authed){authed=true;if(msg.self.level===1&&msg.self.kills===0&&msg.self.role==='peregrino'&&session.formClass!=='peregrino')send('class',{role:session.formClass});say('','Bem-vindo, '+session.name+'! Seu progresso deste navegador é reconhecido pelo servidor.','sys')}
+ if(!authed){authed=true;if(msg.self.level===1&&msg.self.kills===0&&msg.self.role==='peregrino'&&session.formClass!=='peregrino')send('class',{role:session.formClass});say('','Bem-vindo, '+session.name+'! Converse com os personagens usando E ou clicando neles. A história está na aba Crônicas.','sys');if(session.story?.stage===0)alert('✦ Fale com Lia, a Acendedora! Aproxime-se e pressione E.')}
  $('game').focus();
  }else if(msg.type==='character'){character(msg);
  }else if(msg.type==='snapshot'){
@@ -50,6 +50,8 @@ function dispatch(msg){if(msg.type==='welcome'){
  }else if(msg.type==='partyInvite'){session.partyInvite=msg;alert('Convite de equipe de '+msg.by);drawTab();
  }else if(msg.type==='guildInvite'){session.guildInvite=msg;alert('Convite de guilda: '+msg.name);drawTab();
  }else if(msg.type==='tradeOffer'){session.tradeOffer=msg;alert('Você recebeu uma oferta de '+msg.from);drawTab();
+ }else if(msg.type==='dialogue'){openDialogue(msg);
+ }else if(msg.type==='storyResolved'){closeDialogue();say('',msg.message,'sys');alert(msg.complete?'✦ O SINO DA AURORA VOLTOU A TOCAR!':msg.reward?'✦ Novo capítulo! +'+msg.reward.xp+' EXP · +'+msg.reward.coins+' moedas':msg.message);if(msg.epilogue)showEpilogue(msg);
  }else if(msg.type==='error'){say('','Servidor: '+msg.message,'sys');$('connectionError').textContent=msg.message||'Erro de conexão';
   if(msg.code==='full'||msg.code==='name_taken'||msg.code==='invalid_name'){authed=false;$('welcomeOverlay').hidden=false;clearTimeout(reconnectTimer);socket?.close();}
  }}
@@ -59,7 +61,7 @@ function connect(){if(!progressToken){alert('Armazenamento indisponível');retur
  try{const sock=new WebSocket(url);socket=sock;
   sock.onopen=()=>{reconnectMs=1000;send('hello',{name:session.name,role:session.formClass,token:progressToken})};
   sock.onmessage=e=>{try{dispatch(JSON.parse(e.data))}catch(err){console.warn('Resposta inválida',err)}};
-  sock.onclose=()=>{if(socket!==sock)return;setOnline(false,'Desconectado');session.monsters.clear();session.players.clear();if(!authed)return;clearTimeout(reconnectTimer);reconnectTimer=setTimeout(connect,reconnectMs);reconnectMs=Math.min(14000,reconnectMs*1.7)};
+  sock.onclose=()=>{if(socket!==sock)return;closeDialogue();setOnline(false,'Desconectado');session.monsters.clear();session.players.clear();if(!authed)return;clearTimeout(reconnectTimer);reconnectTimer=setTimeout(connect,reconnectMs);reconnectMs=Math.min(14000,reconnectMs*1.7)};
   sock.onerror=()=>setOnline(false,'Conexão instável');
  }catch{setOnline(false,'Falha de conexão')}
 }
@@ -87,7 +89,7 @@ document.addEventListener('fullscreenchange',()=>{
  if(document.fullscreenElement===fullScreenContainer&&$('welcomeOverlay').hidden)cvs.focus({preventScroll:true});
 });
 updateFullscreenButton();
-const keyAction=e=>{if(e.target.matches('input,textarea,select'))return;
+const keyAction=e=>{if(!$('npcDialogue').hidden){if(e.code==='Escape'){closeDialogue();e.preventDefault()}else if(e.code==='Enter'||e.code==='Space'){advanceDialogue();e.preventDefault()}return}if(e.target.matches('input,textarea,select'))return;
  if(['ArrowDown','ArrowUp','ArrowLeft','ArrowRight','Space'].includes(e.code))e.preventDefault();keys.add(e.code);
  if(e.repeat)return;
  if(e.code==='KeyJ'||e.code==='Space'){attack(false);e.preventDefault()}
@@ -98,13 +100,17 @@ const keyAction=e=>{if(e.target.matches('input,textarea,select'))return;
  else if(e.code==='KeyG'){selectTab('social');e.preventDefault()}
  else if(e.code==='KeyM'){showWorldMap();e.preventDefault()}
  else if(e.code==='KeyQ'){selectTab('quests');e.preventDefault()}
+ else if(e.code==='KeyE'){talkToNearest();e.preventDefault()}
+ else if(e.code==='KeyL'){selectTab('story');e.preventDefault()}
  else if(e.code==='Enter'){$('chatInput').focus();e.preventDefault()}
 };
 window.addEventListener('keydown',keyAction);window.addEventListener('keyup',e=>keys.delete(e.code));window.addEventListener('blur',()=>keys.clear());
 function attack(skill){if(!session.connected||!session.target){alert('Clique sobre um monstro para selecioná-lo.');return}send(skill?'skill':'attack',{target:session.target});lastAction=performance.now()}
-$('attackBtn').onclick=()=>attack(false);$('skillBtn').onclick=()=>attack(true);$('potionBtn').onclick=()=>send('use',{item:'pocao'});$('questBtn').onclick=()=>selectTab('quests');$('mapBtn').onclick=showWorldMap;$('chatFocusBtn').onclick=()=>$('chatInput').focus();
+$('talkBtn').onclick=talkToNearest;$('attackBtn').onclick=()=>attack(false);$('skillBtn').onclick=()=>attack(true);$('potionBtn').onclick=()=>send('use',{item:'pocao'});$('questBtn').onclick=()=>selectTab('quests');$('mapBtn').onclick=showWorldMap;$('chatFocusBtn').onclick=()=>$('chatInput').focus();
 cvs.addEventListener('click',e=>{if(!session.connected)return;const rect=cvs.getBoundingClientRect(),wx=(e.clientX-rect.left)*W/rect.width+session.cameraX,wy=(e.clientY-rect.top)*H/rect.height+session.cameraY;
  let candidate=null,best=50;for(const mon of session.monsters.values()){const d=Math.hypot(mon.x-wx,mon.y-wy);if(d<best){candidate=mon;best=d}}
+ const npc=session.npcs.filter(n=>n.zone===session.zone).find(n=>Math.hypot(n.x-wx,n.y-wy)<38);
+ if(npc){tryTalk(npc);return}
  if(candidate){session.target=candidate.id;alert('Alvo: '+candidate.name+' · J para atacar')}});
 function selectTab(next){tab=next;document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));drawTab()}
 document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>selectTab(b.dataset.tab));
@@ -120,6 +126,19 @@ function drawTab(){const parent=$('tabContent');parent.replaceChildren();const s
   }appendText(parent,'p','Itens, moedas e nível são calculados pelo servidor. A persistência depende de armazenamento confiável no servidor.').className='muted';
  }else if(tab==='quests'){
   appendText(parent,'h3','Crônicas da jornada');for(const q of session.quests){const done=s.quests.includes(q.id),canClaim=s.kills>=q.target;const d=group(parent);appendText(d,'b',q.name);appendText(d,'small',q.description);appendText(d,'small',done?'✓ Concluída':`${s.kills}/${q.target} derrotas · ${q.reward} XP · ${q.coins} moedas${canClaim?' · PRONTA':''}`)}parent.append(button('Resgatar recompensas', 'quest'));
+ }else if(tab==='story'){
+  const q=session.story;if(!q){appendText(parent,'p','Sua história aparecerá aqui após entrar no mundo.');return}
+  appendText(parent,'h3','Crônicas da Aurora');
+  const bar=document.createElement('div');bar.className='story-progress';const inner=document.createElement('div');inner.style.width=(q.stage/q.total*100)+'%';bar.append(inner);parent.append(bar);
+  const d=group(parent);d.className='story-step';appendText(d,'b',q.finished?'✦ A Aurora renasceu':`Capítulo ${q.stage+1}/${q.total} · ${q.title}`);
+  if(q.finished){appendText(d,'small','Você ouviu o último verso, reuniu as sete centelhas e devolveu o sino ao reino. Pode revisitar todos os personagens.')}
+  else{appendText(d,'small',`Próximo NPC: ${q.npc}`);appendText(d,'small',`Região: ${session.zones[q.zone]?.name||'Região '+(q.zone+1)}`);
+   appendText(d,'small',q.required>0?(q.active?`Desafio aceito: ${q.progress}/${q.required} criaturas derrotadas nesta região`:`Converse com o NPC para receber o desafio (${q.required} criaturas)`):'Converse com o NPC para continuar a história.');
+   if(q.active&&q.progress>=q.required)appendText(d,'small','✦ Objetivo concluído: volte ao NPC e finalize o capítulo.');
+  }
+  const shards=document.createElement('div');shards.className='story-shards';shards.textContent=`✦ Centelhas reunidas: ${q.shards.length}/7`;parent.append(shards);
+  if(q.shards.length)appendText(parent,'small',q.shards.join(' · '));
+  parent.append(button('Conversar com NPC próximo', 'talk', {npc:nearNpc()?.id||''}));
  }else if(tab==='shop'){
   appendText(parent,'h3','Mercado de Auren');for(const [id,item] of Object.entries(session.shop)){const d=group(parent);appendText(d,'b',item.name);appendText(d,'small',item.price+' moedas');d.append(button('Comprar', 'buy',{item:id}))}
  }else if(tab==='social'){
@@ -138,6 +157,31 @@ function drawTab(){const parent=$('tabContent');parent.replaceChildren();const s
   if(session.tradeOffer){const o=session.tradeOffer;appendText(t,'small',`Oferta de ${o.from}: ${o.count}× ${session.shop[o.item]?.name||o.item} + ${o.gold} moedas`);t.append(button('Aceitar oferta','trade',{action:'accept',target:o.from}));t.append(button('Recusar','trade',{action:'reject',target:o.from}))}
  }
 }
+// Diálogos do servidor: páginas, escolhas e progresso são validados no servidor.
+let dialogue=null,dialoguePage=0;
+function nearNpc(){return session.npcs.filter(n=>n.zone===session.zone).sort((a,b)=>distance(a,session)-distance(b,session))[0]||null}
+function tryTalk(npc){if(!session.connected)return;if(distance(npc,session)>165){alert('Aproxime-se de '+npc.name+' para conversar (E).');return}send('talk',{npc:npc.id})}
+function talkToNearest(){if(!$('npcDialogue').hidden)return;const nearest=nearNpc();if(!nearest){alert('Não há personagens próximos nesta região.');return}tryTalk(nearest)}
+function openDialogue(data){if(!Array.isArray(data.pages)||!data.pages.length)return;
+ dialogue=data;dialoguePage=0;keys.clear();$('npcDialogue').hidden=false;
+ $('npcTitle').textContent=data.name||'Peregrino';$('npcSubtitle').textContent=data.title||'Personagem do reino';
+ $('npcChapter').textContent=data.chapter?'CRÔNICAS DA AURORA · '+data.chapter:'HISTÓRIAS DO REINO';
+ renderDialogue();$('npcNext').focus({preventScroll:true});
+}
+function renderDialogue(){if(!dialogue)return;
+ $('npcText').textContent=dialogue.pages[dialoguePage]||'';
+ $('npcPageCount').textContent=`${dialoguePage+1} / ${dialogue.pages.length}`;
+ const last=dialoguePage>=dialogue.pages.length-1,box=$('npcChoices');box.replaceChildren();
+ $('npcNext').hidden=last&&dialogue.choices?.length>0;
+ $('npcNext').textContent=last?'Encerrar conversa ✓':'Continuar →';
+ if(last){for(const option of dialogue.choices||[]){const btn=document.createElement('button');btn.type='button';btn.textContent=option.label;
+  btn.onclick=()=>{if(option.id==='later'){closeDialogue();return}send('storyChoice',{npc:dialogue.id,choice:option.id});closeDialogue()};box.append(btn)}
+ }
+}
+function advanceDialogue(){if(!dialogue)return;if(dialoguePage<dialogue.pages.length-1){dialoguePage++;renderDialogue()}else if(!dialogue.choices?.length)closeDialogue()}
+function closeDialogue(){dialogue=null;dialoguePage=0;$('npcDialogue').hidden=true;keys.clear();if($('welcomeOverlay').hidden)$('game').focus({preventScroll:true})}
+$('npcNext').onclick=advanceDialogue;$('npcClose').onclick=closeDialogue;
+function showEpilogue(data){openDialogue({name:'✦ Crônicas da Aurora',title:'O reino voltou a lembrar',chapter:'O sétimo verso',pages:[data.epilogue,'O mundo continua aberto. As pessoas têm novas histórias para contar, e sua aventura pode prosseguir com os amigos.'],choices:[]})}
 function drawTravel(){const box=$('travelButtons');box.replaceChildren();let z=session.zone;
  if(!session.connected)return;
  const dest= z>=12?[[[1,3,5,11][z-12], '↩ Sair da masmorra']]:session.zones.filter(a=>a.id<12&&(Math.abs(a.id-z)<=2)&&a.id!==z).map(a=>[a.id,a.name]);
@@ -156,13 +200,14 @@ function canvasDraw(now){
   classicRenderer.render({zone:session.zone,zones:session.zones,x:session.x,y:session.y,
     name:session.name||'PEREGRINO',role:session.role,dir:session.dir,
     monsters:[...session.monsters.values()],players:[...session.players.values()],
+    npcs:session.npcs.filter(n=>n.zone===session.zone),storyStage:session.story?.stage||0,
     cameraX:session.cameraX,cameraY:session.cameraY,target:session.target,now,fx,lastAction,
     moving:Math.hypot(session.x-lastFrameX,session.y-lastFrameY)>0.06});
   lastFrameX=session.x;lastFrameY=session.y;
 }
 let lastFrameX=768,lastFrameY=512;
 let lastFrame=0;function tick(t){const dt=Math.min(.065,(t-lastFrame)/1000||0);lastFrame=t;
- if(session.connected&&$('welcomeOverlay').hidden){let dx=0,dy=0;if(moves.up.some(k=>keys.has(k)))dy--;if(moves.down.some(k=>keys.has(k)))dy++;if(moves.left.some(k=>keys.has(k)))dx--;if(moves.right.some(k=>keys.has(k)))dx++;
+ if(session.connected&&$('welcomeOverlay').hidden&&$('npcDialogue').hidden){let dx=0,dy=0;if(moves.up.some(k=>keys.has(k)))dy--;if(moves.down.some(k=>keys.has(k)))dy++;if(moves.left.some(k=>keys.has(k)))dx--;if(moves.right.some(k=>keys.has(k)))dx++;
   if(dx||dy){const l=Math.hypot(dx,dy);session.x=clamp(session.x+dx/l*166*dt,24,ZONE_W-24);session.y=clamp(session.y+dy/l*166*dt,24,ZONE_H-24);session.dir=Math.abs(dx)>Math.abs(dy)?dx>0?1:3:dy>0?2:0}
   if(t-movingAt>85){send('move',{x:Math.round(session.x),y:Math.round(session.y),dir:session.dir});movingAt=t}
  }

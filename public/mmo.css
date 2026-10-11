@@ -8,3 +8,22 @@
 #canvasShell:fullscreen #fullscreenBtn{position:fixed;right:16px;top:16px;z-index:12}
 #canvasShell:fullscreen .game-overlay{z-index:8}
 @media(max-width:700px){#fullscreenBtn{min-height:34px;min-width:102px;right:6px;top:6px;font-size:11px;padding:6px 8px}#canvasShell:fullscreen #fullscreenBtn{right:7px;top:7px}}
+
+/* Diálogos narrativos 16-bit: dentro do mapa para funcionar também em tela cheia. */
+.npc-dialogue[hidden]{display:none!important}
+.npc-dialogue{position:absolute;inset:0;z-index:9;display:flex;justify-content:center;align-items:flex-end;padding:clamp(7px,2.2%,20px);background:linear-gradient(180deg,transparent 8%,#07181055 38%,#06140eb8);box-sizing:border-box}
+.npc-window{width:min(820px,100%);min-height:230px;max-height:95%;overflow-y:auto;box-sizing:border-box;border:3px double #e7c88a;border-radius:5px;background:linear-gradient(145deg,#21392cfa,#071e19fc);box-shadow:0 0 0 4px #04130c,0 22px 45px #000c;color:#f4e5c9;padding:clamp(12px,2.6vw,23px)}
+.npc-heading{display:flex;align-items:center;gap:14px;padding-bottom:9px;border-bottom:1px solid #c4a36a66}
+.npc-sigil{flex:0 0 56px;display:grid;place-items:center;height:56px;border:2px solid #bda16b;background:radial-gradient(#517052,#263c2c);color:#ffedb8;font-size:29px;text-shadow:0 0 13px #fcd88e}
+.npc-heading-text{flex:1;min-width:0}.npc-heading-text small{color:#d6bc7d;letter-spacing:.19em;font:700 10px ui-monospace,monospace}
+.npc-heading-text h2{margin:3px 0;font:normal clamp(19px,3.3vw,29px) Georgia,serif;color:#ffe4a8}.npc-heading-text span{font-size:12px;color:#accbb5}
+#npcClose{border:1px solid #c5a877;background:#2d3828;color:#ffeab6;padding:8px 12px;cursor:pointer;font-size:17px;align-self:flex-start}
+.npc-paragraph{font:17px/1.6 Georgia,serif;color:#faf0d9;margin:16px 0 10px;min-height:76px;overflow-wrap:anywhere}
+.npc-page-count{font:700 11px monospace;color:#c4b58d;text-align:right;margin-bottom:10px}
+.npc-choices{display:flex;gap:8px;flex-wrap:wrap}.npc-choices button,.npc-foot button{background:#e1c283;color:#15342a;font:700 13px Georgia,serif;border:2px solid #e8d09f;padding:10px 14px;cursor:pointer;border-radius:2px;flex:1;min-width:180px}
+.npc-choices button:hover,.npc-foot button:hover{background:#f7dfab}.npc-foot{border-top:1px solid #b99c604f;padding-top:10px;display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px}
+.npc-foot span{font:700 10px monospace;color:#b9c6ac}.npc-foot button{flex:0 0 auto;min-width:125px}
+#canvasShell:fullscreen .npc-dialogue{z-index:15;align-items:flex-end;padding:3vmin}#canvasShell:fullscreen .npc-window{width:min(900px,96%);max-height:90%}
+.hotbar .talk-action{background:#325342;border-color:#d3ad66;color:#ffe1ac}.tabrow{grid-template-columns:repeat(5,minmax(0,1fr))}.story-progress{height:7px;border:1px solid #a18454;background:#091b14;margin:8px 0 13px}.story-progress>div{height:100%;background:linear-gradient(90deg,#bc9f64,#ffdb83)}
+.story-step{padding:9px;border:1px solid #a88b5266;background:#152b23;margin:8px 0}.story-step b{color:#f8daa5}.story-step small{display:block;color:#b2c7b3;line-height:1.65;margin-top:3px}.story-shards{font-size:12px;line-height:1.8;color:#dfbd7e}
+@media(max-width:700px){.npc-window{padding:10px 13px;max-height:99%}.npc-dialogue{padding:5px}.npc-heading{gap:8px}.npc-sigil{flex:0 0 36px;height:36px;font-size:19px}.npc-heading-text small{font-size:8px}.npc-paragraph{font-size:14px;line-height:1.45;margin:10px 0;min-height:55px}.npc-foot span{font-size:8px}.npc-choices button,.npc-foot button{font-size:11px;min-width:120px;padding:9px}.npc-foot button{min-width:90px}.tabrow .tab{font-size:10px}}

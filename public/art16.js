@@ -110,6 +110,18 @@ function create({ctx,W,H}){
   const label=(p.name||'Peregrino')+(local?'':' · Lv.'+(p.level||1));
   g.strokeText(label,p.x,p.y-h-5);g.fillStyle=local?'#ffe4a3':'#f1edd4';g.fillText(label,p.x,p.y-h-5);g.restore();
  }
+ function npcActor(g,n,active,finished,now){
+  const x=n.x,y=n.y;drawShadow(g,x,y,42);
+  frameSprite(g,heroSheets[n.role]||'viajante_andar',2,Math.floor(now/500+(n.index||0))%2,x,y,47,59);
+  g.save();g.textAlign='center';g.shadowColor='#000e';g.shadowBlur=5;
+  const primary=n.kind==='chapter';
+  g.font='bold 12px monospace';g.lineWidth=3;g.strokeStyle='#0c2118';
+  g.strokeText(n.name,x,y-65);g.fillStyle=primary?'#ffe6a7':'#ccebd7';g.fillText(n.name,x,y-65);
+  const indicator=primary?(finished?'✓':active?'!':'◆'):'✦';
+  g.fillStyle=active?'#fff3ae':finished?'#a3d8a0':'#aee3ce';
+  g.font='bold 23px Georgia,serif';g.strokeText(indicator,x,y-86);g.fillText(indicator,x,y-86);
+  g.restore();
+ }
  function monster(g,m,selected,now){
   const ty=types[Math.max(0,m.species|0)]||'limo';
   const bob=Math.sin(now/370+(m.species||0)*.95)*1.6;
@@ -130,18 +142,19 @@ function create({ctx,W,H}){
  }
  function prop(g,o){const s=o.w;drawShadow(g,o.x,o.y,s*.63);cut(g,o.key,o.x-o.w/2,o.y-o.h,o.w,o.h)}
  function displayMap(g,opt){
-  const {players,monsters,zone,x,y}=opt;
+  const {players,monsters,npcs=[],zone,x,y}=opt;
   const mx=W-179,my=16,mw=160,mh=104;
   g.fillStyle='#092019e3';g.fillRect(mx,my,mw,mh);g.strokeStyle='#d8b981';g.lineWidth=2;g.strokeRect(mx,my,mw,mh);
   g.save();g.beginPath();g.rect(mx+5,my+5,mw-10,mh-10);g.clip();
   g.strokeStyle='#cbb27b88';g.lineWidth=3;g.beginPath();for(let xx=0;xx<ZW;xx+=24){const px=mx+5+xx/ZW*(mw-10),py=my+5+pathY(xx,zone)/ZH*(mh-10);if(xx===0)g.moveTo(px,py);else g.lineTo(px,py)}g.stroke();
   g.fillStyle='#c58f6f';for(const m of monsters)g.fillRect(mx+5+m.x/ZW*(mw-10),my+5+m.y/ZH*(mh-10),m.boss?4:2,m.boss?4:2);
+  g.fillStyle='#f8c574';for(const n of npcs)g.fillRect(mx+5+n.x/ZW*(mw-10),my+5+n.y/ZH*(mh-10),4,4);
   g.fillStyle='#c9ebeb';for(const p of players)g.fillRect(mx+5+p.x/ZW*(mw-10),my+5+p.y/ZH*(mh-10),4,4);
   g.fillStyle='#ffe0a3';g.fillRect(mx+5+x/ZW*(mw-10)-2,my+5+y/ZH*(mh-10)-2,6,6);g.restore();
   g.font='bold 11px monospace';g.fillStyle='#ead4a2';g.textAlign='left';g.fillText('REGIÃO '+(zone+1)+'/16',mx+7,my+mh+15);
  }
  function render(opt){
-  const {zone,zones,x,y,dir,monsters,players,cameraX,cameraY,name,role,target,now,fx,lastAction,moving}=opt;
+  const {zone,zones,x,y,dir,monsters,players,npcs=[],storyStage=0,cameraX,cameraY,name,role,target,now,fx,lastAction,moving}=opt;
   ctx.imageSmoothingEnabled=false;
   const biome=biomeThemes[zones[zone]?.biome]||'meadow';
   if(!artReady){ctx.fillStyle='#193629';ctx.fillRect(0,0,W,H);ctx.textAlign='center';ctx.fillStyle='#efd39d';ctx.font='bold 20px Georgia,serif';ctx.fillText('✦ Preparando o mundo 16-bit…',W/2,H/2);return}
@@ -150,6 +163,9 @@ function create({ctx,W,H}){
   ctx.save();ctx.translate(-cameraX,-cameraY);
   const actors=[];
   for(const o of objects){if(o.x<cameraX-115||o.x>cameraX+W+115||o.y<cameraY-132||o.y>cameraY+H+135)continue;actors.push({depth:o.y,paint:()=>prop(ctx,o)})}
+  for(const n of npcs){if(n.x<cameraX-100||n.x>cameraX+W+100||n.y<cameraY-105||n.y>cameraY+H+105)continue;
+   actors.push({depth:n.y,paint:()=>npcActor(ctx,n,n.index===storyStage,n.index!==null&&n.index<storyStage,now)});
+  }
   for(const m of monsters){if(m.x<cameraX-90||m.x>cameraX+W+90||m.y<cameraY-90||m.y>cameraY+H+90)continue;actors.push({depth:m.y,paint:()=>monster(ctx,m,target===m.id,now)})}
   for(const p of players){if(p.x<cameraX-75||p.x>cameraX+W+75||p.y<cameraY-95||p.y>cameraY+H+75)continue;actors.push({depth:p.y,paint:()=>character(ctx,p,false,now,true)})}
   actors.push({depth:y,paint:()=>character(ctx,{name,role,x,y,dir},true,now,moving)});

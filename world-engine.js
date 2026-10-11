@@ -3,6 +3,7 @@
 const fs=require('node:fs');
 const path=require('node:path');
 const crypto=require('node:crypto');
+const {NPCS,chapters,byId,publicNpc,freshStory,normalizeStory,journal}=require('./story-data');
 
 const ZONES=[
  ['Vale das Oliveiras','pradaria'],['Floresta da Promessa','floresta'],['Riacho do Alvorecer','rio'],['Deserto das Provações','deserto'],
@@ -33,10 +34,10 @@ const assertName=n=>typeof n==='string'&&n.trim()===n&&n.length>=3&&n.length<=18
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 const cap=(s,n=90)=>String(s||'').slice(0,n);
-const defaultSave=()=>({level:1,xp:0,hp:135,coins:60,zone:0,x:ZONE_W/2,y:ZONE_H/2,role:'peregrino',inventory:{pocao:3},kills:0,quests:[],visited:[0],guild:null,achievements:[]});
+const defaultSave=()=>({level:1,xp:0,hp:135,coins:60,zone:0,x:ZONE_W/2,y:ZONE_H/2,role:'peregrino',inventory:{pocao:3},kills:0,quests:[],visited:[0],guild:null,achievements:[],story:freshStory()});
 function hpMax(s){return CLASSES[s.role].hp+(s.level-1)*12}
 function xpNeed(level){return 70+level*level*35}
-function safeSave(s){return {level:s.level,xp:s.xp,hp:s.hp,coins:s.coins,zone:s.zone,x:s.x,y:s.y,role:s.role,inventory:s.inventory,kills:s.kills,quests:s.quests,visited:s.visited,guild:s.guild,achievements:s.achievements}}
+function safeSave(s){return {level:s.level,xp:s.xp,hp:s.hp,coins:s.coins,zone:s.zone,x:s.x,y:s.y,role:s.role,inventory:s.inventory,kills:s.kills,quests:s.quests,visited:s.visited,guild:s.guild,achievements:s.achievements,story:s.story}}
 function hash32(n){n|=0;n=Math.imul(n^(n>>>16),0x7feb352d);n=Math.imul(n^(n>>>15),0x846ca68b);return (n^(n>>>16))>>>0}
 class World {
  constructor({send,getOnline,hasClassicName,dataFile,autosave=false}){
@@ -103,7 +104,7 @@ class World {
  publicPlayer(p){return {id:p.id,name:p.name,zone:p.zone,x:Math.round(p.x),y:Math.round(p.y),dir:p.dir,level:p.save.level,role:p.save.role,hp:p.save.hp,maxHp:hpMax(p.save),guild:p.save.guild,party:p.party||null}}
  publicMonster(m){return {id:m.id,name:m.name,species:m.species,zone:m.zone,x:Math.round(m.x),y:Math.round(m.y),hp:m.hp,maxHp:m.maxHp,boss:m.boss}}
  zoneInfo(){return ZONES.map((z,i)=>({id:i,name:z[0],biome:z[1],count:this.monsters.get(i).length}))}
- ownStatus(p){const s=p.save;return {type:'character',id:p.id,name:p.name,level:s.level,xp:s.xp,nextXp:xpNeed(s.level),hp:s.hp,maxHp:hpMax(s),coins:s.coins,role:s.role,inventory:s.inventory,kills:s.kills,quests:s.quests,visited:s.visited,guild:s.guild,party:p.party||null,zone:p.zone,x:p.x,y:p.y}}
+ ownStatus(p){const s=p.save;return {type:'character',id:p.id,name:p.name,level:s.level,xp:s.xp,nextXp:xpNeed(s.level),hp:s.hp,maxHp:hpMax(s),coins:s.coins,role:s.role,inventory:s.inventory,kills:s.kills,quests:s.quests,visited:s.visited,guild:s.guild,party:p.party||null,story:journal(s.story),zone:p.zone,x:p.x,y:p.y}}
  tell(p,msg,type='notice'){this.send(p.socket,{type,text:msg})}
  broadcast(obj,filter=()=>true){for(const p of this.players.values())if(filter(p))this.send(p.socket,obj)}
  join(c,d){if(c.worldPlayer)return;
@@ -118,10 +119,10 @@ class World {
   let raw=this.saved.characters[uid]||defaultSave();const s={...defaultSave(),...raw};
   if(!CLASSES[s.role])s.role='peregrino';if(!Number.isInteger(s.zone)||s.zone<0||s.zone>=ZONES.length)s.zone=0;
   s.level=clamp(Math.floor(Number(s.level)||1),1,100);s.hp=clamp(Math.floor(Number(s.hp)||hpMax(s)),1,hpMax(s));s.x=clamp(Number(s.x)||ZONE_W/2,28,ZONE_W-28);s.y=clamp(Number(s.y)||ZONE_H/2,28,ZONE_H-28);
-  s.inventory={...defaultSave().inventory,...(s.inventory||{})};if(!Array.isArray(s.quests))s.quests=[];if(!Array.isArray(s.visited))s.visited=[0];
+  s.inventory={...defaultSave().inventory,...(s.inventory||{})};if(!Array.isArray(s.quests))s.quests=[];if(!Array.isArray(s.visited))s.visited=[0];s.story=normalizeStory(s.story);
   const p={id:crypto.randomUUID(),uid,name,socket:c.socket,save:s,x:s.x,y:s.y,zone:s.zone,dir:2,lastMove:Date.now(),lastAttack:0,lastSpell:0,lastChat:0,lastUse:0,party:null,live:true};
   c.worldPlayer=p;c.socket._worldClient=c;this.players.set(p.id,p);
-  this.send(c.socket,{type:'welcome',self:this.ownStatus(p),zones:this.zoneInfo(),shop:GOODS,quests:QUESTS,maxPlayers:10,online:this.players.size+this.getOnline(),monsterTotal:this.totalMonsters()});
+  this.send(c.socket,{type:'welcome',self:this.ownStatus(p),zones:this.zoneInfo(),shop:GOODS,quests:QUESTS,npcs:NPCS.map(publicNpc),maxPlayers:10,online:this.players.size+this.getOnline(),monsterTotal:this.totalMonsters()});
   this.broadcast({type:'system',text:p.name+' chegou ao mundo.'},q=>q.id!==p.id);
   this.dirty=true;this.snapshotTo(p);
  }
@@ -158,8 +159,69 @@ class World {
    case 'party':this.party(p,d);break;
    case 'guild':this.guild(p,d);break;
    case 'trade':this.trade(p,d);break;
+   case 'talk':this.talk(p,d.npc);break;
+   case 'storyChoice':this.storyChoice(p,d.npc,d.choice);break;
    case 'ping':this.send(p.socket,{type:'pong',now});break;
   }
+ }
+ talk(p,id){
+  if(typeof id!=='string'||id.length>64)return;
+  const npc=byId.get(id);
+  if(!npc||npc.zone!==p.zone||dist(p,npc)>165){this.tell(p,'Aproxime-se do personagem para conversar.');return}
+  if(Date.now()-(p.lastTalk||0)<240)return;
+  p.lastTalk=Date.now();p.talkId=npc.id;
+  const s=p.save.story,stage=s.stage;
+  const base={type:'dialogue',id:npc.id,name:npc.name,title:npc.title,chapter:npc.chapter||null,mode:'lore'};
+  if(npc.kind==='lore'){
+   this.send(p.socket,{...base,pages:npc.lines,choices:[]});return;
+  }
+  if(npc.index<stage){
+   const pages=npc.ending||[`${npc.name} sorri: Nossa conversa continua ecoando pelo reino.`, 'As palavras são sementes: nem sempre vemos quando brotam.'];
+   this.send(p.socket,{...base,mode:'revisit',pages,choices:[]});return;
+  }
+  if(npc.index>stage){
+   const next=chapters[stage];
+   this.send(p.socket,{...base,mode:'locked',pages:[`Ainda não chegou o momento desta parte das Crônicas.`,next?`Siga primeiro para ${next.name}, em ${ZONES[next.zone][0]}.`:'Sua jornada foi concluída.'],choices:[]});return;
+  }
+  if(npc.objective>0&&s.active){
+   if(s.progress<npc.objective){
+    this.send(p.socket,{...base,mode:'progress',pages:[`Você já aceitou ajudar. Progresso: ${s.progress} de ${npc.objective} criaturas vencidas nesta região.`, 'As criaturas não atacam por proximidade. Escolha as ameaças que precisa enfrentar, vença-as e volte a conversar comigo.'],choices:[]});return;
+   }
+   this.send(p.socket,{...base,mode:'complete',pages:npc.ending||['Você cumpriu sua palavra. O caminho da Aurora pode prosseguir.'],choices:npc.choices.map(([id,label])=>({id,label}))});return;
+  }
+  this.send(p.socket,{...base,mode:npc.objective?'offer':'complete',pages:npc.lines,objective:npc.objective,choices:npc.objective?[{id:'accept',label:`Aceitar o desafio (${npc.objective} criaturas)`},{id:'later',label:'Vou me preparar primeiro'}]:npc.choices.map(([id,label])=>({id,label}))});
+ }
+ storyChoice(p,id,choice){
+  if(typeof id!=='string'||typeof choice!=='string'||id!==p.talkId)return;
+  const npc=byId.get(id);
+  if(!npc||npc.kind!=='chapter'||npc.zone!==p.zone||dist(p,npc)>165){p.talkId=null;return}
+  const s=p.save.story;if(npc.index!==s.stage){p.talkId=null;return}
+  p.talkId=null;
+  if(choice==='later')return;
+  if(choice==='accept'&&npc.objective>0&&!s.active){
+   s.active=true;s.progress=0;this.dirty=true;
+   this.send(p.socket,{type:'storyResolved',message:`Missão aceita: ${npc.objective} criaturas em ${ZONES[p.zone][0]}. Volte para falar com ${npc.name}.`,stage:s.stage});
+   this.send(p.socket,this.ownStatus(p));return;
+  }
+  if(npc.objective>0&&(!s.active||s.progress<npc.objective))return;
+  const option=npc.choices.find(([name])=>name===choice);
+  if(!option)return;
+  const [,,reply]=option;
+  s.decisions.push({chapter:npc.index,id:choice});
+  if(npc.shard&&!s.shards.includes(npc.shard))s.shards.push(npc.shard);
+  s.stage+=1;s.active=false;s.progress=0;
+  const save=p.save;
+  save.coins+=npc.coins;save.xp+=npc.xp;
+  if(npc.key)save.inventory.chave=(save.inventory.chave||0)+1;
+  while(save.level<100&&save.xp>=xpNeed(save.level)){save.xp-=xpNeed(save.level);save.level++;save.hp=hpMax(save)}
+  this.dirty=true;
+  const next=chapters[s.stage];
+  const completion=s.stage===chapters.length;
+  const mercy=s.decisions.filter(x=>x.id==='compaixao').length;
+  const epilogue=completion?(mercy>=8?'Você se tornou o Peregrino da Compaixão. A cidade aprende que ouvir é também um ato de coragem.':'Você se tornou o Peregrino da Perseverança. A cidade aprende que a coragem precisa caminhar ao lado do cuidado.') : null;
+  this.send(p.socket,{type:'storyResolved',message:reply,reward:{xp:npc.xp,coins:npc.coins,key:!!npc.key,shard:npc.shard||null},stage:s.stage,complete:completion,epilogue,next:next?{name:next.name,zone:next.zone,region:ZONES[next.zone][0]}:null});
+  this.send(p.socket,this.ownStatus(p));
+  if(completion)this.tell(p,'✦ As sete Centelhas foram reunidas. O Sino da Aurora voltou a tocar!');
  }
  chooseClass(p,role){if(!CLASSES[role])return;if(p.save.level>1||p.save.kills>0){this.tell(p,'A classe não pode ser alterada após começar a evolução.');return}const previous=hpMax(p.save);p.save.role=role;p.save.hp=clamp(p.save.hp+hpMax(p.save)-previous,1,hpMax(p.save));this.dirty=true;this.send(p.socket,this.ownStatus(p));this.tell(p,'Classe alterada para '+CLASSES[role].name+'.')}
  travel(p,z){z=Number(z);if(!Number.isInteger(z)||z<0||z>=ZONES.length)return;
@@ -186,12 +248,12 @@ class World {
   this.broadcast({type:'hit',monster:m.id,zone:m.zone,damage,remaining:m.hp,by:p.name,skill},q=>q.zone===p.zone&&dist(q,m)<780);
   if(m.hp===0){m.aggroTarget=null;m.aggroUntil=0;m.deadUntil=now+(m.boss?45000:14000);let recipients=new Map();for(const [pid] of m.damageFrom){const x=this.players.get(pid);if(x&&x.zone===p.zone&&dist(x,m)<690)recipients.set(x.id,x)}
    for(const x of [...recipients.values()])if(x.party){for(const ally of this.players.values())if(ally.party===x.party&&ally.zone===x.zone&&dist(ally,m)<500)recipients.set(ally.id,ally)}
-   for(const x of recipients.values())this.award(x,Math.round(m.xp/Math.max(1,recipients.size)*1.3),Math.ceil(m.coins/Math.max(1,recipients.size)),m.boss);
+   for(const x of recipients.values())this.award(x,Math.round(m.xp/Math.max(1,recipients.size)*1.3),Math.ceil(m.coins/Math.max(1,recipients.size)),m.boss,m.zone);
    this.broadcast({type:'defeated',monster:m.id,zone:m.zone,by:p.name,boss:m.boss},q=>q.zone===p.zone);
    m.damageFrom.clear();this.dirty=true;
   }
  }
- award(p,xp,gold,boss=false){const s=p.save;s.xp+=xp;s.coins+=gold;s.kills++;while(s.level<100&&s.xp>=xpNeed(s.level)){s.xp-=xpNeed(s.level);s.level++;s.hp=hpMax(s);this.tell(p,'✦ Você alcançou o nível '+s.level+'!')}
+ award(p,xp,gold,boss=false,zone=p.zone){const s=p.save;const story=s.story;const chapter=chapters[story.stage];if(chapter&&story.active&&chapter.objective>0&&chapter.zone===zone){story.progress=Math.min(chapter.objective,story.progress+1);if(story.progress===chapter.objective)this.tell(p,`✦ Objetivo concluído! Volte e converse com ${chapter.name}.`)}s.xp+=xp;s.coins+=gold;s.kills++;while(s.level<100&&s.xp>=xpNeed(s.level)){s.xp-=xpNeed(s.level);s.level++;s.hp=hpMax(s);this.tell(p,'✦ Você alcançou o nível '+s.level+'!')}
   if(boss){s.inventory.superpocao=(s.inventory.superpocao||0)+1;this.tell(p,'★ Chefe derrotado! Você recebeu uma poção radiante.');}
   this.send(p.socket,{type:'reward',xp,gold,boss});this.send(p.socket,this.ownStatus(p));this.dirty=true;
  }
@@ -281,7 +343,7 @@ class World {
   }}
   for(const p of this.players.values())this.snapshotTo(p);
  }
- status(){return {connected:this.count,monsters:this.totalMonsters(),regions:ZONES.length,guilds:this.guilds.size,version:'mmo-2-5-alpha'}}
+ status(){return {connected:this.count,monsters:this.totalMonsters(),regions:ZONES.length,guilds:this.guilds.size,version:'mmo-aurora-historia-alpha'}}
  stop(){clearInterval(this.saveTimer);for(const p of this.players.values())this.saved.characters[p.uid]=safeSave(p.save);this.dirty=true;this.persist();try{this.db?.close()}catch{}}
 }
 module.exports={World,ZONES,ZONE_W,ZONE_H,GOODS,QUESTS,SPECIES,CLASSES,xpNeed};

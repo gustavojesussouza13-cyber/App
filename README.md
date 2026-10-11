@@ -90,3 +90,21 @@ Ao editar o atlas, mantenha o mapeamento de coordenadas em `public/art16.js` sin
 - **Mundo Aberto (`/mundo`)**: botão **⛶ Tela cheia** no canto superior direito do mapa, com entrada e saída pela API Fullscreen do navegador. O mapa preserva proporção 5:3 e pixel art sem distorcer a imagem. Para sair, clique **Sair da tela cheia** ou pressione **Esc**. Se o navegador bloquear a API, o jogo indica a alternativa **F11** para tela cheia do navegador.
 - **Campanha clássica (`/jogo.html`)**: botão **🌐 VOLTAR À VERSÃO ONLINE (MMORPG)** visível na própria tela inicial, além do retorno no cabeçalho. Os dois levam para `/mundo` e não exigem iniciar a campanha.
 - O acesso continua apenas pelo nome, com limite total de 10 jogadores. Os sistemas de missões, monstros, classes e combate não foram modificados por esta atualização de interface.
+
+
+## Nova campanha narrativa: O Sétimo Verso
+
+O Mundo Aberto recebeu uma história autoral, **16 capítulos em sequência**, **32 NPCs** (16 protagonistas e 16 moradores), **95 trechos de diálogo da história principal**, mais conversas de ambientação, **sete Centelhas** e um desfecho com pequenas variantes segundo as escolhas de compaixão ou coragem.
+
+**Sinopse sem spoilers:** O Sino da Aurora ficou mudo, e os habitantes de Auren começaram a esquecer uns aos outros. A peregrinação pelas terras, florestas, rios e quatro masmorras reúne depoimentos contraditórios sobre Cálen, o antigo guardião acusado de trair o reino. O jogador investiga o que aconteceu, acolhe testemunhas e recompõe o hino das sete vozes. A jornada aborda memória, perdão, justiça, esperança e o risco de carregar tudo sozinho.
+
+- **E** ou o botão **✦ Conversar** fala com o NPC mais próximo. Também é possível clicar nele no mapa. A interação exige proximidade e a história valida as decisões no servidor.
+- **Enter** avança nas páginas, **Esc** fecha a conversa. Há sempre duas respostas narrativas quando um capítulo pode ser concluído; algumas missões pedem **duas ou três vitórias em combate depois de aceitar o desafio**, na própria região.
+- **Aba Crônicas** (atalho **L**) mostra o capítulo atual, o próximo personagem e região, o progresso dos objetivos e as centelhas encontradas.
+- Os capítulos passam pela sequência **Vale → Floresta → Masmorra da Raiz → Riacho → Deserto → Masmorra das Cinzas → Montanhas → Ruínas → Templo Esquecido → Campos → Pântano → Costa → Bosque → Cidadela → Terra da Última Luz → Câmara da Aurora**. Os personagens fornecem as quatro chaves necessárias para as masmorras em momentos apropriados, sem obrigar o jogador a comprar as chaves.
+- Ao encerrar um capítulo, o jogador recebe **XP e moedas uma única vez**. Decisões e centelhas ficam salvas no personagem (SQLite local / JSON de teste). O desfecho varia ligeiramente com suas respostas.
+- NPCs usam **sprites do atlas 16-bit original** e aparecem no minimapa como pontos dourados. São pacíficos e não afetam a IA dos monstros.
+
+**Limite de hospedagem:** assim como o restante do personagem, o progresso narrativo pode ser perdido após uma reinicialização/reimplantação do Render gratuito sem armazenamento durável. A campanha clássica continua independente.
+
+Arquivos novos: `story-data.js` (história e catálogo de NPCs) e `tests/story.test.js` (validação de escolhas, distâncias, recompensas, persistência e fluxo completo). Todos os recursos do jogo são entregues no ZIP completo; nenhum serviço adicional é necessário para executar localmente.
