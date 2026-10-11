@@ -10,7 +10,7 @@ class MemoryPg{
  async end(){}
  async query(sql,params=[]){
   const q=sql.replace(/\s+/g,' ').trim();
-  if(q.startsWith('CREATE')||q==='BEGIN'||q==='COMMIT'||q==='ROLLBACK')return {rows:[]};
+  if(q.startsWith('CREATE')||q.startsWith('ALTER')||q==='BEGIN'||q==='COMMIT'||q==='ROLLBACK')return {rows:[]};
   if(q==='SELECT uid,data FROM characters')return {rows:[...this.characters].map(([uid,data])=>({uid,data}))};
   if(q==='SELECT key,data FROM guilds')return {rows:[...this.guilds].map(([key,data])=>({key,data}))};
   if(q==="SELECT value FROM meta WHERE key='day'")return {rows:this.meta.has('day')?[{value:this.meta.get('day')}]:[]};
@@ -20,7 +20,7 @@ class MemoryPg{
   if(q.startsWith('DELETE FROM characters WHERE uid=')){this.characters.delete(params[0]);return {rows:[]}}
   if(q.startsWith('INSERT INTO game_sessions')){this.sessions.set(params[0],{id:params[1],expires:params[2]});return {rows:[]}}
   if(q.startsWith('SELECT * FROM game_accounts WHERE username_key=')){const id=this.names.get(params[0]);return {rows:id?[this.accounts.get(id)]:[]}}
-  if(q.startsWith('SELECT a.id,a.username FROM game_sessions')){const s=this.sessions.get(params[0]);const a=s&&this.accounts.get(s.id);return {rows:a&&new Date(s.expires)>new Date()?[{id:a.id,username:a.username}]:[]}}
+  if(q.startsWith('SELECT a.id,a.username,a.email,a.email_verified_at FROM game_sessions')){const s=this.sessions.get(params[0]);const a=s&&this.accounts.get(s.id);return {rows:a&&new Date(s.expires)>new Date()?[{id:a.id,username:a.username}]:[]}}
   if(q.startsWith('DELETE FROM game_sessions')){this.sessions.delete(params[0]);return {rows:[]}}
   if(q.startsWith('INSERT INTO characters(uid,data) VALUES(')){this.characters.set(params[0],JSON.parse(params[1]));return {rows:[]}}
   if(q.startsWith('INSERT INTO guilds(')){this.guilds.set(params[0],JSON.parse(params[1]));return {rows:[]}}

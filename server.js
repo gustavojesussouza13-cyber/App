@@ -6,7 +6,8 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const { TextDecoder } = require('node:util');
 const {World} = require('./world-engine');
-const {AccountStore,AuthError,authCookie,clearCookie}=require('./account-store');
+const {AccountStore,AuthError,authCookie,clearCookie,cleanEmail,validEmail}=require('./account-store');
+const {MailService}=require('./email-service');
 
 const PORT = Number(process.env.PORT || 3000);
 const HOST = process.env.HOST || '0.0.0.0';
@@ -52,6 +53,17 @@ const decoder = new TextDecoder('utf-8', {fatal:true});
 const accountStore=process.env.DATABASE_URL?new AccountStore({databaseUrl:process.env.DATABASE_URL}):null;
 const world=new World({send,getOnline:()=>players.size,hasClassicName:name=>[...players.values()].some(p=>p.name.toLocaleLowerCase('pt-BR')===name.toLocaleLowerCase('pt-BR')),dataFile:process.env.DATA_FILE||path.join(__dirname,'data','world.sqlite'),autosave:true,persistentStore:accountStore});
 const authRate=new Map();
+const mailService=new MailService();
+const mailRate=new Map();
+function mailLimited(key){
+ const hash=crypto.createHash('sha256').update(String(key)).digest('hex'),now=Date.now();
+ if(mailRate.size>4000)for(const [k,v] of mailRate)if(v.until<now)mailRate.delete(k);
+ const state=mailRate.get(hash)||{count:0,until:now+60*60*1000,last:0};
+ if(now>state.until){state.count=0;state.until=now+60*60*1000;state.last=0}
+ const limited=now-state.last<90*1000||state.count>=3;
+ if(!limited){state.count++;state.last=now}mailRate.set(hash,state);
+ return limited;
+}
 const jsonResponse=(res,status,data,cookie)=>{
  const headers={'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'};
  if(cookie)headers['Set-Cookie']=cookie;
@@ -75,9 +87,9 @@ async function handleAuth(req,res,route){
  try{
   if(route==='/api/auth/session'&&req.method==='GET'){
    const account=await accountStore.session(req.headers.cookie);
-   return jsonResponse(res,200,{authenticated:!!account,account,persistent:true});
+   return jsonResponse(res,200,{authenticated:!!account,account,persistent:true,emailRecoveryAvailable:mailService.ready});
   }
-  if(!['/api/auth/register','/api/auth/login','/api/auth/logout'].includes(route)||req.method!=='POST')return jsonResponse(res,405,{error:'Operação não permitida.'});
+  if(!['/api/auth/register','/api/auth/login','/api/auth/logout','/api/auth/email/request','/api/auth/email/confirm','/api/auth/password/forgot','/api/auth/password/reset'].includes(route)||req.method!=='POST')return jsonResponse(res,405,{error:'Operação não permitida.'});
   const origin=req.headers.origin;
   if(origin&&new URL(origin).host!==req.headers.host)throw new AuthError('Origem não permitida.',403);
   if(req.headers['sec-fetch-site']==='cross-site')throw new AuthError('Origem não permitida.',403);
@@ -89,13 +101,50 @@ async function handleAuth(req,res,route){
   if(!(req.headers['content-type']||'').startsWith('application/json'))throw new AuthError('Envie dados em JSON.',415);
   const body=await bodyJson(req);
   if(!body||typeof body!=='object'||Array.isArray(body))throw new AuthError('Dados inválidos.');
+  if(route==='/api/auth/password/forgot'){
+   if(!mailService.ready)throw new AuthError('A recuperação por e-mail ainda não está habilitada. Fale com o suporte.',503,'mail_unavailable');
+   const email=cleanEmail(body.email);
+   // Resposta idêntica para e-mail desconhecido, não verificado ou com limite de envios.
+   if(validEmail(email)&&!mailLimited('forgot:'+email)){
+    await accountStore.requestPasswordReset(email,data=>mailService.send({...data,kind:'reset'}));
+   }
+   return jsonResponse(res,200,{ok:true,message:'Se existir uma conta com esse e-mail verificado, você receberá um link de recuperação.'});
+  }
+  if(route==='/api/auth/password/reset'){
+   const result=await accountStore.resetPassword(body.token,body.password);
+   // Encerra conexões ativas do titular da conta, inclusive em outros dispositivos.
+   for(const c of sockets)if(c.mode==='world'&&c.authUser?.id===result.accountId)terminate(c);
+   return jsonResponse(res,200,{ok:true,message:'Senha alterada. Faça login com a nova senha.'},clearCookie(secure));
+  }
+  if(route==='/api/auth/email/confirm'){
+   const result=await accountStore.confirmEmail(body.token);
+   return jsonResponse(res,200,result);
+  }
+  if(route==='/api/auth/email/request'){
+   if(!mailService.ready)throw new AuthError('O envio de confirmação ainda não está configurado.',503,'mail_unavailable');
+   const logged=await accountStore.session(req.headers.cookie);
+   if(!logged)throw new AuthError('Entre na sua conta para vincular um e-mail.',401,'login_required');
+   if(!await accountStore.verifyPassword(logged.id,body.password))throw new AuthError('Senha incorreta.',401,'bad_credentials');
+   const email=cleanEmail(body.email);
+   if(!validEmail(email))throw new AuthError('Informe um endereço de e-mail válido.');
+   if(mailLimited('verify:'+logged.id))throw new AuthError('Aguarde antes de solicitar outra mensagem.',429,'rate_limited');
+   const result=await accountStore.requestEmailVerification(logged.id,email,data=>mailService.send({...data,kind:'verify'}));
+   return jsonResponse(res,200,{ok:true,alreadyVerified:!!result.alreadyVerified,message:result.alreadyVerified?'Este e-mail já está confirmado.':'Verifique sua caixa de entrada para confirmar o e-mail.'});
+  }
   if(route==='/api/auth/register'){
    const token=typeof body.guestToken==='string'?body.guestToken:null;
    const guestUid=token&&/^[a-f0-9]{64}$/.test(token)?crypto.createHash('sha256').update(token).digest('hex'):null;
    if(guestUid&&[...world.players.values()].some(p=>p.uid===guestUid))throw new AuthError('Saia do modo Visitante antes de transferir o progresso.',409);
    world.persist();if(accountStore.saving)await accountStore.saving;
+   const email=cleanEmail(body.email||'');
+   if(email&&!validEmail(email))throw new AuthError('Informe um e-mail válido ou deixe o campo vazio.');
    const result=await accountStore.register(body.username,body.password,token);
-   return jsonResponse(res,201,{ok:true,account:result.account,persistent:true},authCookie(result.token,secure));
+   let verificationSent=false;
+   if(email&&mailService.ready){
+    try{await accountStore.requestEmailVerification(result.account.id,email,data=>mailService.send({...data,kind:'verify'}));verificationSent=true}
+    catch(err){console.warn('[contas] Não foi possível enviar confirmação de novo cadastro.');}
+   }
+   return jsonResponse(res,201,{ok:true,account:result.account,persistent:true,emailRecoveryAvailable:mailService.ready,verificationSent},authCookie(result.token,secure));
   }
   const result=await accountStore.login(body.username,body.password);
   return jsonResponse(res,200,{ok:true,account:result.account,persistent:true},authCookie(result.token,secure));

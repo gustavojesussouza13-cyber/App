@@ -8,7 +8,7 @@ const session={id:'',name:'',connected:false,characters:null,online:0,zones:[],s
 const keys=new Set(),moves={up:['KeyW','ArrowUp'],down:['KeyS','ArrowDown'],left:['KeyA','ArrowLeft'],right:['KeyD','ArrowRight']};
 const monsterMotion=window.OsPeregrinosMonsterMotion.create();
 let socket=null,reconnectMs=1000,reconnectTimer=null,movingAt=0,lastDraw=0,fx=[],toastTimer=0,lastAction=0,tab='inventory',authed=false;
-let progressToken=null,accountMode=false,accountReady=false;
+let progressToken=null,accountMode=false,accountReady=false,emailRecoveryAvailable=false;
 try{progressToken=localStorage.getItem('os-peregrinos-world-token');if(!progressToken){progressToken=Array.from(crypto.getRandomValues(new Uint8Array(32)),b=>b.toString(16).padStart(2,'0')).join('');localStorage.setItem('os-peregrinos-world-token',progressToken)}$('name').value=localStorage.getItem('os-peregrinos-last-name')||''}catch{$('connectionError').textContent='O armazenamento precisa estar habilitado para reconhecer seu progresso.'}
 const tint=['#6d9a68','#345947','#44818a','#d4b578','#8f938e','#5f6b59','#97b673','#4a735c','#4b8ba3','#477b58','#9c8a6c','#655970','#536453','#8b6b54','#647a92','#c4a975'];
 const shade=['#427444','#25573d','#37737b','#b38f4e','#697a76','#445d55','#698d55','#365b50','#35738d','#306b47','#7d6d58','#554b68','#425146','#65503e','#566b81','#a58f59'];
@@ -67,7 +67,7 @@ function connect(){if(!progressToken){alert('Armazenamento indisponível');retur
   sock.onerror=()=>setOnline(false,'Conexão instável');
  }catch{setOnline(false,'Falha de conexão')}
 }
-$('nameForm').addEventListener('submit',e=>{e.preventDefault();accountMode=false;$('logoutBtn').hidden=true;const name=$('name').value.trim().normalize('NFC');if(!/^[\p{L}\p{N}][\p{L}\p{N} _-]{2,17}$/u.test(name)){alert('Escolha um nome válido de 3–18 caracteres');return}
+$('nameForm').addEventListener('submit',e=>{e.preventDefault();accountMode=false;$('logoutBtn').hidden=true;$('emailSettingsBtn').hidden=true;const name=$('name').value.trim().normalize('NFC');if(!/^[\p{L}\p{N}][\p{L}\p{N} _-]{2,17}$/u.test(name)){alert('Escolha um nome válido de 3–18 caracteres');return}
  session.name=name;session.formClass=$('role').value;try{localStorage.setItem('os-peregrinos-last-name',name)}catch{};connect();});
 // Autenticação opcional. Sessão via cookie HttpOnly, nunca salvamos senha no navegador.
 const AUTH_TAB_IDS={guest:'nameForm',login:'loginForm',register:'registerForm'};
@@ -84,7 +84,7 @@ async function authPost(route,data){
 }
 function playAccount(account,role='peregrino'){
  accountMode=true;session.name=account.username;session.formClass=role;
- $('logoutBtn').hidden=false;try{localStorage.setItem('os-peregrinos-last-name',account.username)}catch{}
+ $('logoutBtn').hidden=false;$('emailSettingsBtn').hidden=false;try{localStorage.setItem('os-peregrinos-last-name',account.username)}catch{}
  authed=false;connect();
 }
 $('loginForm').addEventListener('submit',async e=>{
@@ -97,9 +97,26 @@ $('registerForm').addEventListener('submit',async e=>{
  e.preventDefault();if(!accountReady)return authError('O armazenamento de contas está indisponível.');
  if($('registerPassword').value!==$('registerConfirm').value)return authError('As senhas não coincidem.');
  const btn=e.currentTarget.querySelector('[type=submit]');btn.disabled=true;authError('');
- try{const r=await authPost('register',{username:$('registerName').value,password:$('registerPassword').value,guestToken:$('importGuest').checked?progressToken:null});
- $('registerPassword').value='';$('registerConfirm').value='';playAccount(r.account,$('registerRole').value)}
+ try{const r=await authPost('register',{username:$('registerName').value,email:$('registerEmail').value,password:$('registerPassword').value,guestToken:$('importGuest').checked?progressToken:null});
+ $('registerPassword').value='';$('registerConfirm').value='';playAccount(r.account,$('registerRole').value);if(r.verificationSent)alert('Verifique seu e-mail para ativar a recuperação de senha.');else alert('Sua conta foi criada. Vincule e confirme um e-mail nas configurações da conta.');}
  catch(err){authError(err.message)}finally{btn.disabled=false}
+});
+$('emailSettingsBtn').addEventListener('click',async()=>{
+ const dialog=$('emailSettingsDialog');$('emailSettingsMessage').textContent='';
+ $('emailSettingsStatus').textContent='Consultando o e-mail da conta…';
+ try{const r=await fetch('/api/auth/session',{credentials:'same-origin',cache:'no-store'}),d=await r.json();
+  $('emailSettingsStatus').textContent=d.account?.emailVerified?'E-mail confirmado: '+d.account.email:'Nenhum e-mail de recuperação confirmado.';
+  if(d.account?.email)$('settingsEmail').value=d.account.email;
+  if(!d.emailRecoveryAvailable)$('emailSettingsMessage').textContent='Envio ainda indisponível. O responsável precisa configurar o serviço de e-mail no servidor.';
+ }catch{$('emailSettingsStatus').textContent='Não foi possível consultar sua conta.'}
+ if(typeof dialog.showModal==='function')dialog.showModal();else dialog.setAttribute('open','');
+});
+$('emailSettingsForm').addEventListener('submit',async e=>{
+ e.preventDefault();const button=e.currentTarget.querySelector('[type=submit]');button.disabled=true;
+ $('emailSettingsMessage').textContent='Enviando confirmação…';
+ try{const r=await authPost('email/request',{email:$('settingsEmail').value,password:$('settingsPassword').value});
+  $('emailSettingsMessage').textContent=r.message;$('settingsPassword').value='';
+ }catch(err){$('emailSettingsMessage').textContent=err.message}finally{button.disabled=false}
 });
 $('logoutBtn').addEventListener('click',async()=>{
  try{await authPost('logout',{})}catch(err){authError(err.message);return}
@@ -110,8 +127,8 @@ async function setupLogin(){
  if(requested==='register')setAuthTab('register');else if(requested==='login'||requested==='account')setAuthTab('login');else setAuthTab('guest');
  try{
   const r=await fetch('/api/auth/session',{credentials:'same-origin',cache:'no-store'});const result=await r.json();
-  accountReady=Boolean(result.persistent);
-  $('authStorageStatus').textContent=accountReady?'Contas e progresso vinculados ao banco externo.':'Cadastro temporariamente indisponível. Você ainda pode jogar como visitante.';
+  accountReady=Boolean(result.persistent);emailRecoveryAvailable=Boolean(result.emailRecoveryAvailable);
+  $('authStorageStatus').textContent=accountReady?(emailRecoveryAvailable?'Contas no banco externo · recuperação por e-mail disponível após verificação.':'Contas no banco externo · envio de e-mails em configuração; modo visitante disponível.'):'Cadastro temporariamente indisponível. Você ainda pode jogar como visitante.';
   $('authStorageStatus').classList.toggle('warning',!accountReady);
   if(!accountReady)return;
   if(result.authenticated && requested!=='guest' && params.get('auto')!=='1'){

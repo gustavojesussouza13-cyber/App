@@ -159,10 +159,32 @@ Na página `/mundo.html`, os jogadores podem:
 2. **Criar conta** — nome de 3–18 caracteres e senha de 10–128; opção de transferir progresso do mesmo navegador.
 3. **Entrar** — nome e senha, para retomar o personagem em outro navegador.
 
-O login utiliza cookie `HttpOnly`, `SameSite=Lax` e `Secure` em produção; as senhas são derivadas com `crypto.scrypt` e salt aleatório; os tokens de sessão são armazenados como hash SHA-256 no PostgreSQL. Sessões válidas por sete dias. Não há recuperação de senha automatizada, confirmação de e-mail ou autenticação de dois fatores nesta versão. A campanha clássica mantém salvamento separado no navegador.
+O login utiliza cookie `HttpOnly`, `SameSite=Lax` e `Secure` em produção; as senhas são derivadas com `crypto.scrypt` e salt aleatório; os tokens de sessão são armazenados como hash SHA-256 no PostgreSQL. Sessões válidas por sete dias. Há recuperação de senha e confirmação de e-mail por tokens de uso único quando um remetente transacional está configurado. Não há autenticação de dois fatores nesta versão. A campanha clássica mantém salvamento separado no navegador.
 
 **Para ativar contas em produção:** configure a variável `DATABASE_URL` com a **Internal Database URL** de um banco PostgreSQL externo (na mesma região do Render). O servidor não inicia caso `DATABASE_URL` esteja configurada, mas o banco esteja indisponível, evitando carregar progresso vazio e substituí-lo. Sem `DATABASE_URL`, o modo visitante usa o salvamento SQLite legado, e cadastro/login ficam desativados.
 
 **Atenção ao plano Render:** o PostgreSQL gratuito **expira em 30 dias**, tem limite de 1 GB e não inclui backups. Ele evita a perda por cada deploy, mas **não oferece persistência permanente**. Antes do vencimento, atualize o banco para um plano persistente e implemente backups verificados. As mudanças de plano, que podem cobrar, precisam ser autorizadas pelo proprietário.
 
 Rotas HTTP: `GET /api/auth/session`, `POST /api/auth/register`, `POST /api/auth/login`, `POST /api/auth/logout`. O WebSocket `/world-ws` continua preservado, agora aceitando `mode: account` para sessões autenticadas ou `mode: guest` para o acesso livre.
+
+
+## Recuperação de senha por e-mail (v2.2 alfa)
+
+- O jogador continua podendo entrar como **Visitante** sem cadastro, e contas existentes mantêm seu personagem e sua senha até que solicitem alteração.
+- **Criar conta:** informe um e-mail opcional; se o serviço de envio estiver habilitado, será enviado um link de verificação. A conta pode ser usada normalmente enquanto o e-mail ainda não estiver confirmado, mas **a recuperação de senha só funciona para e-mails verificados**.
+- **Conta existente:** clique em **E-mail da conta**, informe o endereço e a senha atual para receber o link de confirmação.
+- **Esqueci minha senha:** formulário independente em `/recuperar-senha.html` com resposta que não revela se um e-mail está cadastrado; link de redefinição de uso único, expira em 20 minutos. Alterar a senha invalida sessões antigas sem apagar o personagem.
+- Tokens de verificação (24 horas) e de reset são aleatórios de 256 bits, armazenados no PostgreSQL somente como hash SHA-256 e transportados na **âncora `#` da URL**, sem chegar ao servidor em GET. As páginas não incluem scripts de publicidade.
+- As novas tabelas e colunas são criadas com migrações SQL aditivas na inicialização do servidor.
+
+### Ativação do envio de e-mails
+
+A infraestrutura gratuita do Render pode bloquear SMTP. O projeto utiliza **Resend por HTTPS** para entrega de mensagens. Para ativar o envio, o responsável precisa criar uma conta em https://resend.com, adicionar e verificar um remetente no domínio **cronicasdaaurora.com.br** (registros DNS apresentados pelo próprio provedor no Registro.br) e adicionar **somente no Render → Environment**:
+
+- `RESEND_API_KEY` — chave privada da API do Resend; **nunca** salvar no repositório, frontend, e-mail, captura de tela ou conversa.
+- `RESEND_FROM_EMAIL` — remetente verificado (exemplo: `Os Peregrinos <contato@cronicasdaaurora.com.br>`, somente depois da verificação de domínio).
+- `PUBLIC_SITE_URL` — opcional, se definido deve ser `https://cronicasdaaurora.com.br` para os links de confirmação e recuperação.
+
+Sem essas variáveis o **login, cadastro e visitante continuam funcionando**, porém as páginas indicarão que o envio para recuperar senha está indisponível. Não há envio de verdade enquanto o serviço não for configurado, e os dados do suporte `SUPPORT_EMAIL` não tornam esse e-mail automaticamente um remetente transacional.
+
+No DNS de e-mail, adicione só os registros de validação fornecidos pelo provedor, sem apagar os registros A/CNAME do site nem os registros de e-mail existentes. Verifique periodicamente entregabilidade, quotas e backups do PostgreSQL.
