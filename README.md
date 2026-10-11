@@ -70,3 +70,10 @@ PORT=3000 DATA_FILE=/tmp/os-peregrinos-world.sqlite npm start
 - `tests/world.test.js`, `tests/world-online.test.js`: testes de segurança básica, economia, protocolo e limite.
 
 **Próxima fase para escalar:** persistência fora do servidor, autoritatividade de colisão por tile, navegação entre regiões por portais dentro do mapa, combate com PvE mais sofisticado, instâncias isoladas de masmorras, segurança anti-bot, moderação, canais privados, observabilidade e infraestrutura com ownership distribuído por zonas e fila para lotação.
+
+
+## Correção do visual 16-bit original
+
+O **Mundo Aberto** usa agora o atlas de 78 ilustrações `public/assets/classic-atlas.png`, com os 66 recursos extraídos do jogo clássico (texturas de grama, terra, água, árvores, construções, animações de personagens e inimigos), além de 12 sprites complementares de criaturas em pixel art. O mapa é desenhado por `public/art16.js`, incorporado antes de `public/mmo.js` em `public/mundo.html`.
+
+Ao editar o atlas, mantenha o mapeamento de coordenadas em `public/art16.js` sincronizado com `public/assets/classic-atlas-map.json`. Os PNGs-fonte originais estão na pasta `public/assets/original16/` do **pacote ZIP completo para desenvolvimento**; o site publicado usa apenas o atlas otimizado. A campanha original `/jogo.html` permanece independente. A correção gráfica não altera combate, missões, salvamento ou o limite de dez jogadores.

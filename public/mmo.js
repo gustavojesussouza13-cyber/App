@@ -124,52 +124,21 @@ function drawTravel(){const box=$('travelButtons');box.replaceChildren();let z=s
 }
 function showWorldMap(){if(!session.zones.length)return;const content=session.zones.map(z=>(z.id===session.zone?'● ':'○ ')+z.name).join(' · ');alert(content.slice(0,260));selectTab('quests')}
 $('chatForm').addEventListener('submit',e=>{e.preventDefault();const input=$('chatInput'),text=input.value.trim();if(!text)return;send('chat',{text,channel:$('chatChannel').value});input.value='';$('game').focus()});
-function tileNoise(x,y,z){return rand((Math.floor(x)*73856093 ^ Math.floor(y)*19349663 ^ z*83492791)|0)/4294967296}
-function rect(x,y,w,h,color){ctx.fillStyle=color;ctx.fillRect(Math.round(x),Math.round(y),Math.ceil(w),Math.ceil(h))}
-function spriteDraw(x,y,color,other=false){const px=Math.round(x)-11,py=Math.round(y)-20;rect(px+3,py+24,16,4,'#14281f90');rect(px+6,py+2,11,9,other?'#d1b39a':'#dfc6a1');rect(px+6,py,10,4,'#62492d');rect(px+5,py+11,14,13,color);rect(px+2,py+13,3,10,color);rect(px+19,py+13,3,10,color);rect(px+8,py+23,5,7,'#473b36');rect(px+15,py+23,5,7,'#473b36');rect(px+10,py+5,2,2,'#302b27');rect(px+15,py+5,2,2,'#302b27');rect(px+5,py+10,14,3,'#d8b67d')}
-function scenery(x,y,z){const ox=x-session.cameraX,oy=y-session.cameraY;const n=tileNoise(x/36,y/36,z),biome=session.zones[z]?.biome||'pradaria';
- if(n>.975&&(biome==='floresta'||biome==='pradaria'||biome==='pantano')){
-  rect(ox+6,oy+13,6,17,'#674d35');rect(ox,oy,18,8,'#1e4c36');rect(ox-4,oy+5,25,9,'#2f7047');rect(ox+1,oy-4,15,9,'#427e4a');
- }else if(n>.979&&(biome==='deserto'||biome==='ruinas'||biome==='masmorra')){
-  rect(ox,oy,22,11,'#6d6250');rect(ox+3,oy+1,16,9,'#a99573');rect(ox+8,oy-5,6,7,'#6c6f65');
- }else if(n>.982){rect(ox+5,oy+8,4,4,'#ffdf90');rect(ox+8,oy+5,3,4,'#ead0a3')}
+// A renderização do mundo aberto reutiliza o atlas 16-bit da campanha original.
+const classicRenderer=window.PeregrinoArt16.create({ctx,W,H});
+function canvasDraw(now){
+  ctx.imageSmoothingEnabled=false;
+  session.cameraX=clamp(Math.floor(session.x-W/2),0,ZONE_W-W);
+  session.cameraY=clamp(Math.floor(session.y-H/2),0,ZONE_H-H);
+  fx=fx.filter(f=>now-f.t<1100);
+  classicRenderer.render({zone:session.zone,zones:session.zones,x:session.x,y:session.y,
+    name:session.name||'PEREGRINO',role:session.role,dir:session.dir,
+    monsters:[...session.monsters.values()],players:[...session.players.values()],
+    cameraX:session.cameraX,cameraY:session.cameraY,target:session.target,now,fx,lastAction,
+    moving:Math.hypot(session.x-lastFrameX,session.y-lastFrameY)>0.06});
+  lastFrameX=session.x;lastFrameY=session.y;
 }
-function canvasDraw(now){ctx.clearRect(0,0,W,H);const z=session.zone,seed=z||0;
- session.cameraX=clamp(session.x-W/2,0,ZONE_W-W);session.cameraY=clamp(session.y-H/2,0,ZONE_H-H);
- let x0=Math.floor(session.cameraX/32)*32,y0=Math.floor(session.cameraY/32)*32;
- for(let x=x0;x<session.cameraX+W+32;x+=32)for(let y=y0;y<session.cameraY+H+32;y+=32){
-  const n=tileNoise(x/32,y/32,seed),base=n>.83?shade[seed%16]:tint[seed%16];rect(x-session.cameraX,y-session.cameraY,32,32,base);
-  if(n>.94)rect(x-session.cameraX+11,y-session.cameraY+16,3,4,seed===3?'#e3c994':'#b9c196');
-  if(n<.12){rect(x-session.cameraX+6,y-session.cameraY+9,4,2,'#ffffff20');rect(x-session.cameraX+17,y-session.cameraY+21,6,2,'#ffffff22')}
- }
- // Estradas sinuosas, rios e pontes desenhados conforme a semente do mapa.
- for(let x=x0;x<session.cameraX+W+32;x+=32)for(let y=y0;y<session.cameraY+H+32;y+=32){const ox=x-session.cameraX,oy=y-session.cameraY;
-  if(Math.abs(y-480-Math.sin((x+seed*19)/120)*46)<34)rect(ox,oy,32,32,seed%4===2?'#477f8d':'#a18c67');
-  if(seed%4===2&&Math.abs(x-550-Math.cos(y/120)*48)<32)rect(ox,oy,32,32,'#376a81');
-  scenery(x,y,z)
- }
- for(const m of session.monsters.values()){
-  const px=m.x-session.cameraX,py=m.y-session.cameraY;if(px< -60||px>W+60||py< -50||py>H+50)continue;
-  const selected=session.target===m.id;
-  if(selected){ctx.strokeStyle='#ffe2a4';ctx.lineWidth=3;ctx.strokeRect(px-20,py-30,40,43)}
-  rect(px-13,py-5,26,17,m.boss?'#794d78':m.species%4===0?'#739b66':m.species%4===1?'#68548e':m.species%4===2?'#994c4f':'#607c81');rect(px-10,py-10,20,8,m.boss?'#c78bae':'#9eaa88');rect(px-7,py,3,4,'#f1c98d');rect(px+5,py,3,4,'#f1c98d');
-  rect(px-16,py-27,32,4,'#4a2824');rect(px-16,py-27,32*Math.max(0,m.hp/m.maxHp),4,m.boss?'#f8c47a':'#a9db86');
-  if(m.boss||selected){ctx.font='bold 11px monospace';ctx.textAlign='center';ctx.fillStyle='#fff0c5';ctx.fillText(m.name,px,py-32)}
- }
- for(const p of session.players.values()){
-  const px=p.x-session.cameraX,py=p.y-session.cameraY;spriteDraw(px,py,p.role==='curandeiro'?'#77adc5':p.role==='arqueiro'?'#9c995b':'#b89355',true);ctx.textAlign='center';ctx.font='bold 12px monospace';ctx.fillStyle='#fff0cc';ctx.shadowColor='#050808';ctx.shadowBlur=4;ctx.fillText(p.name+' Lv.'+p.level,px,py-34);ctx.shadowBlur=0;
- }
- spriteDraw(session.x-session.cameraX,session.y-session.cameraY,session.role==='curandeiro'?'#7c9fc6':session.role==='arqueiro'?'#a49755':session.role==='guardiao'?'#c18f6b':'#b6a16b');
- const hx=session.x-session.cameraX,hy=session.y-session.cameraY;
- ctx.textAlign='center';ctx.font='bold 13px monospace';ctx.fillStyle='#ffe4a3';ctx.shadowColor='#000';ctx.shadowBlur=5;ctx.fillText(session.name||'PEREGRINO',hx,hy-34);ctx.shadowBlur=0;
- if(now-lastAction<180){ctx.strokeStyle='#f4e7aa';ctx.lineWidth=3;ctx.beginPath();ctx.arc(hx,hy,22,-Math.PI*.75,Math.PI*.3);ctx.stroke()}
- fx=fx.filter(f=>now-f.t<1100);for(const f of fx){let t=(now-f.t)/1100;ctx.fillStyle=f.color;ctx.font='bold 16px monospace';ctx.textAlign='center';ctx.fillText(f.text,f.x-session.cameraX,f.y-session.cameraY-20-36*t)}
- // minimapa: objetivos simples, sem transmitir todo o mapa ao navegador.
- const mapX=W-173,mapY=18;rect(mapX,mapY,152,100,'#09231ce8');ctx.strokeStyle='#d9bd85';ctx.strokeRect(mapX,mapY,152,100);
- for(const m of session.monsters.values()){if(m.hp<=0)continue;rect(mapX+m.x/ZONE_W*148+2,mapY+m.y/ZONE_H*94+3,m.boss?5:2,m.boss?5:2,m.boss?'#ffc17b':'#ad7b66')}
- for(const p of session.players.values())rect(mapX+p.x/ZONE_W*148+2,mapY+p.y/ZONE_H*94+3,4,4,'#d0e8f1');rect(mapX+session.x/ZONE_W*148,mapY+session.y/ZONE_H*94,5,5,'#ffffff');
- ctx.fillStyle='#f2dfa9';ctx.textAlign='left';ctx.font='bold 10px monospace';ctx.fillText(`MAPA ${z+1}/16`,mapX+7,mapY+114);
-}
+let lastFrameX=768,lastFrameY=512;
 let lastFrame=0;function tick(t){const dt=Math.min(.065,(t-lastFrame)/1000||0);lastFrame=t;
  if(session.connected&&$('welcomeOverlay').hidden){let dx=0,dy=0;if(moves.up.some(k=>keys.has(k)))dy--;if(moves.down.some(k=>keys.has(k)))dy++;if(moves.left.some(k=>keys.has(k)))dx--;if(moves.right.some(k=>keys.has(k)))dx++;
   if(dx||dy){const l=Math.hypot(dx,dy);session.x=clamp(session.x+dx/l*166*dt,24,ZONE_W-24);session.y=clamp(session.y+dy/l*166*dt,24,ZONE_H-24);session.dir=Math.abs(dx)>Math.abs(dy)?dx>0?1:3:dy>0?2:0}
