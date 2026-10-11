@@ -3,7 +3,7 @@ on:
   pull_request:
     branches: [os-peregrinos-online]
   push:
-    branches: [os-peregrinos-online]
+    branches: [os-peregrinos-online, 'hardening/**']
 jobs:
   tests:
     runs-on: ubuntu-latest
