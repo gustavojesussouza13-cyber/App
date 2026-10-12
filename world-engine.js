@@ -128,7 +128,7 @@ class World {
   if(!CLASSES[s.role])s.role='peregrino';if(!Number.isInteger(s.zone)||s.zone<0||s.zone>=ZONES.length)s.zone=0;
   s.level=clamp(Math.floor(Number(s.level)||1),1,100);s.hp=clamp(Math.floor(Number(s.hp)||hpMax(s)),1,hpMax(s));s.x=clamp(Number(s.x)||ZONE_W/2,28,ZONE_W-28);s.y=clamp(Number(s.y)||ZONE_H/2,28,ZONE_H-28);
   s.inventory={...defaultSave().inventory,...(s.inventory||{})};if(!Array.isArray(s.quests))s.quests=[];if(!Array.isArray(s.visited))s.visited=[0];s.story=normalizeStory(s.story);
-  const p={id:crypto.randomUUID(),uid,name,socket:c.socket,save:s,x:s.x,y:s.y,zone:s.zone,dir:2,lastMove:Date.now(),lastAttack:0,lastSpell:0,lastChat:0,lastUse:0,party:null,live:true};
+  const p={id:crypto.randomUUID(),uid,name,socket:c.socket,save:s,x:s.x,y:s.y,zone:s.zone,dir:2,lastMove:Date.now(),moveCredit:12,lastAttack:0,lastSpell:0,lastChat:0,lastUse:0,party:null,live:true};
   c.worldPlayer=p;c.socket._worldClient=c;this.players.set(p.id,p);
   this.send(c.socket,{type:'welcome',self:this.ownStatus(p),zones:this.zoneInfo(),shop:GOODS,quests:QUESTS,npcs:NPCS.map(publicNpc),maxPlayers:10,online:this.players.size+this.getOnline(),monsterTotal:this.totalMonsters()});
   this.broadcast({type:'system',text:p.name+' chegou ao mundo.'},q=>q.id!==p.id);
@@ -151,9 +151,15 @@ class World {
   switch(d.type){
    case 'move':{
     if(now-p.lastMove<20)break;const x=Number(d.x),y=Number(d.y);if(!Number.isFinite(x)||!Number.isFinite(y))break;
-    const dt=clamp((now-p.lastMove)/1000,.02,.25);const speed=195;const dd=Math.hypot(x-p.x,y-p.y);const limit=speed*dt+8;
-    const f=dd>limit?limit/dd:1;
+    // Orçamento de movimento baseado no tempo, não tolerância por pacote:
+    // spam de comandos não permite superar a velocidade máxima no longo prazo.
+    const dt=clamp((now-p.lastMove)/1000,0,.25),speed=195;
+    const credit=Math.min(speed*.25+12,Math.max(0,p.moveCredit??12)+speed*dt);
+    const dd=Math.hypot(x-p.x,y-p.y);
+    const allowed=Math.min(dd,credit);
+    const f=dd>0?allowed/dd:0;
     p.x=clamp(p.x+(x-p.x)*f,24,ZONE_W-24);p.y=clamp(p.y+(y-p.y)*f,24,ZONE_H-24);
+    p.moveCredit=Math.max(0,credit-allowed);
     p.dir=Number.isInteger(d.dir)?clamp(d.dir,0,3):2;p.lastMove=now;
     p.save.x=p.x;p.save.y=p.y;this.dirty=true;break;
    }

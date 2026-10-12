@@ -57,3 +57,19 @@ test('campanha clássica mostra retorno ao Mundo Online sem perder o jogo origin
  assert.match(js,/VOLTAR À VERSÃO ONLINE \(MMORPG\)/);
  assert.match(js,/header\.href=target/);
 });
+
+test('rota /health confirma processo e /health/ready sinaliza falta de banco',async()=>{
+ await ready();
+ const [live,readyResponse]=await Promise.all([
+  fetch(`http://127.0.0.1:${PORT}/health`),
+  fetch(`http://127.0.0.1:${PORT}/health/ready`)
+ ]);
+ assert.equal(live.status,200);
+ assert.equal(await live.text(),'ok');
+ // Este servidor dos testes roda intencionalmente sem DATABASE_URL.
+ assert.equal(readyResponse.status,503);
+ const status=await readyResponse.json();
+ assert.equal(status.ready,false);
+ assert.equal(status.database,'unavailable');
+ assert.equal(readyResponse.headers.get('cache-control'),'no-store');
+});

@@ -168,12 +168,33 @@ function reply(res, status, body, type='text/plain; charset=utf-8') {
   res.writeHead(status, {'Content-Type':type,'Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'strict-origin-when-cross-origin','X-Frame-Options':'SAMEORIGIN'});
   res.end(body);
 }
+// Readiness é diferente de liveness: Render usa /health para o processo;
+ // /health/ready confirma que contas e dados continuam acessíveis no PostgreSQL.
+let readinessCache={until:0,ok:false};
+async function checkReadiness(){
+ const now=Date.now();
+ if(now<readinessCache.until)return readinessCache.ok;
+ if(!accountStore?.ready){readinessCache={until:now+3000,ok:false};return false}
+ try{
+  await accountStore.pool.query({text:'SELECT 1',query_timeout:2000});
+  readinessCache={until:Date.now()+3000,ok:true};
+ }catch(err){
+  readinessCache={until:Date.now()+3000,ok:false};
+  console.warn('[saúde] PostgreSQL indisponível no teste de prontidão:',err.message);
+ }
+ return readinessCache.ok;
+}
 const httpServer = http.createServer((req,res)=>{
   const u = new URL(req.url||'/', 'http://localhost');
   if(u.pathname.startsWith('/api/auth/')){void handleAuth(req,res,u.pathname);return}
   if(req.method !== 'GET') return reply(res,405,'Método não permitido');
   if(u.pathname==='/api/status') return reply(res,200,JSON.stringify({online:players.size+world.count,maxPlayers:MAX_PLAYERS,availableSlots:Math.max(0,MAX_PLAYERS-players.size-world.count),regions:[...new Set([...players.values()].map(p=>p.zone))].length,world:world.status(),registeredAccounts:!!accountStore?.ready,persistentStorage:!!accountStore?.ready,version:'2.0-5.1-auth'}),'application/json; charset=utf-8');
   if(u.pathname==='/health') return reply(res,200,'ok');
+  if(u.pathname==='/health/ready'){
+    void checkReadiness().then(ok=>jsonResponse(res,ok?200:503,{ready:ok,database:ok?'connected':'unavailable'}))
+      .catch(()=>jsonResponse(res,503,{ready:false,database:'unavailable'}));
+    return;
+  }
   const routes={'/':'/index.html','/jogar':'/jogo.html','/jogo':'/jogo.html','/mundo':'/mundo.html','/online':'/mundo.html'};
   let pathname=routes[u.pathname] || u.pathname;
   let decoded;
