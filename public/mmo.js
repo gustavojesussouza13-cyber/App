@@ -375,6 +375,16 @@ function drawTab(){const parent=$('tabContent');parent.replaceChildren();const s
   const createGuild=document.createElement('button');createGuild.textContent='Criar (250 moedas)';createGuild.onclick=()=>send('guild',{action:'create',name:gn.value.trim()});
   const inviteGuild=document.createElement('button');inviteGuild.textContent='Convidar';inviteGuild.onclick=()=>send('guild',{action:'invite',target:target.value.trim()});gactions.append(createGuild,inviteGuild,button('Sair','guild',{action:'leave'}));g.append(gactions);
   if(session.guildInvite)g.append(button('Aceitar guilda '+session.guildInvite.name,'guild',{action:'accept',name:session.guildInvite.name}));
+  const silence=group(parent);appendText(silence,'b','Proteção do chat');
+  appendText(silence,'small','Silencie mensagens de outros jogadores. O bloqueio acompanha seu personagem.');
+  const muted=field(silence,'mutedName','Nome para silenciar ou liberar',18);
+  const controls=document.createElement('div');controls.className='entry-actions';
+  const muteBtn=document.createElement('button');muteBtn.textContent='Silenciar';
+  muteBtn.onclick=()=>send('ignore',{action:'add',target:muted.value.trim()});
+  const unmuteBtn=document.createElement('button');unmuteBtn.textContent='Liberar';
+  unmuteBtn.onclick=()=>send('ignore',{action:'remove',target:muted.value.trim()});
+  controls.append(muteBtn,unmuteBtn);silence.append(controls);
+  if(s.blocked?.length)appendText(silence,'small','Silenciados: '+s.blocked.join(', '));
   const t=group(parent);appendText(t,'b','Entregar item / moedas');appendText(t,'small','Somente jogadores próximos (até 200 unidades). Transferência é irreversível.');const to=field(t,'tradeTarget','Nome do destinatário',18);
   const item=document.createElement('select');for(const [id,good] of Object.entries({...session.shop,...session.relics})){
    if((s.inventory?.[id]||0)<1)continue;
