@@ -7,6 +7,7 @@
 })(typeof globalThis!=='undefined'?globalThis:this,function(){
  const NOTES=Object.freeze({
   arrow:[[680,0,.065,'triangle'],[420,.07,.075,'sine']],
+  magic:[[490,0,.1,'sine'],[740,.07,.13,'sine'],[930,.13,.12,'triangle']],
   hit:[[180,0,.09,'triangle'],[85,.05,.11,'sine']],
   hurt:[[210,0,.11,'sawtooth'],[120,.07,.12,'triangle']],
   victory:[[390,0,.14,'sine'],[590,.14,.13,'sine'],[780,.29,.23,'triangle']],

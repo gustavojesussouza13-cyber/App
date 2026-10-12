@@ -63,5 +63,6 @@ test('efeitos desktop são carregados antes do jogo e controle fica oculto em te
  assert.match(css,/@media \(hover: none\),\(pointer: coarse\)\{\.desktop-audio-toggle\{display:none!important\}\}/);
  assert.match(game,/desktopAudio\.bind\(\$\('audioToggle'\)\)/);
  assert.match(game,/desktopAudio\.play\('hurt'\)/);
- assert.match(game,/desktopAudio\.play\(msg\.projectile==='arrow'\?'arrow':'hit'\)/);
+ assert.match(game,/desktopAudio\.play\(msg\.projectile==='arrow'\?'arrow':msg\.projectile==='holy-bolt'\?'magic':'hit'\)/);
+ assert.match(read('sounds-desktop.js'),/magic:\[\[/);
 });
