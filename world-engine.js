@@ -283,8 +283,30 @@ class World {
   if(skill)p.lastSpell=now;else p.lastAttack=now;
   const level=p.save.level,weapon=(p.save.inventory.espada||0)>0?7:(p.save.inventory.arco||0)>0?6:0;
   let damage=Math.round(role.attack+level*2+weapon+(skill?role.attack*.9:0));
+  const marker=this.players.get(m.markOwner);
+  if(m.markUntil>now&&marker&&marker.id!==p.id&&marker.party&&p.party===marker.party){
+   damage+=Math.max(1,Math.round(damage*.18));
+  }
+  if(skill&&p.save.role==='arqueiro'){
+   m.markUntil=now+5500;m.markOwner=p.id;
+   this.tell(p,'✦ Flecha de precisão: aliados da equipe causam dano adicional por 5,5 s.');
+  }
+  if(skill&&p.save.role==='guardiao'){
+   for(const ally of this.players.values())if(ally.zone===p.zone&&dist(p,ally)<230&&(ally.id===p.id||(p.party&&ally.party===p.party))){
+    ally.guardUntil=now+4500;
+    this.tell(ally,'✦ Proteção do Guardião: defesa aumentada por 4,5 s.');
+   }
+  }
+  if(skill&&p.save.role==='peregrino'){
+   p.save.hp=Math.min(hpMax(p.save),p.save.hp+12+level*2);
+   this.send(p.socket,this.ownStatus(p));
+  }
   if(skill&&p.save.role==='curandeiro'){
-   for(const ally of this.players.values())if(ally.zone===p.zone&&dist(p,ally)<230){ally.save.hp=clamp(ally.save.hp+28+level*4,1,hpMax(ally.save));this.send(ally.socket,this.ownStatus(ally));}
+   for(const ally of this.players.values()){
+    if(ally.zone!==p.zone||dist(p,ally)>=230||!(ally.id===p.id||(p.party&&ally.party===p.party)))continue;
+    ally.save.hp=clamp(ally.save.hp+28+level*4,1,hpMax(ally.save));
+    this.send(ally.socket,this.ownStatus(ally));
+   }
   }
   m.hp=Math.max(0,m.hp-damage);m.damageFrom.set(p.id,(m.damageFrom.get(p.id)||0)+damage);
   // Sem agressividade por proximidade: o monstro só enfrenta quem o atacou.
@@ -294,7 +316,7 @@ class World {
   // Arco simples é equipamento inicial da classe; o Arco dos ventos da loja é melhoria.
   const projectile=p.save.role==='arqueiro'?{projectile:'arrow',from:{x:Math.round(p.x),y:Math.round(p.y-34)},to:{x:Math.round(m.x),y:Math.round(m.y-22)}}:{};
   this.broadcast({type:'hit',monster:m.id,zone:m.zone,damage,remaining:m.hp,by:p.name,skill,...projectile},q=>q.zone===p.zone&&dist(q,m)<780);
-  if(m.hp===0){m.aggroTarget=null;m.aggroUntil=0;m.windupUntil=0;m.deadUntil=now+(m.boss?45000:14000);let recipients=new Map();for(const [pid] of m.damageFrom){const x=this.players.get(pid);if(x&&x.zone===p.zone&&dist(x,m)<690)recipients.set(x.id,x)}
+  if(m.hp===0){m.aggroTarget=null;m.aggroUntil=0;m.windupUntil=0;m.markUntil=0;m.markOwner=null;m.deadUntil=now+(m.boss?45000:14000);let recipients=new Map();for(const [pid] of m.damageFrom){const x=this.players.get(pid);if(x&&x.zone===p.zone&&dist(x,m)<690)recipients.set(x.id,x)}
    for(const x of [...recipients.values()])if(x.party){for(const ally of this.players.values())if(ally.party===x.party&&ally.zone===x.zone&&dist(ally,m)<500)recipients.set(ally.id,ally)}
    for(const x of recipients.values())this.award(x,Math.round(m.xp/Math.max(1,recipients.size)*1.3),Math.ceil(m.coins/Math.max(1,recipients.size)),m.boss,m.zone);
    this.broadcast({type:'defeated',monster:m.id,zone:m.zone,by:p.name,boss:m.boss},q=>q.zone===p.zone);
@@ -302,6 +324,10 @@ class World {
   }
  }
  award(p,xp,gold,boss=false,zone=p.zone){const s=p.save;const story=s.story;const chapter=chapters[story.stage];if(chapter&&story.active&&chapter.objective>0&&chapter.zone===zone){story.progress=Math.min(chapter.objective,story.progress+1);if(story.progress===chapter.objective)this.tell(p,`✦ Objetivo concluído! Volte e converse com ${chapter.name}.`)}s.xp+=xp;s.coins+=gold;s.kills++;while(s.level<100&&s.xp>=xpNeed(s.level)){s.xp-=xpNeed(s.level);s.level++;s.hp=hpMax(s);this.tell(p,'✦ Você alcançou o nível '+s.level+'!')}
+  if(s.kills>=1)this.unlockAchievement(p,'primeira-vitoria');
+  if(s.kills>=25)this.unlockAchievement(p,'cacas-25');
+  if(s.kills>=100)this.unlockAchievement(p,'cacas-100');
+  if(boss)this.unlockAchievement(p,'primeiro-chefe');
   if(boss){s.inventory.superpocao=(s.inventory.superpocao||0)+1;this.tell(p,'★ Chefe derrotado! Você recebeu uma poção radiante.');}
   this.send(p.socket,{type:'reward',xp,gold,boss});this.send(p.socket,this.ownStatus(p));this.dirty=true;
  }
@@ -354,7 +380,7 @@ class World {
   const activeZones=new Set([...this.players.values()].map(p=>p.zone));
   for(const zone of activeZones){for(const m of this.monsters.get(zone)||[]){
    if(m.hp<=0){
-    if(now>=m.deadUntil){m.hp=m.maxHp;m.x=m.home.x;m.y=m.home.y;m.damageFrom.clear();m.aggroTarget=null;m.aggroUntil=0;m.lastAttack=0;m.windupUntil=0;m.wanderGoal=null;m.wander=now+1500}
+    if(now>=m.deadUntil){m.hp=m.maxHp;m.x=m.home.x;m.y=m.home.y;m.damageFrom.clear();m.aggroTarget=null;m.aggroUntil=0;m.lastAttack=0;m.windupUntil=0;m.markUntil=0;m.markOwner=null;m.wanderGoal=null;m.wander=now+1500}
     else continue;
    }
    const target=m.aggroTarget?this.players.get(m.aggroTarget):null;
@@ -396,14 +422,15 @@ class World {
    // O ataque precisa ser anunciado e permanecer ao alcance até o golpe.
    if(d>=53){m.windupUntil=0;continue}
    if(!m.windupUntil&&now-m.lastAttack>2200){
-    m.windupUntil=now+650;
-    this.send(target.socket,{type:'monsterWindup',monster:m.id,zone:m.zone,duration:650});
+    const warning=m.boss?1100:650;
+    m.windupUntil=now+warning;
+    this.send(target.socket,{type:'monsterWindup',monster:m.id,zone:m.zone,duration:warning,boss:m.boss});
     continue;
    }
    if(m.windupUntil&&now>=m.windupUntil){
     m.windupUntil=0;m.lastAttack=now;
-    const defense=CLASSES[target.save.role].defense+(target.save.inventory.amuleto?4:0);
-    const damage=Math.max(1,m.damage-defense);target.save.hp-=damage;
+    const defense=CLASSES[target.save.role].defense+(target.save.inventory.amuleto?4:0)+(target.guardUntil>now?8+Math.floor(target.save.level/3):0);
+    const damage=Math.max(1,Math.ceil(m.damage*(m.boss?1.2:1))-defense);target.save.hp-=damage;
     this.send(target.socket,{type:'hurt',damage,monster:m.name});
     if(target.save.hp<=0){
      target.save.hp=hpMax(target.save);target.x=ZONE_W/2;target.y=ZONE_H/2;
