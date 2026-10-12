@@ -180,6 +180,133 @@ function create({ctx,W,H}){
   if(typeof pixelDetail!=='undefined'&&pixelDetail)pixelDetail.drawCombat(g,shot);
   g.restore();
  }
+ // Contraste final por classe, aplicado DEPOIS do atlas ou do sprite
+ // procedural. É intencionalmente independente do SpriteStudio: mesmo um
+ // cliente com fallback mantém Guardião, Curandeiro e Peregrino distintos.
+ // Todos os contornos são pixels inteiros, alinhados ao mundo 2D.
+ function drawClassIdentity(g,p,dir=2,now=0,moving=false){
+  const role=spriteStudio?.normalizeRole?.(p.role)||
+   ({guardiao:'guardiao',curandeiro:'curandeiro',arqueiro:'arqueiro',peregrino:'peregrino'}[p.role]||'peregrino');
+  const x=Math.round(p.x),y=Math.round(p.y);
+  const step=moving?Math.round(Math.sin(now/105)*2):0;
+  const pix=(color,dx,dy,w,h)=>{
+   if(w<=0||h<=0)return;
+   g.fillStyle=color;g.fillRect(x+Math.round(dx),y+Math.round(dy),w,h);
+  };
+  const back=dir===0,side=dir===1||dir===3;
+  if(role==='guardiao'){
+   // Armadura cerúlea cobre o torso, ombreiras metálicas e grande escudo
+   // recortado à esquerda. Mantém silhueta mesmo de costas e andando.
+   pix('#182a45',-19,-43,38,29);
+   pix('#3b659b',-16,-40,32,24);
+   pix('#638fc0',-15,-40,12,7);
+   pix('#12273d',10,-37,5,19);
+   pix('#d0dee0',-25,-45,13,11);
+   pix('#718eaf',-23,-43,11,7);
+   pix('#d0dee0',12,-45,13,11);
+   pix('#7d9bb4',14,-43,9,7);
+   pix('#e5b765',-3,-37,7,17);
+   pix('#ffe29b',-9,-31,20,4);
+   pix('#28426c',-14,-15,28,7);
+   pix('#d3e1e2',-12,-13,7,7);pix('#d3e1e2',5,-13,7,7);
+   pix('#4a6883',-10,-10,8,5);pix('#4a6883',4,-10,8,5);
+   // Elmo, não capuz verde.
+   pix('#1e3147',-17,-68,34,20);
+   pix('#c4d2d9',-15,-65,30,13);
+   pix('#f2f4dd',-13,-64,13,3);
+   pix('#4a6c8d',-12,-54,25,6);
+   pix('#d7ab55',-3,-71,7,19);
+   pix('#ffe2a0',-1,-68,3,10);
+   if(!back){pix('#d9a67a',-7,-51,16,5);pix('#273b55',-6,-53,15,2)}
+   // Escudo grande de contorno dourado.
+   pix('#1b304b',-31,-42+step,20,32);
+   pix('#d9b06b',-29,-41+step,17,28);
+   pix('#2d609b',-27,-39+step,13,24);
+   pix('#87a9c9',-25,-37+step,5,7);
+   pix('#ffe0a1',-22,-34+step,4,16);
+   pix('#ffe0a1',-25,-29+step,11,4);
+   // Espada levantada de metal, não um arco.
+   pix('#473932',22,-22-step,4,17);
+   pix('#f0c783',19,-26-step,11,4);
+   pix('#516e89',22,-61-step,5,35);
+   pix('#f4f8ee',23,-59-step,2,27);
+   pix('#d5e2e2',23,-65-step,2,6);
+  }else if(role==='curandeiro'){
+   // Veste ampla em marfim com sombras rosadas: ocupa a parte inferior
+   // inteira e jamais pode ser confundida com roupa de caçador verde.
+   pix('#6e445e',-22,-43,44,35);
+   pix('#d9c9cc',-19,-41,38,32);
+   pix('#fff5e4',-16,-40,30,28);
+   pix('#f9ecdf',-13,-38,16,24);
+   pix('#b95874',-18,-40,7,32);
+   pix('#ad4c66',11,-40,7,32);
+   pix('#e9c37c',-5,-35,11,17);
+   pix('#b15d68',-2,-33,5,13);
+   pix('#ffeda3',-5,-27,11,3);
+   pix('#b3576e',-20,-12,40,5);
+   pix('#f1ddd2',-14,-11,28,4);
+   pix('#fff4e9',-12,-8,8,3);pix('#fff4e9',5,-8,8,3);
+   // Capuz branco alto, manto vermelho por trás, sombra no rosto.
+   pix('#744b61',-20,-67,40,22);
+   pix('#f4e9df',-18,-69,36,17);
+   pix('#fff9ed',-15,-67,23,5);
+   pix('#c56878',-18,-57,36,5);
+   if(back){
+    pix('#ba627a',-11,-55,22,14);
+    pix('#e8c68d',-6,-51,12,9);
+   }else{
+    pix('#a87573',-12,-53,25,4);
+    pix('#e2b08c',-9,-51,18,7);
+    pix('#fae1b9',-8,-50,8,3);
+   }
+   // Cajado e cristal cyan, visíveis em qualquer direção.
+   pix('#47392f',26,-57-step,6,55);
+   pix('#c79661',28,-53-step,3,49);
+   pix('#395b78',23,-73-step,12,17);
+   pix('#68c5e2',24,-71-step,10,13);
+   pix('#e5fff7',26,-68-step,4,5);
+   pix('#f3d18e',25,-56-step,9,4);
+  }else if(role==='arqueiro'){
+   // Capuz verde e aljava no lado oposto ao arco.
+   pix('#1e4735',-17,-66,33,19);
+   pix('#4b8d53',-15,-64,27,13);
+   pix('#9dc27c',-13,-62,14,3);
+   pix('#294f34',-16,-41,29,25);
+   pix('#588e4c',-13,-38,18,19);
+   pix('#b08a5c',13,-52,11,27);
+   for(let i=0;i<3;i++)pix('#f6e2b1',16+i*3,-58+(i%2)*2,2,16);
+   pix('#603e2b',-27,-54+step,5,41);
+   pix('#e1ad6c',-25,-53+step,2,34);
+   pix('#f2ddaf',-19,-51+step,2,37);
+  }else{
+   // Peregrino: silhueta de aventureiro com cachecol vermelho,
+   // armadura de couro e alforje — jamais uma roupa verde.
+   pix('#49312f',-18,-43,35,26);
+   pix('#997047',-15,-40,29,22);
+   pix('#c09360',-13,-38,10,10);
+   pix('#654335',8,-39,5,20);
+   pix('#512934',-18,-47,37,11);
+   pix('#ba5350',-16,-45,33,7);
+   pix('#ee9270',-13,-44,18,3);
+   pix('#593138',-23,-42+step,12,31);
+   pix('#ab4f4b',-21,-40+step,8,26);
+   pix('#dd7c64',-20,-37+step,3,16);
+   pix('#6a4938',-16,-17,32,9);
+   pix('#d4b079',-13,-16,8,3);
+   pix('#3f3133',-12,-10,9,7);pix('#3f3133',4,-10,9,7);
+   pix('#6d482f',13,-35,10,18);
+   pix('#bd8851',15,-33,6,4);
+   pix('#4c332b',-15,-61,30,15);
+   pix('#a66a41',-13,-60,26,8);
+   pix('#e9b37b',-9,-58,14,3);
+   if(!back){pix('#eac096',-9,-53,18,7);pix('#7a4b37',-7,-50,14,2)}
+   pix('#e1d8b8',22,-54-step,4,36);pix('#a2afb7',23,-51-step,2,29);
+  }
+  // Contorno superior com tonalidade exclusiva de cada profissão.
+  if(side&&role==='guardiao')pix('#f7e9ba',-18,-43,4,9);
+  if(side&&role==='curandeiro')pix('#fffaf0',-19,-41,5,19);
+  return role;
+ }
  function character(g,p,local,now,moved,attacking=false,pose=null){
   const key=heroSheets[p.role]||'gustavo_andar',w=53,h=65;
   drawShadow(g,p.x,p.y,w);
@@ -194,9 +321,11 @@ function create({ctx,W,H}){
    if(pixelDetail)pixelDetail.drawHero(g,p,now);
    if(p.role==='arqueiro')drawBow(g,p,dir,attacking);
   }
+  const finalRole=drawClassIdentity(g,p,dir,now,moved);
   g.save();g.textAlign='center';g.font=(local?'bold 15px':'bold 13px')+' monospace';
   g.shadowColor='#000b';g.shadowBlur=5;g.lineWidth=3;g.strokeStyle='#0e271e';
-  const label=(p.name||'Peregrino')+(local?'':' · Lv.'+(p.level||1));
+  const roleName={guardiao:'Guardião',curandeiro:'Curandeiro',arqueiro:'Arqueiro',peregrino:'Peregrino'}[finalRole];
+  const label=(p.name||'Peregrino')+(local?' · '+roleName:' · Lv.'+(p.level||1));
   g.strokeText(label,p.x,p.y-h-5);g.fillStyle=local?'#ffe4a3':'#f1edd4';g.fillText(label,p.x,p.y-h-5);g.restore();
  }
  function npcActor(g,n,active,finished,now){
