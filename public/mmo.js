@@ -55,7 +55,7 @@ function character(c){session.characters=c;session.zone=c.zone;session.role=c.ro
  $('charName').textContent=c.name||session.name;$('playerClass').textContent={peregrino:'Peregrino',guardiao:'Guardião',arqueiro:'Arqueiro',curandeiro:'Curandeiro'}[c.role]||c.role;
  $('playerLevel').textContent='Nível '+c.level;$('playerCoins').textContent='◈ '+c.coins+' moedas';$('hpText').textContent=c.hp+' / '+c.maxHp;
  $('xpText').textContent=c.xp+' / '+c.nextXp;$('hpBar').style.width=clamp(c.hp/c.maxHp*100,0,100)+'%';$('xpBar').style.width=clamp(c.xp/c.nextXp*100,0,100)+'%';
- session.story=c.story||null;$('kills').textContent=c.kills;$('visited').textContent=c.visited.length+'/16';$('zoneTitle').textContent=session.zones[c.zone]?.name||('Região '+c.zone);drawTravel();drawTab();
+ session.story=c.story||null;$('kills').textContent=c.kills;$('visited').textContent=c.visited.length+'/'+(session.zones.length||40);$('zoneTitle').textContent=session.zones[c.zone]?.name||('Região '+c.zone);drawTravel();drawTab();
 }
 function displayOnline(n){session.online=n;$('playerCount').textContent=n+'/10';setOnline(true,'✦ '+n+'/10 peregrinos online')}
 function dispatch(msg){
@@ -338,9 +338,10 @@ function drawTab(){const parent=$('tabContent');parent.replaceChildren();const s
   appendText(parent,'h3','Crônicas da jornada');for(const q of session.quests){
    const done=s.quests.includes(q.id);
    const progress=q.type==='regions'?new Set(s.visited||[]).size:
+    q.type==='depths'?new Set((s.visited||[]).filter(z=>z>=16&&z<session.zones.length)).size:
     q.type==='bosses'?new Set(s.bossRelics||[]).size:
     q.type==='chapters'?(s.story?.stage||0):(s.kills||0);
-   const unit=q.type==='regions'?'regiões':q.type==='bosses'?'chefes':q.type==='chapters'?'capítulos':'derrotas';
+   const unit=q.type==='regions'?'regiões':q.type==='depths'?'subsolos':q.type==='bosses'?'chefes':q.type==='chapters'?'capítulos':'derrotas';
    const canClaim=progress>=q.target;
    const d=group(parent);appendText(d,'b',q.name);appendText(d,'small',q.description);
    appendText(d,'small',done?'✓ Concluída':`${progress}/${q.target} ${unit} · ${q.reward} XP · ${q.coins} moedas${canClaim?' · PRONTA':''}`)
@@ -429,11 +430,44 @@ $('npcNext').onclick=advanceDialogue;$('npcClose').onclick=closeDialogue;
 function showEpilogue(data){openDialogue({name:'✦ Crônicas da Aurora',title:'O reino voltou a lembrar',chapter:'O sétimo verso',pages:[data.epilogue,'O mundo continua aberto. As pessoas têm novas histórias para contar, e sua aventura pode prosseguir com os amigos.'],choices:[]})}
 function drawTravel(){const box=$('travelButtons');box.replaceChildren();let z=session.zone;
  if(!session.connected)return;
- const dest= z>=12?[[[1,3,5,11][z-12], '↩ Sair da masmorra']]:session.zones.filter(a=>a.id<12&&(Math.abs(a.id-z)<=2)&&a.id!==z).map(a=>[a.id,a.name]);
- if(z<12){for(let i=12;i<16;i++)if([1,3,5,11][i-12]===z)dest.push([i,'⌘ '+session.zones[i].name+' (chave)'])}
- for(const [id,name] of dest){const b=document.createElement('button');b.textContent=name;b.onclick=()=>send('travel',{zone:id});box.append(b)}
+ // O menu reutiliza as mesmas ligações que o servidor autoriza; não cria atalhos.
+ for(const gate of session.portals){
+  const b=document.createElement('button');
+  b.textContent=gate.stair?(gate.stair==='down'?'↧ Descer · ':'↥ Subir · ')+gate.name:
+    (gate.dungeon&&z<12?'⌘ '+gate.name+' (chave)':gate.name);
+  b.title=gate.stair?'Acesse a escadaria no mundo ou use este botão':'Destino conectado';
+  b.onclick=()=>send('travel',{zone:gate.zone});
+  box.append(b);
+ }
 }
-function showWorldMap(){if(!session.zones.length)return;const content=session.zones.map(z=>(z.id===session.zone?'● ':'○ ')+z.name).join(' · ');alert(content.slice(0,260));selectTab('quests')}
+function showWorldMap(){
+ if(!session.zones.length)return;
+ let dialog=$('worldAtlasDialog');
+ if(!dialog){
+  dialog=document.createElement('dialog');dialog.id='worldAtlasDialog';dialog.className='world-atlas-dialog';
+  document.body.append(dialog);
+ }
+ dialog.replaceChildren();
+ const header=document.createElement('div');header.className='atlas-heading';
+ const heading=document.createElement('h2');heading.textContent='✦ Atlas de Auren · '+session.zones.length+' regiões';
+ const close=document.createElement('button');close.type='button';close.textContent='✕ Fechar';
+ close.onclick=()=>dialog.close();
+ header.append(heading,close);dialog.append(header);
+ const description=document.createElement('p');
+ description.textContent='Explore o continente e desça por quatro complexos de masmorras. Os pontos dourados mostram regiões já visitadas. Use os portais para viajar.';
+ dialog.append(description);
+ const grid=document.createElement('div');grid.className='atlas-grid';
+ const explored=new Set(session.characters?.visited||[]);
+ for(const z of session.zones){
+  const tile=document.createElement('div');tile.className='atlas-entry'+(z.id===session.zone?' current':'')+(explored.has(z.id)?' explored':'');
+  const title=document.createElement('b');title.textContent=(explored.has(z.id)?'✦ ':'◇ ')+z.name;
+  const sub=document.createElement('small');
+  sub.textContent=z.id<12?'Superfície · '+z.biome:
+    z.id<16?'Masmorra principal':('Subsolo '+(1+(z.id-16)%6)+' · Complexo '+(1+Math.floor((z.id-16)/6)));
+  tile.append(title,sub);grid.append(tile);
+ }
+ dialog.append(grid);if(!dialog.open)dialog.showModal();
+}
 $('chatForm').addEventListener('submit',e=>{e.preventDefault();const input=$('chatInput'),text=input.value.trim();if(!text)return;send('chat',{text,channel:$('chatChannel').value});input.value='';$('game').focus()});
 // A renderização do mundo aberto reutiliza o atlas 16-bit da campanha original.
 const classicRenderer=window.PeregrinoArt16.create({ctx,W,H});
