@@ -25,7 +25,7 @@ test('silenciamento impede o chat global sem afetar outros jogadores',t=>{
  assert.equal(c.events().filter(m=>m.type==='chat').length,1);
  assert.equal(b.events().filter(m=>m.type==='chat').length,1);
  h.world.receive(a.c,{type:'ignore',action:'remove',target:'BrunoChat'});
- b.p.lastChat=0;a.clear();
+ b.p.lastChat=0;h.world.chatGuard.state(b.p.uid).last=0;a.clear();
  h.world.receive(b.c,{type:'chat',channel:'global',text:'Agora pode ler'});
  assert.equal(a.events().filter(m=>m.type==='chat').length,1);
 });
