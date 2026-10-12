@@ -6,7 +6,7 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0e211f">
 <meta name="description" content="Os Peregrinos — Mundo Aberto. MMORPG experimental 16-bit: crie uma conta para recuperar seu progresso ou jogue como visitante apenas com um nome.">
 <title>Os Peregrinos — Mundo Aberto | Crônicas da Aurora</title>
-<link rel="stylesheet" href="/mmo.css?v=masmorras-v2"></head>
+<link rel="stylesheet" href="/mmo.css?v=portais-reais-v1"></head>
 <body>
 <header class="bar"><a class="brand" href="/">✦ <strong>OS PEREGRINOS</strong><span>CRÔNICAS DA AURORA</span></a><div class="online-pill"><span class="status-dot" id="statusDot"></span><span id="status">Conectando…</span></div><button type="button" id="audioToggle" class="desktop-audio-toggle" aria-label="Ativar efeitos sonoros no computador" aria-pressed="false">♪ Som: desligado</button><span id="pingIndicator" class="ping-indicator" data-quality="offline" role="status" aria-label="Ping do servidor" aria-live="off" title="Latência do servidor multiplayer">Ping: offline</span><a href="/jogo.html" class="campaign-link">Campanha clássica ↗</a><a href="/guia.html" class="campaign-link" title="Como jogar Os Peregrinos">Como jogar ↗</a><button type="button" id="emailSettingsBtn" class="campaign-link" hidden>E-mail da conta</button><button type="button" id="logoutBtn" class="campaign-link" hidden>Sair da conta</button></header>
 <dialog id="emailSettingsDialog" class="account-dialog" aria-labelledby="emailSettingsTitle">
@@ -22,7 +22,7 @@
 </dialog>
 <main class="layout">
 <section class="play-area">
-<div class="world-title"><div><span class="tag">MUNDO ABERTO · ALFA</span><h1 id="zoneTitle">Vale das Oliveiras</h1></div><div class="clock"><span id="latency">✦ Aurora</span><small>PC · WASD · E CONVERSAR · J ATACAR · K HABILIDADE</small></div></div>
+<div class="world-title"><div><span class="tag">MUNDO ABERTO · ALFA</span><h1 id="zoneTitle">Vale das Oliveiras</h1></div><div class="clock"><span id="latency">✦ Aurora</span><small>PC · WASD · E FALAR / USAR PORTAL · J ATACAR · K HABILIDADE</small></div></div>
 <div class="canvas-shell" id="canvasShell"><button type="button" id="fullscreenBtn" class="fullscreen-toggle" aria-label="Ativar tela cheia do Mundo Aberto" aria-pressed="false" title="Colocar o Mundo Aberto em tela cheia">⛶ Tela cheia</button><canvas id="game" width="960" height="576" tabindex="0" aria-label="Mundo aberto: use WASD para mover, E para falar com personagens e J para atacar"></canvas>
 <div class="touch-controls" id="touchControls" aria-label="Controles de toque" hidden>
  <div class="touch-joystick" id="touchPad" role="group" aria-label="Movimentar personagem: arraste o direcional">
@@ -55,7 +55,7 @@
 <div id="deathVeil" hidden class="death-flash"></div>
 </div>
 <div class="hotbar"><div class="hint">WASD / SETAS <small>Mover</small></div><button id="attackBtn">⚔ <span>J</span> Atacar</button><button id="skillBtn">✦ <span>K</span> Habilidade</button><button id="potionBtn">♥ <span>H</span> Poção</button><button id="talkBtn" class="talk-action">✦ <span>E</span> Conversar</button><button id="questBtn">📜 Missões</button><button id="mapBtn">🧭 Mapa</button><button id="chatFocusBtn">✉ Chat <span>ENTER</span></button></div>
-<div class="travel-panel"><b>PASSAGENS ENTRE REGIÕES</b><div id="travelButtons"></div><small>As regiões vizinhas são acessíveis pelo menu. As chaves das masmorras podem ser conquistadas com os NPCs da história ou compradas na loja.</small></div>
+<div class="travel-panel"><b>PASSAGENS ENTRE REGIÕES</b><div id="travelButtons"></div><small>Os portais brilhantes do cenário são entradas reais. No PC, aproxime-se e pressione E ou clique na passagem. No sexto subsolo, use a passagem dourada para seguir à próxima masmorra sem outra chave.</small></div>
 </section>
 <aside class="sidebar">
 <section class="panel hero-status"><div class="panel-top"><span>✦ FICHA DO PEREGRINO</span><span id="playerClass">Peregrino</span></div><h2 id="charName">—</h2><div class="level"><b id="playerLevel">Nível 1</b><span id="playerCoins">◈ 0 moedas</span></div><div class="statline">VIDA <span id="hpText">135 / 135</span></div><div class="progress"><div id="hpBar" class="hp-bar"></div></div><div class="statline">EXPERIÊNCIA <span id="xpText">0 / 105</span></div><div class="progress"><div id="xpBar" class="xp-bar"></div></div><div class="character-more"><div><small>CRIATURAS DERROTADAS</small><b id="kills">0</b></div><div><small>REGIÕES EXPLORADAS</small><b id="visited">1/16</b></div><div><small>JOGADORES ONLINE</small><b id="playerCount">0/10</b></div></div></section>
@@ -64,4 +64,4 @@
 </aside>
 </main>
 <footer><span>OS PEREGRINOS · MMORPG 16-BIT EXPERIMENTAL</span><span>Conta opcional ou acesso como visitante · 10 jogadores por servidor · Combate e progressão compartilhados</span><span class="game-info-links"><button type="button" class="privacy-pref-button" data-privacy-preferences>Preferências de privacidade</button><a href="/guia.html">Guia</a><a href="/sobre.html">Sobre</a><a href="/contato.html">Contato</a><a href="/privacidade.html">Privacidade</a><a href="/termos.html">Regras</a></span></footer>
-<script src="/art16.js?v=masmorras-v2" defer></script><script src="/monster-motion.js" defer></script><script src="/player-motion.js?v=ping-rede-v1" defer></script><script src="/latency.js?v=ping-rede-v1" defer></script><script src="/combat-effects.js" defer></script><script src="/touch-controls.js?v=touch-v1" defer></script><script src="/sounds-desktop.js?v=audio-pc-v1" defer></script><script src="/mmo.js?v=masmorras-v2" defer></script><script src="/privacy-controls.js" defer></script></body></html>
+<script src="/art16.js?v=portais-reais-v1" defer></script><script src="/monster-motion.js" defer></script><script src="/player-motion.js?v=ping-rede-v1" defer></script><script src="/latency.js?v=ping-rede-v1" defer></script><script src="/combat-effects.js" defer></script><script src="/touch-controls.js?v=touch-v1" defer></script><script src="/sounds-desktop.js?v=audio-pc-v1" defer></script><script src="/mmo.js?v=portais-reais-v1" defer></script><script src="/privacy-controls.js" defer></script></body></html>
