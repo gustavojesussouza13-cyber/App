@@ -40,3 +40,60 @@
 .bar #emailSettingsBtn[hidden]{display:none!important}.auth-help-link{display:block;text-align:center;color:#f8d89b;font-size:12px;margin-top:3px;text-underline-offset:4px}
 .account-dialog{position:fixed;inset:0;margin:auto;width:min(480px,94vw);max-height:90vh;overflow:auto;border:2px solid #c2a572;background:#0d2922;color:#f4e5c7;padding:28px;box-shadow:0 30px 85px #000b;z-index:100}
 .account-dialog::backdrop{background:#020e0bd9}.account-dialog h2{font:normal 27px Georgia,serif;color:#f0d29a;margin:8px 0 16px}.account-dialog p{font:13px/1.65 system-ui;color:#d9ddc8}.account-dialog form:not(.dialog-dismiss){display:flex;flex-direction:column;gap:11px}.account-dialog label{color:#ead19b;font:700 11px system-ui;letter-spacing:.09em}.account-dialog input{width:100%;background:#051a15;color:#f4e6cd;border:1px solid #92845f;padding:12px}.account-dialog form button{background:#e7c587;border:0;padding:12px;color:#183b2e;font-weight:800;cursor:pointer}.account-dialog .dialog-dismiss{float:right}.account-dialog .dialog-dismiss button{background:transparent;color:#e7c587;border:1px solid #786640;padding:7px 12px}
+
+
+/* Correções móveis: impedir rolagem horizontal e manter todas as ações visíveis. */
+html,body{max-width:100%;overflow-x:clip}
+.layout,.bar,.play-area,.sidebar,.panel,.canvas-shell,.world-title{min-width:0}
+.intro-panel input,.intro-panel select{width:100%;max-width:100%;min-width:0}
+@media(max-width:850px), (pointer:coarse) and (max-width:1180px){
+ .layout{display:grid;grid-template-columns:minmax(0,1fr);padding:10px;gap:13px;width:100%}
+ .bar{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;padding:10px;min-height:auto}
+ .brand{white-space:normal;overflow-wrap:anywhere;flex:1 1 100%;justify-content:center;font-size:clamp(16px,4vw,20px);text-align:center}
+ .brand span{display:none}
+ .online-pill{margin:0}
+ .campaign-link{flex:0 1 auto;font-size:11px;padding:7px 9px}
+ .world-title{gap:8px}
+ .world-title h1{overflow-wrap:anywhere}
+ .sidebar{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+ .chat-panel{grid-column:1/-1}
+ .canvas-shell{width:100%;max-width:100%}
+ .canvas-shell:has(#welcomeOverlay:not([hidden])){aspect-ratio:auto;height:min(690px,80dvh);min-height:500px}
+ .game-overlay{padding:9px;overflow-y:auto;overscroll-behavior:contain;align-items:safe center}
+ .intro-panel{width:min(465px,100%);max-width:100%;max-height:100%;overflow-y:auto;margin:auto;padding:14px}
+ .intro-panel h2{font-size:clamp(22px,4vw,29px)}
+ .intro-panel p{line-height:1.5}
+ .tabcontent,.panel{min-width:0}
+}
+@media(max-width:650px){
+ .sidebar{display:flex;flex-direction:column}
+ .canvas-shell:has(#welcomeOverlay:not([hidden])){height:min(680px,86dvh);min-height:470px}
+ .world-title .clock{display:none}
+ .game-overlay{padding:6px}
+ .intro-panel{padding:11px 13px;box-shadow:none}
+ .intro-panel form{gap:8px;margin-top:10px}
+ .intro-panel .ornament{font-size:16px}
+ .auth-switch{margin:8px 0}
+ .auth-switch button{font-size:11px;min-height:38px}
+ .hotbar{gap:6px}
+ .hotbar button{min-width:calc(50% - 4px)}
+ .character-more b{font-size:17px}
+ .tabrow{grid-template-columns:repeat(5,minmax(0,1fr))}
+ .tab{min-width:0;font-size:10px;padding:8px 1px}
+}
+/* Modo expandido de tela cheia para navegadores sem Fullscreen API (Android). */
+body.world-fullscreen{overflow:hidden!important}
+#canvasShell.is-expanded{
+ position:fixed!important;inset:0!important;z-index:2000!important;
+ box-sizing:border-box;width:100vw!important;height:100vh!important;height:100dvh!important;
+ max-width:none!important;max-height:none!important;margin:0!important;padding:0!important;
+ aspect-ratio:auto!important;border:0!important;outline:0!important;box-shadow:none!important;
+ background:#071510;display:flex;align-items:center;justify-content:center;overflow:hidden
+}
+#canvasShell.is-expanded canvas{
+ flex:0 0 auto;width:min(100vw,166.6667dvh);height:auto;
+ aspect-ratio:5/3;max-width:100%;max-height:100%;object-fit:contain;image-rendering:pixelated
+}
+#canvasShell.is-expanded #fullscreenBtn{position:fixed;z-index:2005;top:8px;right:8px}
+#canvasShell.is-expanded .game-overlay{z-index:2002;overflow-y:auto}
+#canvasShell.is-expanded .npc-dialogue{z-index:2003}
