@@ -33,7 +33,12 @@ test('quatro masmorras possuem seis andares e caminho de volta válido',t=>{
    assert.ok(world.zonePortals(next).some(g=>g.zone===current),'andar sem saída');
    previous=current;current=next;
   }
-  assert.equal(world.zonePortals(current).length,1,'último andar termina em sala final');
+  const finalPortals=world.zonePortals(current);
+  assert.equal(finalPortals.length,2,'último andar deve permitir voltar ou continuar');
+  const gateway=finalPortals.find(g=>g.gateway);
+  assert.ok(gateway,'portal de continuação ausente');
+  assert.equal(gateway.zone,root<15?root+1:10,'continuação deve chegar à próxima masmorra ou à cidade');
+  assert.equal(gateway.kind,'gateway');
   assert.equal(world.zonePortals(root)[0].zone,[1,3,5,11][root-12]);
  }
 });
@@ -95,4 +100,64 @@ test('cada região adicional tem criaturas e um chefe independente',t=>{
   assert.equal(mobs.filter(m=>m.boss).length,1);
   assert.ok(mobs.every(m=>m.zone===z&&m.hp>0));
  }
+});
+
+test('jogador atravessa os 24 subsolos das quatro masmorras por portais reais',t=>{
+ const {world,p,client,events}=setup(t);
+ world.travel(p,1);
+ p.save.inventory.chave=1;
+ for(let root=12;root<16;root++){
+  const entrance=world.zonePortals(p.zone).find(g=>g.zone===root);
+  assert.ok(entrance,`entrada da masmorra ${root} ausente vindo de ${p.zone}`);
+  p.x=entrance.x;p.y=entrance.y;
+  world.receive(client,{type:'portal',zone:root});
+  assert.equal(p.zone,root);
+  for(let depth=1;depth<=6;depth++){
+   const floor=16+(root-12)*6+(depth-1);
+   const gate=world.zonePortals(p.zone).find(g=>g.zone===floor);
+   assert.ok(gate,`portal para ${floor} ausente`);
+   p.x=gate.x;p.y=gate.y;
+   world.receive(client,{type:'portal',zone:floor});
+   assert.equal(p.zone,floor,`falhou entrar no subsolo ${depth} de ${root}`);
+   assert.ok(p.save.visited.includes(floor),'subsolo não registrado como visitado');
+  }
+  assert.equal(p.save.inventory.chave,0,'a jornada contínua não deve consumir várias chaves');
+ }
+ const end=world.zonePortals(p.zone).find(g=>g.gateway);
+ assert.equal(p.zone,39);
+ assert.ok(end&&end.zone===10,'saída final deveria levar à Cidadela de Auren');
+ p.x=end.x;p.y=end.y;
+ world.receive(client,{type:'portal',zone:10});
+ assert.equal(p.zone,10);
+ assert.equal(new Set(p.save.visited.filter(z=>z>=16)).size,24);
+ assert.ok(events.some(e=>e.type==='travel'&&e.zone===10),'servidor deve enviar viagem de volta à cidade');
+});
+test('porta final não permite pular masmorras nem teleportar de longe',t=>{
+ const {world,p,client}=setup(t);
+ world.travel(p,1);
+ p.save.inventory.chave=1;
+ const entry=world.zonePortals(1).find(g=>g.zone===12);
+ p.x=entry.x;p.y=entry.y;
+ world.receive(client,{type:'portal',zone:12});
+ assert.equal(p.zone,12);
+ world.receive(client,{type:'portal',zone:13});
+ assert.equal(p.zone,12,'não pode pular diretamente de um primeiro piso para a próxima masmorra');
+ p.zone=21;p.save.zone=21;
+ const end=world.zonePortals(21).find(g=>g.gateway);
+ assert.equal(end.zone,13);
+ p.x=end.x+112;p.y=end.y;
+ world.receive(client,{type:'portal',zone:13});
+ assert.equal(p.zone,21,'acesso remoto a portal não deve funcionar');
+ p.x=end.x;p.y=end.y;
+ world.receive(client,{type:'portal',zone:13});
+ assert.equal(p.zone,13);
+});
+test('renderizador não desenha falsas entradas de masmorra, apenas portais do servidor',()=>{
+ const visual=fs.readFileSync(path.join(__dirname,'../public/art16.js'),'utf8');
+ const client=fs.readFileSync(path.join(__dirname,'../public/mmo.js'),'utf8');
+ assert.doesNotMatch(visual,/key:biome==='dungeon'\?'portal_fechado'/);
+ assert.match(visual,/cut\(g,'portal_aberto',-34,-92,68,92\)/);
+ assert.match(visual,/E · USAR PASSAGEM/);
+ assert.match(client,/gate\.gateway\?/);
+ assert.match(client,/wy>=p\.y-140&&wy<=p\.y\+34/);
 });

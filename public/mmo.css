@@ -271,3 +271,18 @@ body.world-fullscreen{overflow:hidden!important}
 .atlas-entry.explored{border-color:#b79e6d;background:linear-gradient(135deg,#223d30,#162a24)}
 .atlas-entry.explored b{color:#ffdfa0}
 .atlas-entry.current{outline:2px solid #eed08b;box-shadow:0 0 16px #e8c48644}
+
+
+/* Final do sexto subsolo: passagem destacada para continuar a campanha de masmorras. */
+@media (min-width:901px) and (hover:hover) and (pointer:fine){
+ .travel-panel .next-dungeon{
+  border:2px solid #efc277;
+  background:linear-gradient(125deg,#654a29,#2c4739 60%,#29493e);
+  box-shadow:0 0 16px #e8bc6b35,inset 0 1px #ffe6a549;
+  color:#ffeab6;font-weight:800
+ }
+ .travel-panel .next-dungeon:hover{
+  background:linear-gradient(125deg,#836039,#385d48);
+  box-shadow:0 0 24px #edc37e58
+ }
+}
