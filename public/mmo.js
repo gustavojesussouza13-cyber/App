@@ -57,15 +57,34 @@ function dispatch(msg){if(msg.type==='welcome'){
  }else if(msg.type==='error'){say('','Servidor: '+msg.message,'sys');$('connectionError').textContent=msg.message||'Erro de conexão';
   if(['full','name_taken','invalid_name','login_required','name_reserved','auth_unavailable'].includes(msg.code)){authed=false;$('welcomeOverlay').hidden=false;clearTimeout(reconnectTimer);socket?.close();if(msg.code==='login_required')setAuthTab('login');}
  }}
-function connect(){if(!progressToken){alert('Armazenamento indisponível');return}
- if(socket&&socket.readyState===WebSocket.OPEN)return;
+function connect(){
+ if(!progressToken){alert('Armazenamento indisponível');return}
+ // Evita duas conexões simultâneas e sessões concorrentes para o mesmo personagem.
+ if(socket&&(socket.readyState===WebSocket.OPEN||socket.readyState===WebSocket.CONNECTING))return;
+ clearTimeout(reconnectTimer);reconnectTimer=null;
  setOnline(false,'Conectando…');const url=(location.protocol==='https:'?'wss://':'ws://')+location.host+'/world-ws';
  try{const sock=new WebSocket(url);socket=sock;
-  sock.onopen=()=>{reconnectMs=1000;send('hello',{name:session.name,role:session.formClass,token:progressToken,mode:accountMode?'account':'guest'})};
-  sock.onmessage=e=>{try{dispatch(JSON.parse(e.data))}catch(err){console.warn('Resposta inválida',err)}};
-  sock.onclose=()=>{if(socket!==sock)return;closeDialogue();setOnline(false,'Desconectado');session.monsters.clear();monsterMotion.clear();session.players.clear();if(!authed)return;clearTimeout(reconnectTimer);reconnectTimer=setTimeout(connect,reconnectMs);reconnectMs=Math.min(14000,reconnectMs*1.7)};
-  sock.onerror=()=>setOnline(false,'Conexão instável');
- }catch{setOnline(false,'Falha de conexão')}
+  sock.onopen=()=>{
+   if(socket!==sock)return;
+   reconnectMs=1000;
+   sock.send(JSON.stringify({type:'hello',name:session.name,role:session.formClass,token:progressToken,mode:accountMode?'account':'guest'}));
+  };
+  sock.onmessage=e=>{
+   if(socket!==sock)return;
+   try{dispatch(JSON.parse(e.data))}catch(err){console.warn('Resposta inválida',err)}
+  };
+  sock.onclose=()=>{
+   if(socket!==sock)return;
+   socket=null;closeDialogue();setOnline(false,'Desconectado');
+   session.monsters.clear();monsterMotion.clear();session.players.clear();
+   if(!authed)return;
+   clearTimeout(reconnectTimer);reconnectTimer=setTimeout(connect,reconnectMs);
+   reconnectMs=Math.min(14000,reconnectMs*1.7);
+  };
+  sock.onerror=()=>{if(socket===sock)setOnline(false,'Conexão instável')};
+ }catch{socket=null;setOnline(false,'Falha de conexão');
+  if(authed){clearTimeout(reconnectTimer);reconnectTimer=setTimeout(connect,reconnectMs);reconnectMs=Math.min(14000,reconnectMs*1.7)}
+ }
 }
 $('nameForm').addEventListener('submit',e=>{e.preventDefault();accountMode=false;$('logoutBtn').hidden=true;$('emailSettingsBtn').hidden=true;const name=$('name').value.trim().normalize('NFC');if(!/^[\p{L}\p{N}][\p{L}\p{N} _-]{2,17}$/u.test(name)){alert('Escolha um nome válido de 3–18 caracteres');return}
  session.name=name;session.formClass=$('role').value;try{localStorage.setItem('os-peregrinos-last-name',name)}catch{};connect();});

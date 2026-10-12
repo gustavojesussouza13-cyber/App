@@ -336,7 +336,7 @@ httpServer.on('upgrade',(req,socket,head)=>{
   if(!/^[\w+/]{22}==$/.test(key))return socket.destroy();
   const digest=crypto.createHash('sha1').update(key+'258EAFA5-E914-47DA-95CA-C5AB0DC85B11').digest('base64');
   socket.write('HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: '+digest+'\r\n\r\n');
-  const c={socket,mode:u.pathname==='/world-ws'?'world':u.pathname==='/mobile-coop-ws'?'mobile':'classic',profile:null,cookieHeader:req.headers.cookie||'',pending:Buffer.alloc(0),terminated:false,lastPong:Date.now()};sockets.add(c);
+  const c={socket,mode:u.pathname==='/world-ws'?'world':u.pathname==='/mobile-coop-ws'?'mobile':'classic',profile:null,cookieHeader:req.headers.cookie||'',pending:Buffer.alloc(0),terminated:false,lastPong:Date.now(),lastPing:0};sockets.add(c);
   socket.on('data',b=>handleFrame(c,b));socket.on('error',()=>terminate(c));socket.on('end',()=>terminate(c));socket.on('close',()=>terminate(c));
   if(head?.length)handleFrame(c,head);
   setTimeout(()=>{if(!c.profile&&!c.worldPlayer&&!c.mobilePlayer&&!c.terminated)terminate(c)},8000).unref();
@@ -344,8 +344,13 @@ httpServer.on('upgrade',(req,socket,head)=>{
 setInterval(()=>{
   for(const c of sockets){
     if(c.terminated)continue;
-    if(Date.now()-c.lastPong>65000){terminate(c);continue}
-    if(!c.socket.destroyed)c.socket.write(frame(Buffer.alloc(0),9));
+    const now=Date.now();
+    if(now-c.lastPong>65000){terminate(c);continue}
+    // Heartbeat de rede a cada 20 s; snapshots continuam a cada 250 ms.
+    if(!c.socket.destroyed&&now-c.lastPing>=20000){
+      c.lastPing=now;
+      c.socket.write(frame(Buffer.alloc(0),9));
+    }
     if(c.profile){const peers=[...players.values()].filter(p=>p.zone===c.profile.zone&&p.id!==c.profile.id).map(publicPlayer);send(c.socket,{type:'snapshot',players:peers,online:players.size,zone:c.profile.zone})}
   }
 },250).unref();
