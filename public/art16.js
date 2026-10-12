@@ -397,7 +397,11 @@ function create({ctx,W,H}){
    if(pixelDetail)pixelDetail.drawHero(g,p,now);
    if(p.role==='arqueiro')drawBow(g,p,dir,attacking);
   }
-  const finalRole=drawClassIdentity(g,p,dir,now,moved);
+  // O sprite detalhado do Studio já contém a identidade da classe.
+  // Uma camada de blocos opacos aqui escondia olhos, roupas e sombreamento.
+  // A proteção antiga permanece APENAS quando o Studio não está disponível.
+  const finalRole=animated? (spriteStudio.normalizeRole(p.role)):
+   drawClassIdentity(g,p,dir,now,moved);
   g.save();g.textAlign='center';g.font=(local?'bold 15px':'bold 13px')+' monospace';
   g.shadowColor='#000b';g.shadowBlur=5;g.lineWidth=3;g.strokeStyle='#0e271e';
   const roleName={guardiao:'Guardião',curandeiro:'Curandeiro',arqueiro:'Arqueiro',peregrino:'Peregrino'}[finalRole];
