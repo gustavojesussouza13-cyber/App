@@ -335,7 +335,16 @@ function drawTab(){const parent=$('tabContent');parent.replaceChildren();const s
    if(item.heal)d.append(button('Usar', 'use',{item:id}));
   }appendText(parent,'p','Itens, moedas e nível são calculados pelo servidor. A persistência depende de armazenamento confiável no servidor.').className='muted';
  }else if(tab==='quests'){
-  appendText(parent,'h3','Crônicas da jornada');for(const q of session.quests){const done=s.quests.includes(q.id),canClaim=s.kills>=q.target;const d=group(parent);appendText(d,'b',q.name);appendText(d,'small',q.description);appendText(d,'small',done?'✓ Concluída':`${s.kills}/${q.target} derrotas · ${q.reward} XP · ${q.coins} moedas${canClaim?' · PRONTA':''}`)}parent.append(button('Resgatar recompensas', 'quest'));
+  appendText(parent,'h3','Crônicas da jornada');for(const q of session.quests){
+   const done=s.quests.includes(q.id);
+   const progress=q.type==='regions'?new Set(s.visited||[]).size:
+    q.type==='bosses'?new Set(s.bossRelics||[]).size:
+    q.type==='chapters'?(s.story?.stage||0):(s.kills||0);
+   const unit=q.type==='regions'?'regiões':q.type==='bosses'?'chefes':q.type==='chapters'?'capítulos':'derrotas';
+   const canClaim=progress>=q.target;
+   const d=group(parent);appendText(d,'b',q.name);appendText(d,'small',q.description);
+   appendText(d,'small',done?'✓ Concluída':`${progress}/${q.target} ${unit} · ${q.reward} XP · ${q.coins} moedas${canClaim?' · PRONTA':''}`)
+  }parent.append(button('Resgatar recompensas', 'quest'));
   appendText(parent,'h3','Conquistas da Aurora');
   for(const [id,award] of Object.entries(session.achievements||{})){
    const earned=Array.isArray(s.achievements)&&s.achievements.includes(id);
