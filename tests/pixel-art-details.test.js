@@ -106,8 +106,9 @@ test('nova biblioteca carrega antes do atlas e não altera colisões no servidor
  assert.doesNotMatch(fs.readFileSync(path.join(__dirname,'../world-terrain.js'),'utf8'),/pixel-detail/);
 });
 test('renderização integrada de oito mapas não gera exceções no canvas',()=>{
+ let lastImage;
  class MockImage{
-  constructor(){this.callbacks={}}
+  constructor(){this.callbacks={};lastImage=this}
   addEventListener(name,fn){this.callbacks[name]=fn}
  }
  const document={documentElement:{dataset:{}},createElement:tag=>{
@@ -117,7 +118,7 @@ test('renderização integrada de oito mapas não gera exceções no canvas',()=
  const staticCtx=canvas(),screen=canvas(),scope={window:{OsPeregrinosPixelDetail:art},document,Image:MockImage,Math,console};
  vm.createContext(scope);vm.runInContext(read('art16.js'),scope);
  const renderer=scope.window.PeregrinoArt16.create({ctx:screen,W:768,H:460});
- vm.runInContext('atlas',scope).callbacks.load();
+ lastImage.callbacks.load();
  const zones=Array.from({length:40},(_,i)=>({biome:i>=12?'masmorra':'pradaria'}));
  for(const z of [12,13,14,15,16,22,28,34]){
   assert.doesNotThrow(()=>renderer.render({
