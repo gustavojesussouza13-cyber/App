@@ -1,5 +1,5 @@
 'use strict';
-/** Efeitos locais de flechas — o servidor continua responsável pelo dano. */
+/** Efeitos 2D locais de flechas e feitiços; dano e cura são responsabilidade do servidor. */
 (function(root,factory){
  const api=factory();
  if(typeof module==='object'&&module.exports)module.exports=api;
@@ -11,17 +11,21 @@
   function clear(){shots=[]}
   function count(){return shots.length}
   function fire(hit,now){
-   if(!hit||hit.projectile!=='arrow'||!Number.isFinite(now))return false;
+   if(!hit||!['arrow','holy-bolt'].includes(hit.projectile)||!Number.isFinite(now))return false;
+   const holy=hit.projectile==='holy-bolt';
    const from=hit.from,to=hit.to;
    if(!from||!to||![from.x,from.y,to.x,to.y].every(Number.isFinite))return false;
    const d=Math.hypot(to.x-from.x,to.y-from.y);
    if(d<1||d>700)return false;
-   // A duração é só visual; o cálculo do acerto já ocorreu no servidor.
-   const duration=Math.min(410,Math.max(140,d*1.5));
+   // Durações só para apresentação: o servidor já confirmou o acerto.
+   // Magias deslocam-se um pouco mais lentamente, para destacar o brilho.
+   const duration=holy?
+    Math.min(530,Math.max(185,d*1.95)):
+    Math.min(410,Math.max(140,d*1.5));
    if(shots.length>=max)shots.shift();
    shots.push({from:{x:from.x,y:from.y},to:{x:to.x,y:to.y},start:now,
-    duration,angle:Math.atan2(to.y-from.y,to.x-from.x),skill:!!hit.skill,
-    damage:Number(hit.damage)||0,impactShown:false});
+    projectile:hit.projectile,duration,angle:Math.atan2(to.y-from.y,to.x-from.x),
+    skill:!!hit.skill,damage:Number(hit.damage)||0,impactShown:false});
    return true;
   }
   function frame(now){
@@ -34,8 +38,10 @@
     const impact=progress>=1;
     const justHit=impact&&!shot.impactShown;
     if(justHit)shot.impactShown=true;
-    // Flecha reta, com rastro; o brilho do impacto dura alguns quadros.
-    visible.push({kind:impact?'impact':'arrow',
+    // O tipo distingue o desenho em art16.js, sem criar tiros falsos.
+    const holy=shot.projectile==='holy-bolt';
+    visible.push({kind:impact?(holy?'magic-impact':'impact'):(holy?'magic':'arrow'),
+     projectile:shot.projectile,
      x:shot.from.x+(shot.to.x-shot.from.x)*progress,
      y:shot.from.y+(shot.to.y-shot.from.y)*progress,
      angle:shot.angle,progress,impactAge:Math.max(0,elapsed-shot.duration),
