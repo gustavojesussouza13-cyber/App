@@ -41,6 +41,7 @@ test('catálogo define conquistas com recompensas e IDs estáveis',()=>{
 test('guardião protege aliados do grupo e reduz dano recebido',t=>{
  const h=setup(t),g=h.add('guardiao'),ally=h.add('peregrino'),other=h.add('peregrino'),m=h.target();
  h.party(g,ally);
+ m.damage=42;
  for(const o of [g,ally,other]){o.p.x=m.x+20;o.p.y=m.y+14}
  h.world.attack(g.p,m.id,true);
  assert.ok(g.p.guardUntil>Date.now());
