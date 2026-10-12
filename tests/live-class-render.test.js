@@ -99,16 +99,19 @@ for(const withStudio of [true,false]){
   }
  });
 }
-test('a classe persistida no banco tem prioridade sobre opção anterior no login',()=>{
+test('visitante usa classe confirmada no servidor; contas novas mantêm seleção inicial',()=>{
  const client=fs.readFileSync(path.join(ROOT,'mmo.js'),'utf8');
  assert.match(client,/session\.role=c\.role/);
  assert.match(client,/session\.formClass!==msg\.self\.role/);
- assert.match(client,/Seu personagem salvo já é /);
+ assert.doesNotMatch(client,/Seu personagem salvo já é /);
+ assert.match(client,/const freshSwitch=accountMode&&/);
+ const world=fs.readFileSync(path.join(__dirname,'../world-engine.js'),'utf8');
+ assert.match(world,/Object\.hasOwn\(CLASSES,d\.role\)/);
  assert.match(client,/msg\.self\.level===1&&msg\.self\.kills===0/);
  assert.match(client,/role:session\.role/);
 });
 test('versão atualizada impede scripts antigos no cache mobile',()=>{
  const html=fs.readFileSync(path.join(ROOT,'mundo.html'),'utf8');
  for(const asset of ['sprite-studio.js','character-atelier16.js','art16.js','mmo.js'])
-  assert.ok(html.includes('/'+asset+'?v=classes-v9'),asset+' ainda está cacheado');
+  assert.ok(html.includes('/'+asset+'?v='+(asset==='mmo.js'?'guest-class-v10':'classes-v9')),asset+' ainda está cacheado');
 });

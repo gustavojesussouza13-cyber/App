@@ -224,6 +224,18 @@ class World {
   s.inventory={...defaultSave().inventory,...(s.inventory||{})};if(!Array.isArray(s.quests))s.quests=[];if(!Array.isArray(s.visited))s.visited=[0];if(!Array.isArray(s.achievements))s.achievements=[];if(!Array.isArray(s.bossRelics))s.bossRelics=[];s.bossRelics=s.bossRelics.filter(z=>Number.isInteger(z)&&z>=0&&z<ZONES.length);
   s.blocked=Array.isArray(s.blocked)?[...new Set(s.blocked.filter(n=>typeof n==='string'&&assertName(n)).map(n=>n.toLocaleLowerCase('pt-BR')))].slice(0,30):[];
   s.story=normalizeStory(s.story);
+  // A seleção feita no formulário Visitante precisa valer inclusive para um
+  // personagem já salvo nesse token. A classe anterior pode ter sido Arqueiro
+  // porque o join antigo ignorava completamente o campo d.role.
+  // Em contas registradas, NÃO ler d.role: a classe é a da conta persistida.
+  if(!owner&&typeof d.role==='string'&&Object.hasOwn(CLASSES,d.role)&&s.role!==d.role){
+   const healthMissing=Math.max(0,hpMax(s)-s.hp);
+   s.role=d.role;
+   s.hp=clamp(hpMax(s)-healthMissing,1,hpMax(s));
+   // Preserva nível, XP, inventário, moedas, missões, guilda e exploração.
+   // Persistência usa o fluxo já existente de dirty -> enqueue/flush.
+   this.dirty=true;
+  }
   const p={id:crypto.randomUUID(),uid,name,socket:c.socket,save:s,x:s.x,y:s.y,zone:s.zone,dir:2,lastMove:Date.now(),moveCredit:12,lastAttack:0,lastSpell:0,lastChat:0,lastUse:0,party:null,live:true};
   c.worldPlayer=p;c.socket._worldClient=c;this.players.set(p.id,p);
   this.send(c.socket,{type:'welcome',self:this.ownStatus(p),zones:this.zoneInfo(),shop:GOODS,relics:RELICS,quests:QUESTS,achievements:ACHIEVEMENTS,portals:this.zonePortals(p.zone),npcs:NPCS.map(publicNpc),maxPlayers:10,online:this.players.size+this.getOnline(),monsterTotal:this.totalMonsters()});
