@@ -26,7 +26,15 @@
     if(!v){v={x:m.x,y:m.y};positions.set(m.id,v)}
     const delta=Math.hypot(v.x-m.x,v.y-m.y);
     if(delta>160){v.x=m.x;v.y=m.y}
-    else {v.x+=(m.x-v.x)*blend;v.y+=(m.y-v.y)*blend}
+    else if(delta>0){
+     // Não permitir um salto grande num único quadro quando um snapshot atrasa.
+     // A posição do servidor permanece autoritativa; só a animação é limitada.
+     const proposed=delta*blend;
+     const maxStep=110*safeDt+1;
+     const step=Math.min(delta,proposed,maxStep);
+     v.x+=(m.x-v.x)/delta*step;
+     v.y+=(m.y-v.y)/delta*step;
+    }
     return {...m,x:v.x,y:v.y};
    });
   }
