@@ -97,3 +97,69 @@ body.world-fullscreen{overflow:hidden!important}
 #canvasShell.is-expanded #fullscreenBtn{position:fixed;z-index:2005;top:8px;right:8px}
 #canvasShell.is-expanded .game-overlay{z-index:2002;overflow-y:auto}
 #canvasShell.is-expanded .npc-dialogue{z-index:2003}
+
+
+/* Controle de batalha para telas de toque: opera dentro do canvas inclusive em tela cheia. */
+.touch-controls[hidden]{display:none!important}
+.touch-controls{
+ position:absolute;z-index:8;left:max(9px,env(safe-area-inset-left));
+ right:max(9px,env(safe-area-inset-right));bottom:max(9px,env(safe-area-inset-bottom));
+ display:flex;align-items:flex-end;justify-content:space-between;gap:10px;
+ pointer-events:none;user-select:none;-webkit-user-select:none
+}
+.touch-joystick{
+ position:relative;flex:0 0 112px;width:112px;height:112px;border-radius:50%;
+ border:3px solid #e7c994c0;box-shadow:0 4px 14px #000b,inset 0 0 24px #77a48b33;
+ background:radial-gradient(circle,#2e5e4ca8,#0b241ce8);
+ pointer-events:auto;touch-action:none;cursor:grab;-webkit-tap-highlight-color:transparent
+}
+.touch-knob{
+ position:absolute;left:50%;top:50%;width:54px;height:54px;border-radius:50%;
+ transform:translate(-50%,-50%);
+ background:radial-gradient(circle at 35% 30%,#f8e4af,#bda16b);
+ border:3px solid #fff0b2;box-shadow:0 3px 11px #000a;pointer-events:none
+}
+.touch-hint{
+ position:absolute;left:0;right:0;bottom:3px;text-align:center;
+ font:800 9px/1.1 system-ui;letter-spacing:.12em;color:#f6e3b5;
+ text-shadow:0 2px 4px #001a12;pointer-events:none
+}
+.touch-actions{
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;width:min(148px,46%);
+ pointer-events:auto
+}
+.touch-actions button{
+ appearance:none;-webkit-appearance:none;display:flex;flex-direction:column;
+ gap:1px;align-items:center;justify-content:center;
+ min-height:53px;min-width:0;padding:5px 4px;
+ border:2px solid #e6c785ce;border-radius:12px;
+ background:#14382ee8;color:#ffe7ba;box-shadow:0 4px 12px #0008;
+ font:800 19px/1.1 system-ui;touch-action:manipulation
+}
+.touch-actions button span{font:700 10px/1.1 system-ui}
+.touch-actions .touch-attack{background:#684236ed}
+.touch-actions .touch-skill{background:#315471eb}
+.touch-actions .touch-potion{background:#544233e9}
+.touch-actions .touch-talk{background:#255c44ee}
+.touch-actions button:active{filter:brightness(1.35);transform:scale(.96)}
+.touch-actions button:focus-visible,.touch-joystick:focus-visible{outline:3px solid #fff3bf;outline-offset:2px}
+#canvasShell:has(#npcDialogue:not([hidden])) .touch-controls{display:none!important}
+#canvasShell:fullscreen .touch-controls,
+#canvasShell.is-expanded .touch-controls{
+ bottom:max(13px,env(safe-area-inset-bottom));left:max(12px,env(safe-area-inset-left));
+ right:max(12px,env(safe-area-inset-right));z-index:14
+}
+#canvasShell.is-expanded .touch-controls{z-index:2004}
+@media(max-width:480px){
+ .touch-joystick{flex-basis:99px;width:99px;height:99px}
+ .touch-knob{width:49px;height:49px}
+ .touch-actions{width:min(140px,48%);gap:5px}
+ .touch-actions button{min-height:49px;font-size:18px}
+ .touch-actions button span{font-size:9px}
+}
+@media(max-height:440px) and (orientation:landscape){
+ .touch-joystick{flex-basis:86px;width:86px;height:86px}
+ .touch-knob{width:42px;height:42px}
+ .touch-actions button{min-height:41px;padding:3px;font-size:16px}
+ #canvasShell:fullscreen .touch-controls,#canvasShell.is-expanded .touch-controls{bottom:6px}
+}
