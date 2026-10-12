@@ -13,7 +13,7 @@ function make(t){
  assert.ok(c.worldPlayer);
  return {world,p:c.worldPlayer,c,messages};
 }
-test('todas as dezesseis regiões têm portais com coordenadas acessíveis e destinos legais',t=>{
+test('as regiões antigas mantêm os acessos, e todas as quarenta têm portais legais',t=>{
  const {world}=make(t);
  for(let zone=0;zone<ZONES.length;zone++){
   const gates=world.zonePortals(zone);
@@ -23,7 +23,8 @@ test('todas as dezesseis regiões têm portais com coordenadas acessíveis e des
    assert.ok(gate.x>100&&gate.x<ZONE_W-100);
    assert.ok(gate.y>300&&gate.y<700);
    assert.ok(gate.zone>=0&&gate.zone<ZONES.length);
-   if(zone>=12)assert.equal(gate.zone,[1,3,5,11][zone-12]);
+   if(zone>=16)assert.ok(gate.zone===12+Math.floor((zone-16)/6)||Math.abs(gate.zone-zone)===1);
+   else if(zone>=12&&zone<16)assert.ok(gate.zone===[1,3,5,11][zone-12]||gate.zone===16+(zone-12)*6);
    else if(gate.zone>=12)assert.equal([1,3,5,11][gate.zone-12],zone);
    else assert.ok(Math.abs(gate.zone-zone)<=2&&gate.zone!==zone);
   }

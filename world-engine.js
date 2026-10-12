@@ -12,6 +12,16 @@ const ZONES=[
  ['Costa da Aurora','costa'],['Bosque da Misericórdia','floresta'],['Cidadela de Auren','cidade'],['Terra da Última Luz','ruinas'],
  ['Masmorra da Raiz','masmorra'],['Masmorra das Cinzas','masmorra'],['Templo Esquecido','masmorra'],['Câmara da Aurora','masmorra']
 ];
+// 24 andares adicionais: IDs 0–15 permanecem intactos para preservar personagens salvos.
+const DUNGEON_ROOTS=['Raiz Ancestral','Cinzas Eternas','Templo das Vozes','Aurora Profunda'];
+const FLOOR_TITLES=['Galerias','Salões Perdidos','Catacumbas','Santuário Oculto','Abismo','Trono Esquecido'];
+for(let dungeon=0;dungeon<4;dungeon++)for(let depth=1;depth<=6;depth++)
+ ZONES.push([`${FLOOR_TITLES[depth-1]} da ${DUNGEON_ROOTS[dungeon]} · Subsolo ${depth}`,'masmorra']);
+const LEGACY_ZONE_COUNT=16,DEPTH_PER_DUNGEON=6;
+const dungeonRoot=zone=>zone>=16&&zone<ZONES.length?12+Math.floor((zone-16)/DEPTH_PER_DUNGEON):zone>=12&&zone<16?zone:null;
+const dungeonDepth=zone=>zone>=16?1+(zone-16)%DEPTH_PER_DUNGEON:0;
+const dungeonFloor=(root,depth)=>root+4+(root-12)*(DEPTH_PER_DUNGEON-1)+depth-1;
+
 const ZONE_W=1536, ZONE_H=1024;
 const CLASSES={guardiao:{name:'Guardião',hp:165,attack:17,range:85,defense:7},arqueiro:{name:'Arqueiro',hp:112,attack:21,range:250,defense:2},curandeiro:{name:'Curandeiro',hp:125,attack:12,range:160,defense:4},peregrino:{name:'Peregrino',hp:135,attack:16,range:118,defense:4}};
 const SPECIES=[
@@ -46,13 +56,17 @@ const QUESTS=[
  {id:'primeiro-legado',name:'O Primeiro Legado',type:'bosses',target:1,reward:235,coins:95,description:'Conquiste sua primeira relíquia de chefe'},
  {id:'sem-medo',name:'Quebrador de Maldições',type:'bosses',target:4,reward:850,coins:290,description:'Recupere relíquias de quatro chefes diferentes'},
  {id:'voz-desperta',name:'Vozes da Aurora',type:'chapters',target:4,reward:330,coins:130,description:'Conclua quatro capítulos da jornada principal'},
- {id:'livro-luz',name:'O Livro da Luz',type:'chapters',target:12,reward:1250,coins:390,description:'Conclua doze capítulos da história'}
+ {id:'livro-luz',name:'O Livro da Luz',type:'chapters',target:12,reward:1250,coins:390,description:'Conclua doze capítulos da história'},
+ {id:'primeira-descida',name:'Sob a Terra',type:'depths',target:1,reward:140,coins:65,description:'Alcance seu primeiro subsolo em uma masmorra'},
+ {id:'rumos-profundos',name:'Caminhos Esquecidos',type:'depths',target:12,reward:950,coins:300,description:'Descubra doze subsolos diferentes'},
+ {id:'eco-das-profundezas',name:'Ecos das Profundezas',type:'depths',target:24,reward:2250,coins:880,description:'Explore todos os vinte e quatro subsolos de Auren'}
 ];
 function questProgress(save,quest){
  switch(quest.type){
   case 'regions':return new Set(save.visited||[]).size;
   case 'bosses':return new Set(save.bossRelics||[]).size;
   case 'chapters':return save.story?.stage||0;
+  case 'depths':return new Set((save.visited||[]).filter(zone=>Number.isInteger(zone)&&zone>=16&&zone<ZONES.length)).size;
   default:return save.kills||0;
  }
 }
@@ -135,14 +149,16 @@ class World {
    const mons=[];const dungeon=zone>=12;
    // Densidade inspirada na campanha clássica: 13 criaturas comuns + chefe por área,
    // e um pouco mais nas masmorras (em vez das antigas 24–30 por região).
-   const count=dungeon?18:14;
+   const count=dungeon?(zone>=16?14:18):14;
    for(let i=0;i<count;i++){
     const boss=i===count-1;const seed=hash32(zone*9217+i*5711+77);
     const speciesId=boss?(dungeon?31:(zone+11)%32):(zone*2+i*7+((seed>>4)%5))%SPECIES.length;
-    const sp=SPECIES[speciesId],tier=1+Math.floor(zone/3),mult=boss?5.5:1+(zone%3)*.12;
+    const sp=SPECIES[speciesId],tier=zone>=16?2+Math.floor((zone-16)/6)+Math.floor(dungeonDepth(zone)/2):1+Math.floor(zone/3),mult=boss?5.5:1+(zone%3)*.12;
+    const eliteNames=['Guardião das Raízes','Marechal das Cinzas','Oráculo das Vozes','Arauto do Amanhecer'];
+    const name=boss&&zone>=16?'★ '+eliteNames[Math.floor((zone-16)/6)]+' · Piso '+dungeonDepth(zone):(boss?'★ ':'')+sp[0];
     const chosen={x:130+hash32(seed+1)%(ZONE_W-260),y:130+hash32(seed+2)%(ZONE_H-260)};
     const home=terrain.nearestWalkable(zone,chosen.x,chosen.y,ZONES);
-    mons.push({id:`m-${zone}-${i}`,zone,name:(boss?'★ ':'')+sp[0],species:speciesId,boss,x:home.x,y:home.y,home,hp:Math.floor(sp[1]*mult*tier),maxHp:Math.floor(sp[1]*mult*tier),damage:Math.ceil(sp[2]*tier*(boss?2:1)),xp:Math.ceil(sp[3]*tier*(boss?4:1)),coins:Math.ceil(sp[4]*tier*(boss?5:1)),lastAttack:0,windupUntil:0,deadUntil:0,damageFrom:new Map(),wander:0,wanderGoal:null,aggroTarget:null,aggroUntil:0});
+    mons.push({id:`m-${zone}-${i}`,zone,name,species:speciesId,boss,x:home.x,y:home.y,home,hp:Math.floor(sp[1]*mult*tier),maxHp:Math.floor(sp[1]*mult*tier),damage:Math.ceil(sp[2]*tier*(boss?2:1)),xp:Math.ceil(sp[3]*tier*(boss?4:1)),coins:Math.ceil(sp[4]*tier*(boss?5:1)),lastAttack:0,windupUntil:0,deadUntil:0,damageFrom:new Map(),wander:0,wanderGoal:null,aggroTarget:null,aggroUntil:0});
    }
    this.monsters.set(zone,mons);
   }}
@@ -153,12 +169,21 @@ class World {
  zonePortals(zone){
   if(!Number.isInteger(zone)||zone<0||zone>=ZONES.length)return [];
   const entries=[1,3,5,11];
-  const destinations=zone>=12?[entries[zone-12]]:
-   ZONES.map((_,i)=>i).filter(i=>i<12&&i!==zone&&Math.abs(i-zone)<=2)
-    .concat(ZONES.map((_,i)=>i).filter(i=>i>=12&&entries[i-12]===zone));
+  let destinations;
+  if(zone>=16){
+   const root=dungeonRoot(zone),depth=dungeonDepth(zone);
+   destinations=[depth===1?root:zone-1];
+   if(depth<DEPTH_PER_DUNGEON)destinations.push(zone+1);
+  }else if(zone>=12){
+   destinations=[entries[zone-12],dungeonFloor(zone,1)];
+  }else{
+   destinations=ZONES.map((_,i)=>i).filter(i=>i<12&&i!==zone&&Math.abs(i-zone)<=2);
+   for(let i=0;i<4;i++)if(entries[i]===zone)destinations.push(12+i);
+  }
   return destinations.map((to,i)=>{
    const x=Math.round(destinations.length===1?ZONE_W/2:180+i*1170/(destinations.length-1));
-   return {zone:to,name:ZONES[to][0],x,y:Math.round(roadY(x,zone)),dungeon:to>=12};
+   return {zone:to,name:ZONES[to][0],x,y:Math.round(roadY(x,zone)),dungeon:to>=12,
+    depth:dungeonDepth(to),stair:zone>=12&&to>=12?to>zone?'down':'up':null};
   });
  }
  usePortal(p,z){
@@ -320,10 +345,11 @@ class World {
  }
  chooseClass(p,role){if(!CLASSES[role])return;if(p.save.level>1||p.save.kills>0){this.tell(p,'A classe não pode ser alterada após começar a evolução.');return}const previous=hpMax(p.save);p.save.role=role;p.save.hp=clamp(p.save.hp+hpMax(p.save)-previous,1,hpMax(p.save));this.dirty=true;this.send(p.socket,this.ownStatus(p));this.tell(p,'Classe alterada para '+CLASSES[role].name+'.')}
  travel(p,z){z=Number(z);if(!Number.isInteger(z)||z<0||z>=ZONES.length)return;
-  if(z===p.zone)return;const a=p.zone,b=z;const legal=(a<12&&b<12&&Math.abs(a-b)<=2)||(a<12&&b>=12&&[1,3,5,11][b-12]===a)||(a>=12&&b===[1,3,5,11][a-12]);
-  if(!legal){this.tell(p,'Siga para uma região vizinha ou para a entrada de uma masmorra.');return}
-  if(b>=12&&(p.save.inventory.chave||0)<1){this.tell(p,'Você precisa de uma Chave da masmorra (comprável na loja).');return}
-  if(b>=12){p.save.inventory.chave--;}
+  if(z===p.zone)return;const a=p.zone,b=z;const legal=this.zonePortals(a).some(g=>g.zone===b);
+  if(!legal){this.tell(p,'Use uma passagem conectada a esta região.');return}
+  const enteringDungeon=a<12&&b>=12&&b<LEGACY_ZONE_COUNT;
+  if(enteringDungeon&&(p.save.inventory.chave||0)<1){this.tell(p,'Você precisa de uma Chave da masmorra (comprável na loja).');return}
+  if(enteringDungeon){p.save.inventory.chave--;}
   p.zone=b;p.save.zone=b;
   const arrival=terrain.nearestWalkable(b,ZONE_W/2,ZONE_H/2,ZONES);
   p.x=arrival.x;p.y=arrival.y;p.save.x=p.x;p.save.y=p.y;if(!p.save.visited.includes(b))p.save.visited.push(b);

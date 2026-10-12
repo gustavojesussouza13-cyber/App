@@ -27,9 +27,9 @@ function blockedAdjacent(zone){
  }
  throw Error('Sem borda de água encontrada');
 }
-test('regras de colisão correspondem exatamente ao terreno visual das 16 regiões',()=>{
+test('regras de colisão correspondem ao terreno visual das quarenta regiões',()=>{
  const renderKind=canvasTerrain();
- for(let zone=0;zone<16;zone++){
+ for(let zone=0;zone<ZONES.length;zone++){
   const biome=terrain.BIOMES[ZONES[zone][1]];
   for(let y=0;y<32;y+=2)for(let x=0;x<48;x+=2)
    assert.equal(terrain.kind(x,y,zone,biome),renderKind(x,y,zone,biome),`tile ${zone}/${x}/${y}`);
@@ -62,15 +62,15 @@ test('posições legadas em água são recuperadas sem perder inventário ou ní
  assert.equal(client.worldPlayer.save.inventory.pocao,9);
  assert.ok(terrain.canStand(8,client.worldPlayer.x,client.worldPlayer.y,ZONES));
 });
-test('todos os 240 monstros nascem em terra acessível',t=>{
+test('todos os monstros das quarenta regiões nascem em terra acessível',t=>{
  const {world}=fixture(t);
  for(const [zone,mobs] of world.monsters)
   for(const m of mobs)assert.ok(terrain.canStand(zone,m.home.x,m.home.y,ZONES),`monstro ${m.id} em água`);
- assert.equal(world.totalMonsters(),240);
+ assert.equal(world.totalMonsters(),576);
 });
 test('passagens chegam sempre em terra, inclusive masmorras',t=>{
  const {world,p}=fixture(t);
- for(let z=1;z<16;z++){
+ for(let z=1;z<ZONES.length;z++){
   // Validar o ponto de chegada sem precisar gastar chaves.
   const spot=terrain.nearestWalkable(z,ZONE_W/2,ZONE_H/2,ZONES);
   assert.ok(terrain.canStand(z,spot.x,spot.y,ZONES),`entrada de ${z}`);

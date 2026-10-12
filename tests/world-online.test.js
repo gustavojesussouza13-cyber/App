@@ -19,15 +19,15 @@ function wsConnect(endpoint,name){return new Promise((resolve,reject)=>{
  sock.addEventListener('message',e=>{const o=JSON.parse(e.data);all.push(o);if(o.type==='welcome'||o.type==='error'){clearTimeout(timer);resolve({sock,all,result:o})}});
  sock.addEventListener('error',()=>{clearTimeout(timer);reject(new Error('Falha WS'))});
 })}
-test('mundo novo é servido com scripts, css, status e 240 criaturas',async()=>{
+test('mundo novo é servido com scripts, css, status e 576 criaturas',async()=>{
  await ready();const [home,script,style,status]=await Promise.all([
  fetch(`http://127.0.0.1:${PORT}/mundo`),fetch(`http://127.0.0.1:${PORT}/mmo.js`),fetch(`http://127.0.0.1:${PORT}/mmo.css`),fetch(`http://127.0.0.1:${PORT}/api/status`)]);
  assert.equal(home.status,200);assert.match(await home.text(),/MUNDO ABERTO/);assert.equal(script.status,200);assert.match(await script.text(),/OsPeregrinosMundo/);assert.equal(style.status,200);
- const data=await status.json();assert.equal(data.maxPlayers,10);assert.equal(data.world.monsters,240);assert.equal(data.world.regions,16);
+ const data=await status.json();assert.equal(data.maxPlayers,10);assert.equal(data.world.monsters,576);assert.equal(data.world.regions,40);
 });
 test('dois jogadores sem conta entram no mundo, compartilham monstros e conversam',async()=>{
  const a=await wsConnect('world-ws','AmigoCerto'),b=await wsConnect('world-ws','AmigaCerta');
- try{assert.equal(a.result.type,'welcome');assert.equal(b.result.type,'welcome');assert.equal(b.result.zones.length,16);assert.equal(b.result.online,2);
+ try{assert.equal(a.result.type,'welcome');assert.equal(b.result.type,'welcome');assert.equal(b.result.zones.length,40);assert.equal(b.result.online,2);
   a.sock.send(JSON.stringify({type:'chat',channel:'global',text:'Vamos explorar Auren?'}));await delay(550);
   assert.ok(b.all.some(e=>e.type==='chat'&&e.name==='AmigoCerto'&&e.text==='Vamos explorar Auren?'));
   assert.ok(b.all.some(e=>e.type==='snapshot'&&e.players.some(p=>p.name==='AmigoCerto')));

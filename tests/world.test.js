@@ -15,8 +15,8 @@ const mk=()=>{
  }
  return {server,dir,deliveries,add,cleanup(){server.stop();fs.rmSync(dir,{recursive:true,force:true})}};
 };
-test('mundo 16-bit mantém 16 regiões com densidade da campanha clássica',t=>{
- const w=mk();t.after(w.cleanup);assert.equal(ZONES.length,16);assert.equal(w.server.totalMonsters(),240);
+test('mundo 16-bit mantém 16 regiões clássicas e adiciona 24 subsolos',t=>{
+ const w=mk();t.after(w.cleanup);assert.equal(ZONES.length,40);assert.equal(w.server.totalMonsters(),576);
  for(let i=0;i<12;i++)assert.equal(w.server.monsters.get(i).length,14);
  for(let i=12;i<16;i++)assert.equal(w.server.monsters.get(i).length,18);
  for(let i=0;i<16;i++)assert.ok(w.server.monsters.get(i).some(m=>m.boss));
