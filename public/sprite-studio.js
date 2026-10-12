@@ -10,6 +10,7 @@
  if(typeof module==='object'&&module.exports)module.exports=api;
  root.OsPeregrinosSpriteStudio=api;
 })(typeof globalThis!=='undefined'?globalThis:this,function(){
+ const SHADE=typeof module==='object'&&module.exports?require('./shading16'):globalThis.OsPeregrinosShade16;
  const W=40,H=52;
  const ROLES=Object.freeze({
   peregrino:{coat:'#8a6245',edge:'#402e32',light:'#b99163',trim:'#dcc28e',hair:'#493328',skin:'#e1af7f',boots:'#352b34',metal:'#acb6a4',gem:'#a9e6ca'},
@@ -92,6 +93,7 @@
      pix(g,c.light,16,13+by,3,2);
     }
    }
+   SHADE?.hero(g,c,{by,front,back,role,frame});
    // Braços animados independentemente do corpo.
    const left=action==='attack'?-5:Math.floor(sway/2),right=action==='attack'?pulse*2:-Math.floor(sway/2);
    outline(g,5+left,22+by,7,14,c.edge,c.coat,c.light);
@@ -244,6 +246,7 @@
     pix(g,c.dark,12,41+y,8,8);pix(g,c.dark,24,41+y,8,8);
     armor();
    }
+   SHADE?.creature(g,c,{boss,frame,shape:base,zone});
    // Pontos de brilho, cicatrizes e textura de escamas: nove micropixels por
    // criatura garantem leitura de volume mesmo num sprite de poucos pixels.
    for(let i=0;i<9;i++){
