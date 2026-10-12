@@ -142,7 +142,8 @@ class World {
   this.broadcast({type:'system',text:p.name+' deixou o reino.'});this.persist();
  }
  snapshotTo(p){const near=[...this.players.values()].filter(o=>o.id!==p.id&&o.zone===p.zone&&dist(o,p)<680).map(o=>this.publicPlayer(o));
-  const mons=(this.monsters.get(p.zone)||[]).filter(m=>m.hp>0&&dist(m,p)<740).map(m=>this.publicMonster(m));
+  // Margem de visibilidade evita monstros aparecendo/desaparecendo na borda da tela.
+  const mons=(this.monsters.get(p.zone)||[]).filter(m=>m.hp>0&&dist(m,p)<850).map(m=>this.publicMonster(m));
   this.send(p.socket,{type:'snapshot',online:this.players.size+this.getOnline(),zone:p.zone,players:near,monsters:mons,day:this.day});
  }
  receive(c,d){if(!d||typeof d!=='object'||Array.isArray(d))return;if(!c.worldPlayer){if(d.type==='hello')this.join(c,d);return}
