@@ -13,6 +13,7 @@ const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const ROAD=z=>x=> 496+Math.sin((x+z*117)/225)*54+Math.sin(x/79+z*2)*12;
 function create({ctx,W,H}){
  const pixelDetail=window.OsPeregrinosPixelDetail;
+ const landscape=window.OsPeregrinosLandscape16?.create({documentRef:document});
  const spriteStudio=window.OsPeregrinosSpriteStudio?.create({documentRef:document});
  let cache=null,objects=[],artReady=false;
  atlas.addEventListener('load',()=>{artReady=true;cache=null});
@@ -50,18 +51,21 @@ function create({ctx,W,H}){
     else if(k==='path'||k==='sand')key='terra_0'+(1+Math.floor(n*8));
     else if(k==='rock'||k==='paving')key=n>.26?'pedregulho_0'+(1+Math.floor(n*8)):'terra_0'+(1+Math.floor(n*8));
     else key='grama_0'+(1+Math.floor(n*8));
-    if(biome==='dungeon'&&pixelDetail)pixelDetail.drawDungeonTile(g,tx,ty,z,k);
+    if(biome!=='dungeon'&&landscape){
+     // Tiles de solo, grama e água consistentes com a colisão do servidor.
+     landscape.terrainTile(g,tx,ty,z,biome,k,(cx,cy)=>kind(cx,cy,z,biome));
+    }else if(biome==='dungeon'&&pixelDetail)pixelDetail.drawDungeonTile(g,tx,ty,z,k);
     else{
      cut(g,key,tx*TILE,ty*TILE,TILE,TILE);
      if(pixelDetail)pixelDetail.drawSurfaceTile(g,tx,ty,z,biome,k);
     }
     // Disrupted transitions between roads and the original grass tiles.
-    if(k==='path' && kind(tx,ty-1,z,biome)==='grass')cut(g,'grama_02',tx*TILE,ty*TILE-4,32,10);
-    if(k==='path' && kind(tx,ty+1,z,biome)==='grass')cut(g,'grama_05',tx*TILE,ty*TILE+TILE-6,32,10);
-    if(biome!=='dungeon'&&k==='grass'&&n>.94)cut(g,'arbusto_3',tx*TILE+7,ty*TILE+11,21,18);
-    if(biome!=='dungeon'&&k==='rock'&&n>.92)cut(g,'pedra',tx*TILE+3,ty*TILE+7,26,19);
-    if(biome!=='dungeon'&&k==='path'&&n>.91)cut(g,'pedregulho_03',tx*TILE+11,ty*TILE+9,10,10);
-    if(biome!=='dungeon'&&k==='grass'&&n>.22&&n<.235){
+    if(!landscape&&k==='path' && kind(tx,ty-1,z,biome)==='grass')cut(g,'grama_02',tx*TILE,ty*TILE-4,32,10);
+    if(!landscape&&k==='path' && kind(tx,ty+1,z,biome)==='grass')cut(g,'grama_05',tx*TILE,ty*TILE+TILE-6,32,10);
+    if(!landscape&&biome!=='dungeon'&&k==='grass'&&n>.94)cut(g,'arbusto_3',tx*TILE+7,ty*TILE+11,21,18);
+    if(!landscape&&biome!=='dungeon'&&k==='rock'&&n>.92)cut(g,'pedra',tx*TILE+3,ty*TILE+7,26,19);
+    if(!landscape&&biome!=='dungeon'&&k==='path'&&n>.91)cut(g,'pedregulho_03',tx*TILE+11,ty*TILE+9,10,10);
+    if(!landscape&&biome!=='dungeon'&&k==='grass'&&n>.22&&n<.235){
       const x=tx*TILE+8,y=ty*TILE+9;
       g.fillStyle=noise(tx,ty,z,27)>.5?'#f5deb2':'#dab1d7';
       for(const [xx,yy] of [[0,4],[4,0],[8,4],[4,8]])g.fillRect(x+xx,y+yy,3,3);
@@ -79,7 +83,7 @@ function create({ctx,W,H}){
   if(biome==='dungeon'&&pixelDetail)pixelDetail.drawArchitecture(g,z,pathY,ZW,ZH);
   // Relatively subtle biome coloration without replacing the classic tiles.
   const wash={forest:'#081b0b12',swamp:'#082d3040',desert:'#d5aa6b2e',mountain:'#72839420',dungeon:'#2820376c',ruins:'#51446c20',coast:'#5eabbc12',city:'#d0b47411',river:'#4da1b20a'}[biome];
-  if(wash){g.fillStyle=wash;g.fillRect(0,0,ZW,ZH)}
+  if(wash&&(!landscape||biome==='dungeon')){g.fillStyle=wash;g.fillRect(0,0,ZW,ZH)}
   const objs=[];
   const hasTrees=['meadow','forest','swamp','river','coast','city'].includes(biome);
   const isDry=['desert','mountain','ruins','dungeon'].includes(biome);
@@ -237,6 +241,7 @@ function create({ctx,W,H}){
   const size=o.w;drawShadow(g,o.x,o.y,size*.63);
   if(o.kind==='dungeon-prop'&&pixelDetail){pixelDetail.drawDungeonProp(g,o,cache.z);return}
   if(o.kind==='biome-prop'&&pixelDetail){pixelDetail.drawSurfaceProp(g,o,cache.biome,cache.z);return}
+  if(landscape?.drawProp(g,o,cache.biome))return;
   cut(g,o.key,o.x-o.w/2,o.y-o.h,o.w,o.h)
  }
  // Todos os portais reais são recebidos do servidor. Não existem portas falsas no cenário.
