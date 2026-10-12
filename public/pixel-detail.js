@@ -329,6 +329,100 @@
    rect(g,'#f7f6d9',15,-2,8,3);
   }
  }
+ // Pequenos monumentos de cada bioma: apenas visuais, sem portais falsos.
+ function drawSurfaceProp(g,o,biome,z){
+  const theme=SURFACE[biome]||SURFACE.meadow,x=Math.round(o.x),y=Math.round(o.y);
+  rect(g,'#08120c70',x-28,y-4,56,5);
+  if(biome==='meadow'){
+   rect(g,'#5e6d3e',x-13,y-33,27,28);
+   for(let i=0;i<5;i++){
+    const px=x-17+i*8;
+    rect(g,'#3c6b3f',px,y-19-i%2*8,3,20);
+    rect(g,i%2?'#ffe2a5':'#e0a9c0',px-4,y-25-i%2*8,10,6);
+    rect(g,'#f8ecbe',px,y-23-i%2*8,2,2);
+   }
+  }else if(biome==='forest'){
+   rect(g,'#49372c',x-28,y-17,55,13);
+   rect(g,'#8c6245',x-25,y-16,49,5);
+   for(let i=0;i<4;i++){
+    const px=x-19+i*12;rect(g,'#d6c7a5',px,y-18,3,13);
+    rect(g,i%2?'#c78a5b':'#bc5b49',px-5,y-23,13,6);
+    rect(g,'#edd6b6',px-3,y-22,3,2);
+   }
+  }else if(biome==='river'){
+   rect(g,'#4a6d64',x-23,y-23,8,19);
+   rect(g,'#d0ac75',x+12,y-43,4,37);
+   rect(g,'#f1cf96',x+13,y-40,14,3);
+   for(let i=0;i<5;i++)rect(g,'#a2ca9b',x-23+i*9,y-14-i%2*10,3,14);
+   rect(g,'#89d3dc',x-16,y-4,34,2);
+  }else if(biome==='desert'){
+   rect(g,'#567958',x-7,y-57,16,53);
+   rect(g,'#8fa36c',x-4,y-52,4,43);
+   rect(g,'#3e6c52',x-26,y-42,13,26);
+   rect(g,'#607b54',x-25,y-25,21,7);
+   rect(g,'#3e6c52',x+9,y-36,13,22);
+   rect(g,'#73946b',x+4,y-20,18,7);
+   for(let i=0;i<5;i++)rect(g,'#d7be8b',x-23+i*11,y-3-i%2*2,6,2);
+  }else if(biome==='mountain'){
+   rect(g,'#344854',x-25,y-23,52,19);
+   rect(g,'#657785',x-20,y-48,39,31);
+   rect(g,'#bbccc9',x-15,y-51,19,16);
+   rect(g,'#4b6880',x-6,y-30,19,19);
+   rect(g,'#bdd7d3',x+2,y-26,7,12);
+   rect(g,'#f5e6ce',x-12,y-45,4,5);
+  }else if(biome==='ruins'){
+   rect(g,'#4a454e',x-25,y-27,50,22);
+   rect(g,'#a49a98',x-22,y-66,21,54);
+   rect(g,'#d4c9b1',x-28,y-68,37,9);
+   rect(g,'#8f848c',x+9,y-41,17,33);
+   rect(g,'#b5ab9c',x+7,y-42,22,6);
+   rect(g,'#514458',x-13,y-55,3,30);
+  }else if(biome==='swamp'){
+   rect(g,'#244334',x-23,y-11,45,9);
+   rect(g,'#6c8756',x-19,y-32,33,24);
+   rect(g,'#a5bd77',x-18,y-30,16,5);
+   for(let i=0;i<3;i++){
+    rect(g,'#c6c19d',x-12+i*13,y-18,3,15);
+    rect(g,i%2?'#d2b77a':'#b99cc5',x-15+i*13,y-24,11,8);
+   }
+  }else if(biome==='coast'){
+   rect(g,'#8e7d64',x-27,y-12,54,9);
+   rect(g,'#d6b985',x-24,y-30,44,15);
+   rect(g,'#efe2be',x-14,y-33,23,11);
+   for(let i=0;i<4;i++){
+    rect(g,i%2?'#f7e4b8':'#bfaba0',x-22+i*12,y-12,10,6);
+    rect(g,'#76afbc',x-17+i*12,y-9,4,3);
+   }
+  }else if(biome==='city'){
+   rect(g,'#2e3b37',x-28,y-17,57,12);
+   rect(g,'#bdad8a',x-20,y-45,40,28);
+   rect(g,'#e6ca8e',x-18,y-43,36,5);
+   rect(g,'#7f5b42',x-13,y-37,25,14);
+   rect(g,'#eedaa5',x-8,y-32,16,7);
+   rect(g,'#527867',x+21,y-34,7,28);
+   rect(g,'#f9d98b',x+19,y-41,11,10);
+  }
+  rect(g,theme.accent,x-26,y-6,4,2);
+ }
+ // Poeira, brasa e reflexos discretos no estilo estritamente pixelado. Usa
+ // ~14 partículas por frame e não interfere na área de clique ou colisões.
+ function drawAtmosphere(g,{z,biome,cameraX,cameraY,W,H,now}){
+  const theme=styleFor(z),palette=theme?
+   [theme.glow,theme.accent,theme.light]:[
+    (SURFACE[biome]||SURFACE.meadow).light,(SURFACE[biome]||SURFACE.meadow).accent
+   ];
+  const ticks=Math.floor(now/170),count=theme?16:10;
+  for(let i=0;i<count;i++){
+   const fx=hash(i,z,13),fy=hash(z,i,19);
+   const x=((Math.floor(fx*W*2)-Math.floor(cameraX*.19)+i*37)%(W+60)+(W+60))%(W+60)-30;
+   const speed=theme?.id==='cinzas'?2:theme?.id==='aurora'?1:0;
+   const y=((Math.floor(fy*H*2)+ticks*(speed?speed:1)*(i%3===0?-1:1)-Math.floor(cameraY*.09))%(H+60)+(H+60))%(H+60)-30;
+   const size=theme?.id==='aurora'&&i%4===0?4:2;
+   rect(g,palette[i%palette.length],x,y,size,size);
+   if(theme?.id==='cinzas'&&i%4===0)rect(g,'#f2a95f',x,y+3,1,3);
+   if(theme?.id==='vozes'&&i%5===0)rect(g,'#e6d5f8',x+3,y-1,2,2);
+  }
+ }
  return {THEMES,SURFACE,familyOf,depthOf,styleFor,drawDungeonTile,drawSurfaceTile,
-  drawArchitecture,drawDungeonProp,drawHero,drawMonster,drawPortal,drawCombat};
+  drawArchitecture,drawDungeonProp,drawSurfaceProp,drawAtmosphere,drawHero,drawMonster,drawPortal,drawCombat};
 });
