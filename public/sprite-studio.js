@@ -37,6 +37,16 @@
   chefe:{base:'#a58a9e',dark:'#4f3b59',light:'#ead6d5',eye:'#fee0a4',shape:'knight'}
  });
  const phases=Object.freeze({idle:4,walk:6,attack:5,hurt:3,death:5});
+ // Alguns fluxos podem enviar nomes exibidos ao jogador em vez dos IDs
+ // internos: a normalização impede a classe visual incorreta.
+ const normalizeRole=value=>{
+  const role=String(value||'').trim().normalize('NFD')
+   .replace(/[\u0300-\u036f]/g,'').toLowerCase();
+  return role==='guardiao'||role==='guardian'?'guardiao':
+   role==='curandeiro'||role==='healer'?'curandeiro':
+   role==='arqueiro'||role==='archer'?'arqueiro':
+   role==='peregrino'||role==='pilgrim'?'peregrino':'peregrino';
+ };
  const palettes=Object.freeze([
   ['#688b59','#345c48','#b1d890'], // raiz
   ['#a36c52','#513d46','#ffb86d'], // cinzas
@@ -151,6 +161,9 @@
     pix(g,'#f7e3c0',8+left,18+by+pulse,1,11);
    }
    ATELIER?.hero(g,c,{role,dir,action,frame,by,step});
+   // O acabamento final pertence apenas à classe escolhida. Não reutilizar
+   // o capuz e a aljava do arqueiro para guardião nem curandeiro.
+   ATELIER?.classIdentity?.(g,c,{role,dir,action,frame,by});
    // Golpe percebido por um contorno curto que não altera hitbox.
    if(action==='hurt'&&frame%3!==2){
     pix(g,'#fff0dc',10,17,24,2);
@@ -276,7 +289,8 @@
   }
   function obtain(kind,name,dir,action,frame,boss,zone,species=0,npc=null){
    const group=kind==='hero'?ROLES:CREATURES;
-   if(kind!=='npc'&&!group[name])name=kind==='hero'?'peregrino':'limo';
+   if(kind==='hero')name=normalizeRole(name);
+   else if(kind!=='npc'&&!group[name])name='limo';
    dir=Number.isInteger(dir)?Math.max(0,Math.min(3,dir)):2;
    action=phases[action]?action:'idle';
    frame=((Number.isFinite(frame)?Math.floor(frame):0)%phases[action]+phases[action])%phases[action];
@@ -344,5 +358,5 @@
   return {drawHero,drawMonster,drawNpc,pose,clear,
    obtain,get stats(){return{builds,cached:cache.size}},roles:Object.keys(ROLES),creatures:Object.keys(CREATURES)};
  }
- return {create,ROLES,CREATURES,phases,family};
+ return {create,ROLES,CREATURES,phases,family,normalizeRole};
 });
