@@ -135,9 +135,11 @@ function create({ctx,W,H}){
   for(let i=0;i<4;i++){
     const x=215+i*355+(z%3)*19,road=pathY(x,z),side=(i%2===0?-1:1);
     if(i===0&&z%4!==3)objs.push({key:'poco',x,y:road+side*81,kind:'prop',w:64,h:51});
-    if(i===1)objs.push({key:biome==='dungeon'?'portal_fechado':biome==='city'?'tenda':'estandarte',x,y:road+side*82,kind:'prop',w:biome==='city'?105:63,h:biome==='dungeon'?88:biome==='city'?80:71});
+    // Nunca desenhar portal_fechado como decoração: ele parecia uma entrada, mas não interagia.
+    // Todas as passagens utilizáveis vêm exclusivamente de zonePortals() do servidor.
+    if(i===1)objs.push({key:biome==='dungeon'?'pedra':biome==='city'?'tenda':'estandarte',x,y:road+side*82,kind:'prop',w:biome==='dungeon'?38:biome==='city'?105:63,h:biome==='dungeon'?30:biome==='city'?80:71});
     if(i===2)objs.push({key:'fogueira',x,y:road+side*85,kind:'prop',w:44,h:54});
-    if(i===3)objs.push({key:'santuario',x,y:road+side*90,kind:'prop',w:76,h:101});
+    if(i===3)objs.push({key:biome==='dungeon'?'pedra':'santuario',x,y:road+side*90,kind:'prop',w:biome==='dungeon'?38:76,h:biome==='dungeon'?30:101});
   }
   if(biome==='city')for(let j=0;j<4;j++)objs.push({key:'tenda',x:410+j*160,y:pathY(410+j*160,z)-143,kind:'prop',w:93,h:74});
   objs.sort((a,b)=>a.y-b.y);objects=objs;
@@ -236,25 +238,41 @@ function create({ctx,W,H}){
   if(selected||m.boss){g.save();g.fillStyle='#ffefc8';g.font='bold 12px monospace';g.textAlign='center';g.shadowColor='#000';g.shadowBlur=6;g.fillText(m.name,x,y-(m.boss?99:64));g.restore()}
  }
  function prop(g,o){const s=o.w;drawShadow(g,o.x,o.y,s*.63);cut(g,o.key,o.x-o.w/2,o.y-o.h,o.w,o.h)}
- // Portal de viagem no cenário: o destino vem do servidor autoritativo.
- function portal(g,p,now){
-  const pulse=.5+.5*Math.sin(now/440+p.x);
+ // Todos os portais reais são recebidos do servidor. Não existem portas falsas no cenário.
+ function portal(g,p,now,hero){
+  const pulse=.5+.5*Math.sin(now/440+p.x),near=Math.hypot(hero.x-p.x,hero.y-p.y)<=100;
+  const gateway=!!p.gateway,down=p.stair==='down',up=p.stair==='up';
+  const tint=gateway?'#f7cc80':down?'#e9ab77':up?'#a3daf4':p.dungeon?'#cca9fa':'#a6ebc3';
   g.save();g.translate(Math.round(p.x),Math.round(p.y));
-  g.fillStyle='#061812af';g.beginPath();g.ellipse(0,5,33,12,0,0,Math.PI*2);g.fill();
-  g.shadowColor=p.stair?(p.stair==='down'?'#e9a45d':'#93ceee'):p.dungeon?'#c996e8':'#a6ebc3';g.shadowBlur=7+pulse*9;
-  g.strokeStyle=p.dungeon?'#c99feb':'#8ed6b0';g.lineWidth=5;
-  g.beginPath();g.ellipse(0,-38,24,43,0,0,Math.PI*2);g.stroke();
-  g.shadowBlur=0;g.fillStyle=p.dungeon?'#874ac166':'#53beaa55';
-  g.beginPath();g.ellipse(0,-38,20,39,0,0,Math.PI*2);g.fill();
-  g.fillStyle='#ffe0a6';g.font='bold 13px monospace';g.textAlign='center';
-  g.shadowColor='#071510';g.shadowBlur=6;
-  if(p.stair){
-   const direction=p.stair==='down'?'DESCER':'SUBIR';
-   g.fillStyle='#0b131bdc';g.fillRect(-39,-7,78,16);
-   g.fillStyle=p.stair==='down'?'#f8c784':'#c5eeff';g.font='bold 12px monospace';
-   g.fillText(direction,0,4);
+  g.fillStyle='#031019c9';g.beginPath();g.ellipse(0,5,40,14,0,0,Math.PI*2);g.fill();
+  g.shadowColor=tint;g.shadowBlur=(near?17:9)+pulse*12;
+  // Portal 16-bit original do atlas, aplicado no local exato da passagem do servidor.
+  cut(g,'portal_aberto',-34,-92,68,92);
+  g.shadowBlur=0;
+  g.strokeStyle=tint;g.lineWidth=near?4:2;
+  g.beginPath();g.ellipse(0,-41,29,47,0,0,Math.PI*2);g.stroke();
+  // Runas e partículas mostram que a entrada realmente pode ser usada.
+  for(let j=0;j<5;j++){
+   const angle=j*1.257+now/1100,rx=Math.cos(angle)*19,ry=-42+Math.sin(angle)*31;
+   g.fillStyle=j%2?tint:'#fff1ce';g.fillRect(Math.round(rx),Math.round(ry),3,3);
   }
-  g.fillText('✦ E · '+p.name.slice(0,21),0,-92);
+  if(p.stair){
+   g.fillStyle='#0e1b25';g.fillRect(-32,-10,64,15);
+   g.fillStyle=down?'#f6cb93':'#bcdeff';
+   for(let j=0;j<4;j++)g.fillRect(-26+j*4,-8+j*3,52-j*8,3);
+  }
+  g.textAlign='center';g.shadowColor='#030a08';g.shadowBlur=6;
+  const action=gateway?(p.zone===10?'↥ SAÍDA PARA AUREN':'✦ PRÓXIMA MASMORRA'):
+   down?'↧ DESCER':up?'↥ SUBIR':p.dungeon?'✦ ENTRAR':'✦ VIAJAR';
+  g.fillStyle='#071911e8';g.fillRect(-83,-108,166,18);
+  g.font='bold 12px monospace';g.fillStyle=tint;g.fillText(action,0,-95);
+  g.fillStyle='#f9e9c5';g.font='bold 12px monospace';
+  g.fillText(p.name.slice(0,25),0,-118);
+  if(near){
+   g.shadowBlur=0;g.fillStyle='#ffe8a0';g.fillRect(-80,17,160,19);
+   g.fillStyle='#142c25';g.font='bold 12px monospace';
+   g.fillText('E · USAR PASSAGEM',0,31);
+  }
   g.restore();
  }
  function displayMap(g,opt){
@@ -264,7 +282,9 @@ function create({ctx,W,H}){
   g.save();g.beginPath();g.rect(mx+5,my+5,mw-10,mh-10);g.clip();
   g.strokeStyle='#cbb27b88';g.lineWidth=3;g.beginPath();for(let xx=0;xx<ZW;xx+=24){const px=mx+5+xx/ZW*(mw-10),py=my+5+pathY(xx,zone)/ZH*(mh-10);if(xx===0)g.moveTo(px,py);else g.lineTo(px,py)}g.stroke();
   g.fillStyle='#c58f6f';for(const m of monsters)g.fillRect(mx+5+m.x/ZW*(mw-10),my+5+m.y/ZH*(mh-10),m.boss?4:2,m.boss?4:2);
-  g.fillStyle='#a3e3dd';for(const p of portals)g.fillRect(mx+5+p.x/ZW*(mw-10),my+5+p.y/ZH*(mh-10),4,5);
+  for(const p of portals){g.fillStyle=p.gateway?'#ffd58d':p.stair?'#c7a9fb':'#a3e3dd';
+   g.fillRect(mx+5+p.x/ZW*(mw-10),my+5+p.y/ZH*(mh-10),p.gateway?6:4,p.gateway?7:5)
+  }
   g.fillStyle='#f8c574';for(const n of npcs)g.fillRect(mx+5+n.x/ZW*(mw-10),my+5+n.y/ZH*(mh-10),4,4);
   g.fillStyle='#c9ebeb';for(const p of players)g.fillRect(mx+5+p.x/ZW*(mw-10),my+5+p.y/ZH*(mh-10),4,4);
   g.fillStyle='#ffe0a3';g.fillRect(mx+5+x/ZW*(mw-10)-2,my+5+y/ZH*(mh-10)-2,6,6);g.restore();
@@ -281,7 +301,7 @@ function create({ctx,W,H}){
   const actors=[];
   for(const o of objects){if(o.x<cameraX-115||o.x>cameraX+W+115||o.y<cameraY-132||o.y>cameraY+H+135)continue;actors.push({depth:o.y,paint:()=>prop(ctx,o)})}
   for(const p of portals){if(p.x<cameraX-140||p.x>cameraX+W+140||p.y<cameraY-125||p.y>cameraY+H+125)continue;
-   actors.push({depth:p.y-1,paint:()=>portal(ctx,p,now)});
+   actors.push({depth:p.y-1,paint:()=>portal(ctx,p,now,{x,y})});
   }
   for(const n of npcs){if(n.x<cameraX-100||n.x>cameraX+W+100||n.y<cameraY-105||n.y>cameraY+H+105)continue;
    actors.push({depth:n.y,paint:()=>npcActor(ctx,n,n.index===storyStage,n.index!==null&&n.index<storyStage,now)});
