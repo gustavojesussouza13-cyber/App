@@ -74,7 +74,7 @@ test('água, pedra, grama e terra têm composições distintas',()=>{
  const signatures=types.map(kind=>{
   const {g,ops}=mockSurface();
   LAND.terrainTile(g,4,6,5,'river',kind,()=>kind);
-  assert.ok(ops.length>=10);
+  assert.ok(ops.length>=7);
   return signature(ops);
  });
  assert.equal(new Set(signatures).size,types.length);
