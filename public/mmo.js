@@ -8,6 +8,10 @@ const session={id:'',name:'',connected:false,characters:null,online:0,zones:[],s
 const keys=new Set(),moves={up:['KeyW','ArrowUp'],down:['KeyS','ArrowDown'],left:['KeyA','ArrowLeft'],right:['KeyD','ArrowRight']};
 const monsterMotion=window.OsPeregrinosMonsterMotion.create();
 const combatFx=window.OsPeregrinosCombatFx.create();
+// Controles de toque coexistem com o teclado sem alterar a velocidade validada pelo servidor.
+const touchDevice=Boolean(window.matchMedia?.('(pointer: coarse)').matches||navigator.maxTouchPoints>0);
+const touchUI=$('touchControls');
+const joystick=window.OsPeregrinosTouchControls.create({pad:$('touchPad'),knob:$('touchKnob')});
 let socket=null,reconnectMs=1000,reconnectTimer=null,movingAt=0,lastDraw=0,fx=[],toastTimer=0,lastAction=0,tab='inventory',authed=false;
 let progressToken=null,accountMode=false,accountReady=false,emailRecoveryAvailable=false;
 try{progressToken=localStorage.getItem('os-peregrinos-world-token');if(!progressToken){progressToken=Array.from(crypto.getRandomValues(new Uint8Array(32)),b=>b.toString(16).padStart(2,'0')).join('');localStorage.setItem('os-peregrinos-world-token',progressToken)}$('name').value=localStorage.getItem('os-peregrinos-last-name')||''}catch{$('connectionError').textContent='O armazenamento precisa estar habilitado para reconhecer seu progresso.'}
@@ -23,7 +27,11 @@ function say(sender,text,kind=''){const line=document.createElement('div');line.
  while($('chatLog').children.length>85)$('chatLog').firstElementChild.remove();$('chatLog').scrollTop=$('chatLog').scrollHeight;
 }
 function send(type,data={}){if(socket&&socket.readyState===WebSocket.OPEN)socket.send(JSON.stringify({type,...data}))}
-function setOnline(state,msg){session.connected=state;$('statusDot').classList.toggle('on',state);$('status').textContent=msg}
+function setOnline(state,msg){
+ session.connected=state;$('statusDot').classList.toggle('on',state);$('status').textContent=msg;
+ touchUI.hidden=!state||!touchDevice;
+ if(!state)joystick.release();
+}
 function character(c){session.characters=c;session.zone=c.zone;session.role=c.role;session.x=c.x;session.y=c.y;
  $('charName').textContent=c.name||session.name;$('playerClass').textContent={peregrino:'Peregrino',guardiao:'Guardião',arqueiro:'Arqueiro',curandeiro:'Curandeiro'}[c.role]||c.role;
  $('playerLevel').textContent='Nível '+c.level;$('playerCoins').textContent='◈ '+c.coins+' moedas';$('hpText').textContent=c.hp+' / '+c.maxHp;
@@ -238,23 +246,49 @@ const keyAction=e=>{if(!$('npcDialogue').hidden){if(e.code==='Escape'){closeDial
  else if(e.code==='KeyL'){selectTab('story');e.preventDefault()}
  else if(e.code==='Enter'){$('chatInput').focus();e.preventDefault()}
 };
-window.addEventListener('keydown',keyAction);window.addEventListener('keyup',e=>keys.delete(e.code));window.addEventListener('blur',()=>keys.clear());
-function attack(skill){if(!session.connected||!session.target){alert('Clique sobre um monstro para selecioná-lo.');return}
+window.addEventListener('keydown',keyAction);window.addEventListener('keyup',e=>keys.delete(e.code));
+window.addEventListener('blur',()=>{keys.clear();joystick.release()});
+document.addEventListener('visibilitychange',()=>{if(document.hidden)joystick.release()});
+$('touchAttackBtn').addEventListener('click',()=>attack(false));
+$('touchSkillBtn').addEventListener('click',()=>attack(true));
+$('touchPotionBtn').addEventListener('click',()=>send('use',{item:'pocao'}));
+$('touchTalkBtn').addEventListener('click',()=>talkToNearest());
+function attack(skill){
+ if(!session.connected)return;
+ let m=session.monsters.get(session.target);
+ if(!m||m.hp<=0){
+  session.target=null;
+  // No celular, selecionar automaticamente apenas criaturas dentro do alcance real da classe.
+  // O servidor continua autorizando distância, dano e cooldown.
+  if(touchDevice){
+   const ranges={guardiao:85,arqueiro:250,curandeiro:160,peregrino:118};
+   const limit=(ranges[session.role]||118)*(skill?1.4:1);
+   for(const monster of session.monsters.values()){
+    if(monster.hp<=0)continue;
+    const dist=Math.hypot(monster.x-session.x,monster.y-session.y);
+    if(dist<=limit&&(!m||dist<Math.hypot(m.x-session.x,m.y-session.y)))m=monster;
+   }
+   if(m)session.target=m.id;
+  }
+ }
+ if(!session.target){alert(touchDevice?'Aproxime-se de um monstro ou toque nele para selecionar.':'Clique sobre um monstro para selecioná-lo.');return}
  if(session.role==='arqueiro'){
-  const m=session.monsters.get(session.target);
+  m=session.monsters.get(session.target);
   if(m){const dx=m.x-session.x,dy=m.y-session.y;session.dir=Math.abs(dx)>Math.abs(dy)?dx>0?1:3:dy>0?2:0;}
  }
- send(skill?'skill':'attack',{target:session.target});lastAction=performance.now()
+ send(skill?'skill':'attack',{target:session.target});lastAction=performance.now();
 }
 $('talkBtn').onclick=talkToNearest;$('attackBtn').onclick=()=>attack(false);$('skillBtn').onclick=()=>attack(true);$('potionBtn').onclick=()=>send('use',{item:'pocao'});$('questBtn').onclick=()=>selectTab('quests');$('mapBtn').onclick=showWorldMap;$('chatFocusBtn').onclick=()=>$('chatInput').focus();
 cvs.addEventListener('click',e=>{if(!session.connected)return;const rect=cvs.getBoundingClientRect(),wx=(e.clientX-rect.left)*W/rect.width+session.cameraX,wy=(e.clientY-rect.top)*H/rect.height+session.cameraY;
- let candidate=null,best=50;for(const mon of session.monsters.values()){
+ const touchRadius=touchDevice?Math.max(50,34*W/Math.max(1,rect.width)):50;
+ let candidate=null,best=touchRadius;for(const mon of session.monsters.values()){
   const p=monsterMotion.position(mon.id)||mon;
   const d=Math.hypot(p.x-wx,p.y-wy);if(d<best){candidate=mon;best=d}
  }
- const npc=session.npcs.filter(n=>n.zone===session.zone).find(n=>Math.hypot(n.x-wx,n.y-wy)<38);
+ const npcRadius=touchDevice?Math.max(38,32*W/Math.max(1,rect.width)):38;
+ const npc=session.npcs.filter(n=>n.zone===session.zone).find(n=>Math.hypot(n.x-wx,n.y-wy)<npcRadius);
  if(npc){tryTalk(npc);return}
- if(candidate){session.target=candidate.id;alert('Alvo: '+candidate.name+' · J para atacar')}});
+ if(candidate){session.target=candidate.id;alert('Alvo: '+candidate.name+(touchDevice?' · Toque em Atacar':' · J para atacar'))}});
 function selectTab(next){tab=next;document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));drawTab()}
 document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>selectTab(b.dataset.tab));
 function button(label,action,details={}){const el=document.createElement('button');el.type='button';el.textContent=label;el.onclick=()=>send(action,details);return el}
@@ -327,7 +361,7 @@ function renderDialogue(){if(!dialogue)return;
  }
 }
 function advanceDialogue(){if(!dialogue)return;if(dialoguePage<dialogue.pages.length-1){dialoguePage++;renderDialogue()}else if(!dialogue.choices?.length)closeDialogue()}
-function closeDialogue(){dialogue=null;dialoguePage=0;$('npcDialogue').hidden=true;keys.clear();if($('welcomeOverlay').hidden)$('game').focus({preventScroll:true})}
+function closeDialogue(){dialogue=null;dialoguePage=0;$('npcDialogue').hidden=true;keys.clear();joystick.release();if($('welcomeOverlay').hidden)$('game').focus({preventScroll:true})}
 $('npcNext').onclick=advanceDialogue;$('npcClose').onclick=closeDialogue;
 function showEpilogue(data){openDialogue({name:'✦ Crônicas da Aurora',title:'O reino voltou a lembrar',chapter:'O sétimo verso',pages:[data.epilogue,'O mundo continua aberto. As pessoas têm novas histórias para contar, e sua aventura pode prosseguir com os amigos.'],choices:[]})}
 function drawTravel(){const box=$('travelButtons');box.replaceChildren();let z=session.zone;
@@ -360,11 +394,12 @@ function canvasDraw(now,dt){
 let lastFrameX=768,lastFrameY=512;
 let lastFrame=0;function tick(t){const dt=Math.min(.065,(t-lastFrame)/1000||0);lastFrame=t;
  if(session.connected&&$('welcomeOverlay').hidden&&$('npcDialogue').hidden){let dx=0,dy=0;if(moves.up.some(k=>keys.has(k)))dy--;if(moves.down.some(k=>keys.has(k)))dy++;if(moves.left.some(k=>keys.has(k)))dx--;if(moves.right.some(k=>keys.has(k)))dx++;
+  if(touchDevice){const v=joystick.vector;dx+=v.x;dy+=v.y}
   if(dx||dy){const l=Math.hypot(dx,dy);session.x=clamp(session.x+dx/l*166*dt,24,ZONE_W-24);session.y=clamp(session.y+dy/l*166*dt,24,ZONE_H-24);session.dir=Math.abs(dx)>Math.abs(dy)?dx>0?1:3:dy>0?2:0}
   if(t-movingAt>85){send('move',{x:Math.round(session.x),y:Math.round(session.y),dir:session.dir});movingAt=t}
  }
  canvasDraw(t,dt);requestAnimationFrame(tick)}requestAnimationFrame(tick);
-window.addEventListener('pagehide',()=>{try{socket?.close()}catch{}});
+window.addEventListener('pagehide',()=>{joystick.release();try{socket?.close()}catch{}});
 if(new URLSearchParams(location.search).get('auto')==='1'&&$('name').value.trim()&&progressToken){
  session.name=$('name').value.trim().normalize('NFC');session.formClass=$('role').value;connect();
 }
