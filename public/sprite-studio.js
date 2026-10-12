@@ -62,6 +62,7 @@
    const recoil=action==='hurt'?[0,-2,1][frame%3]:0;
    const sway=cycle+pulse+recoil,by=breathe+(step<0?1:0);
    if(dir===3){g.save();g.translate(W,0);g.scale(-1,1)}
+   if(action==='death'){g.save();g.translate(0,frame*5);g.scale(1,Math.max(.28,1-frame*.18))}
    // Botas e passada: os pés trocam de posição em SEIS quadros.
    outline(g,13+Math.min(0,step),41+Math.max(0,step),7,8,c.edge,c.boots,'#897c72');
    outline(g,22-Math.max(0,step),41+Math.max(0,-step),7,8,c.edge,c.boots,'#9a8c7c');
@@ -154,6 +155,7 @@
    if(action==='death'){
     pix(g,c.edge,7,35,30,10);pix(g,c.coat,9,36,26,7);
    }
+   if(action==='death')g.restore();
    if(dir===3)g.restore();
   }
   function monsterFrame(g,type,dir,action,frame,boss,zone){
@@ -164,6 +166,7 @@
     action==='attack'?[0,-2,-4,-1,0][frame%5]:action==='hurt'?[0,2,0][frame%3]:0;
    const y=wiggle;
    if(dir===3){g.save();g.translate(W,0);g.scale(-1,1)}
+   if(action==='death'){g.save();g.translate(0,frame*5);g.scale(1,Math.max(.26,1-frame*.18))}
    const armor=()=>{pix(g,accents[1],6,25+y,28,19);pix(g,accents[0],9,27+y,22,14);pix(g,accents[2],18,31+y,5,5)};
    if(base==='slime'){
     outline(g,8,26+y,26,17,c.dark,c.base,c.light);
@@ -256,6 +259,7 @@
    }else if(action==='hurt'){
     pix(g,'#ffe1ae',9,17+y,26,2);
    }
+   if(action==='death')g.restore();
    if(dir===3)g.restore();
   }
   function obtain(kind,name,dir,action,frame,boss,zone){
