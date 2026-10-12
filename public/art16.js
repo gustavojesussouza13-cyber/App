@@ -12,6 +12,7 @@ const noise=(x,y,z,s=1)=>rng(Math.imul(x+317,73856093)^Math.imul(y+631,19349663)
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const ROAD=z=>x=> 496+Math.sin((x+z*117)/225)*54+Math.sin(x/79+z*2)*12;
 function create({ctx,W,H}){
+ const pixelDetail=window.OsPeregrinosPixelDetail;
  let cache=null,objects=[],artReady=false;
  atlas.addEventListener('load',()=>{artReady=true;cache=null});
  atlas.addEventListener('error',()=>{artReady=false});
@@ -46,14 +47,18 @@ function create({ctx,W,H}){
     else if(k==='path'||k==='sand')key='terra_0'+(1+Math.floor(n*8));
     else if(k==='rock'||k==='paving')key=n>.26?'pedregulho_0'+(1+Math.floor(n*8)):'terra_0'+(1+Math.floor(n*8));
     else key='grama_0'+(1+Math.floor(n*8));
-    cut(g,key,tx*TILE,ty*TILE,TILE,TILE);
+    if(biome==='dungeon'&&pixelDetail)pixelDetail.drawDungeonTile(g,tx,ty,z,k);
+    else{
+     cut(g,key,tx*TILE,ty*TILE,TILE,TILE);
+     if(pixelDetail)pixelDetail.drawSurfaceTile(g,tx,ty,z,biome,k);
+    }
     // Disrupted transitions between roads and the original grass tiles.
     if(k==='path' && kind(tx,ty-1,z,biome)==='grass')cut(g,'grama_02',tx*TILE,ty*TILE-4,32,10);
     if(k==='path' && kind(tx,ty+1,z,biome)==='grass')cut(g,'grama_05',tx*TILE,ty*TILE+TILE-6,32,10);
-    if(k==='grass'&&n>.94)cut(g,'arbusto_3',tx*TILE+7,ty*TILE+11,21,18);
-    if(k==='rock'&&n>.92)cut(g,'pedra',tx*TILE+3,ty*TILE+7,26,19);
-    if(k==='path'&&n>.91)cut(g,'pedregulho_03',tx*TILE+11,ty*TILE+9,10,10);
-    if(k==='grass'&&n>.22&&n<.235){
+    if(biome!=='dungeon'&&k==='grass'&&n>.94)cut(g,'arbusto_3',tx*TILE+7,ty*TILE+11,21,18);
+    if(biome!=='dungeon'&&k==='rock'&&n>.92)cut(g,'pedra',tx*TILE+3,ty*TILE+7,26,19);
+    if(biome!=='dungeon'&&k==='path'&&n>.91)cut(g,'pedregulho_03',tx*TILE+11,ty*TILE+9,10,10);
+    if(biome!=='dungeon'&&k==='grass'&&n>.22&&n<.235){
       const x=tx*TILE+8,y=ty*TILE+9;
       g.fillStyle=noise(tx,ty,z,27)>.5?'#f5deb2':'#dab1d7';
       for(const [xx,yy] of [[0,4],[4,0],[8,4],[4,8]])g.fillRect(x+xx,y+yy,3,3);
@@ -67,51 +72,8 @@ function create({ctx,W,H}){
     g.fillStyle='#715536';for(let x=336;x<524;x+=13)g.fillRect(x,by-26,3,52);
     g.fillStyle='#dec488';g.fillRect(330,by-24,193,3);g.fillRect(330,by+21,193,3);
   }
-  // Arquitetura própria para as masmorras profundas: lajes, mosaicos e inscrições.
-  // Camada puramente visual: nunca cria bloqueios invisíveis ao servidor.
-  if(biome==='dungeon'){
-   const family=z>=16?Math.floor((z-16)/6):z-12;
-   const depth=z>=16?1+(z-16)%6:0;
-   const palette=[
-    ['#355449','#83c5a0','#d4bc81'], // Cripta das raízes
-    ['#64443d','#f09a5f','#efc98b'], // Cinzas
-    ['#49456b','#aeb0eb','#e3cbab'], // Templo
-    ['#31556a','#8bc8ea','#f6e5a9']  // Aurora
-   ][Math.max(0,Math.min(3,family))];
-   // Cada andar muda o arranjo das salas sem custo de novas imagens.
-   g.fillStyle=palette[0]+'36';
-   for(let y=96;y<ZH-90;y+=208)for(let x=98;x<ZW-80;x+=232){
-    const n=noise(Math.floor(x/64),Math.floor(y/64),z,48);
-    if(n<.22)continue;
-    g.fillRect(x,y,182,136);
-    g.strokeStyle=palette[1]+'92';g.lineWidth=3;g.strokeRect(x+3,y+3,176,130);
-    g.strokeStyle='#0a101ba0';g.lineWidth=5;g.strokeRect(x+11,y+11,160,114);
-    // Piso de pedra quadriculado e desgaste em juntas.
-    g.lineWidth=1;g.strokeStyle=palette[2]+'55';
-    for(let xx=x+20;xx<x+180;xx+=24){g.beginPath();g.moveTo(xx,y+14);g.lineTo(xx,y+121);g.stroke()}
-    for(let yy=y+18;yy<y+133;yy+=24){g.beginPath();g.moveTo(x+12,yy);g.lineTo(x+172,yy);g.stroke()}
-    g.fillStyle=palette[2]+'c9';g.font='bold 19px serif';g.textAlign='center';
-    g.fillText(['✦','◇','ᚱ','✧'][(Math.floor(x/232)+Math.floor(y/208)+depth)%4],x+91,y+76);
-   }
-   // Colunas, arcos e detalhes de pedra posicionados afastados da via principal.
-   for(let x=114;x<ZW-50;x+=226){
-    const road=pathY(x,z);
-    for(const side of [-1,1]){
-     const y=Math.round(road+side*(105+12*(depth%3)));
-     g.fillStyle='#0b1720a8';g.fillRect(x-21,y-22,47,48);
-     g.fillStyle=palette[0];g.fillRect(x-17,y-28,34,49);
-     g.fillStyle=palette[1];g.fillRect(x-23,y-32,46,11);g.fillRect(x-23,y+13,46,11);
-     g.fillStyle=palette[2];g.fillRect(x-13,y-19,5,29);
-     g.fillStyle=palette[1]+'a8';g.fillRect(x+8,y-14,4,19);
-    }
-   }
-   // O corredor permanece livre; padrões laterais criam progressão de profundidade.
-   g.fillStyle=palette[1]+'20';
-   for(let x=32;x<ZW;x+=32){
-    const y=Math.round(pathY(x,z));
-    g.fillRect(x,y-38,20,3);g.fillRect(x,y+36,20,3);
-   }
-  }
+  // Cenografia original: cada masmorra possui trama de solo e arquitetura própria.
+  if(biome==='dungeon'&&pixelDetail)pixelDetail.drawArchitecture(g,z,pathY,ZW,ZH);
   // Relatively subtle biome coloration without replacing the classic tiles.
   const wash={forest:'#081b0b12',swamp:'#082d3040',desert:'#d5aa6b2e',mountain:'#72839420',dungeon:'#2820376c',ruins:'#51446c20',coast:'#5eabbc12',city:'#d0b47411',river:'#4da1b20a'}[biome];
   if(wash){g.fillStyle=wash;g.fillRect(0,0,ZW,ZH)}
@@ -123,6 +85,10 @@ function create({ctx,W,H}){
     const gx=Math.round(x+(noise(x,y,z,4)-.5)*75),gy=Math.round(y+(noise(x,y,z,5)-.5)*62),r=noise(x,y,z,8);
     const distanceFromRoad=Math.abs(gy-pathY(gx,z));
     if(distanceFromRoad<71)continue;
+    if(biome==='dungeon'){
+     if(r<.32)objs.push({x:gx,y:gy,kind:'dungeon-prop',w:62,h:72});
+     continue;
+    }
     if(hasTrees&&r<density){
       const tree=1+Math.floor(noise(x,y,z,6)*3),theme=1+((z+Math.floor(noise(x,y,z,7)*3))%3);
       objs.push({key:`arvore_${tree}_tema_${theme}`,x:gx,y:gy,kind:'tree',w:112,h:131});
@@ -134,6 +100,10 @@ function create({ctx,W,H}){
   // The road contains recognisable Zelda-style original landmark sprites.
   for(let i=0;i<4;i++){
     const x=215+i*355+(z%3)*19,road=pathY(x,z),side=(i%2===0?-1:1);
+    if(biome==='dungeon'){
+     objs.push({x,y:road+side*(116+(i%2)*19),kind:'dungeon-prop',w:62,h:72});
+     continue;
+    }
     if(i===0&&z%4!==3)objs.push({key:'poco',x,y:road+side*81,kind:'prop',w:64,h:51});
     // Nunca desenhar portal_fechado como decoração: ele parecia uma entrada, mas não interagia.
     // Todas as passagens utilizáveis vêm exclusivamente de zonePortals() do servidor.
@@ -194,6 +164,7 @@ function create({ctx,W,H}){
    g.strokeStyle='#b3e8bd';g.lineWidth=3;g.beginPath();
    g.moveTo(-18,-6);g.lineTo(-10,0);g.lineTo(-18,6);g.stroke();
   }
+  if(typeof pixelDetail!=='undefined'&&pixelDetail)pixelDetail.drawCombat(g,shot);
   g.restore();
  }
  function character(g,p,local,now,moved,attacking=false){
@@ -201,7 +172,8 @@ function create({ctx,W,H}){
   drawShadow(g,p.x,p.y,w);
   const dir=Number.isInteger(p.dir)?p.dir:2;
   frameSprite(g,key,dir,moved?Math.floor(now/155)%4:0,p.x,p.y,w,h);
-  if(p.role==='arqueiro')drawBow(g,p,dir,attacking);
+  if(pixelDetail)pixelDetail.drawHero(g,p,now);
+   if(p.role==='arqueiro')drawBow(g,p,dir,attacking);
   g.save();g.textAlign='center';g.font=(local?'bold 15px':'bold 13px')+' monospace';
   g.shadowColor='#000b';g.shadowBlur=5;g.lineWidth=3;g.strokeStyle='#0e271e';
   const label=(p.name||'Peregrino')+(local?'':' · Lv.'+(p.level||1));
@@ -232,12 +204,17 @@ function create({ctx,W,H}){
     const w=m.boss?65:43,h=m.boss?62:41;
     cut(g,'monstro_'+ty,x-w/2,y-h,w,h);
   }
-  const width=m.boss?61:45;g.fillStyle='#231d1b';g.fillRect(x-width/2,y-(m.boss?90:56),width,7);
+  if(pixelDetail)pixelDetail.drawMonster(g,m,now);
+   const width=m.boss?61:45;g.fillStyle='#231d1b';g.fillRect(x-width/2,y-(m.boss?90:56),width,7);
   g.fillStyle=m.boss?'#f6b66d':'#b1d976';g.fillRect(x-width/2+1,y-(m.boss?89:55),Math.max(0,(width-2)*m.hp/Math.max(1,m.maxHp)),5);
   if(selected){g.strokeStyle='#ffe29d';g.lineWidth=2;g.strokeRect(x-width/2-6,y-(m.boss?91:57),width+12,m.boss?101:70)}
   if(selected||m.boss){g.save();g.fillStyle='#ffefc8';g.font='bold 12px monospace';g.textAlign='center';g.shadowColor='#000';g.shadowBlur=6;g.fillText(m.name,x,y-(m.boss?99:64));g.restore()}
  }
- function prop(g,o){const s=o.w;drawShadow(g,o.x,o.y,s*.63);cut(g,o.key,o.x-o.w/2,o.y-o.h,o.w,o.h)}
+ function prop(g,o){
+  const size=o.w;drawShadow(g,o.x,o.y,size*.63);
+  if(o.kind==='dungeon-prop'&&pixelDetail){pixelDetail.drawDungeonProp(g,o,cache.z);return}
+  cut(g,o.key,o.x-o.w/2,o.y-o.h,o.w,o.h)
+ }
  // Todos os portais reais são recebidos do servidor. Não existem portas falsas no cenário.
  function portal(g,p,now,hero){
   const pulse=.5+.5*Math.sin(now/440+p.x),near=Math.hypot(hero.x-p.x,hero.y-p.y)<=100;
@@ -249,6 +226,7 @@ function create({ctx,W,H}){
   // Portal 16-bit original do atlas, aplicado no local exato da passagem do servidor.
   cut(g,'portal_aberto',-34,-92,68,92);
   g.shadowBlur=0;
+  if(pixelDetail)pixelDetail.drawPortal(g,p,now);
   g.strokeStyle=tint;g.lineWidth=near?4:2;
   g.beginPath();g.ellipse(0,-41,29,47,0,0,Math.PI*2);g.stroke();
   // Runas e partículas mostram que a entrada realmente pode ser usada.
