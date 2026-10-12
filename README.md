@@ -40,13 +40,13 @@ Para entrar como visitante, basta escolher um **nome de 3 a 18 caracteres**. Nã
 - **Operação:** `/health` verifica o processo; `/health/ready` confirma o PostgreSQL usando uma consulta simples e informa HTTP 503 quando o banco está indisponível. A rota de prontidão não expõe credenciais.
 - **Mobile:** melhorias específicas de interface e controles **suspensas até autorização do proprietário**. Correções gerais de servidor se aplicam a todos.
 
-Detalhes de riscos e próximos marcos em [docs/roadmap-qualidade-mmorpg.md](docs/roadmap-qualidade-mmorpg.md). A automação de backup com armazenamento externo e rotinas de recuperação periódicas permanecem pendentes.
+Detalhes de riscos e próximos marcos em [docs/roadmap-qualidade-mmorpg.md](docs/roadmap-qualidade-mmorpg.md). A recuperação PITR do Render já protege períodos recentes conforme o plano, mas a automação de exportações externas e os testes periódicos de recuperação permanecem pendentes.
 
 ## Muito importante: limites antes de chamar MMORPG completo
 
 Este projeto **não é um MMORPG comercial 5.0 pronto**. A versão entregue implementa sistemas-jogáveis inspirados nas etapas 2.0–5.0. Para muitos jogadores simultâneos / centenas de monstros com IA ativa, ainda precisa de testes de carga, mapas artísticos finais, múltiplos processos, serviço central de identidade por token, database persistente gerenciada, sincronização entre regiões, filtros fortes contra trapaça, denúncias, políticas de comunidade, auditorias, recuperação e backups.
 
-**Hospedagem atual:** web service Render e PostgreSQL 18 gerenciado no plano pago de 256 MB de RAM / 1 GB de disco, separado do sistema de arquivos efêmero do servidor web. O backup de 11/10/2026 foi restaurado com sucesso em PostgreSQL 18 isolado; **ainda faltam backups automáticos com retenção externa, monitoramento de disco e testes de recuperação recorrentes**. Não interprete banco pago como imunidade a incidentes. A infraestrutura atual suporta um único processo e até dez jogadores, não vários servidores sincronizados.
+**Hospedagem atual:** web service Render e PostgreSQL 18 gerenciado no plano pago de 256 MB de RAM / 1 GB de disco, separado do sistema de arquivos efêmero do servidor web. O backup de 11/10/2026 foi restaurado com sucesso em PostgreSQL 18 isolado. Os bancos pagos do Render contam com **recuperação contínua por ponto no tempo (PITR)** dentro da janela do workspace; ainda faltam **exportações automáticas com retenção externa**, monitoramento de disco e testes periódicos de recuperação. Não interprete banco pago como imunidade a incidentes. A infraestrutura atual suporta um único processo e até dez jogadores, não vários servidores sincronizados.
 
 Os salvamentos existentes da **campanha clássica** continuam separados no `localStorage` original, não são transferidos automaticamente para o novo mundo.
 
