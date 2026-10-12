@@ -76,6 +76,13 @@
    px(g,'#4b5652',x+1,y+28,28,3);
    px(g,'#7f9388',x+20,y+19,7,6);
    if(seed>.44)px(g,'#cfbe98',x+23,y+22,4,2);
+   if(kind==='paving'){
+    // Rua da cidade: juntas de blocos bem assentados, diferente de rocha selvagem.
+    px(g,'#403f41',x+15,y+4,2,25);
+    px(g,'#d8c9a4',x+18,y+6,12,2);
+    px(g,'#9d927c',x+4,y+14,25,2);
+    px(g,'#e5d6b1',x+2,y+17,8,2);
+   }
   }else{
    // Grama de grupos nítidos e espaçados. Evita textura pontilhada.
    px(g,p[1],x+2,y+4,16,4);
