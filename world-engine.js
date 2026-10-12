@@ -5,6 +5,7 @@ const path=require('node:path');
 const crypto=require('node:crypto');
 const {NPCS,chapters,byId,publicNpc,freshStory,normalizeStory,journal}=require('./story-data');
 const terrain=require('./world-terrain');
+const {ChatGuard,inspect}=require('./chat-safety');
 
 const ZONES=[
  ['Vale das Oliveiras','pradaria'],['Floresta da Promessa','floresta'],['Riacho do Alvorecer','rio'],['Deserto das Provações','deserto'],
@@ -93,7 +94,7 @@ function hash32(n){n|=0;n=Math.imul(n^(n>>>16),0x7feb352d);n=Math.imul(n^(n>>>15
 class World {
  constructor({send,getOnline,hasClassicName,dataFile,autosave=false,persistentStore=null}){
   this.send=send;this.getOnline=getOnline;this.hasClassicName=hasClassicName;
-  this.players=new Map();this.monsters=new Map();this.parties=new Map();this.guilds=new Map();this.pendingTrades=new Map();
+  this.players=new Map();this.monsters=new Map();this.parties=new Map();this.guilds=new Map();this.pendingTrades=new Map();this.chatGuard=new ChatGuard();this.chatReceipts=new Map();this.chatReports=new Map();this.chatReportRate=new Map();
   this.dirty=false;this.lastTick=Date.now();this.day=1;
   this.dataFile=dataFile||path.join(__dirname,'data','world.sqlite');
   this.db=null;this.persistentStore=persistentStore;this.saved={version:3,characters:{},guilds:{},day:1};if(!persistentStore)this.load();
@@ -210,6 +211,7 @@ class World {
  join(c,d){if(c.worldPlayer)return;
   const owner=c.authUser||null;const name=owner?owner.username:cap(d.name,40).trim().normalize('NFC');const token=typeof d.token==='string'&&/^[a-f0-9-]{24,100}$/i.test(d.token)?d.token:null;
   if(!assertName(name)||(!owner&&!token)){this.send(c.socket,{type:'error',code:'invalid_name',message:'Escolha um nome válido e habilite o armazenamento do navegador.'});return}
+  if(!inspect(name).ok){this.send(c.socket,{type:'error',code:'invalid_name',message:'Escolha um apelido apropriado, sem dados pessoais, ofensas ou contatos.'});return}
   const uid=owner?owner.uid:crypto.createHash('sha256').update(token).digest('hex');
   // A titularidade é baseada no token deste navegador; o nome é apenas um apelido.
   for(const existing of this.players.values())if(existing.uid===uid){this.tell(existing,'Sua sessão foi aberta em outra aba.');this.leave(existing.socket._worldClient||{worldPlayer:existing});try{existing.socket.destroy()}catch{}break}
@@ -282,6 +284,7 @@ class World {
    case 'buy':this.buy(p,cap(d.item,30));break;
    case 'quest':this.claimQuests(p);break;
    case 'chat':this.chat(p,d);break;
+   case 'report':this.reportChat(p,d);break;
    case 'ignore':this.ignore(p,d);break;
    case 'party':this.party(p,d);break;
    case 'guild':this.guild(p,d);break;
@@ -472,15 +475,52 @@ class World {
   this.send(p.socket,this.ownStatus(p));
  }
  chat(p,d){
-  const now=Date.now();if(now-p.lastChat<1100)return;p.lastChat=now;
-  const txt=cap(d.text,161).replace(/[\u0000-\u001f\u007f]/g,'').trim();if(txt.length<1||txt.length>160)return;
-  const command=/^\/(ignorar|designorar)\s+(.{3,30})$/i.exec(txt);
+  const raw=d.text,command=typeof raw==='string'?/^\/(ignorar|designorar)\s+(.{3,30})$/i.exec(raw.trim()):null;
   if(command){this.ignore(p,{action:command[1].toLowerCase()==='ignorar'?'add':'remove',target:command[2]});return}
-  const event={type:'chat',channel:'global',name:p.name,text:txt};
-  const allowed=recipient=>!recipient.save.blocked?.includes(p.name.toLocaleLowerCase('pt-BR'));
-  if(d.channel==='party'&&p.party)this.broadcast({...event,channel:'party'},x=>x.party===p.party&&allowed(x));
-  else if(d.channel==='guild'&&p.save.guild)this.broadcast({...event,channel:'guild'},x=>x.save.guild===p.save.guild&&allowed(x));
-  else this.broadcast(event,allowed);
+  const review=this.chatGuard.check(p.uid,raw);
+  if(!review.ok){this.tell(p,review.message);return}
+  const channel=d.channel==='global'||d.channel==='party'||d.channel==='guild'?d.channel:null;
+  if(!channel)return this.tell(p,'Canal de conversa não reconhecido.');
+  if(channel==='party'&&!p.party)return this.tell(p,'Você precisa entrar em uma equipe.');
+  if(channel==='guild'&&!p.save.guild)return this.tell(p,'Você precisa entrar em uma guilda.');
+  // Nenhuma mensagem pode ser transmitida antes da moderação no servidor.
+  const id=crypto.randomUUID(),event={type:'chat',id,channel,name:p.name,text:review.text,preset:review.preset};
+  const recipients=new Set();
+  for(const q of this.players.values()){
+   if(q.save.blocked?.includes(p.name.toLocaleLowerCase('pt-BR')))continue;
+   if(channel==='party'&&q.party!==p.party)continue;
+   if(channel==='guild'&&q.save.guild!==p.save.guild)continue;
+   this.send(q.socket,event);recipients.add(q.uid);
+  }
+  const now=Date.now();
+  for(const [key,value] of this.chatReceipts)if(now-value.time>5*60*1000)this.chatReceipts.delete(key);
+  if(this.chatReceipts.size>=180)this.chatReceipts.delete(this.chatReceipts.keys().next().value);
+  this.chatReceipts.set(id,{author:p.uid,authorName:p.name,recipients,time:now,reported:new Set()});
+ }
+ reportChat(p,d){
+  const id=typeof d.id==='string'&&/^[a-f0-9-]{36}$/i.test(d.id)?d.id:null;
+  const message=id?this.chatReceipts.get(id):null,now=Date.now();
+  if(!message||now-message.time>5*60*1000||message.author===p.uid||!message.recipients.has(p.uid)){
+   this.tell(p,'Denúncia não disponível para essa mensagem.');return;
+  }
+  const rate=this.chatReportRate.get(p.uid)||{count:0,start:now};
+  if(now-rate.start>10*60*1000){rate.count=0;rate.start=now}
+  if(message.reported.has(p.uid)){this.tell(p,'Você já denunciou esta mensagem.');return}
+  if(rate.count>=4){this.tell(p,'Limite temporário de denúncias alcançado.');return}
+  rate.count++;this.chatReportRate.set(p.uid,rate);
+  message.reported.add(p.uid);
+  // Denunciar silencia o remetente imediatamente para quem denunciou.
+  const name=message.authorName.toLocaleLowerCase('pt-BR');
+  if(!p.save.blocked.includes(name)&&p.save.blocked.length<30){
+   p.save.blocked.push(name);this.dirty=true;this.send(p.socket,this.ownStatus(p));
+  }
+  const reports=this.chatReports.get(message.author)||{by:new Set(),until:now+10*60*1000};
+  if(now>reports.until){reports.by.clear();reports.until=now+10*60*1000}
+  reports.by.add(p.uid);this.chatReports.set(message.author,reports);
+  // 3 pessoas distintas que receberam mensagens causam suspensão preventiva.
+  if(reports.by.size>=3)this.chatGuard.silence(message.author,10*60*1000);
+  this.tell(p,'Denúncia recebida. Esse jogador foi silenciado para você.');
+  console.info('[chat] denúncia registrada sem texto pessoal; quantidade='+reports.by.size);
  }
  party(p,d){const mode=cap(d.action,20);if(mode==='create'){if(p.party)return;const id=crypto.randomUUID();this.parties.set(id,{leader:p.id,members:[p.id],invited:[]});p.party=id;this.partyUpdate(id)}
   else if(mode==='invite'){const pt=this.parties.get(p.party);if(!pt||pt.leader!==p.id)return;const target=[...this.players.values()].find(x=>x.name.toLowerCase()===cap(d.target,20).toLowerCase());if(!target||target.party||pt.members.length>=5)return;pt.invited.push(target.id);this.tell(target,p.name+' convidou você para a equipe. Use “Aceitar convite”.');this.send(target.socket,{type:'partyInvite',party:p.party,by:p.name})}
