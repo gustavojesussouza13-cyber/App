@@ -40,6 +40,18 @@ test('dois peregrinos no mesmo mapa se veem e conversam',async()=>{
  assert.equal((await(await fetch(BASE+'/api/status')).json()).online,2);
  a.ws.close();b.ws.close();await sleep(80);
 });
+test('chat clássico rejeita contato externo e ofensas sem entregar ao outro jogador',async()=>{
+ const a=await connect('GuardiaTeste'),b=await connect('AventuraTeste');
+ a.ws.send(JSON.stringify({type:'chat',text:'me chama no discord'}));
+ await sleep(170);
+ assert.ok(a.messages.some(m=>m.type==='notice'&&/contatos externos|redes sociais|links/.test(m.text)));
+ assert.ok(!b.messages.some(m=>m.type==='chat'&&m.name==='GuardiaTeste'));
+ await sleep(1700);
+ a.ws.send(JSON.stringify({type:'chat',text:'Vamos explorar!'}));
+ await sleep(170);
+ assert.ok(b.messages.some(m=>m.type==='chat'&&m.text==='Vamos explorar!'));
+ a.ws.close();b.ws.close();await sleep(80);
+});
 test('nomes ocupados são rejeitados e nomes não autorizados também',async()=>{
  const a=await connect('NomeUnicoTeste');
  await assert.rejects(()=>connect('NomeUnicoTeste'),{code:'name_taken'});
