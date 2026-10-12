@@ -13,6 +13,7 @@ const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const ROAD=z=>x=> 496+Math.sin((x+z*117)/225)*54+Math.sin(x/79+z*2)*12;
 function create({ctx,W,H}){
  const pixelDetail=window.OsPeregrinosPixelDetail;
+ const spriteStudio=window.OsPeregrinosSpriteStudio?.create({documentRef:document});
  let cache=null,objects=[],artReady=false;
  atlas.addEventListener('load',()=>{artReady=true;cache=null});
  atlas.addEventListener('error',()=>{artReady=false});
@@ -171,13 +172,20 @@ function create({ctx,W,H}){
   if(typeof pixelDetail!=='undefined'&&pixelDetail)pixelDetail.drawCombat(g,shot);
   g.restore();
  }
- function character(g,p,local,now,moved,attacking=false){
+ function character(g,p,local,now,moved,attacking=false,pose=null){
   const key=heroSheets[p.role]||'gustavo_andar',w=53,h=65;
   drawShadow(g,p.x,p.y,w);
   const dir=Number.isInteger(p.dir)?p.dir:2;
-  frameSprite(g,key,dir,moved?Math.floor(now/155)%4:0,p.x,p.y,w,h);
-  if(pixelDetail)pixelDetail.drawHero(g,p,now);
+  const animated=Boolean(spriteStudio?.drawHero(g,p,now,{
+   moving:moved,attacking,hurt:pose?.action==='hurt',
+   elapsed:pose?Math.max(0,now-pose.at):0,
+   seed:local?0:(p.name?.length||0)*107
+  }));
+  if(!animated){
+   frameSprite(g,key,dir,moved?Math.floor(now/155)%4:0,p.x,p.y,w,h);
+   if(pixelDetail)pixelDetail.drawHero(g,p,now);
    if(p.role==='arqueiro')drawBow(g,p,dir,attacking);
+  }
   g.save();g.textAlign='center';g.font=(local?'bold 15px':'bold 13px')+' monospace';
   g.shadowColor='#000b';g.shadowBlur=5;g.lineWidth=3;g.strokeStyle='#0e271e';
   const label=(p.name||'Peregrino')+(local?'':' · Lv.'+(p.level||1));
@@ -185,7 +193,8 @@ function create({ctx,W,H}){
  }
  function npcActor(g,n,active,finished,now){
   const x=n.x,y=n.y;drawShadow(g,x,y,42);
-  frameSprite(g,heroSheets[n.role]||'viajante_andar',2,Math.floor(now/500+(n.index||0))%2,x,y,47,59);
+  if(!spriteStudio?.drawNpc(g,n,now))
+   frameSprite(g,heroSheets[n.role]||'viajante_andar',2,Math.floor(now/500+(n.index||0))%2,x,y,47,59);
   g.save();g.textAlign='center';g.shadowColor='#000e';g.shadowBlur=5;
   const primary=n.kind==='chapter';
   g.font='bold 12px monospace';g.lineWidth=3;g.strokeStyle='#0c2118';
@@ -195,12 +204,20 @@ function create({ctx,W,H}){
   g.font='bold 23px Georgia,serif';g.strokeText(indicator,x,y-86);g.fillText(indicator,x,y-86);
   g.restore();
  }
- function monster(g,m,selected,now){
+ function monster(g,m,selected,now,pose=null){
   const ty=types[Math.max(0,m.species|0)]||'limo';
-  const bob=Math.sin(now/370+(m.species||0)*.95)*1.6;
+  const bob=m.moving?0:Math.sin(now/500+(m.species||0)*.95)*1;
   const x=m.x,y=m.y+bob;
   drawShadow(g,x,y,m.boss?58:38);
-  if(ty==='cavaleiro'||ty==='sentinela'||ty==='chefe'){
+  const acting=pose?.action==='attack'&&now-pose.at<470;
+  const hurt=pose?.action==='hurt'&&now-pose.at<310;
+  const dead=pose?.action==='death';
+  const animated=Boolean(spriteStudio?.drawMonster(g,{...m,x,y},now,{
+   type:ty,moving:m.moving===true,attacking:acting,hurt,dead,
+   elapsed:pose?Math.max(0,now-pose.at):0
+  }));
+  if(!animated){
+   if(ty==='cavaleiro'||ty==='sentinela'||ty==='chefe'){
     const key=ty==='chefe'?'chefe_andar':ty==='sentinela'?'sentinela_andar':'cavaleiro_andar';
     const w=m.boss?65:49,h=m.boss?81:62;
     frameSprite(g,key,2,Math.floor(now/500+m.species)%4,x,y,w,h);
@@ -208,7 +225,9 @@ function create({ctx,W,H}){
     const w=m.boss?65:43,h=m.boss?62:41;
     cut(g,'monstro_'+ty,x-w/2,y-h,w,h);
   }
-  if(pixelDetail)pixelDetail.drawMonster(g,m,now);
+   if(pixelDetail)pixelDetail.drawMonster(g,m,now);
+  }
+  if(dead)return;
    const width=m.boss?61:45;g.fillStyle='#231d1b';g.fillRect(x-width/2,y-(m.boss?90:56),width,7);
   g.fillStyle=m.boss?'#f6b66d':'#b1d976';g.fillRect(x-width/2+1,y-(m.boss?89:55),Math.max(0,(width-2)*m.hp/Math.max(1,m.maxHp)),5);
   if(selected){g.strokeStyle='#ffe29d';g.lineWidth=2;g.strokeRect(x-width/2-6,y-(m.boss?91:57),width+12,m.boss?101:70)}
@@ -274,7 +293,7 @@ function create({ctx,W,H}){
   g.font='bold 11px monospace';g.fillStyle='#ead4a2';g.textAlign='left';g.fillText(zone>=16?'SUBSOLO '+(1+(zone-16)%6)+' · MASMORRA '+(1+Math.floor((zone-16)/6)):'REGIÃO '+(zone+1)+'/40',mx+7,my+mh+15);
  }
  function render(opt){
-  const {zone,zones,x,y,dir,monsters,players,projectiles=[],npcs=[],portals=[],storyStage=0,cameraX,cameraY,name,role,target,now,fx,lastAction,moving}=opt;
+  const {zone,zones,x,y,dir,monsters,players,projectiles=[],npcs=[],portals=[],storyStage=0,cameraX,cameraY,name,role,target,now,fx,lastAction,moving,monsterActions=new Map(),playerActions=new Map(),fallen=[]}=opt;
   ctx.imageSmoothingEnabled=false;
   const biome=biomeThemes[zones[zone]?.biome]||'meadow';
   if(!artReady){ctx.fillStyle='#193629';ctx.fillRect(0,0,W,H);ctx.textAlign='center';ctx.fillStyle='#efd39d';ctx.font='bold 20px Georgia,serif';ctx.fillText('✦ Preparando o mundo 16-bit…',W/2,H/2);return}
@@ -290,9 +309,10 @@ function create({ctx,W,H}){
   for(const n of npcs){if(n.x<cameraX-100||n.x>cameraX+W+100||n.y<cameraY-105||n.y>cameraY+H+105)continue;
    actors.push({depth:n.y,paint:()=>npcActor(ctx,n,n.index===storyStage,n.index!==null&&n.index<storyStage,now)});
   }
-  for(const m of monsters){if(m.x<cameraX-90||m.x>cameraX+W+90||m.y<cameraY-90||m.y>cameraY+H+90)continue;actors.push({depth:m.y,paint:()=>monster(ctx,m,target===m.id,now)})}
-  for(const p of players){if(p.x<cameraX-75||p.x>cameraX+W+75||p.y<cameraY-95||p.y>cameraY+H+75)continue;actors.push({depth:p.y,paint:()=>character(ctx,p,false,now,p.moving!==false)})}
-  actors.push({depth:y,paint:()=>character(ctx,{name,role,x,y,dir},true,now,moving,role==='arqueiro'&&now-lastAction<280)});
+  for(const m of monsters){if(m.x<cameraX-90||m.x>cameraX+W+90||m.y<cameraY-90||m.y>cameraY+H+90)continue;actors.push({depth:m.y,paint:()=>monster(ctx,m,target===m.id,now,monsterActions.get(m.id))})}
+  for(const m of fallen){if(m.x<cameraX-90||m.x>cameraX+W+90||m.y<cameraY-90||m.y>cameraY+H+90)continue;actors.push({depth:m.y-1,paint:()=>monster(ctx,m,false,now,{action:'death',at:m.defeatedAt})})}
+  for(const p of players){if(p.x<cameraX-75||p.x>cameraX+W+75||p.y<cameraY-95||p.y>cameraY+H+75)continue;actors.push({depth:p.y,paint:()=>character(ctx,p,false,now,p.moving!==false,playerActions.has(p.name)&&now-playerActions.get(p.name).at<390&&playerActions.get(p.name).action==='attack',playerActions.get(p.name))})}
+  actors.push({depth:y,paint:()=>character(ctx,{name,role,x,y,dir},true,now,moving,now-lastAction<370,{action:'attack',at:lastAction})});
   actors.sort((a,b)=>a.depth-b.depth);
   for(const a of actors)a.paint();
   for(const shot of projectiles)drawProjectile(ctx,shot);
