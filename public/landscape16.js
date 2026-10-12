@@ -158,7 +158,7 @@
    for(let i=0;i<slices.length;i++){
     const [left,width]=slices[i],yy=baseY+6+i*4;
     px(g,p[4],baseX+left-2,yy-2,width+4,6);
-    px(g,p[i<4?p[2]===p[0]?0:1:0]||p[0],baseX+left,yy,width,4);
+    px(g,p[i<4?1:0],baseX+left,yy,width,4);
     // Bordas sombreadas do lado direito da copa.
     px(g,p[4],baseX+left+width-3,yy+2,3,3);
    }
