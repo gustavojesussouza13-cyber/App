@@ -59,5 +59,5 @@ test('perder o alvo interrompe preparação de ataque',t=>{
 test('cliente exibe aviso visual sem alterar posições autoritativas',()=>{
  const mmo=fs.readFileSync(path.join(__dirname,'../public/mmo.js'),'utf8');
  assert.match(mmo,/msg\.type==='monsterWindup'/);
- assert.match(mmo,/text:'⚠ GOLPE!'/);
+ assert.match(mmo,/msg\.boss\?'⚠ CHEFE! ESQUIVE!':'⚠ GOLPE!'/);
 });

@@ -34,6 +34,16 @@ const assertName=n=>typeof n==='string'&&n.trim()===n&&n.length>=3&&n.length<=18
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 const cap=(s,n=90)=>String(s||'').slice(0,n);
+// Reaproveita o campo "achievements" já salvo; nenhuma migração do PostgreSQL.
+const ACHIEVEMENTS=Object.freeze({
+ 'primeira-vitoria':{name:'Primeira Luz',coins:20},
+ 'cacas-25':{name:'Guardião dos Caminhos',coins:85},
+ 'cacas-100':{name:'Lenda do Vale',coins:230},
+ 'primeiro-chefe':{name:'Quebrador de Sombras',coins:90},
+ 'explorar-8':{name:'Caminhante da Aurora',coins:70},
+ 'explorar-16':{name:'Cartógrafo de Auren',coins:180},
+ 'aurora-restaurada':{name:'Guardião do Sétimo Verso',coins:300}
+});
 const defaultSave=()=>({level:1,xp:0,hp:135,coins:60,zone:0,x:ZONE_W/2,y:ZONE_H/2,role:'peregrino',inventory:{pocao:3},kills:0,quests:[],visited:[0],guild:null,achievements:[],story:freshStory()});
 function hpMax(s){return CLASSES[s.role].hp+(s.level-1)*12}
 function xpNeed(level){return 70+level*level*35}
@@ -112,8 +122,15 @@ class World {
  publicPlayer(p){return {id:p.id,name:p.name,zone:p.zone,x:Math.round(p.x),y:Math.round(p.y),dir:p.dir,level:p.save.level,role:p.save.role,hp:p.save.hp,maxHp:hpMax(p.save),guild:p.save.guild,party:p.party||null}}
  publicMonster(m){return {id:m.id,name:m.name,species:m.species,zone:m.zone,x:Math.round(m.x),y:Math.round(m.y),hp:m.hp,maxHp:m.maxHp,boss:m.boss}}
  zoneInfo(){return ZONES.map((z,i)=>({id:i,name:z[0],biome:z[1],count:this.monsters.get(i).length}))}
- ownStatus(p){const s=p.save;return {type:'character',id:p.id,name:p.name,level:s.level,xp:s.xp,nextXp:xpNeed(s.level),hp:s.hp,maxHp:hpMax(s),coins:s.coins,role:s.role,inventory:s.inventory,kills:s.kills,quests:s.quests,visited:s.visited,guild:s.guild,party:p.party||null,story:journal(s.story),zone:p.zone,x:p.x,y:p.y}}
+ ownStatus(p){const s=p.save;return {type:'character',id:p.id,name:p.name,level:s.level,xp:s.xp,nextXp:xpNeed(s.level),hp:s.hp,maxHp:hpMax(s),coins:s.coins,role:s.role,inventory:s.inventory,kills:s.kills,quests:s.quests,visited:s.visited,guild:s.guild,party:p.party||null,story:journal(s.story),achievements:s.achievements,zone:p.zone,x:p.x,y:p.y}}
  tell(p,msg,type='notice'){this.send(p.socket,{type,text:msg})}
+ unlockAchievement(p,id){
+  const award=ACHIEVEMENTS[id],s=p.save;
+  if(!award||!Array.isArray(s.achievements)||s.achievements.includes(id))return false;
+  s.achievements.push(id);s.coins+=award.coins;this.dirty=true;
+  this.tell(p,'✦ Conquista: '+award.name+'! +'+award.coins+' moedas.');
+  return true;
+ }
  broadcast(obj,filter=()=>true){for(const p of this.players.values())if(filter(p))this.send(p.socket,obj)}
  join(c,d){if(c.worldPlayer)return;
   const owner=c.authUser||null;const name=owner?owner.username:cap(d.name,40).trim().normalize('NFC');const token=typeof d.token==='string'&&/^[a-f0-9-]{24,100}$/i.test(d.token)?d.token:null;
@@ -127,10 +144,10 @@ class World {
   let raw=this.saved.characters[uid]||defaultSave();const s={...defaultSave(),...raw};
   if(!CLASSES[s.role])s.role='peregrino';if(!Number.isInteger(s.zone)||s.zone<0||s.zone>=ZONES.length)s.zone=0;
   s.level=clamp(Math.floor(Number(s.level)||1),1,100);s.hp=clamp(Math.floor(Number(s.hp)||hpMax(s)),1,hpMax(s));s.x=clamp(Number(s.x)||ZONE_W/2,28,ZONE_W-28);s.y=clamp(Number(s.y)||ZONE_H/2,28,ZONE_H-28);
-  s.inventory={...defaultSave().inventory,...(s.inventory||{})};if(!Array.isArray(s.quests))s.quests=[];if(!Array.isArray(s.visited))s.visited=[0];s.story=normalizeStory(s.story);
+  s.inventory={...defaultSave().inventory,...(s.inventory||{})};if(!Array.isArray(s.quests))s.quests=[];if(!Array.isArray(s.visited))s.visited=[0];if(!Array.isArray(s.achievements))s.achievements=[];s.story=normalizeStory(s.story);
   const p={id:crypto.randomUUID(),uid,name,socket:c.socket,save:s,x:s.x,y:s.y,zone:s.zone,dir:2,lastMove:Date.now(),moveCredit:12,lastAttack:0,lastSpell:0,lastChat:0,lastUse:0,party:null,live:true};
   c.worldPlayer=p;c.socket._worldClient=c;this.players.set(p.id,p);
-  this.send(c.socket,{type:'welcome',self:this.ownStatus(p),zones:this.zoneInfo(),shop:GOODS,quests:QUESTS,npcs:NPCS.map(publicNpc),maxPlayers:10,online:this.players.size+this.getOnline(),monsterTotal:this.totalMonsters()});
+  this.send(c.socket,{type:'welcome',self:this.ownStatus(p),zones:this.zoneInfo(),shop:GOODS,quests:QUESTS,achievements:ACHIEVEMENTS,npcs:NPCS.map(publicNpc),maxPlayers:10,online:this.players.size+this.getOnline(),monsterTotal:this.totalMonsters()});
   this.broadcast({type:'system',text:p.name+' chegou ao mundo.'},q=>q.id!==p.id);
   this.dirty=true;this.snapshotTo(p);
  }
@@ -241,6 +258,7 @@ class World {
   this.dirty=true;
   const next=chapters[s.stage];
   const completion=s.stage===chapters.length;
+  if(completion)this.unlockAchievement(p,'aurora-restaurada');
   const mercy=s.decisions.filter(x=>x.id==='compaixao').length;
   const epilogue=completion?(mercy>=8?'Você se tornou o Peregrino da Compaixão. A cidade aprende que ouvir é também um ato de coragem.':'Você se tornou o Peregrino da Perseverança. A cidade aprende que a coragem precisa caminhar ao lado do cuidado.') : null;
   this.send(p.socket,{type:'storyResolved',message:reply,reward:{xp:npc.xp,coins:npc.coins,key:!!npc.key,shard:npc.shard||null},stage:s.stage,complete:completion,epilogue,next:next?{name:next.name,zone:next.zone,region:ZONES[next.zone][0]}:null});
@@ -253,17 +271,42 @@ class World {
   if(!legal){this.tell(p,'Siga para uma região vizinha ou para a entrada de uma masmorra.');return}
   if(b>=12&&(p.save.inventory.chave||0)<1){this.tell(p,'Você precisa de uma Chave da masmorra (comprável na loja).');return}
   if(b>=12){p.save.inventory.chave--;}
-  p.zone=b;p.save.zone=b;p.x=ZONE_W/2;p.y=ZONE_H/2;p.save.x=p.x;p.save.y=p.y;if(!p.save.visited.includes(b))p.save.visited.push(b);this.dirty=true;
+  p.zone=b;p.save.zone=b;p.x=ZONE_W/2;p.y=ZONE_H/2;p.save.x=p.x;p.save.y=p.y;if(!p.save.visited.includes(b))p.save.visited.push(b);
+  if(p.save.visited.length>=8)this.unlockAchievement(p,'explorar-8');
+  if(p.save.visited.length>=16)this.unlockAchievement(p,'explorar-16');
+  this.dirty=true;
   this.send(p.socket,{type:'travel',zone:b,name:ZONES[b][0],x:p.x,y:p.y});this.send(p.socket,this.ownStatus(p));this.snapshotTo(p);
  }
  attack(p,tid,skill){const now=Date.now(),role=CLASSES[p.save.role];const cooldown=skill?4000:600;
   if(now-(skill?p.lastSpell:p.lastAttack)<cooldown)return;
   let m=(this.monsters.get(p.zone)||[]).find(x=>x.id===tid&&x.hp>0);if(!m||dist(m,p)>(skill?role.range*1.4:role.range))return;
   if(skill)p.lastSpell=now;else p.lastAttack=now;
-  const level=p.save.level,weapon=(p.save.inventory.espada||0)>0?7:(p.save.inventory.arco||0)>0?6:0;
+  const level=p.save.level,weapon=p.save.role==='arqueiro'?((p.save.inventory.arco||0)>0?6:0):((p.save.inventory.espada||0)>0?7:0);
   let damage=Math.round(role.attack+level*2+weapon+(skill?role.attack*.9:0));
+  const marker=this.players.get(m.markOwner);
+  if(m.markUntil>now&&marker&&marker.id!==p.id&&marker.party&&p.party===marker.party){
+   damage+=Math.max(1,Math.round(damage*.18));
+  }
+  if(skill&&p.save.role==='arqueiro'){
+   m.markUntil=now+5500;m.markOwner=p.id;
+   this.tell(p,'✦ Flecha de precisão: aliados da equipe causam dano adicional por 5,5 s.');
+  }
+  if(skill&&p.save.role==='guardiao'){
+   for(const ally of this.players.values())if(ally.zone===p.zone&&dist(p,ally)<230&&(ally.id===p.id||(p.party&&ally.party===p.party))){
+    ally.guardUntil=now+4500;
+    this.tell(ally,'✦ Proteção do Guardião: defesa aumentada por 4,5 s.');
+   }
+  }
+  if(skill&&p.save.role==='peregrino'){
+   p.save.hp=Math.min(hpMax(p.save),p.save.hp+12+level*2);
+   this.send(p.socket,this.ownStatus(p));
+  }
   if(skill&&p.save.role==='curandeiro'){
-   for(const ally of this.players.values())if(ally.zone===p.zone&&dist(p,ally)<230){ally.save.hp=clamp(ally.save.hp+28+level*4,1,hpMax(ally.save));this.send(ally.socket,this.ownStatus(ally));}
+   for(const ally of this.players.values()){
+    if(ally.zone!==p.zone||dist(p,ally)>=230||!(ally.id===p.id||(p.party&&ally.party===p.party)))continue;
+    ally.save.hp=clamp(ally.save.hp+28+level*4,1,hpMax(ally.save));
+    this.send(ally.socket,this.ownStatus(ally));
+   }
   }
   m.hp=Math.max(0,m.hp-damage);m.damageFrom.set(p.id,(m.damageFrom.get(p.id)||0)+damage);
   // Sem agressividade por proximidade: o monstro só enfrenta quem o atacou.
@@ -273,7 +316,7 @@ class World {
   // Arco simples é equipamento inicial da classe; o Arco dos ventos da loja é melhoria.
   const projectile=p.save.role==='arqueiro'?{projectile:'arrow',from:{x:Math.round(p.x),y:Math.round(p.y-34)},to:{x:Math.round(m.x),y:Math.round(m.y-22)}}:{};
   this.broadcast({type:'hit',monster:m.id,zone:m.zone,damage,remaining:m.hp,by:p.name,skill,...projectile},q=>q.zone===p.zone&&dist(q,m)<780);
-  if(m.hp===0){m.aggroTarget=null;m.aggroUntil=0;m.windupUntil=0;m.deadUntil=now+(m.boss?45000:14000);let recipients=new Map();for(const [pid] of m.damageFrom){const x=this.players.get(pid);if(x&&x.zone===p.zone&&dist(x,m)<690)recipients.set(x.id,x)}
+  if(m.hp===0){m.aggroTarget=null;m.aggroUntil=0;m.windupUntil=0;m.markUntil=0;m.markOwner=null;m.deadUntil=now+(m.boss?45000:14000);let recipients=new Map();for(const [pid] of m.damageFrom){const x=this.players.get(pid);if(x&&x.zone===p.zone&&dist(x,m)<690)recipients.set(x.id,x)}
    for(const x of [...recipients.values()])if(x.party){for(const ally of this.players.values())if(ally.party===x.party&&ally.zone===x.zone&&dist(ally,m)<500)recipients.set(ally.id,ally)}
    for(const x of recipients.values())this.award(x,Math.round(m.xp/Math.max(1,recipients.size)*1.3),Math.ceil(m.coins/Math.max(1,recipients.size)),m.boss,m.zone);
    this.broadcast({type:'defeated',monster:m.id,zone:m.zone,by:p.name,boss:m.boss},q=>q.zone===p.zone);
@@ -281,6 +324,10 @@ class World {
   }
  }
  award(p,xp,gold,boss=false,zone=p.zone){const s=p.save;const story=s.story;const chapter=chapters[story.stage];if(chapter&&story.active&&chapter.objective>0&&chapter.zone===zone){story.progress=Math.min(chapter.objective,story.progress+1);if(story.progress===chapter.objective)this.tell(p,`✦ Objetivo concluído! Volte e converse com ${chapter.name}.`)}s.xp+=xp;s.coins+=gold;s.kills++;while(s.level<100&&s.xp>=xpNeed(s.level)){s.xp-=xpNeed(s.level);s.level++;s.hp=hpMax(s);this.tell(p,'✦ Você alcançou o nível '+s.level+'!')}
+  if(s.kills>=1)this.unlockAchievement(p,'primeira-vitoria');
+  if(s.kills>=25)this.unlockAchievement(p,'cacas-25');
+  if(s.kills>=100)this.unlockAchievement(p,'cacas-100');
+  if(boss)this.unlockAchievement(p,'primeiro-chefe');
   if(boss){s.inventory.superpocao=(s.inventory.superpocao||0)+1;this.tell(p,'★ Chefe derrotado! Você recebeu uma poção radiante.');}
   this.send(p.socket,{type:'reward',xp,gold,boss});this.send(p.socket,this.ownStatus(p));this.dirty=true;
  }
@@ -333,7 +380,7 @@ class World {
   const activeZones=new Set([...this.players.values()].map(p=>p.zone));
   for(const zone of activeZones){for(const m of this.monsters.get(zone)||[]){
    if(m.hp<=0){
-    if(now>=m.deadUntil){m.hp=m.maxHp;m.x=m.home.x;m.y=m.home.y;m.damageFrom.clear();m.aggroTarget=null;m.aggroUntil=0;m.lastAttack=0;m.windupUntil=0;m.wanderGoal=null;m.wander=now+1500}
+    if(now>=m.deadUntil){m.hp=m.maxHp;m.x=m.home.x;m.y=m.home.y;m.damageFrom.clear();m.aggroTarget=null;m.aggroUntil=0;m.lastAttack=0;m.windupUntil=0;m.markUntil=0;m.markOwner=null;m.wanderGoal=null;m.wander=now+1500}
     else continue;
    }
    const target=m.aggroTarget?this.players.get(m.aggroTarget):null;
@@ -375,14 +422,15 @@ class World {
    // O ataque precisa ser anunciado e permanecer ao alcance até o golpe.
    if(d>=53){m.windupUntil=0;continue}
    if(!m.windupUntil&&now-m.lastAttack>2200){
-    m.windupUntil=now+650;
-    this.send(target.socket,{type:'monsterWindup',monster:m.id,zone:m.zone,duration:650});
+    const warning=m.boss?1100:650;
+    m.windupUntil=now+warning;
+    this.send(target.socket,{type:'monsterWindup',monster:m.id,zone:m.zone,duration:warning,boss:m.boss});
     continue;
    }
    if(m.windupUntil&&now>=m.windupUntil){
     m.windupUntil=0;m.lastAttack=now;
-    const defense=CLASSES[target.save.role].defense+(target.save.inventory.amuleto?4:0);
-    const damage=Math.max(1,m.damage-defense);target.save.hp-=damage;
+    const defense=CLASSES[target.save.role].defense+(target.save.inventory.amuleto?4:0)+(target.guardUntil>now?8+Math.floor(target.save.level/3):0);
+    const damage=Math.max(1,Math.ceil(m.damage*(m.boss?1.2:1))-defense);target.save.hp-=damage;
     this.send(target.socket,{type:'hurt',damage,monster:m.name});
     if(target.save.hp<=0){
      target.save.hp=hpMax(target.save);target.x=ZONE_W/2;target.y=ZONE_H/2;
@@ -399,4 +447,4 @@ class World {
  status(){return {connected:this.count,monsters:this.totalMonsters(),regions:ZONES.length,guilds:this.guilds.size,version:'mmo-aurora-historia-alpha'}}
  stop(){clearInterval(this.saveTimer);for(const p of this.players.values())this.saved.characters[p.uid]=safeSave(p.save);this.dirty=true;this.persist();try{this.db?.close()}catch{}}
 }
-module.exports={World,ZONES,ZONE_W,ZONE_H,GOODS,QUESTS,SPECIES,CLASSES,xpNeed};
+module.exports={World,ZONES,ZONE_W,ZONE_H,GOODS,QUESTS,SPECIES,CLASSES,ACHIEVEMENTS,xpNeed};
