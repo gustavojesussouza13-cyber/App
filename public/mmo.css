@@ -178,3 +178,15 @@ body.world-fullscreen{overflow:hidden!important}
 .ping-indicator[data-quality="medium"]{border-color:#bd9854;color:#efd18b}
 .ping-indicator[data-quality="high"],.ping-indicator[data-quality="timeout"]{border-color:#b66a54;color:#ffae9a}
 .ping-indicator[data-quality="offline"]{opacity:.8}
+
+
+/* Efeitos sonoros opcionais exclusivamente para computadores com mouse. */
+.desktop-audio-toggle{
+ appearance:none;background:#13372f;border:1px solid #8ba98d;
+ border-radius:18px;padding:7px 12px;color:#f0d79e;
+ font:700 11px/1.2 system-ui;cursor:pointer;white-space:nowrap
+}
+.desktop-audio-toggle:hover,.desktop-audio-toggle:focus-visible{background:#265348}
+.desktop-audio-toggle[aria-pressed="true"]{border-color:#ddb967;color:#ffe1a2}
+.desktop-audio-toggle:disabled{opacity:.4;cursor:not-allowed}
+@media (hover: none),(pointer: coarse){.desktop-audio-toggle{display:none!important}}
