@@ -6,7 +6,7 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0e211f">
 <meta name="description" content="Os Peregrinos — Mundo Aberto. MMORPG experimental 16-bit: crie uma conta para recuperar seu progresso ou jogue como visitante apenas com um nome.">
 <title>Os Peregrinos — Mundo Aberto | Crônicas da Aurora</title>
-<link rel="stylesheet" href="/mmo.css?v=mobile-fix-20261011"></head>
+<link rel="stylesheet" href="/mmo.css?v=touch-v1"></head>
 <body>
 <header class="bar"><a class="brand" href="/">✦ <strong>OS PEREGRINOS</strong><span>CRÔNICAS DA AURORA</span></a><div class="online-pill"><span class="status-dot" id="statusDot"></span><span id="status">Conectando…</span></div><a href="/jogo.html" class="campaign-link">Campanha clássica ↗</a><a href="/guia.html" class="campaign-link" title="Como jogar Os Peregrinos">Como jogar ↗</a><button type="button" id="emailSettingsBtn" class="campaign-link" hidden>E-mail da conta</button><button type="button" id="logoutBtn" class="campaign-link" hidden>Sair da conta</button></header>
 <dialog id="emailSettingsDialog" class="account-dialog" aria-labelledby="emailSettingsTitle">
@@ -24,6 +24,18 @@
 <section class="play-area">
 <div class="world-title"><div><span class="tag">MUNDO ABERTO · ALFA</span><h1 id="zoneTitle">Vale das Oliveiras</h1></div><div class="clock"><span id="latency">✦ Aurora</span><small>PC · WASD · E CONVERSAR · J ATACAR · K HABILIDADE</small></div></div>
 <div class="canvas-shell" id="canvasShell"><button type="button" id="fullscreenBtn" class="fullscreen-toggle" aria-label="Ativar tela cheia do Mundo Aberto" aria-pressed="false" title="Colocar o Mundo Aberto em tela cheia">⛶ Tela cheia</button><canvas id="game" width="960" height="576" tabindex="0" aria-label="Mundo aberto: use WASD para mover, E para falar com personagens e J para atacar"></canvas>
+<div class="touch-controls" id="touchControls" aria-label="Controles de toque" hidden>
+ <div class="touch-joystick" id="touchPad" role="group" aria-label="Movimentar personagem: arraste o direcional">
+  <div class="touch-knob" id="touchKnob" aria-hidden="true"></div>
+  <span class="touch-hint" aria-hidden="true">MOVER</span>
+ </div>
+ <div class="touch-actions" aria-label="Ações de batalha">
+  <button type="button" id="touchAttackBtn" class="touch-attack" aria-label="Atacar monstro próximo">⚔ <span>Atacar</span></button>
+  <button type="button" id="touchSkillBtn" class="touch-skill" aria-label="Usar habilidade da classe">✦ <span>Habilidade</span></button>
+  <button type="button" id="touchPotionBtn" class="touch-potion" aria-label="Usar poção de vida">♥ <span>Poção</span></button>
+  <button type="button" id="touchTalkBtn" class="touch-talk" aria-label="Conversar com personagem próximo">✦ <span>Falar</span></button>
+ </div>
+</div>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 <div id="npcDialogue" class="npc-dialogue" role="dialog" aria-modal="true" aria-labelledby="npcTitle" aria-describedby="npcText" hidden>
  <div class="npc-window">
@@ -52,4 +64,4 @@
 </aside>
 </main>
 <footer><span>OS PEREGRINOS · MMORPG 16-BIT EXPERIMENTAL</span><span>Conta opcional ou acesso como visitante · 10 jogadores por servidor · Combate e progressão compartilhados</span><span class="game-info-links"><button type="button" class="privacy-pref-button" data-privacy-preferences>Preferências de privacidade</button><a href="/guia.html">Guia</a><a href="/sobre.html">Sobre</a><a href="/contato.html">Contato</a><a href="/privacidade.html">Privacidade</a><a href="/termos.html">Regras</a></span></footer>
-<script src="/art16.js?v=arco-flechas-v1" defer></script><script src="/monster-motion.js" defer></script><script src="/combat-effects.js" defer></script><script src="/mmo.js?v=mobile-fix-20261011" defer></script><script src="/privacy-controls.js" defer></script></body></html>
+<script src="/art16.js?v=arco-flechas-v1" defer></script><script src="/monster-motion.js" defer></script><script src="/combat-effects.js" defer></script><script src="/touch-controls.js?v=touch-v1" defer></script><script src="/mmo.js?v=touch-v1" defer></script><script src="/privacy-controls.js" defer></script></body></html>
