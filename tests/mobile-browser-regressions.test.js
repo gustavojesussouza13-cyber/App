@@ -103,6 +103,6 @@ test('estilos responsivos e URLs novas do cliente são publicados',()=>{
  assert.match(styles,/#canvasShell\.is-expanded/);
  assert.match(styles,/@media\(max-width:850px\)/);
  assert.match(styles,/\.canvas-shell:has\(#welcomeOverlay:not\(\[hidden\]\)\)/);
- assert.match(html,/href="\/mmo\.css\?v=portais-reais-v1"/);
+ assert.match(html,/href="\/mmo\.css\?v=pixel-v3"/);
  assert.match(html,/src="\/mmo\.js\?v=portais-reais-v1"/);
 });
