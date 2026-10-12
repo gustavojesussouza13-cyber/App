@@ -67,6 +67,51 @@ function create({ctx,W,H}){
     g.fillStyle='#715536';for(let x=336;x<524;x+=13)g.fillRect(x,by-26,3,52);
     g.fillStyle='#dec488';g.fillRect(330,by-24,193,3);g.fillRect(330,by+21,193,3);
   }
+  // Arquitetura própria para as masmorras profundas: lajes, mosaicos e inscrições.
+  // Camada puramente visual: nunca cria bloqueios invisíveis ao servidor.
+  if(biome==='dungeon'){
+   const family=z>=16?Math.floor((z-16)/6):z-12;
+   const depth=z>=16?1+(z-16)%6:0;
+   const palette=[
+    ['#355449','#83c5a0','#d4bc81'], // Cripta das raízes
+    ['#64443d','#f09a5f','#efc98b'], // Cinzas
+    ['#49456b','#aeb0eb','#e3cbab'], // Templo
+    ['#31556a','#8bc8ea','#f6e5a9']  // Aurora
+   ][Math.max(0,Math.min(3,family))];
+   // Cada andar muda o arranjo das salas sem custo de novas imagens.
+   g.fillStyle=palette[0]+'36';
+   for(let y=96;y<ZH-90;y+=208)for(let x=98;x<ZW-80;x+=232){
+    const n=noise(Math.floor(x/64),Math.floor(y/64),z,48);
+    if(n<.22)continue;
+    g.fillRect(x,y,182,136);
+    g.strokeStyle=palette[1]+'92';g.lineWidth=3;g.strokeRect(x+3,y+3,176,130);
+    g.strokeStyle='#0a101ba0';g.lineWidth=5;g.strokeRect(x+11,y+11,160,114);
+    // Piso de pedra quadriculado e desgaste em juntas.
+    g.lineWidth=1;g.strokeStyle=palette[2]+'55';
+    for(let xx=x+20;xx<x+180;xx+=24){g.beginPath();g.moveTo(xx,y+14);g.lineTo(xx,y+121);g.stroke()}
+    for(let yy=y+18;yy<y+133;yy+=24){g.beginPath();g.moveTo(x+12,yy);g.lineTo(x+172,yy);g.stroke()}
+    g.fillStyle=palette[2]+'c9';g.font='bold 19px serif';g.textAlign='center';
+    g.fillText(['✦','◇','ᚱ','✧'][(Math.floor(x/232)+Math.floor(y/208)+depth)%4],x+91,y+76);
+   }
+   // Colunas, arcos e detalhes de pedra posicionados afastados da via principal.
+   for(let x=114;x<ZW-50;x+=226){
+    const road=pathY(x,z);
+    for(const side of [-1,1]){
+     const y=Math.round(road+side*(105+12*(depth%3)));
+     g.fillStyle='#0b1720a8';g.fillRect(x-21,y-22,47,48);
+     g.fillStyle=palette[0];g.fillRect(x-17,y-28,34,49);
+     g.fillStyle=palette[1];g.fillRect(x-23,y-32,46,11);g.fillRect(x-23,y+13,46,11);
+     g.fillStyle=palette[2];g.fillRect(x-13,y-19,5,29);
+     g.fillStyle=palette[1]+'a8';g.fillRect(x+8,y-14,4,19);
+    }
+   }
+   // O corredor permanece livre; padrões laterais criam progressão de profundidade.
+   g.fillStyle=palette[1]+'20';
+   for(let x=32;x<ZW;x+=32){
+    const y=Math.round(pathY(x,z));
+    g.fillRect(x,y-38,20,3);g.fillRect(x,y+36,20,3);
+   }
+  }
   // Relatively subtle biome coloration without replacing the classic tiles.
   const wash={forest:'#081b0b12',swamp:'#082d3040',desert:'#d5aa6b2e',mountain:'#72839420',dungeon:'#2820376c',ruins:'#51446c20',coast:'#5eabbc12',city:'#d0b47411',river:'#4da1b20a'}[biome];
   if(wash){g.fillStyle=wash;g.fillRect(0,0,ZW,ZH)}
@@ -196,14 +241,20 @@ function create({ctx,W,H}){
   const pulse=.5+.5*Math.sin(now/440+p.x);
   g.save();g.translate(Math.round(p.x),Math.round(p.y));
   g.fillStyle='#061812af';g.beginPath();g.ellipse(0,5,33,12,0,0,Math.PI*2);g.fill();
-  g.shadowColor=p.dungeon?'#c996e8':'#a6ebc3';g.shadowBlur=7+pulse*9;
+  g.shadowColor=p.stair?(p.stair==='down'?'#e9a45d':'#93ceee'):p.dungeon?'#c996e8':'#a6ebc3';g.shadowBlur=7+pulse*9;
   g.strokeStyle=p.dungeon?'#c99feb':'#8ed6b0';g.lineWidth=5;
   g.beginPath();g.ellipse(0,-38,24,43,0,0,Math.PI*2);g.stroke();
   g.shadowBlur=0;g.fillStyle=p.dungeon?'#874ac166':'#53beaa55';
   g.beginPath();g.ellipse(0,-38,20,39,0,0,Math.PI*2);g.fill();
   g.fillStyle='#ffe0a6';g.font='bold 13px monospace';g.textAlign='center';
   g.shadowColor='#071510';g.shadowBlur=6;
-  g.fillText('✦ E · '+p.name.slice(0,19),0,-92);
+  if(p.stair){
+   const direction=p.stair==='down'?'DESCER':'SUBIR';
+   g.fillStyle='#0b131bdc';g.fillRect(-39,-7,78,16);
+   g.fillStyle=p.stair==='down'?'#f8c784':'#c5eeff';g.font='bold 12px monospace';
+   g.fillText(direction,0,4);
+  }
+  g.fillText('✦ E · '+p.name.slice(0,21),0,-92);
   g.restore();
  }
  function displayMap(g,opt){
@@ -217,7 +268,7 @@ function create({ctx,W,H}){
   g.fillStyle='#f8c574';for(const n of npcs)g.fillRect(mx+5+n.x/ZW*(mw-10),my+5+n.y/ZH*(mh-10),4,4);
   g.fillStyle='#c9ebeb';for(const p of players)g.fillRect(mx+5+p.x/ZW*(mw-10),my+5+p.y/ZH*(mh-10),4,4);
   g.fillStyle='#ffe0a3';g.fillRect(mx+5+x/ZW*(mw-10)-2,my+5+y/ZH*(mh-10)-2,6,6);g.restore();
-  g.font='bold 11px monospace';g.fillStyle='#ead4a2';g.textAlign='left';g.fillText('REGIÃO '+(zone+1)+'/16',mx+7,my+mh+15);
+  g.font='bold 11px monospace';g.fillStyle='#ead4a2';g.textAlign='left';g.fillText(zone>=16?'SUBSOLO '+(1+(zone-16)%6)+' · MASMORRA '+(1+Math.floor((zone-16)/6)):'REGIÃO '+(zone+1)+'/40',mx+7,my+mh+15);
  }
  function render(opt){
   const {zone,zones,x,y,dir,monsters,players,projectiles=[],npcs=[],portals=[],storyStage=0,cameraX,cameraY,name,role,target,now,fx,lastAction,moving}=opt;
