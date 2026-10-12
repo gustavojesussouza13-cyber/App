@@ -11,6 +11,7 @@
  root.OsPeregrinosSpriteStudio=api;
 })(typeof globalThis!=='undefined'?globalThis:this,function(){
  const SHADE=typeof module==='object'&&module.exports?require('./shading16'):globalThis.OsPeregrinosShade16;
+ const ATELIER=typeof module==='object'&&module.exports?require('./character-atelier16'):globalThis.OsPeregrinosCharacterAtelier;
  const W=40,H=52;
  const ROLES=Object.freeze({
   peregrino:{coat:'#8a6245',edge:'#402e32',light:'#b99163',trim:'#dcc28e',hair:'#493328',skin:'#e1af7f',boots:'#352b34',metal:'#acb6a4',gem:'#a9e6ca'},
@@ -149,6 +150,7 @@
     pix(g,c.metal,8+left,15+by+pulse,3,22);
     pix(g,'#f7e3c0',8+left,18+by+pulse,1,11);
    }
+   ATELIER?.hero(g,c,{role,dir,action,frame,by,step});
    // Golpe percebido por um contorno curto que não altera hitbox.
    if(action==='hurt'&&frame%3!==2){
     pix(g,'#fff0dc',10,17,24,2);
@@ -160,7 +162,7 @@
    if(action==='death')g.restore();
    if(dir===3)g.restore();
   }
-  function monsterFrame(g,type,dir,action,frame,boss,zone){
+  function monsterFrame(g,type,dir,action,frame,boss,zone,currentSpecies=0){
    const spec=CREATURES[type]||CREATURES.limo;
    const accents=palettes[family(zone)]||['#97aa84','#4d695a','#c5e7a0'];
    let c={...spec};
@@ -253,6 +255,7 @@
     const px=10+((i*7+(type.length%4))%21),py=28+((i*5)%14);
     pix(g,i%3===0?c.light:i%3===1?c.base:accents[0],px,py+y,1+(i%2),1);
    }
+   ATELIER?.creature(g,c,{species:currentSpecies,boss,action,frame,dir});
    if(boss){
     pix(g,accents[1],5,8+y,31,5);
     for(let i=0;i<5;i++){
@@ -271,13 +274,14 @@
    if(action==='death')g.restore();
    if(dir===3)g.restore();
   }
-  function obtain(kind,name,dir,action,frame,boss,zone){
+  function obtain(kind,name,dir,action,frame,boss,zone,species=0,npc=null){
    const group=kind==='hero'?ROLES:CREATURES;
-   if(!group[name])name=kind==='hero'?'peregrino':'limo';
+   if(kind!=='npc'&&!group[name])name=kind==='hero'?'peregrino':'limo';
    dir=Number.isInteger(dir)?Math.max(0,Math.min(3,dir)):2;
    action=phases[action]?action:'idle';
    frame=((Number.isFinite(frame)?Math.floor(frame):0)%phases[action]+phases[action])%phases[action];
-   const key=[kind,name,dir,action,frame,boss?1:0,kind==='monster'?family(zone):0].join(':');
+   const id=kind==='npc'?(npc?.id||npc?.name||name):'';
+   const key=[kind,name,dir,action,frame,boss?1:0,kind==='monster'?family(zone):0,kind==='monster'?species:id].join(':');
    let sprite=cache.get(key);
    if(sprite){cache.delete(key);cache.set(key,sprite);return sprite}
    if(!documentRef?.createElement)return null;
@@ -286,7 +290,9 @@
    if(!g)return null;
    g.imageSmoothingEnabled=false;
    if(kind==='hero')heroFrame(g,name,dir,action,frame);
-   else monsterFrame(g,name,dir,action,frame,!!boss,zone);
+   else if(kind==='npc'&&ATELIER?.npc)ATELIER.npc(g,npc||{name}, {dir,action,frame});
+   else if(kind==='npc')heroFrame(g,npc?.role||'peregrino',dir,action,frame);
+   else monsterFrame(g,name,dir,action,frame,!!boss,zone,species);
    cache.set(key,canvas);builds++;
    if(cache.size>Math.max(128,limit))cache.delete(cache.keys().next().value);
    return canvas;
@@ -313,7 +319,7 @@
    const sel=pose({now,moving:state.moving,attacking:state.attacking,hurt:state.hurt,elapsed:state.elapsed,seed:(m.species||0)*83});
    const dir=Number.isInteger(m.dir)?m.dir:2;
    const type=state.type||m.type||'limo';
-   const sheet=obtain('monster',type,dir,sel.action,sel.frame,!!m.boss,m.zone||0);
+   const sheet=obtain('monster',type,dir,sel.action,sel.frame,!!m.boss,m.zone||0,Number.isInteger(m.species)?m.species:0);
    if(!sheet)return false;
    const w=m.boss?77:54,h=m.boss?92:61;
    g.imageSmoothingEnabled=false;
@@ -321,8 +327,18 @@
    return true;
   }
   function drawNpc(g,n,now){
-   return drawHero(g,{x:n.x,y:n.y,role:n.role||'peregrino',dir:2},now,
-    {moving:false,seed:(n.index||0)*713});
+   if(!g?.drawImage)return false;
+   // Personagens da história e moradores têm identidade própria; não vestem
+   // as roupas das classes jogáveis. Os quadros são reutilizados do cache.
+   const dir=Number.isInteger(n.dir)?n.dir:2;
+   const seed=Array.from(String(n.id||n.name||'')).reduce((a,c)=>a+c.charCodeAt(0),0)*17;
+   const sel=pose({now,moving:n.moving===true,seed});
+   const sprite=obtain('npc',ATELIER?.npcStyle?.(n)||n.role||'peregrino',
+    dir,sel.action,sel.frame,false,n.zone||0,0,n);
+   if(!sprite)return false;
+   g.imageSmoothingEnabled=false;
+   g.drawImage(sprite,Math.round(n.x-26),Math.round(n.y-62),52,62);
+   return true;
   }
   function clear(){cache.clear()}
   return {drawHero,drawMonster,drawNpc,pose,clear,
