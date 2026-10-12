@@ -174,6 +174,7 @@ class World {
    const root=dungeonRoot(zone),depth=dungeonDepth(zone);
    destinations=[depth===1?root:zone-1];
    if(depth<DEPTH_PER_DUNGEON)destinations.push(zone+1);
+   else destinations.push(root<15?root+1:10); // Depois do sexto subsolo, portal de continuação ou retorno a Auren.
   }else if(zone>=12){
    destinations=[entries[zone-12],dungeonFloor(zone,1)];
   }else{
@@ -182,8 +183,12 @@ class World {
   }
   return destinations.map((to,i)=>{
    const x=Math.round(destinations.length===1?ZONE_W/2:180+i*1170/(destinations.length-1));
+   const finalGate=zone>=16&&dungeonDepth(zone)===DEPTH_PER_DUNGEON&&
+    to===(dungeonRoot(zone)<15?dungeonRoot(zone)+1:10);
+   const kind=finalGate?'gateway':zone>=12&&to>=12?'stair':'portal';
    return {zone:to,name:ZONES[to][0],x,y:Math.round(roadY(x,zone)),dungeon:to>=12,
-    depth:dungeonDepth(to),stair:zone>=12&&to>=12?to>zone?'down':'up':null};
+    depth:dungeonDepth(to),kind,gateway:finalGate,
+    stair:kind==='stair'?(to>zone?'down':'up'):null};
   });
  }
  usePortal(p,z){
