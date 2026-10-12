@@ -286,3 +286,126 @@ body.world-fullscreen{overflow:hidden!important}
   box-shadow:0 0 24px #edc37e58
  }
 }
+
+
+/* OS PEREGRINOS — HUD 16-BIT / ART DIRECTION V3.
+   Desktop only. Sem alterar responsividade e controles touch existentes. */
+@media (min-width:901px) and (hover:hover) and (pointer:fine){
+ :root{
+  --pixel-frame:#b99b68;--pixel-lustre:#f8dc9e;
+  --pixel-ink:#14241e;--pixel-gem:#9ddfbd
+ }
+ html[data-pixel-family="raiz"]{
+  --pixel-frame:#799f67;--pixel-lustre:#d8e9a0;--pixel-ink:#15251c;--pixel-gem:#a8e67b
+ }
+ html[data-pixel-family="cinzas"]{
+  --pixel-frame:#c38768;--pixel-lustre:#fbd1a4;--pixel-ink:#272026;--pixel-gem:#ffc083
+ }
+ html[data-pixel-family="vozes"]{
+  --pixel-frame:#a39bc9;--pixel-lustre:#efdaad;--pixel-ink:#212539;--pixel-gem:#c6b4f2
+ }
+ html[data-pixel-family="aurora"]{
+  --pixel-frame:#7fced2;--pixel-lustre:#f7e0a7;--pixel-ink:#0e2f40;--pixel-gem:#91f9e7
+ }
+ .canvas-shell{
+  border-radius:2px;
+  border:6px solid var(--pixel-frame);
+  outline:4px solid var(--pixel-ink);
+  box-shadow:0 0 0 2px var(--pixel-lustre),0 18px 58px #000b,
+   inset 0 0 0 2px #102e26,inset 0 0 16px #06120c
+ }
+ .world-title{position:relative;padding-bottom:8px}
+ .world-title::after{
+  content:'✦ ᚱ ✦';
+  color:var(--pixel-lustre);
+  text-shadow:0 1px 0 #091c17;
+  font:700 12px/1 monospace;letter-spacing:12px;
+  position:absolute;right:6px;bottom:10px
+ }
+ .world-title h1{color:var(--pixel-lustre)}
+ .panel,.travel-panel,.chat-panel,.character-panel{
+  border:3px solid var(--pixel-frame);
+  border-radius:2px;
+  background:repeating-linear-gradient(0deg,transparent 0 15px,#ffffff03 16px 17px),
+   linear-gradient(155deg,#17362b,#0a211b 75%);
+  box-shadow:inset 0 0 0 2px var(--pixel-ink),
+    inset 0 0 0 4px #dab97820,0 12px 30px #0008;
+ }
+ .panel::before,.travel-panel::before{
+  content:'◆';font:800 12px monospace;top:6px;right:9px;
+  color:var(--pixel-lustre)
+ }
+ .panel::after,.travel-panel::after{
+  content:'';
+  position:absolute;pointer-events:none;
+  left:7px;bottom:7px;width:12px;height:12px;
+  border-left:3px solid var(--pixel-frame);
+  border-bottom:3px solid var(--pixel-frame)
+ }
+ .panel-top{
+  padding:8px 6px 12px;
+  color:var(--pixel-lustre);
+  letter-spacing:.13em;text-shadow:0 2px 0 #081712;
+  border-bottom:3px double var(--pixel-frame)
+ }
+ .tabrow{gap:3px;border-bottom:2px solid var(--pixel-frame)}
+ .tab{
+  background:#102b23;border:1px solid #738874;
+  border-radius:1px;
+  font-weight:700;letter-spacing:.04em
+ }
+ .tab.active{
+  background:repeating-linear-gradient(90deg,#4a6651 0 6px,#435d4b 7px 12px);
+  border:2px solid var(--pixel-frame);
+  color:var(--pixel-lustre);
+  box-shadow:inset 0 2px #fbeabb22
+ }
+ .hotbar button,.travel-panel button,.tabcontent button,.atlas-heading button{
+  background:repeating-linear-gradient(0deg,transparent 0 6px,#ffffff06 7px 8px),
+   linear-gradient(#305445,#152f28);
+  border:2px solid var(--pixel-frame);
+  border-radius:2px;
+  box-shadow:inset 0 0 0 2px #0a201b,inset 0 4px #ffffff10,2px 3px #061811;
+  color:var(--pixel-lustre);font-weight:700
+ }
+ .hotbar button:hover,.travel-panel button:hover,.tabcontent button:hover,.atlas-heading button:hover{
+  color:#fff1c1;
+  background:linear-gradient(#426e57,#1b483c);
+  box-shadow:inset 0 0 0 2px #102b23,2px 3px var(--pixel-frame)
+ }
+ .travel-panel .next-dungeon{
+  border:3px double var(--pixel-lustre);
+  background:repeating-linear-gradient(90deg,#7d623b 0 7px,#6f542f 7px 12px);
+  color:#fff5cf;text-shadow:1px 1px #241b16;
+  box-shadow:inset 0 0 0 2px #3f2d1b,0 0 12px #f6cc7938
+ }
+ .character-more>div,.tabcontent .entry{
+  border:2px solid #6f846e;
+  border-left:4px solid var(--pixel-frame);
+  background:#122c25
+ }
+ .progress{
+  border:2px solid #af9368;height:16px;
+  background:#0b1c1a;box-shadow:inset 0 0 0 2px #1f3329
+ }
+ .progress>div{
+  background-image:repeating-linear-gradient(90deg,transparent 0 9px,#ffffff20 10px 12px);
+  border-right:2px solid #fff2d0
+ }
+ .ping-indicator{
+  border:2px solid var(--pixel-frame);border-radius:2px;
+  background:#10221c;box-shadow:inset 0 0 0 1px #08130f;
+  text-shadow:0 1px 0 #010805
+ }
+ .world-atlas-dialog{
+  border:5px double var(--pixel-frame);
+  border-radius:2px;box-shadow:0 30px 100px #000e,inset 0 0 0 2px #233b34
+ }
+ .atlas-entry{
+  border:2px solid #617863;
+  border-left:5px solid var(--pixel-frame);
+  border-radius:2px
+ }
+ .atlas-entry.current{outline:3px solid var(--pixel-lustre)}
+ .world-atlas-dialog h2{color:var(--pixel-lustre)}
+}
