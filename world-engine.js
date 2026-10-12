@@ -414,9 +414,14 @@ class World {
   // Sem agressividade por proximidade: o monstro só enfrenta quem o atacou.
   // Um novo golpe renova a reação; outros peregrinos próximos ficam em paz.
   if(m.hp>0){m.aggroTarget=p.id;m.aggroUntil=now+16000}
-  // A animação dos arqueiros nasce de coordenadas confirmadas pelo servidor.
-  // Arco simples é equipamento inicial da classe; o Arco dos ventos da loja é melhoria.
-  const projectile=p.save.role==='arqueiro'?{projectile:'arrow',from:{x:Math.round(p.x),y:Math.round(p.y-34)},to:{x:Math.round(m.x),y:Math.round(m.y-22)}}:{};
+  // O servidor é autoritativo: apenas ataques que realmente atingiram o alvo
+  // emitem uma flecha ou um feitiço visual. O dano e a cura já foram calculados.
+  const aim={x:Math.round(m.x),y:Math.round(m.y-22)};
+  const projectile=p.save.role==='arqueiro'?
+   {projectile:'arrow',from:{x:Math.round(p.x),y:Math.round(p.y-34)},to:aim}:
+   p.save.role==='curandeiro'?
+   // O foco do cajado fica à direita do corpo no sprite 16-bit.
+   {projectile:'holy-bolt',from:{x:Math.round(p.x+25),y:Math.round(p.y-57)},to:aim}:{};
   this.broadcast({type:'hit',monster:m.id,zone:m.zone,damage,remaining:m.hp,by:p.name,skill,...projectile},q=>q.zone===p.zone&&dist(q,m)<780);
   if(m.hp===0){m.aggroTarget=null;m.aggroUntil=0;m.windupUntil=0;m.markUntil=0;m.markOwner=null;m.deadUntil=now+(m.boss?45000:14000);let recipients=new Map();for(const [pid] of m.damageFrom){const x=this.players.get(pid);if(x&&x.zone===p.zone&&dist(x,m)<690)recipients.set(x.id,x)}
    for(const x of [...recipients.values()])if(x.party){for(const ally of this.players.values())if(ally.party===x.party&&ally.zone===x.zone&&dist(ally,m)<500)recipients.set(ally.id,ally)}
