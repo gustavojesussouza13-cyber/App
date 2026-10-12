@@ -1,4 +1,4 @@
-# OS PEREGRINOS — CRÔNICAS DA AURORA: MMORPG 16-bit (alfa 2.0–5.0)
+# OS PEREGRINOS — CRÔNICAS DA AURORA: MMORPG 16-bit (alfa)
 
 Jogo MMORPG **experimental** para PC no navegador, preservando a campanha original em `/jogo.html` e introduzindo o modo **Mundo Aberto** em `/mundo.html`, com **contas opcionais** e acesso como visitante.
 
@@ -25,14 +25,28 @@ Para entrar como visitante, basta escolher um **nome de 3 a 18 caracteres**. Nã
 - **Transferência consentida** de itens e moedas entre jogadores próximos (uma direção por operação, não uma bolsa de ofertas bilateral).
 - **Chat global, de equipe e de guilda**, posição de jogadores em mesma região e minimapa.
 - **No máximo 10 jogadores simultâneos**, somando campanha clássica e Mundo Aberto, no processo Node.js.
-- **Persistência SQLite local** em `data/world.sqlite`, com gravação periódica e ao desconectar; pode-se usar `DATA_FILE` para outra localização.
-- Nenhuma dependência externa de npm além do Node.js 22+.
+- **Produção:** PostgreSQL 18 gerenciado no Render, com contas, progresso, inventários, missões e guildas persistidos externamente. **Desenvolvimento local:** fallback SQLite/JSON em `data/world.sqlite`, configurável por `DATA_FILE`.
+- Node.js 22+ e dependência `pg` para PostgreSQL em produção.
+
+## Atualizações de qualidade (12/10/2026)
+
+- **Multiplayer e combate:** interpolação de jogadores remotos, ping RTT pelo WebSocket, heartbeat mais eficiente e janela de esquiva de inimigos; os chefes avisam seus golpes antes do ataque.
+- **Relíquias e evolução:** cinco relíquias raras/épicas obtidas pela primeira vitória contra o chefe de cada região, com bônus específicos das classes, inventário e comércio seguro no servidor.
+- **Missões:** 11 desafios de combate, exploração, chefes e capítulos, com resgate de recompensa uma única vez.
+- **Exploração:** portais desenhados na estrada e no minimapa; interação por E ou clique. A passagem valida distância e chaves no servidor. O menu de viagens permanece por compatibilidade com personagens antigos.
+- **Colisão:** água bloqueada no servidor, spawns em solo caminhável e recuperação segura de posições antigas em terrenos bloqueados. Árvores, pedras e pathfinding dos monstros ainda precisam de trabalho.
+- **Chat:** silenciar/liberar nomes, inclusive via `/ignorar Nome` e `/designorar Nome`, com preferência salva no personagem.
+- **PC:** sons sintéticos de batalha opcionais e desligados por padrão. Não há reprodução automática.
+- **Operação:** `/health` verifica o processo; `/health/ready` confirma o PostgreSQL usando uma consulta simples e informa HTTP 503 quando o banco está indisponível. A rota de prontidão não expõe credenciais.
+- **Mobile:** melhorias específicas de interface e controles **suspensas até autorização do proprietário**. Correções gerais de servidor se aplicam a todos.
+
+Detalhes de riscos e próximos marcos em [docs/roadmap-qualidade-mmorpg.md](docs/roadmap-qualidade-mmorpg.md). A recuperação PITR do Render já protege períodos recentes conforme o plano, mas a automação de exportações externas e os testes periódicos de recuperação permanecem pendentes.
 
 ## Muito importante: limites antes de chamar MMORPG completo
 
 Este projeto **não é um MMORPG comercial 5.0 pronto**. A versão entregue implementa sistemas-jogáveis inspirados nas etapas 2.0–5.0. Para muitos jogadores simultâneos / centenas de monstros com IA ativa, ainda precisa de testes de carga, mapas artísticos finais, múltiplos processos, serviço central de identidade por token, database persistente gerenciada, sincronização entre regiões, filtros fortes contra trapaça, denúncias, políticas de comunidade, auditorias, recuperação e backups.
 
-**Hospedagem atual:** o Render Free usa **sistema de arquivos efêmero**. O SQLite local pode ser perdido em suspensões/reimplantações, portanto **o progresso NÃO é garantido de forma permanente no site hospedado**, apesar de funcionar e ser preservado enquanto o arquivo continua disponível. Não exija compras reais nem confie no progresso como definitivo. Próximo requisito operacional crítico: configurar banco durável externo / disco persistente (pode exigir plano pago), exportações e backups verificáveis. SQLite local é adequado para desenvolvimento, não para escalonamento multi-instância.
+**Hospedagem atual:** web service Render e PostgreSQL 18 gerenciado no plano pago de 256 MB de RAM / 1 GB de disco, separado do sistema de arquivos efêmero do servidor web. O backup de 11/10/2026 foi restaurado com sucesso em PostgreSQL 18 isolado. Os bancos pagos do Render contam com **recuperação contínua por ponto no tempo (PITR)** dentro da janela do workspace; ainda faltam **exportações automáticas com retenção externa**, monitoramento de disco e testes periódicos de recuperação. Não interprete banco pago como imunidade a incidentes. A infraestrutura atual suporta um único processo e até dez jogadores, não vários servidores sincronizados.
 
 Os salvamentos existentes da **campanha clássica** continuam separados no `localStorage` original, não são transferidos automaticamente para o novo mundo.
 
@@ -69,13 +83,13 @@ PORT=3000 DATA_FILE=/tmp/os-peregrinos-world.sqlite npm start
 
 ## Arquitetura / evolução
 
-- `world-engine.js`: servidor autoritativo, progressão, criaturas, AI, mapa, equipes, guildas, economia e persistência SQLite.
+- `world-engine.js`: servidor autoritativo, progressão, criaturas, IA, portais, colisão básica com água, classes, conquistas, loot, equipes, guildas e economia; `account-store.js` grava em PostgreSQL e o modo local usa SQLite/JSON.
 - `server.js`: HTTP estático, WebSocket e coexistência com a campanha original.
 - `public/mundo.html`, `public/mmo.css`, `public/mmo.js`: interface de jogo multiplayer 16-bit.
 - `public/jogo.html`: campanha clássica preservada.
 - `tests/world.test.js`, `tests/world-online.test.js`: testes de segurança básica, economia, protocolo e limite.
 
-**Próxima fase para escalar:** persistência fora do servidor, autoritatividade de colisão por tile, navegação entre regiões por portais dentro do mapa, combate com PvE mais sofisticado, instâncias isoladas de masmorras, segurança anti-bot, moderação, canais privados, observabilidade e infraestrutura com ownership distribuído por zonas e fila para lotação.
+**Próxima fase para escalar:** colisões também com árvores e obstáculos sólidos (a água já está protegida), navegação inteligente de monstros, masmorras verdadeiramente instanciadas, backups automáticos, denúncias e moderação auditada, testes com usuários reais e vários servidores sincronizados com fila de lotação.
 
 
 ## Correção do visual 16-bit original
@@ -93,7 +107,7 @@ Ao editar o atlas, mantenha o mapeamento de coordenadas em `public/art16.js` sin
 
 ## Interface: tela cheia e retorno ao Mundo Aberto
 
-- **Mundo Aberto (`/mundo`)**: botão **⛶ Tela cheia** no canto superior direito do mapa, com entrada e saída pela API Fullscreen do navegador. O mapa preserva proporção 5:3 e pixel art sem distorcer a imagem. Para sair, clique **Sair da tela cheia** ou pressione **Esc**. Se o navegador bloquear a API, o jogo indica a alternativa **F11** para tela cheia do navegador.
+- **Mundo Aberto (`/mundo`)**: botão **⛶ Tela cheia** no canto superior direito do mapa, com entrada e saída pela API Fullscreen do navegador. O mapa preserva proporção 5:3 e pixel art sem distorcer a imagem. Para sair, clique **Sair da tela cheia** ou pressione **Esc**. Se o navegador bloquear a API, a interface tenta um modo de expansão de tela compatível, sem alterar progresso do jogador.
 - **Campanha clássica (`/jogo.html`)**: botão **🌐 VOLTAR À VERSÃO ONLINE (MMORPG)** visível na própria tela inicial, além do retorno no cabeçalho. Os dois levam para `/mundo` e não exigem iniciar a campanha.
 - O acesso continua apenas pelo nome, com limite total de 10 jogadores. Os sistemas de missões, monstros, classes e combate não foram modificados por esta atualização de interface.
 
@@ -108,10 +122,10 @@ O Mundo Aberto recebeu uma história autoral, **16 capítulos em sequência**, *
 - **Enter** avança nas páginas, **Esc** fecha a conversa. Há sempre duas respostas narrativas quando um capítulo pode ser concluído; algumas missões pedem **duas ou três vitórias em combate depois de aceitar o desafio**, na própria região.
 - **Aba Crônicas** (atalho **L**) mostra o capítulo atual, o próximo personagem e região, o progresso dos objetivos e as centelhas encontradas.
 - Os capítulos passam pela sequência **Vale → Floresta → Masmorra da Raiz → Riacho → Deserto → Masmorra das Cinzas → Montanhas → Ruínas → Templo Esquecido → Campos → Pântano → Costa → Bosque → Cidadela → Terra da Última Luz → Câmara da Aurora**. Os personagens fornecem as quatro chaves necessárias para as masmorras em momentos apropriados, sem obrigar o jogador a comprar as chaves.
-- Ao encerrar um capítulo, o jogador recebe **XP e moedas uma única vez**. Decisões e centelhas ficam salvas no personagem (SQLite local / JSON de teste). O desfecho varia ligeiramente com suas respostas.
+- Ao encerrar um capítulo, o jogador recebe **XP e moedas uma única vez**. Decisões e centelhas ficam salvas no personagem (PostgreSQL em produção; SQLite/JSON em desenvolvimento). O desfecho varia ligeiramente com suas respostas.
 - NPCs usam **sprites do atlas 16-bit original** e aparecem no minimapa como pontos dourados. São pacíficos e não afetam a IA dos monstros.
 
-**Limite de hospedagem:** assim como o restante do personagem, o progresso narrativo pode ser perdido após uma reinicialização/reimplantação do Render gratuito sem armazenamento durável. A campanha clássica continua independente.
+**Persistência da narrativa:** o progresso fica no PostgreSQL externo durante reimplantações do serviço web. A campanha clássica continua independente; ainda são necessários backups frequentes e testes regulares de restauração.
 
 Arquivos novos: `story-data.js` (história e catálogo de NPCs) e `tests/story.test.js` (validação de escolhas, distâncias, recompensas, persistência e fluxo completo). Todos os recursos do jogo são entregues no ZIP completo; nenhum serviço adicional é necessário para executar localmente.
 
