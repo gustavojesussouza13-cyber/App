@@ -303,7 +303,9 @@ function attack(skill){
 }
 $('talkBtn').onclick=talkToNearest;$('attackBtn').onclick=()=>attack(false);$('skillBtn').onclick=()=>attack(true);$('potionBtn').onclick=()=>send('use',{item:'pocao'});$('questBtn').onclick=()=>selectTab('quests');$('mapBtn').onclick=showWorldMap;$('chatFocusBtn').onclick=()=>$('chatInput').focus();
 cvs.addEventListener('click',e=>{if(!session.connected)return;const rect=cvs.getBoundingClientRect(),wx=(e.clientX-rect.left)*W/rect.width+session.cameraX,wy=(e.clientY-rect.top)*H/rect.height+session.cameraY;
- const gate=session.portals.find(p=>Math.hypot(p.x-wx,p.y-wy)<52);
+ // O sprite real tem 92px de altura, portanto toda a porta é clicável,
+ // não apenas a posição dos pés; o servidor ainda valida proximidade do jogador.
+ const gate=session.portals.find(p=>Math.abs(p.x-wx)<=58&&wy>=p.y-140&&wy<=p.y+34);
  if(gate){send('portal',{zone:gate.zone});return}
  const touchRadius=touchDevice?Math.max(50,34*W/Math.max(1,rect.width)):50;
  let candidate=null,best=touchRadius;for(const mon of session.monsters.values()){
@@ -403,8 +405,10 @@ function tryTalk(npc){if(!session.connected)return;if(distance(npc,session)>165)
 function talkToNearest(){
  if(!$('npcDialogue').hidden||!session.connected)return;
  const nearest=nearNpc();
- if(nearest&&distance(nearest,session)<=165){tryTalk(nearest);return}
  const gate=session.portals.filter(p=>distance(p,session)<=94).sort((a,b)=>distance(a,session)-distance(b,session))[0];
+ // Em caso de sobreposição, E escolhe o objeto interativo mais próximo.
+ if(gate&&(!nearest||distance(gate,session)<=distance(nearest,session))){send('portal',{zone:gate.zone});return}
+ if(nearest&&distance(nearest,session)<=165){tryTalk(nearest);return}
  if(gate){send('portal',{zone:gate.zone});return}
  alert('Aproxime-se de um personagem ou passagem da estrada para interagir.');
 }
@@ -433,9 +437,12 @@ function drawTravel(){const box=$('travelButtons');box.replaceChildren();let z=s
  // O menu reutiliza as mesmas ligações que o servidor autoriza; não cria atalhos.
  for(const gate of session.portals){
   const b=document.createElement('button');
-  b.textContent=gate.stair?(gate.stair==='down'?'↧ Descer · ':'↥ Subir · ')+gate.name:
+  b.textContent=gate.gateway?(gate.zone===10?'↥ Voltar para Auren':'✦ Próxima masmorra · '+gate.name):
+   gate.stair?(gate.stair==='down'?'↧ Descer · ':'↥ Subir · ')+gate.name:
     (gate.dungeon&&z<12?'⌘ '+gate.name+' (chave)':gate.name);
-  b.title=gate.stair?'Acesse a escadaria no mundo ou use este botão':'Destino conectado';
+  b.title=gate.gateway?'Passagem real após o sexto subsolo: continue a exploração':
+   gate.stair?'Use a escadaria no cenário (E) ou este botão':'Destino conectado';
+  if(gate.gateway)b.classList.add('next-dungeon');
   b.onclick=()=>send('travel',{zone:gate.zone});
   box.append(b);
  }
