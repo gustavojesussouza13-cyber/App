@@ -116,13 +116,90 @@
    if(state.hurt)pix(g,'#fff2ce',x-23,y-52,45,2);
    return true;
   }
+  function npcProfession(n){
+   const label=(String(n?.name||'')+' '+String(n?.title||''))
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+   const role=[['ferreir','ferreiro'],['mercad','mercador'],
+    ['guarda','guarda'],['sentinela','guarda'],['sacerdot','sacerdotisa'],
+    ['curandeir','sacerdotisa'],['sabio','sabio'],['bibliotec','sabio'],
+    ['viajante','viajante'],['mensageiro','viajante']];
+   for(const [needle,style] of role)if(label.includes(needle))return style;
+   return null;
+  }
+  function npcGear(g,n,x,y,now){
+   // Equipamentos próprios, recortados em pixels inteiros e desenhados
+   // sobre os personagens secundários somente no PC.
+   const profession=npcProfession(n);
+   const bob=n?.moving?Math.floor(Math.sin(now/170)*2):0;
+   if(profession==='mercador'){
+    // A mochila cheia e a lanterna tornam o mercador inconfundível.
+    pix(g,'#4f3428',x-31,y-56+bob,13,35);
+    pix(g,'#aa7043',x-29,y-53+bob,10,27);
+    pix(g,'#efc885',x-27,y-51+bob,6,4);
+    pix(g,'#513828',x+27,y-43+bob,4,22);
+    pix(g,'#e8b869',x+22,y-40+bob,13,12);
+    pix(g,'#fce49b',x+25,y-37+bob,7,6);
+    pix(g,'#ffeec9',x+27,y-35+bob,3,3);
+   }else if(profession==='ferreiro'){
+    // Avental de couro, alicate metálico e martelo aquecido.
+    pix(g,'#3c2929',x-14,y-42+bob,29,38);
+    pix(g,'#9e674c',x-11,y-39+bob,23,32);
+    pix(g,'#daaa73',x-10,y-36+bob,6,3);
+    pix(g,'#eac68b',x+1,y-23+bob,4,4);
+    pix(g,'#73472e',x+30,y-57+bob,5,42);
+    pix(g,'#34424b',x+23,y-68+bob,19,10);
+    pix(g,'#b2bdc5',x+25,y-67+bob,14,4);
+    pix(g,'#fbddb1',x+26,y-66+bob,5,2);
+   }else if(profession==='guarda'){
+    // Lança, escudo azul, aço brilhante e emblema da Aurora.
+    pix(g,'#d8e9ef',x-30,y-83+bob,4,70);
+    pix(g,'#f8d995',x-33,y-85+bob,10,9);
+    pix(g,'#365890',x+14,y-44+bob,21,37);
+    pix(g,'#f4ce80',x+15,y-44+bob,19,3);
+    pix(g,'#f4ce80',x+23,y-40+bob,3,28);
+    pix(g,'#ffe9a0',x+19,y-29+bob,12,3);
+    pix(g,'#e4f1ed',x-14,y-50+bob,10,3);
+   }else if(profession==='viajante'){
+    // Alforje de couro e echarpe vermelha da estrada.
+    pix(g,'#673f35',x-34,y-43+bob,15,29);
+    pix(g,'#b27d53',x-31,y-40+bob,10,23);
+    pix(g,'#ecc18a',x-29,y-38+bob,6,3);
+    pix(g,'#653138',x-21,y-58+bob,41,8);
+    pix(g,'#c9635c',x-19,y-57+bob,36,4);
+    pix(g,'#f0a078',x-16,y-57+bob,14,2);
+   }else if(profession==='sacerdotisa'){
+    // Estola vermelha, veste marfim e cajado com cristal azul.
+    pix(g,'#fff8e6',x-16,y-43+bob,29,33);
+    pix(g,'#d56d7c',x-16,y-40+bob,5,29);
+    pix(g,'#bc526b',x+9,y-41+bob,5,29);
+    pix(g,'#ffcf8d',x-1,y-30+bob,5,13);
+    pix(g,'#805d46',x+28,y-75+bob,4,68);
+    pix(g,'#53aee3',x+24,y-86+bob,13,14);
+    pix(g,'#c5f9ff',x+28,y-83+bob,6,7);
+    pix(g,'#fffbdc',x+30,y-81+bob,2,3);
+   }else if(profession==='sabio'){
+    // Livro da história e esfera arcana com runas douradas.
+    pix(g,'#77588e',x-17,y-40+bob,34,33);
+    pix(g,'#d7ad70',x-11,y-38+bob,9,29);
+    pix(g,'#d5c8a7',x-8,y-54+bob,17,18);
+    pix(g,'#fff2df',x-6,y-52+bob,12,9);
+    pix(g,'#5c3b33',x+18,y-45+bob,20,17);
+    pix(g,'#ddbb76',x+19,y-44+bob,18,3);
+    pix(g,'#fff0c5',x+25,y-40+bob,8,9);
+    pix(g,'#7e593b',x-33,y-71+bob,4,65);
+    pix(g,'#4c9dc5',x-37,y-85+bob,13,15);
+    pix(g,'#c7f7ff',x-33,y-82+bob,6,7);
+   }
+  }
   function drawNpc(g,n,now){
    if(!ready)return false;
    const x=Number(n?.x)||0,y=Number(n?.y)||0;
    const dir=Number.isInteger(n?.dir)?n.dir:2;
    const key=npcSheet(n);
    const anim=pose(now,{moving:n.moving===true,seed:hash(n.id||n.name)%2100});
-   return frame(g,key,dir,anim.step,x,y,59,75);
+   if(!frame(g,key,dir,anim.step,x,y,59,75))return false;
+   npcGear(g,n,x,y,now);
+   return true;
   }
   function drawMonster(g,m,now,state={}){
    if(!ready||!m?.boss)return false;
