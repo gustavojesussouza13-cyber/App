@@ -26,7 +26,7 @@ function harness(){
   progressToken:'guest-test',socket:null,reconnectMs:1000,reconnectTimer:null,
   session:{name:'Teste',formClass:'peregrino',monsters:new Map(),players:new Map()},
   accountMode:false,authed:true,
-  setOnline:()=>{},closeDialogue:()=>{},monsterMotion:{clear:()=>{}},
+  setOnline:()=>{},closeDialogue:()=>{},monsterMotion:{clear:()=>{}},combatFx:{clear:()=>{}},
   alert:()=>{},console,JSON,Map,
   setTimeout:(cb,ms)=>{queued.set(++timer,{cb,ms});return timer},
   clearTimeout:id=>queued.delete(id),

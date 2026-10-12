@@ -7,6 +7,7 @@ const W=cvs.width,H=cvs.height,ZONE_W=1536,ZONE_H=1024;
 const session={id:'',name:'',connected:false,characters:null,online:0,zones:[],shop:{},quests:[],npcs:[],story:null,monsters:new Map(),players:new Map(),zone:0,x:768,y:512,dir:2,target:null,partyInvite:null,guildInvite:null,tradeOffer:null,role:'peregrino',cameraX:0,cameraY:0,formClass:'peregrino'};
 const keys=new Set(),moves={up:['KeyW','ArrowUp'],down:['KeyS','ArrowDown'],left:['KeyA','ArrowLeft'],right:['KeyD','ArrowRight']};
 const monsterMotion=window.OsPeregrinosMonsterMotion.create();
+const combatFx=window.OsPeregrinosCombatFx.create();
 let socket=null,reconnectMs=1000,reconnectTimer=null,movingAt=0,lastDraw=0,fx=[],toastTimer=0,lastAction=0,tab='inventory',authed=false;
 let progressToken=null,accountMode=false,accountReady=false,emailRecoveryAvailable=false;
 try{progressToken=localStorage.getItem('os-peregrinos-world-token');if(!progressToken){progressToken=Array.from(crypto.getRandomValues(new Uint8Array(32)),b=>b.toString(16).padStart(2,'0')).join('');localStorage.setItem('os-peregrinos-world-token',progressToken)}$('name').value=localStorage.getItem('os-peregrinos-last-name')||''}catch{$('connectionError').textContent='O armazenamento precisa estar habilitado para reconhecer seu progresso.'}
@@ -41,8 +42,13 @@ function dispatch(msg){if(msg.type==='welcome'){
   const now=new Map();for(const m of msg.monsters||[])now.set(m.id,m);
   monsterMotion.sync([...now.values()]);session.monsters=now;
   const people=new Map();for(const p of msg.players||[])people.set(p.id,p);session.players=people;
- }else if(msg.type==='travel'){session.zone=msg.zone;session.x=msg.x;session.y=msg.y;session.target=null;session.monsters.clear();monsterMotion.clear();$('zoneTitle').textContent=msg.name;alert('✦ '+msg.name);drawTravel();
- }else if(msg.type==='hit'){if(msg.zone===session.zone){let m=session.monsters.get(msg.monster);if(m)m.hp=msg.remaining;fx.push({x:m?.x||session.x,y:m?.y||session.y,text:'−'+msg.damage,t:performance.now(),color:'#ffe5a6'})}
+ }else if(msg.type==='travel'){session.zone=msg.zone;session.x=msg.x;session.y=msg.y;session.target=null;session.monsters.clear();monsterMotion.clear();combatFx.clear();$('zoneTitle').textContent=msg.name;alert('✦ '+msg.name);drawTravel();
+ }else if(msg.type==='hit'){if(msg.zone===session.zone){
+  const m=session.monsters.get(msg.monster);if(m)m.hp=msg.remaining;
+  // O acerto é autoritativo: não dispara flechas por cliques rejeitados pelo servidor.
+  const started=combatFx.fire(msg,performance.now());
+  if(!started)fx.push({x:m?.x||session.x,y:m?.y||session.y,text:'−'+msg.damage,t:performance.now(),color:'#ffe5a6'});
+ }
  }else if(msg.type==='monsterWindup'){if(msg.zone===session.zone){
    const m=session.monsters.get(msg.monster);
    if(m)fx.push({x:m.x,y:m.y,text:'⚠ GOLPE!',t:performance.now(),color:'#ffd06b'});
@@ -79,7 +85,7 @@ function connect(){
   sock.onclose=()=>{
    if(socket!==sock)return;
    socket=null;closeDialogue();setOnline(false,'Desconectado');
-   session.monsters.clear();monsterMotion.clear();session.players.clear();
+   session.monsters.clear();monsterMotion.clear();combatFx.clear();session.players.clear();
    if(!authed)return;
    clearTimeout(reconnectTimer);reconnectTimer=setTimeout(connect,reconnectMs);
    reconnectMs=Math.min(14000,reconnectMs*1.7);
@@ -197,7 +203,13 @@ const keyAction=e=>{if(!$('npcDialogue').hidden){if(e.code==='Escape'){closeDial
  else if(e.code==='Enter'){$('chatInput').focus();e.preventDefault()}
 };
 window.addEventListener('keydown',keyAction);window.addEventListener('keyup',e=>keys.delete(e.code));window.addEventListener('blur',()=>keys.clear());
-function attack(skill){if(!session.connected||!session.target){alert('Clique sobre um monstro para selecioná-lo.');return}send(skill?'skill':'attack',{target:session.target});lastAction=performance.now()}
+function attack(skill){if(!session.connected||!session.target){alert('Clique sobre um monstro para selecioná-lo.');return}
+ if(session.role==='arqueiro'){
+  const m=session.monsters.get(session.target);
+  if(m){const dx=m.x-session.x,dy=m.y-session.y;session.dir=Math.abs(dx)>Math.abs(dy)?dx>0?1:3:dy>0?2:0;}
+ }
+ send(skill?'skill':'attack',{target:session.target});lastAction=performance.now()
+}
 $('talkBtn').onclick=talkToNearest;$('attackBtn').onclick=()=>attack(false);$('skillBtn').onclick=()=>attack(true);$('potionBtn').onclick=()=>send('use',{item:'pocao'});$('questBtn').onclick=()=>selectTab('quests');$('mapBtn').onclick=showWorldMap;$('chatFocusBtn').onclick=()=>$('chatInput').focus();
 cvs.addEventListener('click',e=>{if(!session.connected)return;const rect=cvs.getBoundingClientRect(),wx=(e.clientX-rect.left)*W/rect.width+session.cameraX,wy=(e.clientY-rect.top)*H/rect.height+session.cameraY;
  let candidate=null,best=50;for(const mon of session.monsters.values()){
@@ -215,8 +227,13 @@ function group(parent){const d=document.createElement('div');d.className='entry'
 function appendText(parent,tag,text){const e=document.createElement(tag);e.textContent=text;parent.append(e);return e}
 function drawTab(){const parent=$('tabContent');parent.replaceChildren();const s=session.characters;if(!s){appendText(parent,'p','Entre no mundo para ver seu inventário.');return}
  if(tab==='inventory'){
-  appendText(parent,'h3','Sua bolsa de equipamentos');for(const [id,count] of Object.entries(s.inventory||{}).filter(([,n])=>n>0)){
-   const item=session.shop[id];if(!item)continue;const d=group(parent);appendText(d,'b',item.name+' · '+count);appendText(d,'small',id==='pocao'||id==='superpocao'?'Restaura vida':'Equipamento / recurso');
+  appendText(parent,'h3','Sua bolsa de equipamentos');
+  if(s.role==='arqueiro'&&!(s.inventory?.arco>0)){
+   const starter=group(parent);appendText(starter,'b','Arco simples · Equipado');
+   appendText(starter,'small','Arma inicial da classe: flechas ilimitadas. O Arco dos ventos do mercado aumenta o dano.');
+  }
+  for(const [id,count] of Object.entries(s.inventory||{}).filter(([,n])=>n>0)){
+   const item=session.shop[id];if(!item)continue;const d=group(parent);appendText(d,'b',item.name+' · '+count+(id==='arco'&&s.role==='arqueiro'?' · Equipado':''));appendText(d,'small',id==='pocao'||id==='superpocao'?'Restaura vida':'Equipamento / recurso');
    if(item.heal)d.append(button('Usar', 'use',{item:id}));
   }appendText(parent,'p','Itens, moedas e nível são calculados pelo servidor. A persistência depende de armazenamento confiável no servidor.').className='muted';
  }else if(tab==='quests'){
@@ -291,10 +308,14 @@ function canvasDraw(now,dt){
   ctx.imageSmoothingEnabled=false;
   session.cameraX=clamp(Math.floor(session.x-W/2),0,ZONE_W-W);
   session.cameraY=clamp(Math.floor(session.y-H/2),0,ZONE_H-H);
+  const projectiles=combatFx.frame(now);
+  for(const shot of projectiles)if(shot.justHit){
+   fx.push({x:shot.x,y:shot.y,text:'−'+shot.damage,t:now,color:shot.skill?'#b7f9f0':'#ffe5a6'});
+  }
   fx=fx.filter(f=>now-f.t<1100);
   classicRenderer.render({zone:session.zone,zones:session.zones,x:session.x,y:session.y,
     name:session.name||'PEREGRINO',role:session.role,dir:session.dir,
-    monsters:monsterMotion.draw([...session.monsters.values()],dt),players:[...session.players.values()],
+    monsters:monsterMotion.draw([...session.monsters.values()],dt),players:[...session.players.values()],projectiles,
     npcs:session.npcs.filter(n=>n.zone===session.zone),storyStage:session.story?.stage||0,
     cameraX:session.cameraX,cameraY:session.cameraY,target:session.target,now,fx,lastAction,
     moving:Math.hypot(session.x-lastFrameX,session.y-lastFrameY)>0.06});

@@ -10,7 +10,7 @@ test('mundo aberto reutiliza sprites e animações originais 16-bit',()=>{
  const page=read('public/mundo.html');
  const client=read('public/mmo.js');
  const renderer=read('public/art16.js');
- assert.match(page,/src="\/art16\.js"/);
+ assert.match(page,/src="\/art16\.js(?:\?[^\"]*)?"/);
  assert.ok(page.indexOf('/art16.js')<page.indexOf('/mmo.js'),'atlas carrega antes do jogo');
  assert.match(client,/PeregrinoArt16\.create/);
  assert.match(renderer,/gustavo_andar/);

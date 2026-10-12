@@ -254,7 +254,10 @@ class World {
   // Sem agressividade por proximidade: o monstro só enfrenta quem o atacou.
   // Um novo golpe renova a reação; outros peregrinos próximos ficam em paz.
   if(m.hp>0){m.aggroTarget=p.id;m.aggroUntil=now+16000}
-  this.broadcast({type:'hit',monster:m.id,zone:m.zone,damage,remaining:m.hp,by:p.name,skill},q=>q.zone===p.zone&&dist(q,m)<780);
+  // A animação dos arqueiros nasce de coordenadas confirmadas pelo servidor.
+  // Arco simples é equipamento inicial da classe; o Arco dos ventos da loja é melhoria.
+  const projectile=p.save.role==='arqueiro'?{projectile:'arrow',from:{x:Math.round(p.x),y:Math.round(p.y-34)},to:{x:Math.round(m.x),y:Math.round(m.y-22)}}:{};
+  this.broadcast({type:'hit',monster:m.id,zone:m.zone,damage,remaining:m.hp,by:p.name,skill,...projectile},q=>q.zone===p.zone&&dist(q,m)<780);
   if(m.hp===0){m.aggroTarget=null;m.aggroUntil=0;m.windupUntil=0;m.deadUntil=now+(m.boss?45000:14000);let recipients=new Map();for(const [pid] of m.damageFrom){const x=this.players.get(pid);if(x&&x.zone===p.zone&&dist(x,m)<690)recipients.set(x.id,x)}
    for(const x of [...recipients.values()])if(x.party){for(const ally of this.players.values())if(ally.party===x.party&&ally.zone===x.zone&&dist(ally,m)<500)recipients.set(ally.id,ally)}
    for(const x of recipients.values())this.award(x,Math.round(m.xp/Math.max(1,recipients.size)*1.3),Math.ceil(m.coins/Math.max(1,recipients.size)),m.boss,m.zone);
