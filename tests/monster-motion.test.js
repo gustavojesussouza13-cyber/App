@@ -87,3 +87,22 @@ test('Mundo Aberto carrega interpolação após a arte 16-bit e antes do cliente
  assert.match(js,/monsterMotion\.draw/);
  assert.match(js,/monsterMotion\.clear/);
 });
+
+test('snapshots atrasados não causam salto visual grande em um quadro',()=>{
+ const motion=create();
+ const source=[{id:'m-0-1',x:100,y:100,hp:30}];
+ motion.sync(source);motion.draw(source,1/60);
+ const updated=[{...source[0],x:245}]; // diferença menor que limiar de respawn (160)
+ motion.sync(updated);
+ const next=motion.draw(updated,1/60)[0];
+ assert.ok(next.x>100&&next.x<=103.2,`salto visual inesperado: ${next.x-100}px`);
+ assert.equal(updated[0].x,245,'o servidor segue autoritativo');
+});
+test('margem de visibilidade mantém monstro próximo da borda',t=>{
+ const {world,m,p}=setup(t);
+ const events=[];world.send=(_socket,message)=>events.push(message);
+ p.x=m.x+800;p.y=m.y;
+ world.snapshotTo(p);
+ const snapshot=events.find(message=>message.type==='snapshot');
+ assert.ok(snapshot.monsters.some(monster=>monster.id===m.id));
+});
