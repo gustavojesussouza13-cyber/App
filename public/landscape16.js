@@ -61,6 +61,10 @@
    px(g,p[7],x+2,y+6,16,3);
    px(g,p[6],x+13,y+18,17,2);
    px(g,'#806445',x+3,y+24,11,2);
+   // Trincas e desgaste em três alturas: qualidade mesmo sem micro-ruído.
+   px(g,p[6],x+5,y+4,5,2);
+   px(g,p[7],x+15,y+14,7,2);
+   px(g,'#9f8159',x+23,y+25,7,3);
    if(seed>.3){px(g,'#83674d',x+23,y+9,5,3);px(g,p[7],x+24,y+10,3,1)}
    if(seed>.6){px(g,'#d6bc87',x+8,y+13,5,2);px(g,'#866b4c',x+17,y+27,4,2)}
   }else if(rock){
@@ -213,6 +217,8 @@
    polygonRows(g,[[18,18],[12,31],[8,38],[7,40],[11,31],[14,25]],0,6,'#879c96');
    px(g,'#d8d5c1',22,12,16,3);px(g,'#c0c6b6',14,18,28,2);
    px(g,'#566b64',11,25,35,3);
+   // Musgo, poeira ou sal conforme o bioma, para não repetir a mesma rocha.
+   px(g,p[2],12,24,8,3);px(g,p[4],20,14,3,10);
    if(variant%2){px(g,p[2],12,25,5,3);px(g,p[4],20,21,3,9)}
   }
   function sprite(kind,biome,variant=0){
