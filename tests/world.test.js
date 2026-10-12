@@ -102,7 +102,11 @@ test('monstro atacado reage apenas ao agressor, mesmo com outro peregrino mais p
  w.server.attack(a.p,m.id,false);
  assert.equal(m.aggroTarget,a.p.id);
  w.server.tick();
- assert.ok(a.p.save.hp<ha,'monstro revida após ter sido atacado');
+ assert.equal(a.p.save.hp,ha,'monstro sinaliza antes de atacar');
+ assert.ok(a.events().some(e=>e.type==='monsterWindup'),'aviso de ataque recebido');
+ m.windupUntil=Date.now()-1;
+ w.server.tick();
+ assert.ok(a.p.save.hp<ha,'monstro revida após a preparação');
  assert.equal(b.p.save.hp,hb,'peregrino inocente não é atacado');
  m.lastAttack=0;m.aggroUntil=Date.now()-1;
  const after=a.p.save.hp;w.server.tick();
