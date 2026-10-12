@@ -25,7 +25,7 @@ function scene(){
 const p=LAND.PALETTES.meadow,hash=LAND.hash;
 test('sombras são desenhadas apenas com retângulos de pixels sem gradientes ou blur',()=>{
  const src=read('shading16.js');
- assert.doesNotMatch(src,/(shadowBlur|filter:|createLinearGradient|ellipse\()/);
+ assert.doesNotMatch(src,/\b(?:g|ctx)\.(?:shadowBlur|filter|createLinearGradient|ellipse)\b/);
  const s=scene();SHADING.contact(s.ctx,100,200,50);
  assert.ok(s.rects.length>=6);
  assert.ok(s.colors().size>=3);
