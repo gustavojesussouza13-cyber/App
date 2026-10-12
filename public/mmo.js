@@ -4,7 +4,7 @@
 const $=id=>document.getElementById(id);
 const cvs=$('game'),ctx=cvs.getContext('2d',{alpha:false});ctx.imageSmoothingEnabled=false;
 const W=cvs.width,H=cvs.height,ZONE_W=1536,ZONE_H=1024;
-const session={id:'',name:'',connected:false,characters:null,online:0,zones:[],shop:{},quests:[],npcs:[],story:null,monsters:new Map(),players:new Map(),zone:0,x:768,y:512,dir:2,target:null,partyInvite:null,guildInvite:null,tradeOffer:null,role:'peregrino',cameraX:0,cameraY:0,formClass:'peregrino'};
+const session={id:'',name:'',connected:false,characters:null,online:0,zones:[],shop:{},quests:[],npcs:[],story:null,achievements:{},monsters:new Map(),players:new Map(),zone:0,x:768,y:512,dir:2,target:null,partyInvite:null,guildInvite:null,tradeOffer:null,role:'peregrino',cameraX:0,cameraY:0,formClass:'peregrino'};
 const keys=new Set(),moves={up:['KeyW','ArrowUp'],down:['KeyS','ArrowDown'],left:['KeyA','ArrowLeft'],right:['KeyD','ArrowRight']};
 const monsterMotion=window.OsPeregrinosMonsterMotion.create();
 const playerMotion=window.OsPeregrinosPlayerMotion.create();
@@ -56,7 +56,7 @@ function displayOnline(n){session.online=n;$('playerCount').textContent=n+'/10';
 function dispatch(msg){
  if(msg.type==='pong'){if(latency.receive(msg,performance.now()))updatePingIndicator();return}
  if(msg.type==='welcome'){
- session.id=msg.self.id;session.name=msg.self.name;session.zones=msg.zones;session.shop=msg.shop;session.quests=msg.quests;session.npcs=Array.isArray(msg.npcs)?msg.npcs:[];
+ session.id=msg.self.id;session.name=msg.self.name;session.zones=msg.zones;session.shop=msg.shop;session.quests=msg.quests;session.achievements=msg.achievements||{};session.npcs=Array.isArray(msg.npcs)?msg.npcs:[];
  $('welcomeOverlay').hidden=true;setOnline(true,'Conectado');displayOnline(msg.online);character(msg.self);
  if(!authed){authed=true;if(msg.self.level===1&&msg.self.kills===0&&msg.self.role==='peregrino'&&session.formClass!=='peregrino')send('class',{role:session.formClass});say('','Bem-vindo, '+session.name+'! Converse com os personagens usando E ou clicando neles. A história está na aba Crônicas.','sys');if(session.story?.stage===0)alert('✦ Fale com Lia, a Acendedora! Aproxime-se e pressione E.')}
  $('game').focus();
@@ -76,7 +76,7 @@ function dispatch(msg){
  }
  }else if(msg.type==='monsterWindup'){if(msg.zone===session.zone){
    const m=session.monsters.get(msg.monster);
-   if(m)fx.push({x:m.x,y:m.y,text:'⚠ GOLPE!',t:performance.now(),color:'#ffd06b'});
+   if(m)fx.push({x:m.x,y:m.y,text:msg.boss?'⚠ CHEFE! ESQUIVE!':'⚠ GOLPE!',t:performance.now(),color:msg.boss?'#ff9a73':'#ffd06b'});
  }
  }else if(msg.type==='hurt'){fx.push({x:session.x,y:session.y,text:'−'+msg.damage,t:performance.now(),color:'#ff8d83'});if(session.characters?.hp<=0)$('deathVeil').hidden=false;
  }else if(msg.type==='defeated'){if(msg.zone===session.zone){fx.push({x:session.monsters.get(msg.monster)?.x||session.x,y:session.monsters.get(msg.monster)?.y||session.y,text:msg.boss?'★ CHEFE!':'✦ VITÓRIA!',t:performance.now(),color:'#f5d587'});session.monsters.delete(msg.monster);monsterMotion.sync([...session.monsters.values()])}
@@ -325,6 +325,12 @@ function drawTab(){const parent=$('tabContent');parent.replaceChildren();const s
   }appendText(parent,'p','Itens, moedas e nível são calculados pelo servidor. A persistência depende de armazenamento confiável no servidor.').className='muted';
  }else if(tab==='quests'){
   appendText(parent,'h3','Crônicas da jornada');for(const q of session.quests){const done=s.quests.includes(q.id),canClaim=s.kills>=q.target;const d=group(parent);appendText(d,'b',q.name);appendText(d,'small',q.description);appendText(d,'small',done?'✓ Concluída':`${s.kills}/${q.target} derrotas · ${q.reward} XP · ${q.coins} moedas${canClaim?' · PRONTA':''}`)}parent.append(button('Resgatar recompensas', 'quest'));
+  appendText(parent,'h3','Conquistas da Aurora');
+  for(const [id,award] of Object.entries(session.achievements||{})){
+   const earned=Array.isArray(s.achievements)&&s.achievements.includes(id);
+   const d=group(parent);appendText(d,'b',(earned?'✦ ':'○ ')+award.name);
+   appendText(d,'small',earned?'Conquista desbloqueada':'Recompensa: '+award.coins+' moedas');
+  }
  }else if(tab==='story'){
   const q=session.story;if(!q){appendText(parent,'p','Sua história aparecerá aqui após entrar no mundo.');return}
   appendText(parent,'h3','Crônicas da Aurora');
