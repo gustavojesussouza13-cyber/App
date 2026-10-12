@@ -7,6 +7,7 @@ const crypto = require('node:crypto');
 const { TextDecoder } = require('node:util');
 const {World} = require('./world-engine');
 const {MobileCoop} = require('./mobile-coop');
+const {ChatGuard,inspect}=require('./chat-safety');
 const {AccountStore,AuthError,authCookie,clearCookie,cleanEmail,validEmail}=require('./account-store');
 const {MailService}=require('./email-service');
 
@@ -48,6 +49,7 @@ function renderPublicText(source,req){
 }
 
 const players = new Map();
+const classicChatGuard=new ChatGuard({cooldownMs:1600});
 // Salas do APK V7, sem alterar os personagens do MMORPG online.
 const mobileCoop=new MobileCoop({send:(c,msg)=>send(c.socket,msg),maxRooms:5,canJoin:()=>players.size+world.count+mobileCoop.countPlayers()<MAX_PLAYERS});
 const sockets = new Set();
@@ -264,6 +266,7 @@ function join(c,data){
   if(c.profile)return;
   const name=typeof data.name==='string'?data.name.trim().normalize('NFC'):'';
   if(!validName(name)){return refuse(c,{type:'error',code:'invalid_name',message:'Use de 3 a 18 caracteres: letras, números, espaço ou hífen.'})}
+  if(!inspect(name).ok)return refuse(c,{type:'error',code:'invalid_name',message:'Esse apelido não é permitido no chat protegido.'});
   if(players.size+world.count>=MAX_PLAYERS){return refuse(c,{type:'error',code:'full',message:'Servidor cheio (10/10). Aguarde uma vaga.'})}
   const token=typeof data.token==='string'&&/^[a-f0-9-]{20,60}$/i.test(data.token)?data.token:'';
   for(const other of sockets)if(other!==c&&other.profile&&other.profile.name.toLocaleLowerCase('pt-BR')===name.toLocaleLowerCase('pt-BR')){
@@ -321,10 +324,12 @@ function receive(c,data){
     p.attack=Boolean(data.attack);p.defending=Boolean(data.defending);
     p.lastMove=now;
   } else if(data.type==='chat'){
-    const now=Date.now();if(now-p.lastChat<1600)return;
-    const msg=typeof data.text==='string'?data.text.replace(/[\u0000-\u001f\u007f]/g,'').trim():'';
-    if(msg.length<1||msg.length>160)return;
-    p.lastChat=now;emitAll({type:'chat',id:p.id,name:p.name,text:msg,zone:p.zone,time:now});send(c.socket,{type:'chat',id:p.id,name:p.name,text:msg,zone:p.zone,time:now});
+    const review=classicChatGuard.check(p.token||p.id,data.text);
+    if(!review.ok){send(c.socket,{type:'notice',text:review.message});return}
+    const now=Date.now();
+    p.lastChat=now;
+    const event={type:'chat',id:p.id,name:p.name,text:review.text,zone:p.zone,time:now};
+    emitAll(event);send(c.socket,event);
   } else if(data.type==='ping')send(c.socket,{type:'pong'});
 }
 function handleFrame(c,buf){
