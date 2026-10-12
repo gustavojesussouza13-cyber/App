@@ -80,7 +80,7 @@ test('nascimento distante, desaparecimento e mudança de zona não geram travess
 
 test('Mundo Aberto carrega interpolação após a arte 16-bit e antes do cliente',()=>{
  const html=fs.readFileSync(path.join(__dirname,'../public/mundo.html'),'utf8');
- const classic=html.indexOf('src="/art16.js'),motion=html.indexOf('src="/monster-motion.js"'),client=html.indexOf('src="/mmo.js');
+ const classic=html.indexOf('src="/art16.js'),motion=html.indexOf('src="/monster-motion.js'),client=html.indexOf('src="/mmo.js');
  assert.ok(classic>=0&&motion>classic&&client>motion);
  const js=fs.readFileSync(path.join(__dirname,'../public/mmo.js'),'utf8');
  assert.match(js,/monsterMotion\.sync/);
