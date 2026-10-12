@@ -71,10 +71,10 @@ const ACHIEVEMENTS=Object.freeze({
  'explorar-16':{name:'Cartógrafo de Auren',coins:180},
  'aurora-restaurada':{name:'Guardião do Sétimo Verso',coins:300}
 });
-const defaultSave=()=>({level:1,xp:0,hp:135,coins:60,zone:0,x:ZONE_W/2,y:ZONE_H/2,role:'peregrino',inventory:{pocao:3},kills:0,quests:[],visited:[0],guild:null,achievements:[],bossRelics:[],story:freshStory()});
+const defaultSave=()=>({level:1,xp:0,hp:135,coins:60,zone:0,x:ZONE_W/2,y:ZONE_H/2,role:'peregrino',inventory:{pocao:3},kills:0,quests:[],visited:[0],guild:null,achievements:[],bossRelics:[],blocked:[],story:freshStory()});
 function hpMax(s){return CLASSES[s.role].hp+(s.level-1)*12}
 function xpNeed(level){return 70+level*level*35}
-function safeSave(s){return {level:s.level,xp:s.xp,hp:s.hp,coins:s.coins,zone:s.zone,x:s.x,y:s.y,role:s.role,inventory:s.inventory,kills:s.kills,quests:s.quests,visited:s.visited,guild:s.guild,achievements:s.achievements,bossRelics:s.bossRelics,story:s.story}}
+function safeSave(s){return {level:s.level,xp:s.xp,hp:s.hp,coins:s.coins,zone:s.zone,x:s.x,y:s.y,role:s.role,inventory:s.inventory,kills:s.kills,quests:s.quests,visited:s.visited,guild:s.guild,achievements:s.achievements,bossRelics:s.bossRelics,blocked:s.blocked,story:s.story}}
 function hash32(n){n|=0;n=Math.imul(n^(n>>>16),0x7feb352d);n=Math.imul(n^(n>>>15),0x846ca68b);return (n^(n>>>16))>>>0}
 class World {
  constructor({send,getOnline,hasClassicName,dataFile,autosave=false,persistentStore=null}){
@@ -167,7 +167,7 @@ class World {
   if(!gate||dist(p,gate)>96){this.tell(p,'Aproxime-se da passagem para atravessar.');return}
   this.travel(p,z);
  }
- ownStatus(p){const s=p.save;return {type:'character',id:p.id,name:p.name,level:s.level,xp:s.xp,nextXp:xpNeed(s.level),hp:s.hp,maxHp:hpMax(s),coins:s.coins,role:s.role,inventory:s.inventory,kills:s.kills,quests:s.quests,visited:s.visited,guild:s.guild,party:p.party||null,story:journal(s.story),achievements:s.achievements,bossRelics:s.bossRelics,zone:p.zone,x:p.x,y:p.y}}
+ ownStatus(p){const s=p.save;return {type:'character',id:p.id,name:p.name,level:s.level,xp:s.xp,nextXp:xpNeed(s.level),hp:s.hp,maxHp:hpMax(s),coins:s.coins,role:s.role,inventory:s.inventory,kills:s.kills,quests:s.quests,visited:s.visited,guild:s.guild,party:p.party||null,story:journal(s.story),achievements:s.achievements,bossRelics:s.bossRelics,blocked:s.blocked,zone:p.zone,x:p.x,y:p.y}}
  tell(p,msg,type='notice'){this.send(p.socket,{type,text:msg})}
  unlockAchievement(p,id){
   const award=ACHIEVEMENTS[id],s=p.save;
@@ -191,7 +191,9 @@ class World {
   s.level=clamp(Math.floor(Number(s.level)||1),1,100);s.hp=clamp(Math.floor(Number(s.hp)||hpMax(s)),1,hpMax(s));s.x=clamp(Number(s.x)||ZONE_W/2,28,ZONE_W-28);s.y=clamp(Number(s.y)||ZONE_H/2,28,ZONE_H-28);
   const safeLocation=terrain.nearestWalkable(s.zone,s.x,s.y,ZONES);
   if(s.x!==safeLocation.x||s.y!==safeLocation.y){s.x=safeLocation.x;s.y=safeLocation.y;this.dirty=true;}
-  s.inventory={...defaultSave().inventory,...(s.inventory||{})};if(!Array.isArray(s.quests))s.quests=[];if(!Array.isArray(s.visited))s.visited=[0];if(!Array.isArray(s.achievements))s.achievements=[];if(!Array.isArray(s.bossRelics))s.bossRelics=[];s.bossRelics=s.bossRelics.filter(z=>Number.isInteger(z)&&z>=0&&z<ZONES.length);s.story=normalizeStory(s.story);
+  s.inventory={...defaultSave().inventory,...(s.inventory||{})};if(!Array.isArray(s.quests))s.quests=[];if(!Array.isArray(s.visited))s.visited=[0];if(!Array.isArray(s.achievements))s.achievements=[];if(!Array.isArray(s.bossRelics))s.bossRelics=[];s.bossRelics=s.bossRelics.filter(z=>Number.isInteger(z)&&z>=0&&z<ZONES.length);
+  s.blocked=Array.isArray(s.blocked)?[...new Set(s.blocked.filter(n=>typeof n==='string'&&assertName(n)).map(n=>n.toLocaleLowerCase('pt-BR')))].slice(0,30):[];
+  s.story=normalizeStory(s.story);
   const p={id:crypto.randomUUID(),uid,name,socket:c.socket,save:s,x:s.x,y:s.y,zone:s.zone,dir:2,lastMove:Date.now(),moveCredit:12,lastAttack:0,lastSpell:0,lastChat:0,lastUse:0,party:null,live:true};
   c.worldPlayer=p;c.socket._worldClient=c;this.players.set(p.id,p);
   this.send(c.socket,{type:'welcome',self:this.ownStatus(p),zones:this.zoneInfo(),shop:GOODS,relics:RELICS,quests:QUESTS,achievements:ACHIEVEMENTS,portals:this.zonePortals(p.zone),npcs:NPCS.map(publicNpc),maxPlayers:10,online:this.players.size+this.getOnline(),monsterTotal:this.totalMonsters()});
@@ -238,6 +240,7 @@ class World {
    case 'buy':this.buy(p,cap(d.item,30));break;
    case 'quest':this.claimQuests(p);break;
    case 'chat':this.chat(p,d);break;
+   case 'ignore':this.ignore(p,d);break;
    case 'party':this.party(p,d);break;
    case 'guild':this.guild(p,d);break;
    case 'trade':this.trade(p,d);break;
@@ -404,10 +407,32 @@ class World {
   p.save.quests.push(q.id);p.save.xp+=q.reward;p.save.coins+=q.coins;completed++;
   while(p.save.level<100&&p.save.xp>=xpNeed(p.save.level)){p.save.xp-=xpNeed(p.save.level);p.save.level++;p.save.hp=hpMax(p.save)}
  }}this.tell(p,completed?'Missões concluídas: '+completed+'!':'Ainda não há missões para resgatar.');this.send(p.socket,this.ownStatus(p));this.dirty=true}
- chat(p,d){const now=Date.now();if(now-p.lastChat<1100)return;p.lastChat=now;const txt=cap(d.text,161).replace(/[\u0000-\u001f\u007f]/g,'').trim();if(txt.length<1||txt.length>160)return;
-  if(d.channel==='party'&&p.party)this.broadcast({type:'chat',channel:'party',name:p.name,text:txt},x=>x.party===p.party);
-  else if(d.channel==='guild'&&p.save.guild)this.broadcast({type:'chat',channel:'guild',name:p.name,text:txt},x=>x.save.guild===p.save.guild);
-  else this.broadcast({type:'chat',channel:'global',name:p.name,text:txt});
+ ignore(p,d){
+  const action=cap(d.action,12),name=cap(d.target,30).trim();
+  if(!assertName(name))return this.tell(p,'Nome inválido para silenciar.');
+  const key=name.toLocaleLowerCase('pt-BR'),list=p.save.blocked;
+  if(key===p.name.toLocaleLowerCase('pt-BR'))return this.tell(p,'Você não pode silenciar a si mesmo.');
+  if(action==='add'){
+   if(list.includes(key))return this.tell(p,name+' já está silenciado.');
+   if(list.length>=30)return this.tell(p,'Limite de 30 nomes silenciados.');
+   list.push(key);this.tell(p,'Mensagens de '+name+' silenciadas.');
+  }else if(action==='remove'){
+   if(!list.includes(key))return;
+   p.save.blocked=list.filter(n=>n!==key);this.tell(p,'Mensagens de '+name+' liberadas.');
+  }else return;
+  this.dirty=true;
+  this.send(p.socket,this.ownStatus(p));
+ }
+ chat(p,d){
+  const now=Date.now();if(now-p.lastChat<1100)return;p.lastChat=now;
+  const txt=cap(d.text,161).replace(/[\u0000-\u001f\u007f]/g,'').trim();if(txt.length<1||txt.length>160)return;
+  const command=/^\/(ignorar|designorar)\s+(.{3,30})$/i.exec(txt);
+  if(command){this.ignore(p,{action:command[1].toLowerCase()==='ignorar'?'add':'remove',target:command[2]});return}
+  const event={type:'chat',channel:'global',name:p.name,text:txt};
+  const allowed=recipient=>!recipient.save.blocked?.includes(p.name.toLocaleLowerCase('pt-BR'));
+  if(d.channel==='party'&&p.party)this.broadcast({...event,channel:'party'},x=>x.party===p.party&&allowed(x));
+  else if(d.channel==='guild'&&p.save.guild)this.broadcast({...event,channel:'guild'},x=>x.save.guild===p.save.guild&&allowed(x));
+  else this.broadcast(event,allowed);
  }
  party(p,d){const mode=cap(d.action,20);if(mode==='create'){if(p.party)return;const id=crypto.randomUUID();this.parties.set(id,{leader:p.id,members:[p.id],invited:[]});p.party=id;this.partyUpdate(id)}
   else if(mode==='invite'){const pt=this.parties.get(p.party);if(!pt||pt.leader!==p.id)return;const target=[...this.players.values()].find(x=>x.name.toLowerCase()===cap(d.target,20).toLowerCase());if(!target||target.party||pt.members.length>=5)return;pt.invited.push(target.id);this.tell(target,p.name+' convidou você para a equipe. Use “Aceitar convite”.');this.send(target.socket,{type:'partyInvite',party:p.party,by:p.name})}
