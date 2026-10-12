@@ -210,6 +210,11 @@ function create({ctx,W,H}){
    g.fillRect(-half+2,-half-2,size-4,size+4);
    g.fillStyle='#58c3d5';g.fillRect(-half+1,-half+1,size-2,size-2);
    g.fillStyle='#c1f3e3';g.fillRect(-half+3,-half+2,size-7,size-6);
+   // Face sombreada inferior/direita, facetado como uma joia 16-bit.
+   g.fillStyle='#286b95';g.fillRect(-half+2,half-3,size-5,3);
+   g.fillStyle='#317b9e';g.fillRect(half-2,-half+3,3,size-7);
+   g.fillStyle='#dbfff0';g.fillRect(-half+3,-half+2,6,3);
+   g.fillStyle='#8de6db';g.fillRect(-half+6,-half+5,3,2);
    g.fillStyle='#fff5c1';g.fillRect(-3,-3,7,7);
    g.fillStyle='#fffef0';g.fillRect(-1,-1,3,3);
    g.fillStyle='#f5df9b';
