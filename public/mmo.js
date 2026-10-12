@@ -43,6 +43,9 @@ function dispatch(msg){if(msg.type==='welcome'){
   const people=new Map();for(const p of msg.players||[])people.set(p.id,p);session.players=people;
  }else if(msg.type==='travel'){session.zone=msg.zone;session.x=msg.x;session.y=msg.y;session.target=null;session.monsters.clear();monsterMotion.clear();$('zoneTitle').textContent=msg.name;alert('✦ '+msg.name);drawTravel();
  }else if(msg.type==='hit'){if(msg.zone===session.zone){let m=session.monsters.get(msg.monster);if(m)m.hp=msg.remaining;fx.push({x:m?.x||session.x,y:m?.y||session.y,text:'−'+msg.damage,t:performance.now(),color:'#ffe5a6'})}
+ }else if(msg.type==='monsterWindup'){if(msg.zone===session.zone){
+   const m=session.monsters.get(msg.monster);
+   if(m)fx.push({x:m.x,y:m.y,text:'⚠ GOLPE!',t:performance.now(),color:'#ffd06b'});
  }else if(msg.type==='hurt'){fx.push({x:session.x,y:session.y,text:'−'+msg.damage,t:performance.now(),color:'#ff8d83'});if(session.characters?.hp<=0)$('deathVeil').hidden=false;
  }else if(msg.type==='defeated'){if(msg.zone===session.zone){fx.push({x:session.monsters.get(msg.monster)?.x||session.x,y:session.monsters.get(msg.monster)?.y||session.y,text:msg.boss?'★ CHEFE!':'✦ VITÓRIA!',t:performance.now(),color:'#f5d587'});session.monsters.delete(msg.monster);monsterMotion.sync([...session.monsters.values()])}
  }else if(msg.type==='reward'){alert('+'+msg.xp+' EXP  ·  +'+msg.gold+' moedas'+(msg.boss?' ★ CHEFE':''));
