@@ -7,6 +7,7 @@
  if(typeof module==='object'&&module.exports)module.exports=api;
  root.OsPeregrinosPixelDetail=api;
 })(typeof globalThis!=='undefined'?globalThis:this,function(){
+ const SHADE=typeof module==='object'&&module.exports?require('./shading16'):globalThis.OsPeregrinosShade16;
  const THEMES=Object.freeze([
   Object.freeze({id:'raiz',name:'Raiz Ancestral',base:'#252e25',dark:'#151f1b',mid:'#3d5340',light:'#76966d',line:'#172a23',accent:'#b0d88b',glow:'#a9e27b',dust:'#7a6246'}),
   Object.freeze({id:'cinzas',name:'Cinzas Eternas',base:'#373039',dark:'#201e27',mid:'#615157',light:'#99736a',line:'#221c26',accent:'#eda16a',glow:'#ff8651',dust:'#75676c'}),
@@ -100,6 +101,7 @@
    rect(g,highlight,x+(tx%2?1:27),y+4,2,23);
    if((tx+ty+depth)%4===0)rect(g,t.accent,x+13,y+13,5,2);
   }
+  SHADE?.dungeon(g,tx,ty,z,kind,t,hash);
  }
  // Ambientes abertos: paisagens distintas sem substituir ou distorcer atlas antigo.
  function drawSurfaceTile(g,tx,ty,z,biome,kind){
