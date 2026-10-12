@@ -49,6 +49,8 @@ test('sair do alcance interrompe o ataque e impede dano',t=>{
 test('perder o alvo interrompe preparação de ataque',t=>{
  const {world,monster,player}=setup(t);
  tick(world);
+ // Mantém uma pessoa na zona original para a IA continuar ativa.
+ world.players.set('spectator',{id:'spectator',zone:0,x:monster.home.x+250,y:monster.home.y+250,save:{role:'peregrino',hp:135,inventory:{},coins:0}});
  player.zone=1;
  tick(world);
  assert.equal(monster.windupUntil,0);
