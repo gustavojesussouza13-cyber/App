@@ -104,5 +104,5 @@ test('estilos responsivos e URLs novas do cliente são publicados',()=>{
  assert.match(styles,/@media\(max-width:850px\)/);
  assert.match(styles,/\.canvas-shell:has\(#welcomeOverlay:not\(\[hidden\]\)\)/);
  assert.match(html,/href="\/mmo\.css\?v=ping-rede-v1"/);
- assert.match(html,/src="\/mmo\.js\?v=audio-pc-v1"/);
+ assert.match(html,/src="\/mmo\.js\?v=portais-v1"/);
 });
