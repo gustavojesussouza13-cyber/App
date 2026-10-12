@@ -244,6 +244,12 @@
     pix(g,c.dark,12,41+y,8,8);pix(g,c.dark,24,41+y,8,8);
     armor();
    }
+   // Pontos de brilho, cicatrizes e textura de escamas: nove micropixels por
+   // criatura garantem leitura de volume mesmo num sprite de poucos pixels.
+   for(let i=0;i<9;i++){
+    const px=10+((i*7+(type.length%4))%21),py=28+((i*5)%14);
+    pix(g,i%3===0?c.light:i%3===1?c.base:accents[0],px,py+y,1+(i%2),1);
+   }
    if(boss){
     pix(g,accents[1],5,8+y,31,5);
     for(let i=0;i<5;i++){
