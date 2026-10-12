@@ -5,7 +5,7 @@ const path=require('node:path');
 const crypto=require('node:crypto');
 const {NPCS,chapters,byId,publicNpc,freshStory,normalizeStory,journal}=require('./story-data');
 const terrain=require('./world-terrain');
-const {ChatGuard,inspect}=require('./chat-safety');
+const {ChatGuard,inspectNickname}=require('./chat-safety');
 
 const ZONES=[
  ['Vale das Oliveiras','pradaria'],['Floresta da Promessa','floresta'],['Riacho do Alvorecer','rio'],['Deserto das Provações','deserto'],
@@ -211,7 +211,7 @@ class World {
  join(c,d){if(c.worldPlayer)return;
   const owner=c.authUser||null;const name=owner?owner.username:cap(d.name,40).trim().normalize('NFC');const token=typeof d.token==='string'&&/^[a-f0-9-]{24,100}$/i.test(d.token)?d.token:null;
   if(!assertName(name)||(!owner&&!token)){this.send(c.socket,{type:'error',code:'invalid_name',message:'Escolha um nome válido e habilite o armazenamento do navegador.'});return}
-  if(!inspect(name).ok){this.send(c.socket,{type:'error',code:'invalid_name',message:'Escolha um apelido apropriado, sem dados pessoais, ofensas ou contatos.'});return}
+  if(!inspectNickname(name).ok){this.send(c.socket,{type:'error',code:'invalid_name',message:'Escolha um apelido apropriado, sem dados pessoais, ofensas ou contatos.'});return}
   const uid=owner?owner.uid:crypto.createHash('sha256').update(token).digest('hex');
   // A titularidade é baseada no token deste navegador; o nome é apenas um apelido.
   for(const existing of this.players.values())if(existing.uid===uid){this.tell(existing,'Sua sessão foi aberta em outra aba.');this.leave(existing.socket._worldClient||{worldPlayer:existing});try{existing.socket.destroy()}catch{}break}
