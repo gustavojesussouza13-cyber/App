@@ -12,7 +12,7 @@ const styles=read('mmo.css');
 const html=read('mundo.html');
 
 test('scripts do Mundo Aberto são JavaScript válido antes de cada publicação',()=>{
- for(const file of ['sprite-studio.js','art16.js','monster-motion.js','combat-effects.js','touch-controls.js','player-motion.js','latency.js','sounds-desktop.js','mmo.js','privacy-controls.js']){
+ for(const file of ['sprite-studio.js','landscape16.js','art16.js','monster-motion.js','combat-effects.js','touch-controls.js','player-motion.js','latency.js','sounds-desktop.js','mmo.js','privacy-controls.js']){
   assert.doesNotThrow(()=>new vm.Script(read(file),{filename:file}),file);
  }
 });
@@ -104,7 +104,9 @@ test('estilos responsivos e URLs novas do cliente são publicados',()=>{
  assert.match(styles,/#canvasShell\.is-expanded/);
  assert.match(styles,/@media\(max-width:850px\)/);
  assert.match(styles,/\.canvas-shell:has\(#welcomeOverlay:not\(\[hidden\]\)\)/);
- assert.match(html,/href="\/mmo\.css\?v=pixel-v3"/);
+ assert.match(html,/href="\/mmo\.css\?v=landscape-v5"/);
  assert.match(html,/src="\/mmo\.js\?v=sprites-v4"/);
  assert.ok(html.indexOf('/sprite-studio.js')<html.indexOf('/art16.js'));
+ assert.ok(html.indexOf('/landscape16.js')<html.indexOf('/art16.js'));
+ assert.match(html,/src="\/landscape16\.js\?v=landscape-v5"/);
 });
