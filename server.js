@@ -7,7 +7,7 @@ const crypto = require('node:crypto');
 const { TextDecoder } = require('node:util');
 const {World} = require('./world-engine');
 const {MobileCoop} = require('./mobile-coop');
-const {ChatGuard,inspect}=require('./chat-safety');
+const {ChatGuard,inspectNickname}=require('./chat-safety');
 const {AccountStore,AuthError,authCookie,clearCookie,cleanEmail,validEmail}=require('./account-store');
 const {MailService}=require('./email-service');
 
@@ -266,7 +266,7 @@ function join(c,data){
   if(c.profile)return;
   const name=typeof data.name==='string'?data.name.trim().normalize('NFC'):'';
   if(!validName(name)){return refuse(c,{type:'error',code:'invalid_name',message:'Use de 3 a 18 caracteres: letras, números, espaço ou hífen.'})}
-  if(!inspect(name).ok)return refuse(c,{type:'error',code:'invalid_name',message:'Esse apelido não é permitido no chat protegido.'});
+  if(!inspectNickname(name).ok)return refuse(c,{type:'error',code:'invalid_name',message:'Esse apelido não é permitido no chat protegido.'});
   if(players.size+world.count>=MAX_PLAYERS){return refuse(c,{type:'error',code:'full',message:'Servidor cheio (10/10). Aguarde uma vaga.'})}
   const token=typeof data.token==='string'&&/^[a-f0-9-]{20,60}$/i.test(data.token)?data.token:'';
   for(const other of sockets)if(other!==c&&other.profile&&other.profile.name.toLocaleLowerCase('pt-BR')===name.toLocaleLowerCase('pt-BR')){
