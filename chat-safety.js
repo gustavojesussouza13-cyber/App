@@ -35,6 +35,18 @@ function clean(text){
 }
 const presetSet=new Set(SAFE_PHRASES.map(x=>compact(x)));
 function isPreset(text){return presetSet.has(compact(text))}
+function inspectNickname(name){
+ const result=inspect(name);
+ if(result.ok)return result;
+ // Apelidos antigos podem terminar em muitos dígitos (ex. Gustavo120234229).
+ // Não invalidar personagens persistidos por uma detecção de telefone feita
+ // no nome, desde que seja um apelido alfanumérico e não perfil social.
+ if(result.category==='contact'&&/^[\p{L}][\p{L}\p{N}_-]{2,17}$/u.test(name)&&
+   !/^(?:whatsapp|discord|instagram|telegram|tiktok|snapchat|facebook|pix|zap)/i.test(name)){
+  return{ok:true,text:name};
+ }
+ return result;
+}
 const patterns=Object.freeze([
  // Nenhum contato fora do jogo: e-mail, domínio, ID de redes sociais,
  // telefone e links abreviados, inclusive com sinais e espaços.
@@ -127,4 +139,4 @@ class ChatGuard {
  }
  remove(uid){this.users.delete(String(uid))}
 }
-module.exports={SAFE_PHRASES,isPreset,inspect,clean,compact,ChatGuard,notices};
+module.exports={SAFE_PHRASES,isPreset,inspect,inspectNickname,clean,compact,ChatGuard,notices};
