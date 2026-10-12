@@ -20,6 +20,7 @@
   mountain:['#748a7d','#90a398','#b2bdb0','#d4d7c5','#3c5856','#a89581','#77716d','#d6c5a9'],
   ruins:['#707866','#959788','#bec0a4','#dcd8bf','#48534f','#af9e86','#847569','#dbceb0']
  });
+ const SHADE=typeof module==='object'&&module.exports?require('./shading16'):globalThis.OsPeregrinosShade16;
  const TILE=32,variantCount=4;
  const hash=(a,b,c,d=0)=>{
   let n=Math.imul(a+517,73856093)^Math.imul(b+89,19349663)^Math.imul(c+11,83492791)^Math.imul(d+47,374761393);
@@ -53,6 +54,7 @@
     px(g,'#e2ede1',x+9+(j*5)%8,y+yy+1,2,1);
    }
    if(seed>.62){px(g,'#184f6b',x+24,y+20,7,5);px(g,'#77b6c3',x+22,y+18,8,2)}
+   SHADE?.ground(g,tx,ty,z,kind,p,hash);
    return;
   }
   if(path){
@@ -101,6 +103,8 @@
     px(g,'#f9d78b',x+25,y+12,2,2);
    }
   }
+  // Luz de cima à esquerda: grupos de pixels mais claros, occlusão à direita.
+  SHADE?.ground(g,tx,ty,z,kind,p,hash);
   if(typeof neighbor!=='function')return;
   // Transições desenhadas sobre o tile, sem adulterar a classificação
   // de terreno autoritativa; bordas em degraus de 2-4 px.
@@ -199,6 +203,7 @@
      px(g,'#d8de95',xx,yy,3,3);px(g,p[3],xx+1,yy+1,1,1);
     }
    }
+   SHADE?.tree(g,p,v);
   }
   function shrub(g,biome,variant){
    const p=PALETTES[biome]||PALETTES.meadow,v=variant%4;
@@ -216,6 +221,7 @@
     const x=8+Math.floor(hash(j,v,biome.length,3)*42),y=12+Math.floor(hash(j,v,biome.length,9)*14);
     px(g,p[j%2?3:2],x,y,3+j%2,2);
    }
+   SHADE?.bush(g,p,v);
   }
   function rock(g,biome,variant){
    const p=PALETTES[biome]||PALETTES.mountain;
@@ -227,6 +233,7 @@
    // Musgo, poeira ou sal conforme o bioma, para não repetir a mesma rocha.
    px(g,p[2],12,24,8,3);px(g,p[4],20,14,3,10);
    if(variant%2){px(g,p[2],12,25,5,3);px(g,p[4],20,21,3,9)}
+   SHADE?.rock(g,p,variant);
   }
   function sprite(kind,biome,variant=0){
    if(!['tree','bush','rock'].includes(kind))return null;

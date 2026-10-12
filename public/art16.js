@@ -13,6 +13,7 @@ const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const ROAD=z=>x=> 496+Math.sin((x+z*117)/225)*54+Math.sin(x/79+z*2)*12;
 function create({ctx,W,H}){
  const pixelDetail=window.OsPeregrinosPixelDetail;
+ const shade16=window.OsPeregrinosShade16;
  const landscape=window.OsPeregrinosLandscape16?.create({documentRef:document});
  const spriteStudio=window.OsPeregrinosSpriteStudio?.create({documentRef:document});
  let cache=null,objects=[],artReady=false;
@@ -125,7 +126,10 @@ function create({ctx,W,H}){
   cache={z,biome,canvas:gcanvas};
  }
  function frameSprite(g,key,dir,step,x,y,w,h){const row=clamp((dir|0),0,3),col=clamp(step|0,0,3);piece(g,key,col*40,row*48,40,48,x-w/2,y-h,w,h)}
- function drawShadow(g,x,y,w=42){g.fillStyle='rgba(17,28,21,.48)';g.beginPath();g.ellipse(Math.round(x),Math.round(y+2),w*.46,7,0,0,Math.PI*2);g.fill()}
+ function drawShadow(g,x,y,w=42){
+  if(shade16?.contact){shade16.contact(g,x,y,w);return}
+  g.fillStyle='#172e2588';g.fillRect(Math.round(x-w*.35),Math.round(y),Math.round(w*.7),5);
+ }
  // O arco básico pertence à classe, mesmo sem o arco aprimorado da loja.
  function drawBow(g,p,dir,attacking){
   g.save();
