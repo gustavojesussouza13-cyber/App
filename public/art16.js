@@ -97,6 +97,8 @@ function create({ctx,W,H}){
     }else if(r<.88){
       if(isDry)objs.push({key:'pedra',x:gx,y:gy,kind:'rock',w:39,h:30});
       else objs.push({key:'arbusto_'+(1+Math.floor(noise(x,y,z,11)*3)),x:gx,y:gy,kind:'bush',w:49,h:39});
+    }else{
+      objs.push({x:gx,y:gy,kind:'biome-prop',w:62,h:72});
     }
   }
   // The road contains recognisable Zelda-style original landmark sprites.
@@ -111,7 +113,7 @@ function create({ctx,W,H}){
     // Todas as passagens utilizáveis vêm exclusivamente de zonePortals() do servidor.
     if(i===1)objs.push({key:biome==='dungeon'?'pedra':biome==='city'?'tenda':'estandarte',x,y:road+side*82,kind:'prop',w:biome==='dungeon'?38:biome==='city'?105:63,h:biome==='dungeon'?30:biome==='city'?80:71});
     if(i===2)objs.push({key:'fogueira',x,y:road+side*85,kind:'prop',w:44,h:54});
-    if(i===3)objs.push({key:biome==='dungeon'?'pedra':'santuario',x,y:road+side*90,kind:'prop',w:biome==='dungeon'?38:76,h:biome==='dungeon'?30:101});
+    if(i===3)objs.push({x,y:road+side*95,kind:'biome-prop',w:76,h:80});
   }
   if(biome==='city')for(let j=0;j<4;j++)objs.push({key:'tenda',x:410+j*160,y:pathY(410+j*160,z)-143,kind:'prop',w:93,h:74});
   objs.sort((a,b)=>a.y-b.y);objects=objs;
@@ -215,6 +217,7 @@ function create({ctx,W,H}){
  function prop(g,o){
   const size=o.w;drawShadow(g,o.x,o.y,size*.63);
   if(o.kind==='dungeon-prop'&&pixelDetail){pixelDetail.drawDungeonProp(g,o,cache.z);return}
+  if(o.kind==='biome-prop'&&pixelDetail){pixelDetail.drawSurfaceProp(g,o,cache.biome,cache.z);return}
   cut(g,o.key,o.x-o.w/2,o.y-o.h,o.w,o.h)
  }
  // Todos os portais reais são recebidos do servidor. Não existem portas falsas no cenário.
@@ -277,6 +280,7 @@ function create({ctx,W,H}){
   if(!artReady){ctx.fillStyle='#193629';ctx.fillRect(0,0,W,H);ctx.textAlign='center';ctx.fillStyle='#efd39d';ctx.font='bold 20px Georgia,serif';ctx.fillText('✦ Preparando o mundo 16-bit…',W/2,H/2);return}
   if(!cache||cache.z!==zone||cache.biome!==biome)terrain(zone,biome);
   ctx.drawImage(cache.canvas,cameraX,cameraY,W,H,0,0,W,H);
+  if(pixelDetail)pixelDetail.drawAtmosphere(ctx,{z:zone,biome,cameraX,cameraY,W,H,now});
   ctx.save();ctx.translate(-cameraX,-cameraY);
   const actors=[];
   for(const o of objects){if(o.x<cameraX-115||o.x>cameraX+W+115||o.y<cameraY-132||o.y>cameraY+H+135)continue;actors.push({depth:o.y,paint:()=>prop(ctx,o)})}
