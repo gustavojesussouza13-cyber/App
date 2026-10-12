@@ -17,6 +17,7 @@ function create({ctx,W,H}){
  const landscape=window.OsPeregrinosLandscape16?.create({documentRef:document});
  const spriteStudio=window.OsPeregrinosSpriteStudio?.create({documentRef:document});
  const desktopSprites=window.OsPeregrinosDesktopSprites16?.create({windowRef:window});
+ const desktopBestiary=window.OsPeregrinosDesktopBestiary16?.create({windowRef:window});
  let cache=null,objects=[],artReady=false;
  atlas.addEventListener('load',()=>{artReady=true;cache=null});
  atlas.addEventListener('error',()=>{artReady=false});
@@ -438,7 +439,8 @@ function create({ctx,W,H}){
   const state={type:ty,moving:m.moving===true,attacking:acting,hurt,dead,
    elapsed:pose?Math.max(0,now-pose.at):0};
   const detailedBoss=Boolean(desktopSprites?.drawMonster(g,{...m,x,y},now,state));
-  const animated=detailedBoss||Boolean(spriteStudio?.drawMonster(g,{...m,x,y},now,state));
+  const illustrated= !detailedBoss&&Boolean(desktopBestiary?.drawMonster(g,{...m,x,y},now,state));
+  const animated=detailedBoss||illustrated||Boolean(spriteStudio?.drawMonster(g,{...m,x,y},now,state));
   if(!animated){
    if(ty==='cavaleiro'||ty==='sentinela'||ty==='chefe'){
     const key=ty==='chefe'?'chefe_andar':ty==='sentinela'?'sentinela_andar':'cavaleiro_andar';
@@ -451,11 +453,11 @@ function create({ctx,W,H}){
    if(pixelDetail)pixelDetail.drawMonster(g,m,now);
   }
   if(dead)return;
-  const top=detailedBoss?121:m.boss?90:56;
-  const width=detailedBoss?90:m.boss?61:45;
+  const top=detailedBoss?121:illustrated?(m.boss?137:83):m.boss?90:56;
+  const width=detailedBoss?90:illustrated?(m.boss?110:62):m.boss?61:45;
   g.fillStyle='#231d1b';g.fillRect(x-width/2,y-top,width,7);
   g.fillStyle=m.boss?'#f6b66d':'#b1d976';g.fillRect(x-width/2+1,y-top+1,Math.max(0,(width-2)*m.hp/Math.max(1,m.maxHp)),5);
-  if(selected){g.strokeStyle='#ffe29d';g.lineWidth=2;g.strokeRect(x-width/2-6,y-top-1,width+12,detailedBoss?132:m.boss?101:70)}
+  if(selected){g.strokeStyle='#ffe29d';g.lineWidth=2;g.strokeRect(x-width/2-6,y-top-1,width+12,detailedBoss?132:illustrated?(m.boss?149:97):m.boss?101:70)}
   if(selected||m.boss){g.save();g.fillStyle='#ffefc8';g.font='bold 12px monospace';g.textAlign='center';g.shadowColor='#000';g.shadowBlur=6;g.fillText(m.name,x,y-top-9);g.restore()}
  }
  function prop(g,o){
