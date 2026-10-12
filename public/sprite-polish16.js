@@ -173,6 +173,15 @@
    }else glint(g,20,6,'#fff0ce');
    p(g,'#fff5c9',18,35+(frame%2),2,2);
   }
+  // Selo cromático de espécie: garante leitura distinta mesmo entre
+  // famílias que compartilham anatomia (lobo/fera, morcego/vespa etc.).
+  const crests={
+   limo:'#dfff9b',lobo:'#a8a1eb',morcego:'#c78fea',esqueleto:'#fff1cb',
+   aranha:'#f4758a',golem:'#b6f7eb',serpente:'#d7e78a',fera:'#efbc93',
+   escorpiao:'#f9b36b',fantasma:'#d1bcff',vespa:'#ffe076',dragao:'#ffb77d',
+   cavaleiro:'#cad5ee',sentinela:'#8ee9ff',chefe:'#f0bdff'
+  };
+  p(g,crests[type]||'#fff0cc',19+(species%4),24+j,3,2);
   if(species%2===1)p(g,'#fff0bb',18+species%8,39+j,2,1);
  }
  function npc(g,{style='viajante',dir=2,action='idle',frame=0}={}){
