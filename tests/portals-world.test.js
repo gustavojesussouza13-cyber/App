@@ -86,7 +86,7 @@ test('navegador recebe portais iniciais, troca de região e renderiza-os no mapa
  const art=fs.readFileSync(path.join(__dirname,'../public/art16.js'),'utf8');
  assert.match(code,/session\.portals=msg\.portals\|\|\[\]/);
  assert.match(code,/send\('portal',\{zone:gate\.zone\}\)/);
- assert.match(art,/function portal\(g,p,now\)/);
+ assert.match(art,/function portal\(g,p,now,hero\)/);
  assert.match(art,/actors\.push\(\{depth:p\.y-1,paint:\(\)=>portal\(ctx,p,now,\{x,y\}\)\}/);
  assert.match(art,/for\(const p of portals\)g\.fillRect/);
  assert.equal(p.save.bossRelics.length,0,'portais não alteram relíquias');
