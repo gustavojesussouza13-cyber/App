@@ -114,7 +114,8 @@ test('script da interface mede ping e suaviza apenas sprites remotos, sem altera
  assert.match(js,/playerMotion\.sync\(\[\.\.\.people\.values\(\)\],performance\.now\(\)\)/);
  assert.match(js,/players:playerMotion\.draw\(\[\.\.\.session\.players\.values\(\)\],now\)/);
  assert.match(js,/playerMotion\.clear\(\)/);
- assert.match(art,/character\(ctx,p,false,now,p\.moving!==false\)/);
+ assert.match(art,/character\(ctx,p,false,now,p\.moving!==false,/);
+ assert.match(art,/playerActions\.get\(p\.name\)/);
  assert.match(html,/id="pingIndicator"/);
  assert.ok(html.indexOf('/latency.js')<html.indexOf('/mmo.js'));
  assert.ok(html.indexOf('/player-motion.js')<html.indexOf('/mmo.js'));
