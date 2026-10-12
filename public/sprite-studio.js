@@ -12,6 +12,7 @@
 })(typeof globalThis!=='undefined'?globalThis:this,function(){
  const SHADE=typeof module==='object'&&module.exports?require('./shading16'):globalThis.OsPeregrinosShade16;
  const ATELIER=typeof module==='object'&&module.exports?require('./character-atelier16'):globalThis.OsPeregrinosCharacterAtelier;
+ const POLISH=typeof module==='object'&&module.exports?require('./sprite-polish16'):globalThis.OsPeregrinosSpritePolish16;
  const W=40,H=52;
  const ROLES=Object.freeze({
   peregrino:{coat:'#8a6245',edge:'#402e32',light:'#b99163',trim:'#dcc28e',hair:'#493328',skin:'#e1af7f',boots:'#352b34',metal:'#acb6a4',gem:'#a9e6ca'},
@@ -164,6 +165,7 @@
    // O acabamento final pertence apenas à classe escolhida. Não reutilizar
    // o capuz e a aljava do arqueiro para guardião nem curandeiro.
    ATELIER?.classIdentity?.(g,c,{role,dir,action,frame,by});
+   POLISH?.hero(g,{role,dir,action,frame,by});
    // Golpe percebido por um contorno curto que não altera hitbox.
    if(action==='hurt'&&frame%3!==2){
     pix(g,'#fff0dc',10,17,24,2);
@@ -284,6 +286,7 @@
    }else if(action==='hurt'){
     pix(g,'#ffe1ae',9,17+y,26,2);
    }
+   POLISH?.creature(g,{type,species:currentSpecies,boss,dir,action,frame});
    if(action==='death')g.restore();
    if(dir===3)g.restore();
   }
@@ -304,7 +307,10 @@
    if(!g)return null;
    g.imageSmoothingEnabled=false;
    if(kind==='hero')heroFrame(g,name,dir,action,frame);
-   else if(kind==='npc'&&ATELIER?.npc)ATELIER.npc(g,npc||{name}, {dir,action,frame});
+   else if(kind==='npc'&&ATELIER?.npc){
+    ATELIER.npc(g,npc||{name}, {dir,action,frame});
+    POLISH?.npc(g,{style:name,dir,action,frame});
+   }
    else if(kind==='npc')heroFrame(g,npc?.role||'peregrino',dir,action,frame);
    else monsterFrame(g,name,dir,action,frame,!!boss,zone,species);
    cache.set(key,canvas);builds++;
@@ -356,7 +362,7 @@
   }
   function clear(){cache.clear()}
   return {drawHero,drawMonster,drawNpc,pose,clear,
-   obtain,get stats(){return{builds,cached:cache.size}},roles:Object.keys(ROLES),creatures:Object.keys(CREATURES)};
+   obtain,normalizeRole,get stats(){return{builds,cached:cache.size}},roles:Object.keys(ROLES),creatures:Object.keys(CREATURES)};
  }
  return {create,ROLES,CREATURES,phases,family,normalizeRole};
 });
