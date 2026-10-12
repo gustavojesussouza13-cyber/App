@@ -163,3 +163,18 @@ body.world-fullscreen{overflow:hidden!important}
  .touch-actions button{min-height:41px;padding:3px;font-size:16px}
  #canvasShell:fullscreen .touch-controls,#canvasShell.is-expanded .touch-controls{bottom:6px}
 }
+
+
+/* Ping verdadeiro medido pelo WebSocket do MMORPG — somente informativo. */
+.ping-indicator{
+ display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;
+ min-height:31px;min-width:100px;padding:5px 10px;
+ border:1px solid #789c82a6;border-radius:18px;
+ background:#0b241ee8;color:#b6c9bd;
+ font:700 11px/1.25 ui-monospace,Consolas,monospace;
+ font-variant-numeric:tabular-nums;white-space:nowrap;
+}
+.ping-indicator[data-quality="good"]{border-color:#5fae75;color:#a5e4b1}
+.ping-indicator[data-quality="medium"]{border-color:#bd9854;color:#efd18b}
+.ping-indicator[data-quality="high"],.ping-indicator[data-quality="timeout"]{border-color:#b66a54;color:#ffae9a}
+.ping-indicator[data-quality="offline"]{opacity:.8}
