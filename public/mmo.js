@@ -43,8 +43,21 @@ const esc=s=>String(s).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
 const rand=n=>{n=Math.imul(n^n>>>16,0x7feb352d);n=Math.imul(n^n>>>15,0x846ca68b);return(n^n>>>16)>>>0};
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
-function say(sender,text,kind=''){const line=document.createElement('div');line.className='chat-row '+kind;
- if(sender){let strong=document.createElement('b');strong.textContent=sender+': ';line.appendChild(strong)}const span=document.createElement('span');span.textContent=String(text);line.appendChild(span);$('chatLog').appendChild(line);
+function say(sender,text,kind='',reportId=null){const line=document.createElement('div');line.className='chat-row '+kind;
+ if(sender){let strong=document.createElement('b');strong.textContent=sender+': ';line.appendChild(strong)}
+ const span=document.createElement('span');span.textContent=String(text);line.appendChild(span);
+ if(reportId&&typeof reportId==='string'){
+  const report=document.createElement('button');
+  report.type='button';report.className='chat-report';report.textContent='Denunciar';
+  report.title='Denunciar esta mensagem e silenciar o remetente';
+  report.setAttribute('aria-label','Denunciar mensagem recebida');
+  report.addEventListener('click',()=>{
+   report.disabled=true;report.textContent='Denunciado';
+   send('report',{id:reportId});
+  });
+  line.appendChild(report);
+ }
+ $('chatLog').appendChild(line);
  while($('chatLog').children.length>85)$('chatLog').firstElementChild.remove();$('chatLog').scrollTop=$('chatLog').scrollHeight;
 }
 function send(type,data={}){if(socket&&socket.readyState===WebSocket.OPEN)socket.send(JSON.stringify({type,...data}))}
@@ -112,7 +125,7 @@ function dispatch(msg){
    fx.push({x:fallen?.x||session.x,y:fallen?.y||session.y,text:msg.boss?'★ CHEFE!':'✦ VITÓRIA!',t:now,color:'#f5d587'});
    session.monsters.delete(msg.monster);monsterMotion.sync([...session.monsters.values()])}
  }else if(msg.type==='reward'){alert('+'+msg.xp+' EXP  ·  +'+msg.gold+' moedas'+(msg.boss?' ★ CHEFE':''));
- }else if(msg.type==='chat'){say('['+msg.channel+'] '+msg.name,msg.text,msg.channel);
+ }else if(msg.type==='chat'){say('['+msg.channel+'] '+msg.name,msg.text,msg.channel,msg.name===session.name?null:msg.id);
  }else if(msg.type==='notice'||msg.type==='system'){say('',msg.text,'sys');if(msg.type==='notice')alert(msg.text);
  }else if(msg.type==='partyInfo'){session.partyInvite=null;say('','Equipe: '+msg.members.join(', '),'sys');drawTab();
  }else if(msg.type==='partyInvite'){session.partyInvite=msg;alert('Convite de equipe de '+msg.by);drawTab();
@@ -501,6 +514,13 @@ function showWorldMap(){
  dialog.append(grid);if(!dialog.open)dialog.showModal();
 }
 $('chatForm').addEventListener('submit',e=>{e.preventDefault();const input=$('chatInput'),text=input.value.trim();if(!text)return;send('chat',{text,channel:$('chatChannel').value});input.value='';$('game').focus()});
+$('chatPresetSend').addEventListener('click',()=>{
+ const phrase=$('chatPreset').value;
+ if(!phrase)return;
+ send('chat',{text:phrase,channel:$('chatChannel').value});
+ $('chatPreset').selectedIndex=0;
+});
+
 // A renderização do mundo aberto reutiliza o atlas 16-bit da campanha original.
 const classicRenderer=window.PeregrinoArt16.create({ctx,W,H});
 function canvasDraw(now,dt){
