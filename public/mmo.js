@@ -89,11 +89,11 @@ function dispatch(msg){
   playerMotion.sync([...people.values()],performance.now());session.players=people;
  }else if(msg.type==='travel'){desktopAudio.play('travel');session.zone=msg.zone;session.portals=msg.portals||[];session.x=msg.x;session.y=msg.y;session.target=null;session.monsters.clear();monsterMotion.clear();playerMotion.clear();combatFx.clear();$('zoneTitle').textContent=msg.name;alert('✦ '+msg.name);drawTravel();
  }else if(msg.type==='hit'){if(msg.zone===session.zone){
-  if(typeof desktopAudio!=='undefined')desktopAudio.play(msg.projectile==='arrow'?'arrow':'hit');
+  if(typeof desktopAudio!=='undefined')desktopAudio.play(msg.projectile==='arrow'?'arrow':msg.projectile==='holy-bolt'?'magic':'hit');
   const m=session.monsters.get(msg.monster);if(m)m.hp=msg.remaining;
   spriteActions.monsters.set(msg.monster,{action:'hurt',at:performance.now()});
   if(msg.by)spriteActions.players.set(msg.by,{action:'attack',at:performance.now()});
-  // O acerto é autoritativo: não dispara flechas por cliques rejeitados pelo servidor.
+  // O acerto é autoritativo: não desenhar flechas nem magias para cliques rejeitados.
   const started=combatFx.fire(msg,performance.now());
   if(!started)fx.push({x:m?.x||session.x,y:m?.y||session.y,text:'−'+msg.damage,t:performance.now(),color:'#ffe5a6'});
  }
@@ -509,7 +509,8 @@ function canvasDraw(now,dt){
   session.cameraY=clamp(Math.floor(session.y-H/2),0,ZONE_H-H);
   const projectiles=combatFx.frame(now);
   for(const shot of projectiles)if(shot.justHit){
-   fx.push({x:shot.x,y:shot.y,text:'−'+shot.damage,t:now,color:shot.skill?'#b7f9f0':'#ffe5a6'});
+   fx.push({x:shot.x,y:shot.y,text:'−'+shot.damage,t:now,
+     color:shot.projectile==='holy-bolt'?'#a8f4e1':shot.skill?'#b7f9f0':'#ffe5a6'});
   }
   fx=fx.filter(f=>now-f.t<1100);
   spriteActions.fallen=spriteActions.fallen.filter(m=>now-m.defeatedAt<570);
