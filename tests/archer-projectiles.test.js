@@ -4,6 +4,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const os=require('node:os');
 const path=require('node:path');
+const vm=require('node:vm');
 const {World}=require('../world-engine');
 const {create}=require('../public/combat-effects');
 
@@ -103,4 +104,38 @@ test('página e renderizador conectam arco, flecha e efeito após impacto',()=>{
  assert.match(client,/combatFx\.frame\(now\)/);
  assert.match(client,/if\(shot\.justHit\)/);
  assert.match(client,/Arco simples · Equipado/);
+});
+
+function paintHarness(){
+ const art=fs.readFileSync(path.join(__dirname,'../public/art16.js'),'utf8');
+ const start=art.indexOf(' function drawBow(');
+ const end=art.indexOf(' function character(',start);
+ assert.ok(start>0&&end>start,'funções de desenho devem estar presentes');
+ const commands=[];
+ const canvas={};
+ for(const method of ['save','restore','translate','rotate','beginPath','moveTo','quadraticCurveTo','stroke','lineTo','fillRect','closePath','fill','arc']){
+  canvas[method]=(...args)=>commands.push({method,args});
+ }
+ const context={g:canvas,Math};
+ vm.createContext(context);
+ vm.runInContext(art.slice(start,end),context);
+ return {commands,context};
+}
+test('desenho do arco executa para as quatro direções e anima corda retesada',()=>{
+ const {commands,context}=paintHarness();
+ for(let dir=0;dir<4;dir++)vm.runInContext(`drawBow(g,{x:200,y:250},${dir},false)`,context);
+ const outlines=commands.filter(x=>x.method==='quadraticCurveTo').length;
+ assert.ok(outlines>=16,'arco tem madeira curvada em todas as direções');
+ const strokes=commands.filter(x=>x.method==='stroke').length;
+ vm.runInContext('drawBow(g,{x:200,y:250},1,true)',context);
+ assert.ok(commands.filter(x=>x.method==='stroke').length>strokes+2,'arco retesado tem flecha encaixada');
+});
+test('desenho do projétil e impacto executa sem dependência de imagens externas',()=>{
+ const {commands,context}=paintHarness();
+ vm.runInContext("drawProjectile(g,{kind:'arrow',x:240,y:280,angle:0.6,skill:true})",context);
+ const arrows=commands.length;
+ assert.ok(arrows>10);
+ vm.runInContext("drawProjectile(g,{kind:'impact',x:300,y:280,impactAge:80,skill:false})",context);
+ assert.ok(commands.length>arrows+20);
+ assert.ok(commands.filter(x=>x.method==='arc').length>=1,'impacto produz clarão circular');
 });
