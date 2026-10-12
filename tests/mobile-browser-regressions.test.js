@@ -12,7 +12,7 @@ const styles=read('mmo.css');
 const html=read('mundo.html');
 
 test('scripts do Mundo Aberto são JavaScript válido antes de cada publicação',()=>{
- for(const file of ['sprite-studio.js','landscape16.js','art16.js','monster-motion.js','combat-effects.js','touch-controls.js','player-motion.js','latency.js','sounds-desktop.js','mmo.js','privacy-controls.js']){
+ for(const file of ['shading16.js','sprite-studio.js','landscape16.js','art16.js','monster-motion.js','combat-effects.js','touch-controls.js','player-motion.js','latency.js','sounds-desktop.js','mmo.js','privacy-controls.js']){
   assert.doesNotThrow(()=>new vm.Script(read(file),{filename:file}),file);
  }
 });
@@ -108,5 +108,7 @@ test('estilos responsivos e URLs novas do cliente são publicados',()=>{
  assert.match(html,/src="\/mmo\.js\?v=sprites-v4"/);
  assert.ok(html.indexOf('/sprite-studio.js')<html.indexOf('/art16.js'));
  assert.ok(html.indexOf('/landscape16.js')<html.indexOf('/art16.js'));
- assert.match(html,/src="\/landscape16\.js\?v=landscape-v5"/);
+ assert.match(html,/src="\/landscape16\.js\?v=shading-v6"/);
+ assert.ok(html.indexOf('/shading16.js')<html.indexOf('/pixel-detail.js'));
+ assert.ok(html.indexOf('/shading16.js')<html.indexOf('/sprite-studio.js'));
 });
