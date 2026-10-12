@@ -9,6 +9,8 @@ const keys=new Set(),moves={up:['KeyW','ArrowUp'],down:['KeyS','ArrowDown'],left
 const monsterMotion=window.OsPeregrinosMonsterMotion.create();
 const playerMotion=window.OsPeregrinosPlayerMotion.create();
 const combatFx=window.OsPeregrinosCombatFx.create();
+// Eventos reais do servidor comandam poses de ataque, impacto e derrota.
+const spriteActions={monsters:new Map(),players:new Map(),fallen:[],localHurtAt:0};
 const latency=window.OsPeregrinosLatency.create();
 // Sons são opt-in, apenas para desktop; não alteram controles móveis.
 const desktopAudio=window.OsPeregrinosAudio.create({
@@ -49,7 +51,7 @@ function send(type,data={}){if(socket&&socket.readyState===WebSocket.OPEN)socket
 function setOnline(state,msg){
  session.connected=state;$('statusDot').classList.toggle('on',state);$('status').textContent=msg;
  touchUI.hidden=!state||!touchDevice;
- if(!state){joystick.release();latency.reset();updatePingIndicator()}
+ if(!state){joystick.release();latency.reset();updatePingIndicator();spriteActions.monsters.clear();spriteActions.players.clear();spriteActions.fallen.length=0}
 }
 function character(c){session.characters=c;session.zone=c.zone;session.role=c.role;session.x=c.x;session.y=c.y;
  $('charName').textContent=c.name||session.name;$('playerClass').textContent={peregrino:'Peregrino',guardiao:'Guardião',arqueiro:'Arqueiro',curandeiro:'Curandeiro'}[c.role]||c.role;
@@ -76,16 +78,26 @@ function dispatch(msg){
  }else if(msg.type==='hit'){if(msg.zone===session.zone){
   if(typeof desktopAudio!=='undefined')desktopAudio.play(msg.projectile==='arrow'?'arrow':'hit');
   const m=session.monsters.get(msg.monster);if(m)m.hp=msg.remaining;
+  spriteActions.monsters.set(msg.monster,{action:'hurt',at:performance.now()});
+  if(msg.by)spriteActions.players.set(msg.by,{action:'attack',at:performance.now()});
   // O acerto é autoritativo: não dispara flechas por cliques rejeitados pelo servidor.
   const started=combatFx.fire(msg,performance.now());
   if(!started)fx.push({x:m?.x||session.x,y:m?.y||session.y,text:'−'+msg.damage,t:performance.now(),color:'#ffe5a6'});
  }
  }else if(msg.type==='monsterWindup'){if(msg.zone===session.zone){
    const m=session.monsters.get(msg.monster);
-   if(m)fx.push({x:m.x,y:m.y,text:msg.boss?'⚠ CHEFE! ESQUIVE!':'⚠ GOLPE!',t:performance.now(),color:msg.boss?'#ff9a73':'#ffd06b'});
+   if(m){
+    spriteActions.monsters.set(msg.monster,{action:'attack',at:performance.now()});
+    fx.push({x:m.x,y:m.y,text:msg.boss?'⚠ CHEFE! ESQUIVE!':'⚠ GOLPE!',t:performance.now(),color:msg.boss?'#ff9a73':'#ffd06b'});
+   }
  }
- }else if(msg.type==='hurt'){if(typeof desktopAudio!=='undefined')desktopAudio.play('hurt');fx.push({x:session.x,y:session.y,text:'−'+msg.damage,t:performance.now(),color:'#ff8d83'});if(session.characters?.hp<=0)$('deathVeil').hidden=false;
- }else if(msg.type==='defeated'){if(msg.zone===session.zone){if(typeof desktopAudio!=='undefined')desktopAudio.play(msg.boss?'boss':'victory');fx.push({x:session.monsters.get(msg.monster)?.x||session.x,y:session.monsters.get(msg.monster)?.y||session.y,text:msg.boss?'★ CHEFE!':'✦ VITÓRIA!',t:performance.now(),color:'#f5d587'});session.monsters.delete(msg.monster);monsterMotion.sync([...session.monsters.values()])}
+ }else if(msg.type==='hurt'){spriteActions.localHurtAt=performance.now();if(typeof desktopAudio!=='undefined')desktopAudio.play('hurt');fx.push({x:session.x,y:session.y,text:'−'+msg.damage,t:performance.now(),color:'#ff8d83'});if(session.characters?.hp<=0)$('deathVeil').hidden=false;
+ }else if(msg.type==='defeated'){if(msg.zone===session.zone){if(typeof desktopAudio!=='undefined')desktopAudio.play(msg.boss?'boss':'victory');
+   const fallen=session.monsters.get(msg.monster);const now=performance.now();
+   if(fallen){spriteActions.fallen.push({...fallen,defeatedAt:now});if(spriteActions.fallen.length>12)spriteActions.fallen.shift()}
+   spriteActions.monsters.delete(msg.monster);
+   fx.push({x:fallen?.x||session.x,y:fallen?.y||session.y,text:msg.boss?'★ CHEFE!':'✦ VITÓRIA!',t:now,color:'#f5d587'});
+   session.monsters.delete(msg.monster);monsterMotion.sync([...session.monsters.values()])}
  }else if(msg.type==='reward'){alert('+'+msg.xp+' EXP  ·  +'+msg.gold+' moedas'+(msg.boss?' ★ CHEFE':''));
  }else if(msg.type==='chat'){say('['+msg.channel+'] '+msg.name,msg.text,msg.channel);
  }else if(msg.type==='notice'||msg.type==='system'){say('',msg.text,'sys');if(msg.type==='notice')alert(msg.text);
@@ -117,7 +129,7 @@ function connect(){
   sock.onclose=()=>{
    if(socket!==sock)return;
    socket=null;closeDialogue();setOnline(false,'Desconectado');
-   session.monsters.clear();monsterMotion.clear();playerMotion.clear();combatFx.clear();session.players.clear();session.portals=[];
+   session.monsters.clear();monsterMotion.clear();playerMotion.clear();combatFx.clear();session.players.clear();spriteActions.monsters.clear();spriteActions.players.clear();spriteActions.fallen.length=0;session.portals=[];
    if(!authed)return;
    clearTimeout(reconnectTimer);reconnectTimer=setTimeout(connect,reconnectMs);
    reconnectMs=Math.min(14000,reconnectMs*1.7);
@@ -487,9 +499,14 @@ function canvasDraw(now,dt){
    fx.push({x:shot.x,y:shot.y,text:'−'+shot.damage,t:now,color:shot.skill?'#b7f9f0':'#ffe5a6'});
   }
   fx=fx.filter(f=>now-f.t<1100);
+  spriteActions.fallen=spriteActions.fallen.filter(m=>now-m.defeatedAt<570);
+  for(const [id,v] of spriteActions.monsters)if(now-v.at>750)spriteActions.monsters.delete(id);
+  for(const [id,v] of spriteActions.players)if(now-v.at>580)spriteActions.players.delete(id);
   classicRenderer.render({zone:session.zone,zones:session.zones,x:session.x,y:session.y,
     name:session.name||'PEREGRINO',role:session.role,dir:session.dir,
     monsters:monsterMotion.draw([...session.monsters.values()],dt),players:playerMotion.draw([...session.players.values()],now),projectiles,
+    monsterActions:spriteActions.monsters,playerActions:spriteActions.players,fallen:spriteActions.fallen,
+    heroPose:now-spriteActions.localHurtAt<310?{action:'hurt',at:spriteActions.localHurtAt}:{action:'attack',at:lastAction},
     npcs:session.npcs.filter(n=>n.zone===session.zone),portals:session.portals,storyStage:session.story?.stage||0,
     cameraX:session.cameraX,cameraY:session.cameraY,target:session.target,now,fx,lastAction,
     moving:Math.hypot(session.x-lastFrameX,session.y-lastFrameY)>0.06});
