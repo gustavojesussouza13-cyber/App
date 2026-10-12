@@ -140,7 +140,11 @@ async function handleAuth(req,res,route){
    const token=typeof body.guestToken==='string'?body.guestToken:null;
    const guestUid=token&&/^[a-f0-9]{64}$/.test(token)?crypto.createHash('sha256').update(token).digest('hex'):null;
    if(guestUid&&[...world.players.values()].some(p=>p.uid===guestUid))throw new AuthError('Saia do modo Visitante antes de transferir o progresso.',409);
-   world.persist();if(accountStore.saving)await accountStore.saving;
+   // A migração visitante -> conta não pode ocorrer enquanto um instantâneo
+   // antigo ainda estiver aguardando gravação: isso poderia recriar o UID visitante.
+   world.persist();
+   const saved=await accountStore.flush();
+   if(!saved || accountStore.pending)throw new AuthError('Não foi possível confirmar o salvamento do visitante. Tente novamente.',503,'storage_pending');
    const email=cleanEmail(body.email||'');
    if(email&&!validEmail(email))throw new AuthError('Informe um e-mail válido ou deixe o campo vazio.');
    const result=await accountStore.register(body.username,body.password,token);
@@ -360,7 +364,10 @@ for(const sig of ['SIGTERM','SIGINT'])process.on(sig,()=>{
  for(const c of [...sockets])terminate(c);
  world.stop();
  const kill=setTimeout(()=>process.exit(1),14000);kill.unref();
- Promise.resolve(accountStore?.close()).catch(e=>console.error('[contas] flush final falhou:',e.message)).finally(()=>{
+ Promise.resolve(accountStore?.close()).then(()=>{
   httpServer.close(()=>{clearTimeout(kill);process.exit(0)});
+ }).catch(e=>{
+  console.error('[contas] flush final falhou:',e.message);
+  httpServer.close(()=>{clearTimeout(kill);process.exit(1)});
  });
 });
