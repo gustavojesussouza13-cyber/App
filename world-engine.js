@@ -43,6 +43,7 @@ const QUESTS=[
 const assertName=n=>typeof n==='string'&&n.trim()===n&&n.length>=3&&n.length<=18&&/^[\p{L}\p{N}][\p{L}\p{N} _-]*$/u.test(n);
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+const roadY=(x,z)=>496+Math.sin((x+z*117)/225)*54+Math.sin(x/79+z*2)*12;
 const cap=(s,n=90)=>String(s||'').slice(0,n);
 // Reaproveita o campo "achievements" já salvo; nenhuma migração do PostgreSQL.
 const ACHIEVEMENTS=Object.freeze({
@@ -132,6 +133,23 @@ class World {
  publicPlayer(p){return {id:p.id,name:p.name,zone:p.zone,x:Math.round(p.x),y:Math.round(p.y),dir:p.dir,level:p.save.level,role:p.save.role,hp:p.save.hp,maxHp:hpMax(p.save),guild:p.save.guild,party:p.party||null}}
  publicMonster(m){return {id:m.id,name:m.name,species:m.species,zone:m.zone,x:Math.round(m.x),y:Math.round(m.y),hp:m.hp,maxHp:m.maxHp,boss:m.boss}}
  zoneInfo(){return ZONES.map((z,i)=>({id:i,name:z[0],biome:z[1],count:this.monsters.get(i).length}))}
+ zonePortals(zone){
+  if(!Number.isInteger(zone)||zone<0||zone>=ZONES.length)return [];
+  const entries=[1,3,5,11];
+  const destinations=zone>=12?[entries[zone-12]]:
+   ZONES.map((_,i)=>i).filter(i=>i<12&&i!==zone&&Math.abs(i-zone)<=2)
+    .concat(ZONES.map((_,i)=>i).filter(i=>i>=12&&entries[i-12]===zone));
+  return destinations.map((to,i)=>{
+   const x=Math.round(destinations.length===1?ZONE_W/2:180+i*1170/(destinations.length-1));
+   return {zone:to,name:ZONES[to][0],x,y:Math.round(roadY(x,zone)),dungeon:to>=12};
+  });
+ }
+ usePortal(p,z){
+  if(!Number.isInteger(z))return;
+  const gate=this.zonePortals(p.zone).find(a=>a.zone===z);
+  if(!gate||dist(p,gate)>96){this.tell(p,'Aproxime-se da passagem para atravessar.');return}
+  this.travel(p,z);
+ }
  ownStatus(p){const s=p.save;return {type:'character',id:p.id,name:p.name,level:s.level,xp:s.xp,nextXp:xpNeed(s.level),hp:s.hp,maxHp:hpMax(s),coins:s.coins,role:s.role,inventory:s.inventory,kills:s.kills,quests:s.quests,visited:s.visited,guild:s.guild,party:p.party||null,story:journal(s.story),achievements:s.achievements,bossRelics:s.bossRelics,zone:p.zone,x:p.x,y:p.y}}
  tell(p,msg,type='notice'){this.send(p.socket,{type,text:msg})}
  unlockAchievement(p,id){
@@ -157,7 +175,7 @@ class World {
   s.inventory={...defaultSave().inventory,...(s.inventory||{})};if(!Array.isArray(s.quests))s.quests=[];if(!Array.isArray(s.visited))s.visited=[0];if(!Array.isArray(s.achievements))s.achievements=[];if(!Array.isArray(s.bossRelics))s.bossRelics=[];s.bossRelics=s.bossRelics.filter(z=>Number.isInteger(z)&&z>=0&&z<ZONES.length);s.story=normalizeStory(s.story);
   const p={id:crypto.randomUUID(),uid,name,socket:c.socket,save:s,x:s.x,y:s.y,zone:s.zone,dir:2,lastMove:Date.now(),moveCredit:12,lastAttack:0,lastSpell:0,lastChat:0,lastUse:0,party:null,live:true};
   c.worldPlayer=p;c.socket._worldClient=c;this.players.set(p.id,p);
-  this.send(c.socket,{type:'welcome',self:this.ownStatus(p),zones:this.zoneInfo(),shop:GOODS,relics:RELICS,quests:QUESTS,achievements:ACHIEVEMENTS,npcs:NPCS.map(publicNpc),maxPlayers:10,online:this.players.size+this.getOnline(),monsterTotal:this.totalMonsters()});
+  this.send(c.socket,{type:'welcome',self:this.ownStatus(p),zones:this.zoneInfo(),shop:GOODS,relics:RELICS,quests:QUESTS,achievements:ACHIEVEMENTS,portals:this.zonePortals(p.zone),npcs:NPCS.map(publicNpc),maxPlayers:10,online:this.players.size+this.getOnline(),monsterTotal:this.totalMonsters()});
   this.broadcast({type:'system',text:p.name+' chegou ao mundo.'},q=>q.id!==p.id);
   this.dirty=true;this.snapshotTo(p);
  }
@@ -191,6 +209,7 @@ class World {
     p.save.x=p.x;p.save.y=p.y;this.dirty=true;break;
    }
    case 'travel':this.travel(p,d.zone);break;
+   case 'portal':this.usePortal(p,d.zone);break;
    case 'attack':this.attack(p,d.target,false);break;
    case 'skill':this.attack(p,d.target,true);break;
    case 'class':this.chooseClass(p,d.role);break;
@@ -285,7 +304,7 @@ class World {
   if(p.save.visited.length>=8)this.unlockAchievement(p,'explorar-8');
   if(p.save.visited.length>=16)this.unlockAchievement(p,'explorar-16');
   this.dirty=true;
-  this.send(p.socket,{type:'travel',zone:b,name:ZONES[b][0],x:p.x,y:p.y});this.send(p.socket,this.ownStatus(p));this.snapshotTo(p);
+  this.send(p.socket,{type:'travel',zone:b,name:ZONES[b][0],x:p.x,y:p.y,portals:this.zonePortals(b)});this.send(p.socket,this.ownStatus(p));this.snapshotTo(p);
  }
  attack(p,tid,skill){const now=Date.now(),role=CLASSES[p.save.role];const cooldown=skill?4000:600;
   if(now-(skill?p.lastSpell:p.lastAttack)<cooldown)return;

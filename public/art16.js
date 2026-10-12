@@ -191,20 +191,36 @@ function create({ctx,W,H}){
   if(selected||m.boss){g.save();g.fillStyle='#ffefc8';g.font='bold 12px monospace';g.textAlign='center';g.shadowColor='#000';g.shadowBlur=6;g.fillText(m.name,x,y-(m.boss?99:64));g.restore()}
  }
  function prop(g,o){const s=o.w;drawShadow(g,o.x,o.y,s*.63);cut(g,o.key,o.x-o.w/2,o.y-o.h,o.w,o.h)}
+ // Portal de viagem no cenário: o destino vem do servidor autoritativo.
+ function portal(g,p,now){
+  const pulse=.5+.5*Math.sin(now/440+p.x);
+  g.save();g.translate(Math.round(p.x),Math.round(p.y));
+  g.fillStyle='#061812af';g.beginPath();g.ellipse(0,5,33,12,0,0,Math.PI*2);g.fill();
+  g.shadowColor=p.dungeon?'#c996e8':'#a6ebc3';g.shadowBlur=7+pulse*9;
+  g.strokeStyle=p.dungeon?'#c99feb':'#8ed6b0';g.lineWidth=5;
+  g.beginPath();g.ellipse(0,-38,24,43,0,0,Math.PI*2);g.stroke();
+  g.shadowBlur=0;g.fillStyle=p.dungeon?'#874ac166':'#53beaa55';
+  g.beginPath();g.ellipse(0,-38,20,39,0,0,Math.PI*2);g.fill();
+  g.fillStyle='#ffe0a6';g.font='bold 13px monospace';g.textAlign='center';
+  g.shadowColor='#071510';g.shadowBlur=6;
+  g.fillText('✦ E · '+p.name.slice(0,19),0,-92);
+  g.restore();
+ }
  function displayMap(g,opt){
-  const {players,monsters,npcs=[],zone,x,y}=opt;
+  const {players,monsters,npcs=[],portals=[],zone,x,y}=opt;
   const mx=W-179,my=16,mw=160,mh=104;
   g.fillStyle='#092019e3';g.fillRect(mx,my,mw,mh);g.strokeStyle='#d8b981';g.lineWidth=2;g.strokeRect(mx,my,mw,mh);
   g.save();g.beginPath();g.rect(mx+5,my+5,mw-10,mh-10);g.clip();
   g.strokeStyle='#cbb27b88';g.lineWidth=3;g.beginPath();for(let xx=0;xx<ZW;xx+=24){const px=mx+5+xx/ZW*(mw-10),py=my+5+pathY(xx,zone)/ZH*(mh-10);if(xx===0)g.moveTo(px,py);else g.lineTo(px,py)}g.stroke();
   g.fillStyle='#c58f6f';for(const m of monsters)g.fillRect(mx+5+m.x/ZW*(mw-10),my+5+m.y/ZH*(mh-10),m.boss?4:2,m.boss?4:2);
+  g.fillStyle='#a3e3dd';for(const p of portals)g.fillRect(mx+5+p.x/ZW*(mw-10),my+5+p.y/ZH*(mh-10),4,5);
   g.fillStyle='#f8c574';for(const n of npcs)g.fillRect(mx+5+n.x/ZW*(mw-10),my+5+n.y/ZH*(mh-10),4,4);
   g.fillStyle='#c9ebeb';for(const p of players)g.fillRect(mx+5+p.x/ZW*(mw-10),my+5+p.y/ZH*(mh-10),4,4);
   g.fillStyle='#ffe0a3';g.fillRect(mx+5+x/ZW*(mw-10)-2,my+5+y/ZH*(mh-10)-2,6,6);g.restore();
   g.font='bold 11px monospace';g.fillStyle='#ead4a2';g.textAlign='left';g.fillText('REGIÃO '+(zone+1)+'/16',mx+7,my+mh+15);
  }
  function render(opt){
-  const {zone,zones,x,y,dir,monsters,players,projectiles=[],npcs=[],storyStage=0,cameraX,cameraY,name,role,target,now,fx,lastAction,moving}=opt;
+  const {zone,zones,x,y,dir,monsters,players,projectiles=[],npcs=[],portals=[],storyStage=0,cameraX,cameraY,name,role,target,now,fx,lastAction,moving}=opt;
   ctx.imageSmoothingEnabled=false;
   const biome=biomeThemes[zones[zone]?.biome]||'meadow';
   if(!artReady){ctx.fillStyle='#193629';ctx.fillRect(0,0,W,H);ctx.textAlign='center';ctx.fillStyle='#efd39d';ctx.font='bold 20px Georgia,serif';ctx.fillText('✦ Preparando o mundo 16-bit…',W/2,H/2);return}
@@ -213,6 +229,9 @@ function create({ctx,W,H}){
   ctx.save();ctx.translate(-cameraX,-cameraY);
   const actors=[];
   for(const o of objects){if(o.x<cameraX-115||o.x>cameraX+W+115||o.y<cameraY-132||o.y>cameraY+H+135)continue;actors.push({depth:o.y,paint:()=>prop(ctx,o)})}
+  for(const p of portals){if(p.x<cameraX-140||p.x>cameraX+W+140||p.y<cameraY-125||p.y>cameraY+H+125)continue;
+   actors.push({depth:p.y-1,paint:()=>portal(ctx,p,now)});
+  }
   for(const n of npcs){if(n.x<cameraX-100||n.x>cameraX+W+100||n.y<cameraY-105||n.y>cameraY+H+105)continue;
    actors.push({depth:n.y,paint:()=>npcActor(ctx,n,n.index===storyStage,n.index!==null&&n.index<storyStage,now)});
   }

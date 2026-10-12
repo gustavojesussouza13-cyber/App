@@ -4,7 +4,7 @@
 const $=id=>document.getElementById(id);
 const cvs=$('game'),ctx=cvs.getContext('2d',{alpha:false});ctx.imageSmoothingEnabled=false;
 const W=cvs.width,H=cvs.height,ZONE_W=1536,ZONE_H=1024;
-const session={id:'',name:'',connected:false,characters:null,online:0,zones:[],shop:{},relics:{},quests:[],npcs:[],story:null,achievements:{},monsters:new Map(),players:new Map(),zone:0,x:768,y:512,dir:2,target:null,partyInvite:null,guildInvite:null,tradeOffer:null,role:'peregrino',cameraX:0,cameraY:0,formClass:'peregrino'};
+const session={id:'',name:'',connected:false,characters:null,online:0,zones:[],portals:[],shop:{},relics:{},quests:[],npcs:[],story:null,achievements:{},monsters:new Map(),players:new Map(),zone:0,x:768,y:512,dir:2,target:null,partyInvite:null,guildInvite:null,tradeOffer:null,role:'peregrino',cameraX:0,cameraY:0,formClass:'peregrino'};
 const keys=new Set(),moves={up:['KeyW','ArrowUp'],down:['KeyS','ArrowDown'],left:['KeyA','ArrowLeft'],right:['KeyD','ArrowRight']};
 const monsterMotion=window.OsPeregrinosMonsterMotion.create();
 const playerMotion=window.OsPeregrinosPlayerMotion.create();
@@ -61,7 +61,7 @@ function displayOnline(n){session.online=n;$('playerCount').textContent=n+'/10';
 function dispatch(msg){
  if(msg.type==='pong'){if(latency.receive(msg,performance.now()))updatePingIndicator();return}
  if(msg.type==='welcome'){
- session.id=msg.self.id;session.name=msg.self.name;session.zones=msg.zones;session.shop=msg.shop;session.relics=msg.relics||{};session.quests=msg.quests;session.achievements=msg.achievements||{};session.npcs=Array.isArray(msg.npcs)?msg.npcs:[];
+ session.id=msg.self.id;session.name=msg.self.name;session.zones=msg.zones;session.portals=msg.portals||[];session.shop=msg.shop;session.relics=msg.relics||{};session.quests=msg.quests;session.achievements=msg.achievements||{};session.npcs=Array.isArray(msg.npcs)?msg.npcs:[];
  $('welcomeOverlay').hidden=true;setOnline(true,'Conectado');displayOnline(msg.online);character(msg.self);
  if(!authed){authed=true;if(msg.self.level===1&&msg.self.kills===0&&msg.self.role==='peregrino'&&session.formClass!=='peregrino')send('class',{role:session.formClass});say('','Bem-vindo, '+session.name+'! Converse com os personagens usando E ou clicando neles. A história está na aba Crônicas.','sys');if(session.story?.stage===0)alert('✦ Fale com Lia, a Acendedora! Aproxime-se e pressione E.')}
  $('game').focus();
@@ -72,7 +72,7 @@ function dispatch(msg){
   monsterMotion.sync([...now.values()]);session.monsters=now;
   const people=new Map();for(const p of msg.players||[])people.set(p.id,p);
   playerMotion.sync([...people.values()],performance.now());session.players=people;
- }else if(msg.type==='travel'){desktopAudio.play('travel');session.zone=msg.zone;session.x=msg.x;session.y=msg.y;session.target=null;session.monsters.clear();monsterMotion.clear();playerMotion.clear();combatFx.clear();$('zoneTitle').textContent=msg.name;alert('✦ '+msg.name);drawTravel();
+ }else if(msg.type==='travel'){desktopAudio.play('travel');session.zone=msg.zone;session.portals=msg.portals||[];session.x=msg.x;session.y=msg.y;session.target=null;session.monsters.clear();monsterMotion.clear();playerMotion.clear();combatFx.clear();$('zoneTitle').textContent=msg.name;alert('✦ '+msg.name);drawTravel();
  }else if(msg.type==='hit'){if(msg.zone===session.zone){
   if(typeof desktopAudio!=='undefined')desktopAudio.play(msg.projectile==='arrow'?'arrow':'hit');
   const m=session.monsters.get(msg.monster);if(m)m.hp=msg.remaining;
@@ -117,7 +117,7 @@ function connect(){
   sock.onclose=()=>{
    if(socket!==sock)return;
    socket=null;closeDialogue();setOnline(false,'Desconectado');
-   session.monsters.clear();monsterMotion.clear();playerMotion.clear();combatFx.clear();session.players.clear();
+   session.monsters.clear();monsterMotion.clear();playerMotion.clear();combatFx.clear();session.players.clear();session.portals=[];
    if(!authed)return;
    clearTimeout(reconnectTimer);reconnectTimer=setTimeout(connect,reconnectMs);
    reconnectMs=Math.min(14000,reconnectMs*1.7);
@@ -303,6 +303,8 @@ function attack(skill){
 }
 $('talkBtn').onclick=talkToNearest;$('attackBtn').onclick=()=>attack(false);$('skillBtn').onclick=()=>attack(true);$('potionBtn').onclick=()=>send('use',{item:'pocao'});$('questBtn').onclick=()=>selectTab('quests');$('mapBtn').onclick=showWorldMap;$('chatFocusBtn').onclick=()=>$('chatInput').focus();
 cvs.addEventListener('click',e=>{if(!session.connected)return;const rect=cvs.getBoundingClientRect(),wx=(e.clientX-rect.left)*W/rect.width+session.cameraX,wy=(e.clientY-rect.top)*H/rect.height+session.cameraY;
+ const gate=session.portals.find(p=>Math.hypot(p.x-wx,p.y-wy)<52);
+ if(gate){send('portal',{zone:gate.zone});return}
  const touchRadius=touchDevice?Math.max(50,34*W/Math.max(1,rect.width)):50;
  let candidate=null,best=touchRadius;for(const mon of session.monsters.values()){
   const p=monsterMotion.position(mon.id)||mon;
@@ -378,7 +380,14 @@ function drawTab(){const parent=$('tabContent');parent.replaceChildren();const s
 let dialogue=null,dialoguePage=0;
 function nearNpc(){return session.npcs.filter(n=>n.zone===session.zone).sort((a,b)=>distance(a,session)-distance(b,session))[0]||null}
 function tryTalk(npc){if(!session.connected)return;if(distance(npc,session)>165){alert('Aproxime-se de '+npc.name+' para conversar (E).');return}send('talk',{npc:npc.id})}
-function talkToNearest(){if(!$('npcDialogue').hidden)return;const nearest=nearNpc();if(!nearest){alert('Não há personagens próximos nesta região.');return}tryTalk(nearest)}
+function talkToNearest(){
+ if(!$('npcDialogue').hidden||!session.connected)return;
+ const nearest=nearNpc();
+ if(nearest&&distance(nearest,session)<=165){tryTalk(nearest);return}
+ const gate=session.portals.filter(p=>distance(p,session)<=94).sort((a,b)=>distance(a,session)-distance(b,session))[0];
+ if(gate){send('portal',{zone:gate.zone});return}
+ alert('Aproxime-se de um personagem ou passagem da estrada para interagir.');
+}
 function openDialogue(data){if(!Array.isArray(data.pages)||!data.pages.length)return;
  dialogue=data;dialoguePage=0;keys.clear();$('npcDialogue').hidden=false;
  $('npcTitle').textContent=data.name||'Peregrino';$('npcSubtitle').textContent=data.title||'Personagem do reino';
@@ -421,7 +430,7 @@ function canvasDraw(now,dt){
   classicRenderer.render({zone:session.zone,zones:session.zones,x:session.x,y:session.y,
     name:session.name||'PEREGRINO',role:session.role,dir:session.dir,
     monsters:monsterMotion.draw([...session.monsters.values()],dt),players:playerMotion.draw([...session.players.values()],now),projectiles,
-    npcs:session.npcs.filter(n=>n.zone===session.zone),storyStage:session.story?.stage||0,
+    npcs:session.npcs.filter(n=>n.zone===session.zone),portals:session.portals,storyStage:session.story?.stage||0,
     cameraX:session.cameraX,cameraY:session.cameraY,target:session.target,now,fx,lastAction,
     moving:Math.hypot(session.x-lastFrameX,session.y-lastFrameY)>0.06});
   lastFrameX=session.x;lastFrameY=session.y;
