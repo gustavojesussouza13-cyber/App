@@ -281,7 +281,7 @@ class World {
   if(now-(skill?p.lastSpell:p.lastAttack)<cooldown)return;
   let m=(this.monsters.get(p.zone)||[]).find(x=>x.id===tid&&x.hp>0);if(!m||dist(m,p)>(skill?role.range*1.4:role.range))return;
   if(skill)p.lastSpell=now;else p.lastAttack=now;
-  const level=p.save.level,weapon=(p.save.inventory.espada||0)>0?7:(p.save.inventory.arco||0)>0?6:0;
+  const level=p.save.level,weapon=p.save.role==='arqueiro'?((p.save.inventory.arco||0)>0?6:0):((p.save.inventory.espada||0)>0?7:0);
   let damage=Math.round(role.attack+level*2+weapon+(skill?role.attack*.9:0));
   const marker=this.players.get(m.markOwner);
   if(m.markUntil>now&&marker&&marker.id!==p.id&&marker.party&&p.party===marker.party){
