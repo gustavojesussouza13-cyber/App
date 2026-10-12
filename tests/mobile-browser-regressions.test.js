@@ -12,7 +12,7 @@ const styles=read('mmo.css');
 const html=read('mundo.html');
 
 test('scripts do Mundo Aberto são JavaScript válido antes de cada publicação',()=>{
- for(const file of ['art16.js','monster-motion.js','combat-effects.js','touch-controls.js','player-motion.js','latency.js','mmo.js','privacy-controls.js']){
+ for(const file of ['art16.js','monster-motion.js','combat-effects.js','touch-controls.js','player-motion.js','latency.js','sounds-desktop.js','mmo.js','privacy-controls.js']){
   assert.doesNotThrow(()=>new vm.Script(read(file),{filename:file}),file);
  }
 });
@@ -104,5 +104,5 @@ test('estilos responsivos e URLs novas do cliente são publicados',()=>{
  assert.match(styles,/@media\(max-width:850px\)/);
  assert.match(styles,/\.canvas-shell:has\(#welcomeOverlay:not\(\[hidden\]\)\)/);
  assert.match(html,/href="\/mmo\.css\?v=ping-rede-v1"/);
- assert.match(html,/src="\/mmo\.js\?v=reliquias-v1"/);
+ assert.match(html,/src="\/mmo\.js\?v=audio-pc-v1"/);
 });
