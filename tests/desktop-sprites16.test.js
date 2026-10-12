@@ -79,7 +79,7 @@ test('render desktop é carregado antes do motor, sem alterar CSS/controles mobi
  assert.match(art,/desktopSprites\?\.drawHero/);
  assert.match(art,/desktopSprites\?\.drawNpc/);
  assert.match(art,/desktopSprites\?\.drawMonster/);
- assert.match(page,/desktop-illustrated-v1/);
+ assert.match(page,/desktop-illustrated-v2/);
  assert.match(client,/touchDevice/);
  assert.doesNotMatch(read('desktop-sprites16.js'),/document\.body\.style|innerHTML/);
 });
