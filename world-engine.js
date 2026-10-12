@@ -39,8 +39,23 @@ const QUESTS=[
  {id:'primeiro-passo',name:'O primeiro passo',target:5,reward:75,coins:45,description:'Derrote cinco monstros nas terras de Auren'},
  {id:'guardiao-do-vale',name:'A guarda do vale',target:14,reward:250,coins:110,description:'Defenda o reino e derrote mais criaturas'},
  {id:'peregrino-valoroso',name:'Peregrino valoroso',target:36,reward:650,coins:275,description:'Vença 36 criaturas nas jornadas'},
- {id:'luz-renovada',name:'A luz renovada',target:90,reward:1600,coins:700,description:'Enfrente noventa ameaças pelo mundo'}
+ {id:'luz-renovada',name:'A luz renovada',target:90,reward:1600,coins:700,description:'Enfrente noventa ameaças pelo mundo'},
+ {id:'trilhas-aurora',name:'Trilhas da Aurora',type:'regions',target:4,reward:170,coins:65,description:'Explore quatro regiões diferentes do reino'},
+ {id:'cartografo-auren',name:'Cartógrafo de Auren',type:'regions',target:10,reward:650,coins:180,description:'Conheça dez regiões de Auren'},
+ {id:'mapa-completo',name:'Mundo Revelado',type:'regions',target:16,reward:1450,coins:420,description:'Visite as dezesseis regiões'},
+ {id:'primeiro-legado',name:'O Primeiro Legado',type:'bosses',target:1,reward:235,coins:95,description:'Conquiste sua primeira relíquia de chefe'},
+ {id:'sem-medo',name:'Quebrador de Maldições',type:'bosses',target:4,reward:850,coins:290,description:'Recupere relíquias de quatro chefes diferentes'},
+ {id:'voz-desperta',name:'Vozes da Aurora',type:'chapters',target:4,reward:330,coins:130,description:'Conclua quatro capítulos da jornada principal'},
+ {id:'livro-luz',name:'O Livro da Luz',type:'chapters',target:12,reward:1250,coins:390,description:'Conclua doze capítulos da história'}
 ];
+function questProgress(save,quest){
+ switch(quest.type){
+  case 'regions':return new Set(save.visited||[]).size;
+  case 'bosses':return new Set(save.bossRelics||[]).size;
+  case 'chapters':return save.story?.stage||0;
+  default:return save.kills||0;
+ }
+}
 const assertName=n=>typeof n==='string'&&n.trim()===n&&n.length>=3&&n.length<=18&&/^[\p{L}\p{N}][\p{L}\p{N} _-]*$/u.test(n);
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -385,7 +400,7 @@ class World {
  use(p,id){if(!['pocao','superpocao'].includes(id)||(p.save.inventory[id]||0)<=0)return;const now=Date.now();if(now-p.lastUse<600)return;p.lastUse=now;p.save.inventory[id]--;p.save.hp=clamp(p.save.hp+GOODS[id].heal,0,hpMax(p.save));this.send(p.socket,this.ownStatus(p));this.dirty=true}
  buy(p,id){const item=GOODS[id];if(!item||p.save.coins<item.price){this.tell(p,'Moedas insuficientes ou item desconhecido.');return}
   p.save.coins-=item.price;p.save.inventory[id]=(p.save.inventory[id]||0)+1;this.send(p.socket,this.ownStatus(p));this.tell(p,item.name+' comprado!');this.dirty=true}
- claimQuests(p){let completed=0;for(const q of QUESTS){if(p.save.kills>=q.target&&!p.save.quests.includes(q.id)){
+ claimQuests(p){let completed=0;for(const q of QUESTS){if(questProgress(p.save,q)>=q.target&&!p.save.quests.includes(q.id)){
   p.save.quests.push(q.id);p.save.xp+=q.reward;p.save.coins+=q.coins;completed++;
   while(p.save.level<100&&p.save.xp>=xpNeed(p.save.level)){p.save.xp-=xpNeed(p.save.level);p.save.level++;p.save.hp=hpMax(p.save)}
  }}this.tell(p,completed?'Missões concluídas: '+completed+'!':'Ainda não há missões para resgatar.');this.send(p.socket,this.ownStatus(p));this.dirty=true}
@@ -498,4 +513,4 @@ class World {
  status(){return {connected:this.count,monsters:this.totalMonsters(),regions:ZONES.length,guilds:this.guilds.size,version:'mmo-aurora-historia-alpha'}}
  stop(){clearInterval(this.saveTimer);for(const p of this.players.values())this.saved.characters[p.uid]=safeSave(p.save);this.dirty=true;this.persist();try{this.db?.close()}catch{}}
 }
-module.exports={World,ZONES,ZONE_W,ZONE_H,GOODS,RELICS,BOSS_RELICS,QUESTS,SPECIES,CLASSES,ACHIEVEMENTS,xpNeed};
+module.exports={World,ZONES,ZONE_W,ZONE_H,GOODS,RELICS,BOSS_RELICS,QUESTS,questProgress,SPECIES,CLASSES,ACHIEVEMENTS,xpNeed};
