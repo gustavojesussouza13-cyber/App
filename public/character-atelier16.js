@@ -176,6 +176,105 @@
    if(attack)for(let i=0;i<4;i++)p(g,i%2?'#fcf6bd':'#91f4e6',27+i*3,2+i*3+by,2,2);
   }
  }
+ /*
+  * Camada FINAL de identidade: desenhada após roupa, armas e acabamentos.
+  * Protege as quatro classes de ficarem indistinguíveis quando vistas de
+  * costas, em movimento, ou em escala pequena no canvas do jogo.
+  * Trabalha somente em pixels inteiros de um sprite 40x52.
+  */
+ function classIdentity(g,c,{role='peregrino',dir=2,action='idle',frame=0,by=0}={}){
+  const back=dir===0,side=dir===1||dir===3;
+  const moving=action==='walk';
+  const shift=moving?[0,1,2,1,0,-1][frame%6]:0;
+  const swing=action==='attack'?[0,-2,-4,0,2][frame%5]:0;
+  if(role==='guardiao'){
+   // Capacete de aço com crista dourada: visível frente e costas.
+   p(g,'#1f354c',12,7+by,20,12);
+   p(g,'#c3d4dd',14,8+by,16,7);
+   p(g,'#f4f3da',15,9+by,10,2);
+   p(g,'#3d6388',16,14+by,13,5);
+   p(g,'#dbad57',20,5+by,5,12);
+   p(g,'#ffdf88',21,6+by,2,6);
+   if(!back){p(g,'#21354a',15,18+by,14,3);p(g,'#e1b277',18,19+by,7,2)}
+   // Armadura com escamas metálicas e emblema solar sobre o peito ou capa.
+   p(g,'#263d63',11,22+by,21,21);
+   p(g,'#4774b0',13,23+by,17,17);
+   p(g,'#9bbed2',13,23+by,7,3);
+   p(g,'#163558',26,26+by,4,15);
+   p(g,'#d9a95c',19,26+by,5,12);
+   p(g,'#ffe69a',16,31+by,12,3);
+   p(g,'#ddb86f',20,29+by,3,8);
+   p(g,'#e7ebd9',13,39+by,17,2);
+   // Escudo largo ANCORADO ao lado oposto da espada, com borda dourada.
+   p(g,'#1c314a',1,24+by+shift,13,21);
+   p(g,'#deb66c',2,25+by+shift,11,19);
+   p(g,'#3865a0',4,27+by+shift,7,15);
+   p(g,'#fbeab7',6,30+by+shift,3,9);
+   p(g,'#fbeab7',5,34+by+shift,6,2);
+   p(g,'#25466c',5,41+by+shift,5,2);
+   // Espada de aço de cor fria, sem aparência de arco.
+   p(g,'#3f3732',34,36+by+swing,3,12);
+   p(g,'#f1c47e',31,33+by+swing,8,3);
+   p(g,'#708ba1',34,12+by+swing,4,21);
+   p(g,'#ecf6f0',35,14+by+swing,2,17);
+   p(g,'#d1e0df',35,9+by+swing,2,5);
+  }else if(role==='curandeiro'){
+   // Capuz de marfim com forro vermelho e sombra, frontal ou de costas.
+   p(g,'#674858',9,7+by,25,18);
+   p(g,'#f1e8db',11,6+by,21,14);
+   p(g,'#fffaf0',13,7+by,16,4);
+   p(g,'#c86976',11,13+by,20,4);
+   if(back){
+    p(g,'#af6174',15,13+by,12,17);
+    p(g,'#f8e4d1',17,14+by,8,5);
+    p(g,'#eac580',18,21+by,6,7);
+   }else{
+    p(g,'#b58275',13,17+by,17,3);
+    p(g,'#e8b18e',15,19+by,13,3);
+    p(g,'#f7d4a5',17,20+by,5,2);
+   }
+   // Túnica clara até as pernas e estola vermelha separada do corpo.
+   p(g,'#76536b',8,24+by,27,21);
+   p(g,'#f2e8da',10,24+by,23,19);
+   p(g,'#fffaf1',12,26+by,10,15);
+   p(g,'#c65e70',11,25+by,4,18);
+   p(g,'#b34f66',28,26+by,4,17);
+   p(g,'#f5c979',18,28+by,7,9);
+   p(g,'#b76a65',20,28+by,3,9);
+   p(g,'#fff5cd',18,31+by,7,2);
+   p(g,'#b66a75',10,41+by,23,4);
+   p(g,'#ffe7d3',13,42+by,18,2);
+   // Cajado alto de madeira com cristal azul bem reconhecível.
+   p(g,'#4e3c34',34,14+by+swing,4,33);
+   p(g,'#c49660',35,17+by+swing,2,28);
+   p(g,'#4b6e83',31,5+by+swing,9,11);
+   p(g,'#72dbea',32,6+by+swing,7,9);
+   p(g,'#e5fff1',33,7+by+swing,3,4);
+   p(g,'#f4dc94',33,16+by+swing,6,3);
+   if(action==='attack'){
+    for(let i=0;i<3;i++)p(g,'#a9fbeb',24+i*4,5+((frame+i)%3)*3,2,2);
+   }
+  }else if(role==='arqueiro'){
+   // Mantém o arco existente, mas reforça a roupa VERDE exclusivamente aqui.
+   p(g,'#214532',13,8+by,14,5);
+   p(g,'#70a86b',15,8+by,9,2);
+   p(g,'#294e35',13,24+by,5,15);
+   p(g,'#8ac579',14,25+by,2,7);
+   p(g,'#c6a573',31,15+by,3,4);
+  }else{
+   // Peregrino é couro + lenço vermelho, sem escudo nem cajado.
+   p(g,'#653a35',12,20+by,18,7);
+   p(g,'#ba6050',13,20+by,15,4);
+   p(g,'#edb376',15,21+by,9,2);
+   p(g,'#a4774b',13,26+by,19,12);
+   p(g,'#e5c187',15,27+by,5,2);
+   p(g,'#714737',11,32+by,7,10);
+   p(g,'#cc9870',12,34+by,3,6);
+  }
+  // O perfil é diferente, mas usa sempre a mesma direção de movimento.
+  if(side&&role==='curandeiro')p(g,'#fff5e5',12,27+by,6,13);
+  if(side&&role==='guardiao')p(g,'#c2d4db',12,27+by,6,11);
+ }
  function creature(g,c,{species=0,boss=false,action='idle',frame=0,dir=2}={}){
   const spec=VARIANTS[Math.max(0,Math.min(VARIANTS.length-1,species|0))];
   const [name,accent,glint,motif]=spec;
@@ -336,5 +435,5 @@
   if(style==='guarda-aurora')p(g,'#fff1a8',7,28+bob,3,6);
   if(dir===3)g.restore();
  }
- return{hero,creature,npc,npcStyle,NPC_STYLES,NPC_FAMILY,VARIANTS};
+ return{hero,classIdentity,creature,npc,npcStyle,NPC_STYLES,NPC_FAMILY,VARIANTS};
 });
