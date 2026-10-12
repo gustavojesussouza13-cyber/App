@@ -132,5 +132,5 @@ test('o arquivo de paisagem executa também em navegador sem acesso ao Node',()=
  const scope={window:{},Math,Map,Number,Array,Object};
  vm.createContext(scope);
  assert.doesNotThrow(()=>vm.runInContext(source,scope));
- assert.equal(typeof scope.window.OsPeregrinosLandscape16.create,'function');
+ assert.equal(typeof scope.OsPeregrinosLandscape16.create,'function');
 });
