@@ -65,6 +65,27 @@ test('os nove biomas de superfície têm detalhes próprios',()=>{
  }
  assert.equal(new Set(samples).size,9);
 });
+test('monumentos de superfície são diferentes para cada bioma',()=>{
+ const hashes=[];
+ for(const biome of Object.keys(art.SURFACE)){
+  const g=canvas();
+  art.drawSurfaceProp(g,{x:260,y:220},biome,8);
+  assert.ok(g.result().count>=8);
+  hashes.push(g.result().hash);
+ }
+ assert.equal(new Set(hashes).size,9);
+});
+test('partículas atmosféricas de oito biomas/masmorras mantêm custo baixo',()=>{
+ const styles=[];
+ for(const [z,biome] of [[12,'dungeon'],[13,'dungeon'],[14,'dungeon'],[15,'dungeon'],
+  [0,'meadow'],[3,'desert'],[7,'swamp'],[10,'city']]){
+  const g=canvas();
+  art.drawAtmosphere(g,{z,biome,cameraX:350,cameraY:210,W:768,H:460,now:1222});
+  const d=g.result();assert.ok(d.count>=10&&d.count<40,'atmosfera deve ser leve');
+  styles.push(d.hash);
+ }
+ assert.ok(new Set(styles).size>=7);
+});
 test('as quatro classes possuem ornamentos e silhuetas diferentes',()=>{
  const hashes=[];
  for(const role of ['peregrino','guardiao','arqueiro','curandeiro']){
@@ -100,7 +121,7 @@ test('portais e impactos usam pixels nítidos e efeitos distintos',()=>{
 test('nova biblioteca carrega antes do atlas e não altera colisões no servidor',()=>{
  const html=read('mundo.html'),render=read('art16.js');
  assert.ok(html.indexOf('/pixel-detail.js')<html.indexOf('/art16.js'));
- for(const fn of ['drawDungeonTile','drawSurfaceTile','drawArchitecture','drawHero','drawMonster','drawPortal','drawCombat'])
+ for(const fn of ['drawDungeonTile','drawSurfaceTile','drawArchitecture','drawSurfaceProp','drawAtmosphere','drawHero','drawMonster','drawPortal','drawCombat'])
   assert.ok(render.includes('pixelDetail.'+fn+'('));
  assert.doesNotMatch(render,/portal_fechado.*kind:'prop'/);
  assert.doesNotMatch(fs.readFileSync(path.join(__dirname,'../world-terrain.js'),'utf8'),/pixel-detail/);
