@@ -4,6 +4,7 @@ const fs=require('node:fs');
 const path=require('node:path');
 const crypto=require('node:crypto');
 const {NPCS,chapters,byId,publicNpc,freshStory,normalizeStory,journal}=require('./story-data');
+const terrain=require('./world-terrain');
 
 const ZONES=[
  ['Vale das Oliveiras','pradaria'],['Floresta da Promessa','floresta'],['Riacho do Alvorecer','rio'],['Deserto das Provações','deserto'],
@@ -124,7 +125,8 @@ class World {
     const boss=i===count-1;const seed=hash32(zone*9217+i*5711+77);
     const speciesId=boss?(dungeon?31:(zone+11)%32):(zone*2+i*7+((seed>>4)%5))%SPECIES.length;
     const sp=SPECIES[speciesId],tier=1+Math.floor(zone/3),mult=boss?5.5:1+(zone%3)*.12;
-    const home={x:130+hash32(seed+1)%(ZONE_W-260),y:130+hash32(seed+2)%(ZONE_H-260)};
+    const chosen={x:130+hash32(seed+1)%(ZONE_W-260),y:130+hash32(seed+2)%(ZONE_H-260)};
+    const home=terrain.nearestWalkable(zone,chosen.x,chosen.y,ZONES);
     mons.push({id:`m-${zone}-${i}`,zone,name:(boss?'★ ':'')+sp[0],species:speciesId,boss,x:home.x,y:home.y,home,hp:Math.floor(sp[1]*mult*tier),maxHp:Math.floor(sp[1]*mult*tier),damage:Math.ceil(sp[2]*tier*(boss?2:1)),xp:Math.ceil(sp[3]*tier*(boss?4:1)),coins:Math.ceil(sp[4]*tier*(boss?5:1)),lastAttack:0,windupUntil:0,deadUntil:0,damageFrom:new Map(),wander:0,wanderGoal:null,aggroTarget:null,aggroUntil:0});
    }
    this.monsters.set(zone,mons);
@@ -172,6 +174,8 @@ class World {
   let raw=this.saved.characters[uid]||defaultSave();const s={...defaultSave(),...raw};
   if(!CLASSES[s.role])s.role='peregrino';if(!Number.isInteger(s.zone)||s.zone<0||s.zone>=ZONES.length)s.zone=0;
   s.level=clamp(Math.floor(Number(s.level)||1),1,100);s.hp=clamp(Math.floor(Number(s.hp)||hpMax(s)),1,hpMax(s));s.x=clamp(Number(s.x)||ZONE_W/2,28,ZONE_W-28);s.y=clamp(Number(s.y)||ZONE_H/2,28,ZONE_H-28);
+  const safeLocation=terrain.nearestWalkable(s.zone,s.x,s.y,ZONES);
+  if(s.x!==safeLocation.x||s.y!==safeLocation.y){s.x=safeLocation.x;s.y=safeLocation.y;this.dirty=true;}
   s.inventory={...defaultSave().inventory,...(s.inventory||{})};if(!Array.isArray(s.quests))s.quests=[];if(!Array.isArray(s.visited))s.visited=[0];if(!Array.isArray(s.achievements))s.achievements=[];if(!Array.isArray(s.bossRelics))s.bossRelics=[];s.bossRelics=s.bossRelics.filter(z=>Number.isInteger(z)&&z>=0&&z<ZONES.length);s.story=normalizeStory(s.story);
   const p={id:crypto.randomUUID(),uid,name,socket:c.socket,save:s,x:s.x,y:s.y,zone:s.zone,dir:2,lastMove:Date.now(),moveCredit:12,lastAttack:0,lastSpell:0,lastChat:0,lastUse:0,party:null,live:true};
   c.worldPlayer=p;c.socket._worldClient=c;this.players.set(p.id,p);
@@ -203,8 +207,10 @@ class World {
     const dd=Math.hypot(x-p.x,y-p.y);
     const allowed=Math.min(dd,credit);
     const f=dd>0?allowed/dd:0;
-    p.x=clamp(p.x+(x-p.x)*f,24,ZONE_W-24);p.y=clamp(p.y+(y-p.y)*f,24,ZONE_H-24);
-    p.moveCredit=Math.max(0,credit-allowed);
+    const next=terrain.step(p.zone,p.x,p.y,(x-p.x)*f,(y-p.y)*f,ZONES);
+    const travelled=Math.hypot(next.x-p.x,next.y-p.y);
+    p.x=next.x;p.y=next.y;
+    p.moveCredit=Math.max(0,credit-travelled);
     p.dir=Number.isInteger(d.dir)?clamp(d.dir,0,3):2;p.lastMove=now;
     p.save.x=p.x;p.save.y=p.y;this.dirty=true;break;
    }
@@ -300,7 +306,9 @@ class World {
   if(!legal){this.tell(p,'Siga para uma região vizinha ou para a entrada de uma masmorra.');return}
   if(b>=12&&(p.save.inventory.chave||0)<1){this.tell(p,'Você precisa de uma Chave da masmorra (comprável na loja).');return}
   if(b>=12){p.save.inventory.chave--;}
-  p.zone=b;p.save.zone=b;p.x=ZONE_W/2;p.y=ZONE_H/2;p.save.x=p.x;p.save.y=p.y;if(!p.save.visited.includes(b))p.save.visited.push(b);
+  p.zone=b;p.save.zone=b;
+  const arrival=terrain.nearestWalkable(b,ZONE_W/2,ZONE_H/2,ZONES);
+  p.x=arrival.x;p.y=arrival.y;p.save.x=p.x;p.save.y=p.y;if(!p.save.visited.includes(b))p.save.visited.push(b);
   if(p.save.visited.length>=8)this.unlockAchievement(p,'explorar-8');
   if(p.save.visited.length>=16)this.unlockAchievement(p,'explorar-16');
   this.dirty=true;
