@@ -43,7 +43,12 @@ function harness(withStudio){
   create(){
    return {
     normalizeRole:name=>classes.includes(name)?name:'peregrino',
-    drawHero:()=>true
+    // Simula o quadro renderizado pelo Studio sem os blocos de fallback.
+    drawHero:(g,p)=>{
+     g.fillStyle=colors[p.role]||colors.peregrino;
+     g.fillRect(p.x-8,p.y-45,16,26);
+     return true;
+    }
    };
   }
  };
@@ -94,7 +99,7 @@ for(const withStudio of [true,false]){
     const tag={guardiao:'Guardião',curandeiro:'Curandeiro',arqueiro:'Arqueiro',peregrino:'Peregrino'}[role];
     assert.ok(drawn.words.some(x=>x.includes(tag)),
      'a classe que vem do servidor deve aparecer junto ao nome: '+role);
-    assert.ok(drawn.rects.length>=22,role+' não recebeu arte final');
+    assert.ok(drawn.rects.length>=(withStudio?1:22),role+' não recebeu arte final');
    }
   }
  });
@@ -113,5 +118,5 @@ test('visitante usa classe confirmada no servidor; contas novas mantêm seleçã
 test('versão atualizada impede scripts antigos no cache mobile',()=>{
  const html=fs.readFileSync(path.join(ROOT,'mundo.html'),'utf8');
  for(const asset of ['sprite-studio.js','character-atelier16.js','art16.js','mmo.js'])
-  assert.ok(html.includes('/'+asset+'?v='+(asset==='mmo.js'?'chat-safe-v1':asset==='art16.js'?'holy-v1':'classes-v9')),asset+' ainda está cacheado');
+  assert.ok(html.includes('/'+asset+'?v='+(asset==='mmo.js'?'chat-safe-v1':asset==='character-atelier16.js'?'classes-v9':'pixel-art-v1')),asset+' ainda está cacheado');
 });
