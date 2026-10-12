@@ -52,6 +52,7 @@ function dispatch(msg){if(msg.type==='welcome'){
  }else if(msg.type==='monsterWindup'){if(msg.zone===session.zone){
    const m=session.monsters.get(msg.monster);
    if(m)fx.push({x:m.x,y:m.y,text:'⚠ GOLPE!',t:performance.now(),color:'#ffd06b'});
+ }
  }else if(msg.type==='hurt'){fx.push({x:session.x,y:session.y,text:'−'+msg.damage,t:performance.now(),color:'#ff8d83'});if(session.characters?.hp<=0)$('deathVeil').hidden=false;
  }else if(msg.type==='defeated'){if(msg.zone===session.zone){fx.push({x:session.monsters.get(msg.monster)?.x||session.x,y:session.monsters.get(msg.monster)?.y||session.y,text:msg.boss?'★ CHEFE!':'✦ VITÓRIA!',t:performance.now(),color:'#f5d587'});session.monsters.delete(msg.monster);monsterMotion.sync([...session.monsters.values()])}
  }else if(msg.type==='reward'){alert('+'+msg.xp+' EXP  ·  +'+msg.gold+' moedas'+(msg.boss?' ★ CHEFE':''));
@@ -132,7 +133,7 @@ $('registerForm').addEventListener('submit',async e=>{
 $('emailSettingsBtn').addEventListener('click',async()=>{
  const dialog=$('emailSettingsDialog');$('emailSettingsMessage').textContent='';
  $('emailSettingsStatus').textContent='Consultando o e-mail da conta…';
- try{const r=await fetch('/api/auth/session',{credentials:'same-origin',cache:'no-store'}),d=await r.json();
+ try{const d=await fetchAuthSession();
   $('emailSettingsStatus').textContent=d.account?.emailVerified?'E-mail confirmado: '+d.account.email:'Nenhum e-mail de recuperação confirmado.';
   if(d.account?.email)$('settingsEmail').value=d.account.email;
   if(!d.emailRecoveryAvailable)$('emailSettingsMessage').textContent='Envio ainda indisponível. O responsável precisa configurar o serviço de e-mail no servidor.';
@@ -150,41 +151,76 @@ $('logoutBtn').addEventListener('click',async()=>{
  try{await authPost('logout',{})}catch(err){authError(err.message);return}
  authed=false;accountMode=false;socket?.close();location.href='/mundo.html?auth=login';
 });
+// Um prazo máximo impede a tela de permanecer eternamente em "Consultando".
+async function fetchAuthSession(){
+ const controller=new AbortController();
+ const timeout=setTimeout(()=>controller.abort(),9000);
+ try{
+  const response=await fetch('/api/auth/session',{credentials:'same-origin',cache:'no-store',signal:controller.signal});
+  if(!response.ok)throw new Error('O serviço de contas não respondeu corretamente.');
+  return await response.json();
+ }finally{clearTimeout(timeout)}
+}
 async function setupLogin(){
  const params=new URLSearchParams(location.search),requested=params.get('auth');
  if(requested==='register')setAuthTab('register');else if(requested==='login'||requested==='account')setAuthTab('login');else setAuthTab('guest');
+ const label=$('authStorageStatus');
  try{
-  const r=await fetch('/api/auth/session',{credentials:'same-origin',cache:'no-store'});const result=await r.json();
+  const result=await fetchAuthSession();
   accountReady=Boolean(result.persistent);emailRecoveryAvailable=Boolean(result.emailRecoveryAvailable);
-  $('authStorageStatus').textContent=accountReady?(emailRecoveryAvailable?'Contas no banco externo · recuperação por e-mail disponível após verificação.':'Contas no banco externo · envio de e-mails em configuração; modo visitante disponível.'):'Cadastro temporariamente indisponível. Você ainda pode jogar como visitante.';
-  $('authStorageStatus').classList.toggle('warning',!accountReady);
+  label.textContent=accountReady?(emailRecoveryAvailable?'Contas no banco externo · recuperação por e-mail disponível após verificação.':'Contas no banco externo · envio de e-mails em configuração; modo visitante disponível.'):'Cadastro temporariamente indisponível. Você ainda pode jogar como visitante.';
+  label.classList.toggle('warning',!accountReady);
   if(!accountReady)return;
-  if(result.authenticated && requested!=='guest' && params.get('auto')!=='1'){
-   $('authStorageStatus').textContent='Conta identificada: '+result.account.username+'. Retomando seu personagem…';
+  if(result.authenticated && result.account && requested!=='guest' && params.get('auto')!=='1'){
+   label.textContent='Conta identificada: '+result.account.username+'. Retomando seu personagem…';
    playAccount(result.account);
   }
- }catch{$('authStorageStatus').textContent='Falha ao consultar contas. O modo visitante continua disponível.';$('authStorageStatus').classList.add('warning')}
+ }catch(err){
+  accountReady=false;
+  label.textContent='Não foi possível verificar as contas agora. O modo visitante continua disponível.';
+  label.classList.add('warning');
+ }
 }
-// Tela cheia nativa: apenas o mapa, sem ampliar/desfocar o canvas nem alterar o estado do jogador.
+// Tela cheia nativa quando disponível; fallback expandido para navegadores Android
+// que não permitem requestFullscreen em elementos arbitrários.
 const fullScreenContainer=$('canvasShell'), fullScreenBtn=$('fullscreenBtn');
+let expandedFullscreen=false;
+function isWorldFullscreen(){return expandedFullscreen||document.fullscreenElement===fullScreenContainer}
+function setExpandedFullscreen(active){
+ expandedFullscreen=Boolean(active);
+ fullScreenContainer.classList.toggle('is-expanded',expandedFullscreen);
+ document.body.classList.toggle('world-fullscreen',expandedFullscreen);
+ updateFullscreenButton();
+}
 function updateFullscreenButton(){
- const active=document.fullscreenElement===fullScreenContainer;
+ const active=isWorldFullscreen();
  fullScreenBtn.textContent=active?'⤢ Sair da tela cheia':'⛶ Tela cheia';
  fullScreenBtn.setAttribute('aria-pressed',String(active));
  fullScreenBtn.setAttribute('aria-label',active?'Sair da tela cheia do Mundo Aberto':'Ativar tela cheia do Mundo Aberto');
- fullScreenBtn.title=active?'Voltar ao modo janela (Esc)':'Expandir o jogo para a tela inteira';
+ fullScreenBtn.title=active?'Voltar ao modo janela':'Expandir o jogo para a tela inteira';
 }
 fullScreenBtn.addEventListener('click',async()=>{
+ if(expandedFullscreen){setExpandedFullscreen(false);return}
+ if(document.fullscreenElement===fullScreenContainer){
+  try{await document.exitFullscreen()}catch{setExpandedFullscreen(false)}
+  updateFullscreenButton();return;
+ }
  try{
-  if(document.fullscreenElement===fullScreenContainer)await document.exitFullscreen();
-  else if(document.fullscreenElement)await document.exitFullscreen();
-  else if(fullScreenContainer.requestFullscreen)await fullScreenContainer.requestFullscreen();
-  else throw new Error('fullscreen indisponível');
- }catch{alert('Tela cheia não disponível neste navegador. Use F11 no computador.');}
+  if(document.fullscreenElement&&typeof document.exitFullscreen==='function')await document.exitFullscreen();
+  if(typeof fullScreenContainer.requestFullscreen==='function'){
+   await fullScreenContainer.requestFullscreen();
+   updateFullscreenButton();return;
+  }
+ }catch(err){console.warn('Tela cheia nativa indisponível; usando modo expandido.')}
+ setExpandedFullscreen(true);
 });
 document.addEventListener('fullscreenchange',()=>{
+ if(document.fullscreenElement===fullScreenContainer&&expandedFullscreen)setExpandedFullscreen(false);
  updateFullscreenButton();
- if(document.fullscreenElement===fullScreenContainer&&$('welcomeOverlay').hidden)cvs.focus({preventScroll:true});
+ if(isWorldFullscreen()&&$('welcomeOverlay').hidden)cvs.focus({preventScroll:true});
+});
+document.addEventListener('keydown',e=>{
+ if(e.key==='Escape'&&expandedFullscreen)setExpandedFullscreen(false);
 });
 updateFullscreenButton();
 const keyAction=e=>{if(!$('npcDialogue').hidden){if(e.code==='Escape'){closeDialogue();e.preventDefault()}else if(e.code==='Enter'||e.code==='Space'){advanceDialogue();e.preventDefault()}return}if(e.target.matches('input,textarea,select'))return;
