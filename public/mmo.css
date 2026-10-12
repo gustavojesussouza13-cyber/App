@@ -190,3 +190,84 @@ body.world-fullscreen{overflow:hidden!important}
 .desktop-audio-toggle[aria-pressed="true"]{border-color:#ddb967;color:#ffe1a2}
 .desktop-audio-toggle:disabled{opacity:.4;cursor:not-allowed}
 @media (hover: none),(pointer: coarse){.desktop-audio-toggle{display:none!important}}
+
+
+/* Reestilização autoral desktop: pergaminho escuro, metal de Auren e cristais da Aurora.
+   Nenhuma mudança de controles ou layout específica do mobile. */
+@media (min-width:901px) and (hover:hover) and (pointer:fine){
+ :root{--gold:#edd19a;--border:#b39765;--panel:#10241f}
+ body{
+  background:radial-gradient(ellipse 75% 52% at 50% -10%,#265242 0%,transparent 80%),
+   radial-gradient(circle at 10% 70%,#1b3138,transparent 50%),
+   linear-gradient(125deg,#07120f 0%,#0d201b 50%,#07130f 100%);
+ }
+ .bar{
+  background:linear-gradient(180deg,#1b362c,#0c1c18);
+  border-bottom:2px solid #d7b8788c;
+  box-shadow:0 8px 34px #0008,inset 0 1px #fff1c325
+ }
+ .brand{color:#ffe3a5;text-shadow:0 1px 11px #e3bd7444;font-size:22px}
+ .world-title h1{
+  color:#ffe6af;letter-spacing:.03em;
+  text-shadow:0 3px 19px #e8a5523d
+ }
+ .canvas-shell{
+  border:6px solid #a48b61;outline:5px solid #1c3d35;
+  box-shadow:0 0 0 2px #d9b77d60,0 22px 64px #000c,inset 0 0 42px #08130e
+ }
+ .panel,.travel-panel{
+  position:relative;
+  background:linear-gradient(145deg,#1d3a30 0%,#0e2420 56%,#0b1b19 100%);
+  border:1px solid #b69a6d99;
+  box-shadow:0 10px 24px #0008,inset 0 1px #f4d59618,inset 0 0 28px #10110c44;
+ }
+ .panel::before,.travel-panel::before{
+  content:'✦';position:absolute;top:2px;right:9px;pointer-events:none;
+  color:#dbc58d55;font-size:16px
+ }
+ .panel-top{color:#f2d99e;border-bottom:1px solid #c5a46c38;padding-bottom:7px}
+ .character-more div,.tabcontent .entry{
+  background:linear-gradient(125deg,#102b24,#0b1d19);
+  border:1px solid #b9a16d70;
+  box-shadow:inset 0 1px #f9eab30d
+ }
+ .hotbar button,.travel-panel button,.tabcontent button,.atlas-heading button{
+  background:linear-gradient(180deg,#285345,#16392f);
+  border:1px solid #c1a36b80;border-radius:3px;
+  color:#ffe4b5;box-shadow:inset 0 1px #faeeb226,0 3px 7px #0005;
+  transition:transform .14s,box-shadow .14s,background .14s
+ }
+ .hotbar button:hover,.travel-panel button:hover,.tabcontent button:hover,.atlas-heading button:hover{
+  background:linear-gradient(180deg,#3e6c55,#26503f);
+  transform:translateY(-1px);box-shadow:0 3px 12px #e0c17722
+ }
+ .hotbar button:active,.travel-panel button:active,.tabcontent button:active{transform:translateY(0)}
+ .tab.active{background:linear-gradient(#4d684d,#203f34);border-color:#d3b278;color:#fff0c5}
+ .progress{height:13px;box-shadow:inset 0 1px 6px #000a}
+ .progress>div{box-shadow:inset 0 2px #fff2d51a}
+ .world-title .tag{color:#bce4cf;letter-spacing:.23em}
+}
+.world-atlas-dialog{
+ width:min(980px,94vw);max-height:86vh;overflow-y:auto;
+ border:2px solid #cbb17a;border-radius:8px;
+ background:linear-gradient(155deg,#19392f,#0d221d 62%,#11231f);
+ color:#f4e1b6;box-shadow:0 32px 100px #000d;
+ padding:clamp(14px,3vw,28px);
+}
+.world-atlas-dialog::backdrop{background:#020a09d9;backdrop-filter:blur(4px)}
+.atlas-heading{display:flex;align-items:center;justify-content:space-between;gap:15px}
+.atlas-heading h2{font:normal clamp(20px,2.5vw,33px) Georgia,serif;margin:0;color:#ffde9c}
+.atlas-heading button{padding:8px 13px;white-space:nowrap}
+.world-atlas-dialog p{font-size:13px;color:#c0d8c8;line-height:1.6}
+.atlas-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:9px}
+.atlas-entry{
+ display:flex;flex-direction:column;gap:4px;
+ padding:12px 13px;min-height:68px;border:1px solid #517260;
+ background:linear-gradient(125deg,#10251f,#162d29);
+ box-shadow:inset 0 1px #ffffff08
+}
+.atlas-entry b{font:600 13px/1.35 Georgia,serif;color:#c9d4c4}
+.atlas-entry small{font:700 10px/1.35 system-ui;letter-spacing:.05em;color:#97b7a4}
+.atlas-entry.explored{border-color:#b79e6d;background:linear-gradient(135deg,#223d30,#162a24)}
+.atlas-entry.explored b{color:#ffdfa0}
+.atlas-entry.current{outline:2px solid #eed08b;box-shadow:0 0 16px #e8c48644}
