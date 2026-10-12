@@ -316,6 +316,27 @@
  }
  function drawCombat(g,shot){
   const skill=!!shot.skill;
+  if(shot.kind==='magic'||shot.kind==='magic-impact'){
+   // Clusters místicos independentes do desenho de flechas de madeira.
+   if(shot.kind==='magic-impact'){
+    const t=Math.max(0,Math.min(1,(shot.impactAge||0)/220));
+    const spread=skill?22+Math.round(t*18):16+Math.round(t*14);
+    for(let i=0;i<8;i++){
+     const a=i*Math.PI/4;
+     rect(g,i%2?'#fff5c6':'#69d8e3',
+      Math.round(Math.cos(a)*spread)-2,Math.round(Math.sin(a)*spread)-2,4,4);
+    }
+    rect(g,'#fffbd6',-3,-3,7,7);
+   }else{
+    // Pequenos símbolos de misericórdia orbitando o projétil.
+    const wave=Math.round(Math.sin((shot.progress||0)*Math.PI*6)*3);
+    rect(g,'#d3f6e9',-9,-12+wave,3,6);
+    rect(g,'#ffe5a3',-11,-9+wave,7,3);
+    rect(g,'#81cfe7',-8,11-wave,3,5);
+    rect(g,skill?'#fff9ce':'#c5eae4',5,-14,5,3);
+   }
+   return;
+  }
   if(shot.kind==='impact'){
    const t=Math.max(0,Math.min(1,(shot.impactAge||0)/220)),spread=9+Math.round(t*19);
    for(let i=0;i<10;i++){
