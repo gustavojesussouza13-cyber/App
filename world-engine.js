@@ -104,7 +104,7 @@ class World {
     const speciesId=boss?(dungeon?31:(zone+11)%32):(zone*2+i*7+((seed>>4)%5))%SPECIES.length;
     const sp=SPECIES[speciesId],tier=1+Math.floor(zone/3),mult=boss?5.5:1+(zone%3)*.12;
     const home={x:130+hash32(seed+1)%(ZONE_W-260),y:130+hash32(seed+2)%(ZONE_H-260)};
-    mons.push({id:`m-${zone}-${i}`,zone,name:(boss?'★ ':'')+sp[0],species:speciesId,boss,x:home.x,y:home.y,home,hp:Math.floor(sp[1]*mult*tier),maxHp:Math.floor(sp[1]*mult*tier),damage:Math.ceil(sp[2]*tier*(boss?2:1)),xp:Math.ceil(sp[3]*tier*(boss?4:1)),coins:Math.ceil(sp[4]*tier*(boss?5:1)),lastAttack:0,deadUntil:0,damageFrom:new Map(),wander:0,wanderGoal:null,aggroTarget:null,aggroUntil:0});
+    mons.push({id:`m-${zone}-${i}`,zone,name:(boss?'★ ':'')+sp[0],species:speciesId,boss,x:home.x,y:home.y,home,hp:Math.floor(sp[1]*mult*tier),maxHp:Math.floor(sp[1]*mult*tier),damage:Math.ceil(sp[2]*tier*(boss?2:1)),xp:Math.ceil(sp[3]*tier*(boss?4:1)),coins:Math.ceil(sp[4]*tier*(boss?5:1)),lastAttack:0,windupUntil:0,deadUntil:0,damageFrom:new Map(),wander:0,wanderGoal:null,aggroTarget:null,aggroUntil:0});
    }
    this.monsters.set(zone,mons);
   }}
@@ -255,7 +255,7 @@ class World {
   // Um novo golpe renova a reação; outros peregrinos próximos ficam em paz.
   if(m.hp>0){m.aggroTarget=p.id;m.aggroUntil=now+16000}
   this.broadcast({type:'hit',monster:m.id,zone:m.zone,damage,remaining:m.hp,by:p.name,skill},q=>q.zone===p.zone&&dist(q,m)<780);
-  if(m.hp===0){m.aggroTarget=null;m.aggroUntil=0;m.deadUntil=now+(m.boss?45000:14000);let recipients=new Map();for(const [pid] of m.damageFrom){const x=this.players.get(pid);if(x&&x.zone===p.zone&&dist(x,m)<690)recipients.set(x.id,x)}
+  if(m.hp===0){m.aggroTarget=null;m.aggroUntil=0;m.windupUntil=0;m.deadUntil=now+(m.boss?45000:14000);let recipients=new Map();for(const [pid] of m.damageFrom){const x=this.players.get(pid);if(x&&x.zone===p.zone&&dist(x,m)<690)recipients.set(x.id,x)}
    for(const x of [...recipients.values()])if(x.party){for(const ally of this.players.values())if(ally.party===x.party&&ally.zone===x.zone&&dist(ally,m)<500)recipients.set(ally.id,ally)}
    for(const x of recipients.values())this.award(x,Math.round(m.xp/Math.max(1,recipients.size)*1.3),Math.ceil(m.coins/Math.max(1,recipients.size)),m.boss,m.zone);
    this.broadcast({type:'defeated',monster:m.id,zone:m.zone,by:p.name,boss:m.boss},q=>q.zone===p.zone);
@@ -315,13 +315,13 @@ class World {
   const activeZones=new Set([...this.players.values()].map(p=>p.zone));
   for(const zone of activeZones){for(const m of this.monsters.get(zone)||[]){
    if(m.hp<=0){
-    if(now>=m.deadUntil){m.hp=m.maxHp;m.x=m.home.x;m.y=m.home.y;m.damageFrom.clear();m.aggroTarget=null;m.aggroUntil=0;m.lastAttack=0;m.wanderGoal=null;m.wander=now+1500}
+    if(now>=m.deadUntil){m.hp=m.maxHp;m.x=m.home.x;m.y=m.home.y;m.damageFrom.clear();m.aggroTarget=null;m.aggroUntil=0;m.lastAttack=0;m.windupUntil=0;m.wanderGoal=null;m.wander=now+1500}
     else continue;
    }
    const target=m.aggroTarget?this.players.get(m.aggroTarget):null;
    const hostile=!!(target&&target.zone===zone&&now<m.aggroUntil&&dist(target,m.home)<400&&dist(m,m.home)<440);
    if(!hostile){
-    m.aggroTarget=null;m.aggroUntil=0;
+    m.aggroTarget=null;m.aggroUntil=0;m.windupUntil=0;
     // Caminhada tranquila em um pequeno raio do local de origem, sem perseguir quem passa.
     const homeDist=dist(m,m.home);
     if(homeDist>90){const step=Math.min(40*dt,homeDist);m.x+=(m.home.x-m.x)/homeDist*step;m.y+=(m.home.y-m.y)/homeDist*step}
@@ -354,8 +354,15 @@ class World {
    m.wanderGoal=null; // Inimigo provocado cancela o passeio; depois volta a andar normalmente.
    const d=dist(target,m);
    if(d>42){const step=Math.min(58*dt,d);m.x+=(target.x-m.x)/d*step;m.y+=(target.y-m.y)/d*step}
-   if(d<53&&now-m.lastAttack>2200){
-    m.lastAttack=now;
+   // O ataque precisa ser anunciado e permanecer ao alcance até o golpe.
+   if(d>=53){m.windupUntil=0;continue}
+   if(!m.windupUntil&&now-m.lastAttack>2200){
+    m.windupUntil=now+650;
+    this.send(target.socket,{type:'monsterWindup',monster:m.id,zone:m.zone,duration:650});
+    continue;
+   }
+   if(m.windupUntil&&now>=m.windupUntil){
+    m.windupUntil=0;m.lastAttack=now;
     const defense=CLASSES[target.save.role].defense+(target.save.inventory.amuleto?4:0);
     const damage=Math.max(1,m.damage-defense);target.save.hp-=damage;
     this.send(target.socket,{type:'hurt',damage,monster:m.name});
