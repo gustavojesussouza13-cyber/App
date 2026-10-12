@@ -154,7 +154,78 @@ function create({ctx,W,H}){
   }
   g.restore();
  }
+ // Feitiços originais do Curandeiro: faíscas em blocos de pixels, núcleo
+ // de luz e rastro direcional. O brilho não usa filtros nem desfoque.
+ function drawHolyBolt(g,shot){
+  g.save();g.translate(Math.round(shot.x),Math.round(shot.y));
+  const skill=!!shot.skill;
+  if(shot.kind==='magic-impact'){
+   const t=Math.max(0,Math.min(1,shot.impactAge/220));
+   const radius=skill?Math.round(15+t*22):Math.round(11+t*17);
+   g.globalAlpha=Math.max(0,1-t);
+   // Oito pontas em cruz e diagonais: impacto circular feito de píxeis.
+   for(let i=0;i<8;i++){
+    const angle=i*Math.PI/4;
+    const x=Math.round(Math.cos(angle)*radius);
+    const y=Math.round(Math.sin(angle)*radius);
+    g.fillStyle=i%2?'#6acee5':'#f9eab2';
+    g.fillRect(x-3,y-3,7,7);
+    g.fillStyle='#eafff3';g.fillRect(x-1,y-1,3,3);
+    const mid=Math.round(radius*.56);
+    g.fillStyle='#49a9c3';
+    g.fillRect(Math.round(Math.cos(angle)*mid)-2,
+     Math.round(Math.sin(angle)*mid)-2,5,5);
+   }
+   // Duas cruzes radiantes com centro dourado.
+   const inner=skill?18:13;
+   g.fillStyle='#4b9fbe';g.fillRect(-inner, -2,inner*2,5);
+   g.fillRect(-2,-inner,5,inner*2);
+   g.fillStyle='#fce6a7';g.fillRect(-7,-7,15,15);
+   g.fillStyle='#fafff0';g.fillRect(-3,-3,7,7);
+   if(skill){
+    g.fillStyle='#e5fef4';
+    for(const [x,y] of [[-18,-18],[18,-18],[-18,18],[18,18]]){
+     g.fillRect(x,y,5,5);
+    }
+   }
+  }else{
+   g.rotate(shot.angle);
+   const pulse=Math.round(Math.sin((shot.progress||0)*Math.PI*8)*2);
+   // Onda traseira e partículas soltas conforme atravessa o cenário.
+   g.fillStyle='#267e9e';
+   g.fillRect(-30,-2,12,5);
+   g.fillStyle='#74cbd3';
+   g.fillRect(-24,-1,17,3);
+   g.fillStyle='#e7eeb7';
+   g.fillRect(-14,-1,13,3);
+   for(let i=0;i<(skill?6:4);i++){
+    const x=-30+i*8,y=(i%2?1:-1)*(4+(i*3)%7)+pulse;
+    g.fillStyle=i%2?'#f7e3a0':'#84eee3';
+    g.fillRect(x,y,3+(i%2),3+(i%2));
+   }
+   // Contorno turquesa do orbe, centro marfim e filigrana sagrada.
+   const size=skill?19:15,half=Math.floor(size/2);
+   g.fillStyle='#225977';
+   g.fillRect(-half-2,-half+2,size+4,size-4);
+   g.fillRect(-half+2,-half-2,size-4,size+4);
+   g.fillStyle='#58c3d5';g.fillRect(-half+1,-half+1,size-2,size-2);
+   g.fillStyle='#c1f3e3';g.fillRect(-half+3,-half+2,size-7,size-6);
+   g.fillStyle='#fff5c1';g.fillRect(-3,-3,7,7);
+   g.fillStyle='#fffef0';g.fillRect(-1,-1,3,3);
+   g.fillStyle='#f5df9b';
+   g.fillRect(half+1,-2,skill?10:7,5);
+   g.fillStyle='#d1fbf1';g.fillRect(half+6,-1,4,3);
+   if(skill){
+    g.fillStyle='#fff6c8';
+    g.fillRect(-2,-half-9,5,8);g.fillRect(-2,half+1,5,8);
+    g.fillRect(-half-10,-2,8,5);
+   }
+  }
+  if(typeof pixelDetail!=='undefined'&&pixelDetail)pixelDetail.drawCombat(g,shot);
+  g.restore();
+ }
  function drawProjectile(g,shot){
+  if(shot.kind==='magic'||shot.kind==='magic-impact'){drawHolyBolt(g,shot);return}
   g.save();g.translate(Math.round(shot.x),Math.round(shot.y));
   if(shot.kind==='impact'){
    const t=Math.max(0,Math.min(1,shot.impactAge/220));
