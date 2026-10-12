@@ -16,6 +16,7 @@ function create({ctx,W,H}){
  const shade16=window.OsPeregrinosShade16;
  const landscape=window.OsPeregrinosLandscape16?.create({documentRef:document});
  const spriteStudio=window.OsPeregrinosSpriteStudio?.create({documentRef:document});
+ const desktopSprites=window.OsPeregrinosDesktopSprites16?.create({windowRef:window});
  let cache=null,objects=[],artReady=false;
  atlas.addEventListener('load',()=>{artReady=true;cache=null});
  atlas.addEventListener('error',()=>{artReady=false});
@@ -387,11 +388,13 @@ function create({ctx,W,H}){
   const key=heroSheets[p.role]||'gustavo_andar',w=53,h=65;
   drawShadow(g,p.x,p.y,w);
   const dir=Number.isInteger(p.dir)?p.dir:2;
-  const animated=Boolean(spriteStudio?.drawHero(g,p,now,{
-   moving:moved,attacking,hurt:pose?.action==='hurt',
+  const state={moving:moved,attacking,hurt:pose?.action==='hurt',
    elapsed:pose?Math.max(0,now-pose.at):0,
-   seed:local?0:(p.name?.length||0)*107
-  }));
+   seed:local?0:(p.name?.length||0)*107};
+  // No desktop usa QUADROS DESENHADOS de um atlas real, não bonecos
+  // procedurais. Em touch ou durante download, usa o Studio sem alterações.
+  const detailed=Boolean(desktopSprites?.drawHero(g,p,now,state));
+  const animated=detailed||Boolean(spriteStudio?.drawHero(g,p,now,state));
   if(!animated){
    frameSprite(g,key,dir,moved?Math.floor(now/155)%4:0,p.x,p.y,w,h);
    if(pixelDetail)pixelDetail.drawHero(g,p,now);
@@ -400,25 +403,28 @@ function create({ctx,W,H}){
   // O sprite detalhado do Studio já contém a identidade da classe.
   // Uma camada de blocos opacos aqui escondia olhos, roupas e sombreamento.
   // A proteção antiga permanece APENAS quando o Studio não está disponível.
-  const finalRole=animated? (spriteStudio.normalizeRole(p.role)):
-   drawClassIdentity(g,p,dir,now,moved);
+  const finalRole=detailed?desktopSprites.normalizeRole(p.role):
+   animated?spriteStudio.normalizeRole(p.role):drawClassIdentity(g,p,dir,now,moved);
   g.save();g.textAlign='center';g.font=(local?'bold 15px':'bold 13px')+' monospace';
   g.shadowColor='#000b';g.shadowBlur=5;g.lineWidth=3;g.strokeStyle='#0e271e';
   const roleName={guardiao:'Guardião',curandeiro:'Curandeiro',arqueiro:'Arqueiro',peregrino:'Peregrino'}[finalRole];
   const label=(p.name||'Peregrino')+(local?' · '+roleName:' · Lv.'+(p.level||1));
-  g.strokeText(label,p.x,p.y-h-5);g.fillStyle=local?'#ffe4a3':'#f1edd4';g.fillText(label,p.x,p.y-h-5);g.restore();
+  const labelY=p.y-(detailed?80:h)-5;
+  g.strokeText(label,p.x,labelY);g.fillStyle=local?'#ffe4a3':'#f1edd4';g.fillText(label,p.x,labelY);g.restore();
  }
  function npcActor(g,n,active,finished,now){
   const x=n.x,y=n.y;drawShadow(g,x,y,42);
-  if(!spriteStudio?.drawNpc(g,n,now))
+  const detailed=Boolean(desktopSprites?.drawNpc(g,n,now));
+  if(!detailed&&!spriteStudio?.drawNpc(g,n,now))
    frameSprite(g,heroSheets[n.role]||'viajante_andar',2,Math.floor(now/500+(n.index||0))%2,x,y,47,59);
   g.save();g.textAlign='center';g.shadowColor='#000e';g.shadowBlur=5;
   const primary=n.kind==='chapter';
   g.font='bold 12px monospace';g.lineWidth=3;g.strokeStyle='#0c2118';
-  g.strokeText(n.name,x,y-65);g.fillStyle=primary?'#ffe6a7':'#ccebd7';g.fillText(n.name,x,y-65);
+  const nameY=y-(detailed?82:65);
+  g.strokeText(n.name,x,nameY);g.fillStyle=primary?'#ffe6a7':'#ccebd7';g.fillText(n.name,x,nameY);
   const indicator=primary?(finished?'✓':active?'!':'◆'):'✦';
   g.fillStyle=active?'#fff3ae':finished?'#a3d8a0':'#aee3ce';
-  g.font='bold 23px Georgia,serif';g.strokeText(indicator,x,y-86);g.fillText(indicator,x,y-86);
+  g.font='bold 23px Georgia,serif';g.strokeText(indicator,x,nameY-21);g.fillText(indicator,x,nameY-21);
   g.restore();
  }
  function monster(g,m,selected,now,pose=null){
@@ -429,10 +435,10 @@ function create({ctx,W,H}){
   const acting=pose?.action==='attack'&&now-pose.at<470;
   const hurt=pose?.action==='hurt'&&now-pose.at<310;
   const dead=pose?.action==='death';
-  const animated=Boolean(spriteStudio?.drawMonster(g,{...m,x,y},now,{
-   type:ty,moving:m.moving===true,attacking:acting,hurt,dead,
-   elapsed:pose?Math.max(0,now-pose.at):0
-  }));
+  const state={type:ty,moving:m.moving===true,attacking:acting,hurt,dead,
+   elapsed:pose?Math.max(0,now-pose.at):0};
+  const detailedBoss=Boolean(desktopSprites?.drawMonster(g,{...m,x,y},now,state));
+  const animated=detailedBoss||Boolean(spriteStudio?.drawMonster(g,{...m,x,y},now,state));
   if(!animated){
    if(ty==='cavaleiro'||ty==='sentinela'||ty==='chefe'){
     const key=ty==='chefe'?'chefe_andar':ty==='sentinela'?'sentinela_andar':'cavaleiro_andar';
@@ -445,10 +451,12 @@ function create({ctx,W,H}){
    if(pixelDetail)pixelDetail.drawMonster(g,m,now);
   }
   if(dead)return;
-   const width=m.boss?61:45;g.fillStyle='#231d1b';g.fillRect(x-width/2,y-(m.boss?90:56),width,7);
-  g.fillStyle=m.boss?'#f6b66d':'#b1d976';g.fillRect(x-width/2+1,y-(m.boss?89:55),Math.max(0,(width-2)*m.hp/Math.max(1,m.maxHp)),5);
-  if(selected){g.strokeStyle='#ffe29d';g.lineWidth=2;g.strokeRect(x-width/2-6,y-(m.boss?91:57),width+12,m.boss?101:70)}
-  if(selected||m.boss){g.save();g.fillStyle='#ffefc8';g.font='bold 12px monospace';g.textAlign='center';g.shadowColor='#000';g.shadowBlur=6;g.fillText(m.name,x,y-(m.boss?99:64));g.restore()}
+  const top=detailedBoss?121:m.boss?90:56;
+  const width=detailedBoss?90:m.boss?61:45;
+  g.fillStyle='#231d1b';g.fillRect(x-width/2,y-top,width,7);
+  g.fillStyle=m.boss?'#f6b66d':'#b1d976';g.fillRect(x-width/2+1,y-top+1,Math.max(0,(width-2)*m.hp/Math.max(1,m.maxHp)),5);
+  if(selected){g.strokeStyle='#ffe29d';g.lineWidth=2;g.strokeRect(x-width/2-6,y-top-1,width+12,detailedBoss?132:m.boss?101:70)}
+  if(selected||m.boss){g.save();g.fillStyle='#ffefc8';g.font='bold 12px monospace';g.textAlign='center';g.shadowColor='#000';g.shadowBlur=6;g.fillText(m.name,x,y-top-9);g.restore()}
  }
  function prop(g,o){
   const size=o.w;drawShadow(g,o.x,o.y,size*.63);
