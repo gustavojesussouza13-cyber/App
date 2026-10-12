@@ -217,7 +217,7 @@ function create({ctx,W,H}){
    actors.push({depth:n.y,paint:()=>npcActor(ctx,n,n.index===storyStage,n.index!==null&&n.index<storyStage,now)});
   }
   for(const m of monsters){if(m.x<cameraX-90||m.x>cameraX+W+90||m.y<cameraY-90||m.y>cameraY+H+90)continue;actors.push({depth:m.y,paint:()=>monster(ctx,m,target===m.id,now)})}
-  for(const p of players){if(p.x<cameraX-75||p.x>cameraX+W+75||p.y<cameraY-95||p.y>cameraY+H+75)continue;actors.push({depth:p.y,paint:()=>character(ctx,p,false,now,true)})}
+  for(const p of players){if(p.x<cameraX-75||p.x>cameraX+W+75||p.y<cameraY-95||p.y>cameraY+H+75)continue;actors.push({depth:p.y,paint:()=>character(ctx,p,false,now,p.moving!==false)})}
   actors.push({depth:y,paint:()=>character(ctx,{name,role,x,y,dir},true,now,moving,role==='arqueiro'&&now-lastAction<280)});
   actors.sort((a,b)=>a.depth-b.depth);
   for(const a of actors)a.paint();

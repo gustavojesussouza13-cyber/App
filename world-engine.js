@@ -170,7 +170,16 @@ class World {
    case 'trade':this.trade(p,d);break;
    case 'talk':this.talk(p,d.npc);break;
    case 'storyChoice':this.storyChoice(p,d.npc,d.choice);break;
-   case 'ping':this.send(p.socket,{type:'pong',now});break;
+   case 'ping':{
+    // Eco leve para medir o RTT real pelo navegador; não envolve salvamentos.
+    // Limite de frequência evita abuso do endpoint de ping.
+    if(now-(p.lastLatencyPing||0)<1500)break;
+    const id=d.id;
+    if(id!==undefined&&(!Number.isSafeInteger(id)||id<1||id>2147483647))break;
+    p.lastLatencyPing=now;
+    this.send(p.socket,id===undefined?{type:'pong',now}:{type:'pong',id});
+    break;
+   }
   }
  }
  talk(p,id){

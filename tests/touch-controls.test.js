@@ -94,7 +94,8 @@ test('tick multiplayer aceita eixo de toque e mantém velocidade máxima origina
   touchDevice:true,movingAt:0,clamp:(v,a,b)=>Math.max(a,Math.min(b,v)),
   ZONE_W:1536,ZONE_H:1024,
   send:(type,data)=>sendEvents.push({type,data}),
-  canvasDraw:()=>{},requestAnimationFrame:()=>{}
+  canvasDraw:()=>{},requestAnimationFrame:()=>{},
+  setInterval:()=>0,updatePingIndicator:()=>{}
  };
  vm.createContext(ctx);
  vm.runInContext(js.slice(start,end),ctx);

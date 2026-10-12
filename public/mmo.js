@@ -7,7 +7,21 @@ const W=cvs.width,H=cvs.height,ZONE_W=1536,ZONE_H=1024;
 const session={id:'',name:'',connected:false,characters:null,online:0,zones:[],shop:{},quests:[],npcs:[],story:null,monsters:new Map(),players:new Map(),zone:0,x:768,y:512,dir:2,target:null,partyInvite:null,guildInvite:null,tradeOffer:null,role:'peregrino',cameraX:0,cameraY:0,formClass:'peregrino'};
 const keys=new Set(),moves={up:['KeyW','ArrowUp'],down:['KeyS','ArrowDown'],left:['KeyA','ArrowLeft'],right:['KeyD','ArrowRight']};
 const monsterMotion=window.OsPeregrinosMonsterMotion.create();
+const playerMotion=window.OsPeregrinosPlayerMotion.create();
 const combatFx=window.OsPeregrinosCombatFx.create();
+const latency=window.OsPeregrinosLatency.create();
+const pingIndicator=$('pingIndicator');
+function updatePingIndicator(){
+ const {ms,quality}=latency.state();
+ pingIndicator.dataset.quality=quality;
+ pingIndicator.textContent=quality==='offline'?'Ping: offline':
+  quality==='checking'?'Ping: medindo…':
+  quality==='timeout'?'Ping: sem resposta':'Ping: '+ms+' ms';
+ pingIndicator.title=quality==='offline'?'Sem conexão multiplayer':
+  quality==='checking'?'Medindo tempo de ida e volta ao servidor':
+  quality==='timeout'?'Sem resposta do servidor ao teste de latência':
+  'Tempo de ida e volta (RTT) entre navegador e servidor: '+ms+' ms';
+}
 // Controles de toque coexistem com o teclado sem alterar a velocidade validada pelo servidor.
 const touchDevice=Boolean(window.matchMedia?.('(pointer: coarse)').matches||navigator.maxTouchPoints>0);
 const touchUI=$('touchControls');
@@ -30,7 +44,7 @@ function send(type,data={}){if(socket&&socket.readyState===WebSocket.OPEN)socket
 function setOnline(state,msg){
  session.connected=state;$('statusDot').classList.toggle('on',state);$('status').textContent=msg;
  touchUI.hidden=!state||!touchDevice;
- if(!state)joystick.release();
+ if(!state){joystick.release();latency.reset();updatePingIndicator()}
 }
 function character(c){session.characters=c;session.zone=c.zone;session.role=c.role;session.x=c.x;session.y=c.y;
  $('charName').textContent=c.name||session.name;$('playerClass').textContent={peregrino:'Peregrino',guardiao:'Guardião',arqueiro:'Arqueiro',curandeiro:'Curandeiro'}[c.role]||c.role;
@@ -39,7 +53,9 @@ function character(c){session.characters=c;session.zone=c.zone;session.role=c.ro
  session.story=c.story||null;$('kills').textContent=c.kills;$('visited').textContent=c.visited.length+'/16';$('zoneTitle').textContent=session.zones[c.zone]?.name||('Região '+c.zone);drawTravel();drawTab();
 }
 function displayOnline(n){session.online=n;$('playerCount').textContent=n+'/10';setOnline(true,'✦ '+n+'/10 peregrinos online')}
-function dispatch(msg){if(msg.type==='welcome'){
+function dispatch(msg){
+ if(msg.type==='pong'){if(latency.receive(msg,performance.now()))updatePingIndicator();return}
+ if(msg.type==='welcome'){
  session.id=msg.self.id;session.name=msg.self.name;session.zones=msg.zones;session.shop=msg.shop;session.quests=msg.quests;session.npcs=Array.isArray(msg.npcs)?msg.npcs:[];
  $('welcomeOverlay').hidden=true;setOnline(true,'Conectado');displayOnline(msg.online);character(msg.self);
  if(!authed){authed=true;if(msg.self.level===1&&msg.self.kills===0&&msg.self.role==='peregrino'&&session.formClass!=='peregrino')send('class',{role:session.formClass});say('','Bem-vindo, '+session.name+'! Converse com os personagens usando E ou clicando neles. A história está na aba Crônicas.','sys');if(session.story?.stage===0)alert('✦ Fale com Lia, a Acendedora! Aproxime-se e pressione E.')}
@@ -49,8 +65,9 @@ function dispatch(msg){if(msg.type==='welcome'){
   session.zone=msg.zone;displayOnline(msg.online);
   const now=new Map();for(const m of msg.monsters||[])now.set(m.id,m);
   monsterMotion.sync([...now.values()]);session.monsters=now;
-  const people=new Map();for(const p of msg.players||[])people.set(p.id,p);session.players=people;
- }else if(msg.type==='travel'){session.zone=msg.zone;session.x=msg.x;session.y=msg.y;session.target=null;session.monsters.clear();monsterMotion.clear();combatFx.clear();$('zoneTitle').textContent=msg.name;alert('✦ '+msg.name);drawTravel();
+  const people=new Map();for(const p of msg.players||[])people.set(p.id,p);
+  playerMotion.sync([...people.values()],performance.now());session.players=people;
+ }else if(msg.type==='travel'){session.zone=msg.zone;session.x=msg.x;session.y=msg.y;session.target=null;session.monsters.clear();monsterMotion.clear();playerMotion.clear();combatFx.clear();$('zoneTitle').textContent=msg.name;alert('✦ '+msg.name);drawTravel();
  }else if(msg.type==='hit'){if(msg.zone===session.zone){
   const m=session.monsters.get(msg.monster);if(m)m.hp=msg.remaining;
   // O acerto é autoritativo: não dispara flechas por cliques rejeitados pelo servidor.
@@ -94,7 +111,7 @@ function connect(){
   sock.onclose=()=>{
    if(socket!==sock)return;
    socket=null;closeDialogue();setOnline(false,'Desconectado');
-   session.monsters.clear();monsterMotion.clear();combatFx.clear();session.players.clear();
+   session.monsters.clear();monsterMotion.clear();playerMotion.clear();combatFx.clear();session.players.clear();
    if(!authed)return;
    clearTimeout(reconnectTimer);reconnectTimer=setTimeout(connect,reconnectMs);
    reconnectMs=Math.min(14000,reconnectMs*1.7);
@@ -385,7 +402,7 @@ function canvasDraw(now,dt){
   fx=fx.filter(f=>now-f.t<1100);
   classicRenderer.render({zone:session.zone,zones:session.zones,x:session.x,y:session.y,
     name:session.name||'PEREGRINO',role:session.role,dir:session.dir,
-    monsters:monsterMotion.draw([...session.monsters.values()],dt),players:[...session.players.values()],projectiles,
+    monsters:monsterMotion.draw([...session.monsters.values()],dt),players:playerMotion.draw([...session.players.values()],now),projectiles,
     npcs:session.npcs.filter(n=>n.zone===session.zone),storyStage:session.story?.stage||0,
     cameraX:session.cameraX,cameraY:session.cameraY,target:session.target,now,fx,lastAction,
     moving:Math.hypot(session.x-lastFrameX,session.y-lastFrameY)>0.06});
@@ -399,6 +416,12 @@ let lastFrame=0;function tick(t){const dt=Math.min(.065,(t-lastFrame)/1000||0);l
   if(t-movingAt>85){send('move',{x:Math.round(session.x),y:Math.round(session.y),dir:session.dir});movingAt=t}
  }
  canvasDraw(t,dt);requestAnimationFrame(tick)}requestAnimationFrame(tick);
+// RTT real medido no canal WebSocket do jogo a cada 5 segundos.
+setInterval(()=>{
+ if(session.connected)latency.poll(performance.now(),details=>send('ping',details));
+ updatePingIndicator();
+},1000);
+updatePingIndicator();
 window.addEventListener('pagehide',()=>{joystick.release();try{socket?.close()}catch{}});
 if(new URLSearchParams(location.search).get('auto')==='1'&&$('name').value.trim()&&progressToken){
  session.name=$('name').value.trim().normalize('NFC');session.formClass=$('role').value;connect();
