@@ -65,7 +65,20 @@ function dispatch(msg){
  if(msg.type==='welcome'){
  session.id=msg.self.id;session.name=msg.self.name;session.zones=msg.zones;session.portals=msg.portals||[];session.shop=msg.shop;session.relics=msg.relics||{};session.quests=msg.quests;session.achievements=msg.achievements||{};session.npcs=Array.isArray(msg.npcs)?msg.npcs:[];
  $('welcomeOverlay').hidden=true;setOnline(true,'Conectado');displayOnline(msg.online);character(msg.self);
- if(!authed){authed=true;if(msg.self.level===1&&msg.self.kills===0&&msg.self.role==='peregrino'&&session.formClass!=='peregrino')send('class',{role:session.formClass});say('','Bem-vindo, '+session.name+'! Converse com os personagens usando E ou clicando neles. A história está na aba Crônicas.','sys');if(session.story?.stage===0)alert('✦ Fale com Lia, a Acendedora! Aproxime-se e pressione E.')}
+ if(!authed){
+  authed=true;
+  const freshSwitch=msg.self.level===1&&msg.self.kills===0&&msg.self.role==='peregrino'&&session.formClass!=='peregrino';
+  if(freshSwitch)send('class',{role:session.formClass});
+  else if(!accountMode&&session.formClass!==msg.self.role){
+   // Um nome já utilizado conserva sua classe e progresso. Não mostrar outra
+   // roupa ou reclassificar silenciosamente o personagem salvo no PostgreSQL.
+   const classes={peregrino:'Peregrino',guardiao:'Guardião',arqueiro:'Arqueiro',curandeiro:'Curandeiro'};
+   say('','Seu personagem salvo já é '+(classes[msg.self.role]||msg.self.role)+
+    '. A classe escolhida nesta entrada não substitui a anterior. Para começar outra classe, use outro nome.','sys');
+  }
+  say('','Bem-vindo, '+session.name+'! Converse com os personagens usando E ou clicando neles. A história está na aba Crônicas.','sys');
+  if(session.story?.stage===0)alert('✦ Fale com Lia, a Acendedora! Aproxime-se e pressione E.');
+ }
  $('game').focus();
  }else if(msg.type==='character'){character(msg);
  }else if(msg.type==='snapshot'){

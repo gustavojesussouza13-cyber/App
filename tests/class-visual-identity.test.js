@@ -100,9 +100,9 @@ test('estúdio escolhe o sprite final correto e reutiliza cache por classe',()=>
 test('HTML carrega código corrigido e invalida cache de navegadores',()=>{
  const html=read('mundo.html');
  assert.ok(html.indexOf('/character-atelier16.js')<html.indexOf('/sprite-studio.js'));
- assert.match(html,/character-atelier16\.js\?v=classes-v8/);
- assert.match(html,/sprite-studio\.js\?v=classes-v8/);
- assert.match(html,/art16\.js\?v=classes-v8/);
+ assert.match(html,/character-atelier16\.js\?v=classes-v9/);
+ assert.match(html,/sprite-studio\.js\?v=classes-v9/);
+ assert.match(html,/art16\.js\?v=classes-v9/);
  assert.match(read('sprite-studio.js'),/ATELIER\?\.classIdentity\?\.\(g,c,/);
 });
 test('todos os módulos atualizados permanecem sintaticamente válidos',()=>{
