@@ -26,6 +26,7 @@ function harness(){
   progressToken:'guest-test',socket:null,reconnectMs:1000,reconnectTimer:null,
   session:{name:'Teste',formClass:'peregrino',monsters:new Map(),players:new Map()},
   accountMode:false,authed:true,
+  spriteActions:{monsters:new Map(),players:new Map(),fallen:[],localHurtAt:0},
   setOnline:()=>{},closeDialogue:()=>{},monsterMotion:{clear:()=>{}},playerMotion:{clear:()=>{}},combatFx:{clear:()=>{}},
   alert:()=>{},console,JSON,Map,
   setTimeout:(cb,ms)=>{queued.set(++timer,{cb,ms});return timer},
