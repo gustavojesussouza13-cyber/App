@@ -56,13 +56,17 @@ const QUESTS=[
  {id:'primeiro-legado',name:'O Primeiro Legado',type:'bosses',target:1,reward:235,coins:95,description:'Conquiste sua primeira relíquia de chefe'},
  {id:'sem-medo',name:'Quebrador de Maldições',type:'bosses',target:4,reward:850,coins:290,description:'Recupere relíquias de quatro chefes diferentes'},
  {id:'voz-desperta',name:'Vozes da Aurora',type:'chapters',target:4,reward:330,coins:130,description:'Conclua quatro capítulos da jornada principal'},
- {id:'livro-luz',name:'O Livro da Luz',type:'chapters',target:12,reward:1250,coins:390,description:'Conclua doze capítulos da história'}
+ {id:'livro-luz',name:'O Livro da Luz',type:'chapters',target:12,reward:1250,coins:390,description:'Conclua doze capítulos da história'},
+ {id:'primeira-descida',name:'Sob a Terra',type:'depths',target:1,reward:140,coins:65,description:'Alcance seu primeiro subsolo em uma masmorra'},
+ {id:'rumos-profundos',name:'Caminhos Esquecidos',type:'depths',target:12,reward:950,coins:300,description:'Descubra doze subsolos diferentes'},
+ {id:'eco-das-profundezas',name:'Ecos das Profundezas',type:'depths',target:24,reward:2250,coins:880,description:'Explore todos os vinte e quatro subsolos de Auren'}
 ];
 function questProgress(save,quest){
  switch(quest.type){
   case 'regions':return new Set(save.visited||[]).size;
   case 'bosses':return new Set(save.bossRelics||[]).size;
   case 'chapters':return save.story?.stage||0;
+  case 'depths':return new Set((save.visited||[]).filter(zone=>Number.isInteger(zone)&&zone>=16&&zone<ZONES.length)).size;
   default:return save.kills||0;
  }
 }
@@ -150,9 +154,11 @@ class World {
     const boss=i===count-1;const seed=hash32(zone*9217+i*5711+77);
     const speciesId=boss?(dungeon?31:(zone+11)%32):(zone*2+i*7+((seed>>4)%5))%SPECIES.length;
     const sp=SPECIES[speciesId],tier=zone>=16?2+Math.floor((zone-16)/6)+Math.floor(dungeonDepth(zone)/2):1+Math.floor(zone/3),mult=boss?5.5:1+(zone%3)*.12;
+    const eliteNames=['Guardião das Raízes','Marechal das Cinzas','Oráculo das Vozes','Arauto do Amanhecer'];
+    const name=boss&&zone>=16?'★ '+eliteNames[Math.floor((zone-16)/6)]+' · Piso '+dungeonDepth(zone):(boss?'★ ':'')+sp[0];
     const chosen={x:130+hash32(seed+1)%(ZONE_W-260),y:130+hash32(seed+2)%(ZONE_H-260)};
     const home=terrain.nearestWalkable(zone,chosen.x,chosen.y,ZONES);
-    mons.push({id:`m-${zone}-${i}`,zone,name:(boss?'★ ':'')+sp[0],species:speciesId,boss,x:home.x,y:home.y,home,hp:Math.floor(sp[1]*mult*tier),maxHp:Math.floor(sp[1]*mult*tier),damage:Math.ceil(sp[2]*tier*(boss?2:1)),xp:Math.ceil(sp[3]*tier*(boss?4:1)),coins:Math.ceil(sp[4]*tier*(boss?5:1)),lastAttack:0,windupUntil:0,deadUntil:0,damageFrom:new Map(),wander:0,wanderGoal:null,aggroTarget:null,aggroUntil:0});
+    mons.push({id:`m-${zone}-${i}`,zone,name,species:speciesId,boss,x:home.x,y:home.y,home,hp:Math.floor(sp[1]*mult*tier),maxHp:Math.floor(sp[1]*mult*tier),damage:Math.ceil(sp[2]*tier*(boss?2:1)),xp:Math.ceil(sp[3]*tier*(boss?4:1)),coins:Math.ceil(sp[4]*tier*(boss?5:1)),lastAttack:0,windupUntil:0,deadUntil:0,damageFrom:new Map(),wander:0,wanderGoal:null,aggroTarget:null,aggroUntil:0});
    }
    this.monsters.set(zone,mons);
   }}
