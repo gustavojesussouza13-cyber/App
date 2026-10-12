@@ -13,7 +13,7 @@ function env(t){
  return {world,p:c.worldPlayer,c,events,file,token};
 }
 test('catálogo contém missões diferentes de derrotar monstros',()=>{
- assert.equal(QUESTS.length,11);
+ assert.equal(QUESTS.length,14);
  const types=new Set(QUESTS.map(q=>q.type||'kills'));
  assert.deepEqual([...types].sort(),['bosses','chapters','kills','regions']);
  assert.equal(new Set(QUESTS.map(q=>q.id)).size,QUESTS.length);
