@@ -10,6 +10,11 @@ const monsterMotion=window.OsPeregrinosMonsterMotion.create();
 const playerMotion=window.OsPeregrinosPlayerMotion.create();
 const combatFx=window.OsPeregrinosCombatFx.create();
 const latency=window.OsPeregrinosLatency.create();
+// Sons são opt-in, apenas para desktop; não alteram controles móveis.
+const desktopAudio=window.OsPeregrinosAudio.create({
+ desktop:Boolean(window.matchMedia?.('(hover: hover) and (pointer: fine)').matches)
+});
+desktopAudio.bind($('audioToggle'));
 const pingIndicator=$('pingIndicator');
 function updatePingIndicator(){
  const {ms,quality}=latency.state();
@@ -67,8 +72,9 @@ function dispatch(msg){
   monsterMotion.sync([...now.values()]);session.monsters=now;
   const people=new Map();for(const p of msg.players||[])people.set(p.id,p);
   playerMotion.sync([...people.values()],performance.now());session.players=people;
- }else if(msg.type==='travel'){session.zone=msg.zone;session.x=msg.x;session.y=msg.y;session.target=null;session.monsters.clear();monsterMotion.clear();playerMotion.clear();combatFx.clear();$('zoneTitle').textContent=msg.name;alert('✦ '+msg.name);drawTravel();
+ }else if(msg.type==='travel'){desktopAudio.play('travel');session.zone=msg.zone;session.x=msg.x;session.y=msg.y;session.target=null;session.monsters.clear();monsterMotion.clear();playerMotion.clear();combatFx.clear();$('zoneTitle').textContent=msg.name;alert('✦ '+msg.name);drawTravel();
  }else if(msg.type==='hit'){if(msg.zone===session.zone){
+  if(typeof desktopAudio!=='undefined')desktopAudio.play(msg.projectile==='arrow'?'arrow':'hit');
   const m=session.monsters.get(msg.monster);if(m)m.hp=msg.remaining;
   // O acerto é autoritativo: não dispara flechas por cliques rejeitados pelo servidor.
   const started=combatFx.fire(msg,performance.now());
@@ -78,8 +84,8 @@ function dispatch(msg){
    const m=session.monsters.get(msg.monster);
    if(m)fx.push({x:m.x,y:m.y,text:msg.boss?'⚠ CHEFE! ESQUIVE!':'⚠ GOLPE!',t:performance.now(),color:msg.boss?'#ff9a73':'#ffd06b'});
  }
- }else if(msg.type==='hurt'){fx.push({x:session.x,y:session.y,text:'−'+msg.damage,t:performance.now(),color:'#ff8d83'});if(session.characters?.hp<=0)$('deathVeil').hidden=false;
- }else if(msg.type==='defeated'){if(msg.zone===session.zone){fx.push({x:session.monsters.get(msg.monster)?.x||session.x,y:session.monsters.get(msg.monster)?.y||session.y,text:msg.boss?'★ CHEFE!':'✦ VITÓRIA!',t:performance.now(),color:'#f5d587'});session.monsters.delete(msg.monster);monsterMotion.sync([...session.monsters.values()])}
+ }else if(msg.type==='hurt'){if(typeof desktopAudio!=='undefined')desktopAudio.play('hurt');fx.push({x:session.x,y:session.y,text:'−'+msg.damage,t:performance.now(),color:'#ff8d83'});if(session.characters?.hp<=0)$('deathVeil').hidden=false;
+ }else if(msg.type==='defeated'){if(msg.zone===session.zone){if(typeof desktopAudio!=='undefined')desktopAudio.play(msg.boss?'boss':'victory');fx.push({x:session.monsters.get(msg.monster)?.x||session.x,y:session.monsters.get(msg.monster)?.y||session.y,text:msg.boss?'★ CHEFE!':'✦ VITÓRIA!',t:performance.now(),color:'#f5d587'});session.monsters.delete(msg.monster);monsterMotion.sync([...session.monsters.values()])}
  }else if(msg.type==='reward'){alert('+'+msg.xp+' EXP  ·  +'+msg.gold+' moedas'+(msg.boss?' ★ CHEFE':''));
  }else if(msg.type==='chat'){say('['+msg.channel+'] '+msg.name,msg.text,msg.channel);
  }else if(msg.type==='notice'||msg.type==='system'){say('',msg.text,'sys');if(msg.type==='notice')alert(msg.text);
@@ -88,7 +94,7 @@ function dispatch(msg){
  }else if(msg.type==='guildInvite'){session.guildInvite=msg;alert('Convite de guilda: '+msg.name);drawTab();
  }else if(msg.type==='tradeOffer'){session.tradeOffer=msg;alert('Você recebeu uma oferta de '+msg.from);drawTab();
  }else if(msg.type==='dialogue'){openDialogue(msg);
- }else if(msg.type==='storyResolved'){closeDialogue();say('',msg.message,'sys');alert(msg.complete?'✦ O SINO DA AURORA VOLTOU A TOCAR!':msg.reward?'✦ Novo capítulo! +'+msg.reward.xp+' EXP · +'+msg.reward.coins+' moedas':msg.message);if(msg.epilogue)showEpilogue(msg);
+ }else if(msg.type==='storyResolved'){if(typeof desktopAudio!=='undefined')desktopAudio.play('victory');closeDialogue();say('',msg.message,'sys');alert(msg.complete?'✦ O SINO DA AURORA VOLTOU A TOCAR!':msg.reward?'✦ Novo capítulo! +'+msg.reward.xp+' EXP · +'+msg.reward.coins+' moedas':msg.message);if(msg.epilogue)showEpilogue(msg);
  }else if(msg.type==='error'){say('','Servidor: '+msg.message,'sys');$('connectionError').textContent=msg.message||'Erro de conexão';
   if(['full','name_taken','invalid_name','login_required','name_reserved','auth_unavailable'].includes(msg.code)){authed=false;$('welcomeOverlay').hidden=false;clearTimeout(reconnectTimer);socket?.close();if(msg.code==='login_required')setAuthTab('login');}
  }}
