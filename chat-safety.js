@@ -72,7 +72,7 @@ function inspect(raw){
  const text=clean(raw);
  if(!text)return {ok:false,category:'invalid',message:notices.invalid};
  if(isPreset(text))return {ok:true,text,preset:true};
- const variants=[normalized(text),compact(text)];
+ const variants=[text.toLocaleLowerCase('pt-BR'),normalized(text),compact(text)];
  for(const [category,pattern] of patterns){
   if(variants.some(v=>pattern.test(v)))return{ok:false,category,message:notices[category]};
  }
@@ -95,7 +95,7 @@ class ChatGuard {
   return this.users.get(key);
  }
  check(uid,raw){
-  const t=this.now(),st=this.state(uid);st.lastUsed=t;
+  const t=this.now(),st=this.state(uid),previousUse=st.lastUsed;st.lastUsed=t;
   if(t<st.mutedUntil)return{ok:false,category:'muted',message:notices.muted,waitMs:st.mutedUntil-t};
   if(st.last&&t-st.last<this.cooldownMs){
    st.attempts++;
@@ -112,7 +112,7 @@ class ChatGuard {
    return result;
   }
   const fingerprint=compact(result.text);
-  if(fingerprint===st.lastText&&t-st.lastUsed<30000)st.repeat++;
+  if(fingerprint===st.lastText&&t-previousUse<30000)st.repeat++;
   else st.repeat=0;
   st.lastText=fingerprint;
   if(st.repeat>=3){
