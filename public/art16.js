@@ -37,6 +37,8 @@ function create({ctx,W,H}){
   return n2<.07?'sand':'grass';
  }
  function terrain(z,biome){
+  // A moldura do desktop acompanha o bioma; não altera controles mobile.
+  document.documentElement.dataset.pixelFamily=pixelDetail?.styleFor(z)?.id||biome;
   const gcanvas=document.createElement('canvas');gcanvas.width=ZW;gcanvas.height=ZH;
   const g=gcanvas.getContext('2d',{alpha:false});g.imageSmoothingEnabled=false;
   g.fillStyle='#406648';g.fillRect(0,0,ZW,ZH);
