@@ -24,7 +24,11 @@
    return monsters.map(m=>{
     let v=positions.get(m.id);
     if(!v){v={x:m.x,y:m.y};positions.set(m.id,v)}
-    const delta=Math.hypot(v.x-m.x,v.y-m.y);
+    const dx=m.x-v.x,dy=m.y-v.y;
+    const delta=Math.hypot(dx,dy);
+    // Direção e estado de marcha são somente visuais; não comandam o servidor.
+    const moving=delta>1.5&&delta<=160;
+    if(moving)v.dir=Math.abs(dx)>Math.abs(dy)?dx>=0?1:3:dy>=0?2:0;
     if(delta>160){v.x=m.x;v.y=m.y}
     else if(delta>0){
      // Não permitir um salto grande num único quadro quando um snapshot atrasa.
@@ -35,7 +39,7 @@
      v.x+=(m.x-v.x)/delta*step;
      v.y+=(m.y-v.y)/delta*step;
     }
-    return {...m,x:v.x,y:v.y};
+    return {...m,x:v.x,y:v.y,dir:v.dir??2,moving};
    });
   }
   function position(id){return positions.get(id)}
