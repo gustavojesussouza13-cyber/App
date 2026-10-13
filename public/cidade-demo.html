@@ -38,6 +38,7 @@ let stock={food:120,timber:100,stone:90,coins:80},buildings=[
  {type:'market',x:7,y:9,level:1},{type:'tower',x:8,y:3,level:2},
  {type:'barracks',x:7,y:2,level:1},{type:'house',x:3,y:7,level:1}
 ],army={militia:12,archer:5,knight:2,siege:0};
+const layout=window.PeregrinosCityLayout;
 const costs={house:120,farm:160,barracks:280,tower:360,market:240},
 units={militia:{food:4,timber:2,stone:0},archer:{food:5,timber:5,stone:0},knight:{food:8,timber:3,stone:3},siege:{food:12,timber:12,stone:8}};
 const base={name,zone:0,x:768,y:512,level:2};
@@ -48,14 +49,14 @@ const city=window.PeregrinosCity.create({send(type,request){
  const say=msg=>{document.querySelector('#cityFeedback').textContent=msg};
  if(request.action==='construct'){
   const {x,y,type}=request;
-  if(!Object.hasOwn(costs,type)||!Number.isInteger(x)||!Number.isInteger(y)||x<0||y<0||x>10||y>10||x===5||y===5||buildings.some(b=>b.x===x&&b.y===y)||localCoins<costs[type]){say('Terreno ocupado ou moedas insuficientes na demonstração.');return}
-  localCoins-=costs[type];buildings.push({type,x,y,level:1});say('Edifício construído! Moedas fictícias restantes: '+localCoins);
+  if(!Object.hasOwn(costs,type)||!layout.canPlace(buildings,type,x,y)||localCoins<costs[type]){say('Terreno ocupado ou moedas insuficientes na demonstração.');return}
+  localCoins-=costs[type];buildings.push({...layout.plan(type,x,y),level:1});say('Edifício construído! Moedas fictícias restantes: '+localCoins);
  }else if(request.action==='collect'){
   if(Date.now()-lastCollected<15*60*1000){say('A produção fictícia fica pronta a cada 15 minutos.');return}
   lastCollected=Date.now();stock.food+=8;stock.timber+=2;stock.stone++;stock.coins+=5;
   say('Produção fictícia coletada.');
  }else if(request.action==='buildingUpgrade'){
-  const b=buildings.find(b=>b.x===request.x&&b.y===request.y);
+  const b=layout.at(buildings,request.x,request.y);
   if(!b||b.level>=5){say('Este edifício não pode ser melhorado.');return}
   const cost={food:b.level*8,timber:b.level*6,stone:b.level*3};
   if(Object.keys(cost).some(id=>stock[id]<cost[id])){say('Materiais fictícios insuficientes.');return}
