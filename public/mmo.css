@@ -439,3 +439,30 @@ body.world-fullscreen{overflow:hidden!important}
 .room-create button{padding:10px;border:0;background:#e2c083;color:#0b271f;font-weight:800}
 #roomError{color:#ffb7a1;min-height:10px;margin:6px 0 0}
 @media(max-width:700px){.room-lobby{padding:10px}.room-lobby>p{font-size:11px}.game-overlay .intro-panel:has(.room-lobby){max-height:calc(100% - 8px)}}
+
+
+/* Indicador da sala como botão acessível, sem mover cabeçalho ou HUD. */
+.room-status-button{appearance:none;display:inline-flex;align-items:center;gap:3px;cursor:pointer;max-width:min(100%,360px);min-height:38px;text-align:left}
+.room-status-button #status{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.room-change-chevron{color:#ead39f;font-size:17px;line-height:1;margin-left:5px;transition:transform .2s}
+.room-status-button:hover:not(:disabled){background:#235243;box-shadow:0 0 0 1px #e1cb8d8c}
+.room-status-button:hover:not(:disabled) .room-change-chevron{transform:translateY(3px)}
+.room-status-button:focus-visible{outline:3px solid #f5deac;outline-offset:3px}
+.room-status-button:disabled{cursor:default;opacity:.8}
+.room-switch-dialog{width:min(510px,94vw);max-width:94vw;padding:24px;overflow-y:auto}
+.room-switch-dialog h2{margin:0 0 9px}
+.room-switch-dialog p{margin:7px 0 13px}
+.room-switch-dialog .room-current{border:1px solid #7d996d;padding:9px 11px;background:#16392d;color:#bdd7c0;font:700 10px/1.7 system-ui;letter-spacing:.07em}
+.room-switch-dialog .room-current strong{display:block;color:#f4daa2;font:700 16px/1.5 Georgia,serif;letter-spacing:normal}
+.room-switch-dialog label{display:block;margin:12px 0 5px}
+.room-switch-dialog select,.room-switch-dialog input{width:100%;padding:10px;background:#081e18;color:#f7e5c8;border:1px solid #a48b5c;min-height:42px}
+.room-switch-dialog small{display:block;margin-top:7px;color:#b5cba9}
+.room-switch-dialog [hidden]{display:none!important}
+#roomSwitchError{font-size:12px;color:#ffbba5;min-height:18px;line-height:1.5}
+.room-switch-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:8px}
+.room-switch-actions button{flex:1 1 160px;padding:12px 10px;border:1px solid #9d966e;color:#fff1d0;background:#224638;font-weight:800;cursor:pointer}
+.room-switch-actions button:last-child{background:#e5c585;color:#0e2920}
+.room-switch-actions button:hover:not(:disabled){filter:brightness(1.14)}
+.room-switch-actions button:disabled{opacity:.55;cursor:default}
+.room-switch-actions button:focus-visible{outline:3px solid #fff;outline-offset:2px}
+@media(max-width:650px){.room-status-button{max-width:100%}.room-switch-dialog{padding:17px}.room-switch-actions button{flex-basis:100%}}
