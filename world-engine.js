@@ -335,7 +335,7 @@ class World {
    case 'ignore':this.ignore(p,d);break;
    case 'party':this.party(p,d);break;
    case 'guild':this.guild(p,d);break;
-   case 'kingdom':kingdoms.action(this,p,d,{walkable:(zone,x,y)=>terrain.canStand(zone,x,y,ZONES),portals:this.zonePortals(p.zone)});break;
+   case 'kingdom':kingdoms.action(this,p,d,{walkable:(zone,x,y)=>terrain.canStand(zone,x,y,ZONES),portals:this.zonePortals(p.zone),npcs:NPCS.filter(n=>n.zone===p.zone)});break;
    case 'trade':this.trade(p,d);break;
    case 'talk':this.talk(p,d.npc);break;
    case 'storyChoice':this.storyChoice(p,d.npc,d.choice);break;
