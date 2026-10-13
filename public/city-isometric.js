@@ -42,7 +42,7 @@ window.PeregrinosCity=Object.freeze({create({send}){
    const road=x===5||y===5;diamond(x,y,road?'#aa9772':(x+y)%3===0?'#70865b':'#637b54');
    const p=project(x,y);if(!road&&(x*7+y*13)%9===0){ctx.fillStyle='#435d38';ctx.fillRect(p.x+5,p.y+12,4,7)}
   }
-  for(const b of structures())if(Number.isInteger(b.x)&&Number.isInteger(b.y))building(b.x,b.y,b.type);
+  for(const b of structures())if(Number.isInteger(b.x)&&Number.isInteger(b.y)){building(b.x,b.y,b.type);const p=project(b.x,b.y);ctx.fillStyle='#ffeab4';ctx.font='bold 11px monospace';ctx.textAlign='center';ctx.fillText(''+(b.level||1),p.x,p.y-30)}
   // Castelo central fixo; não ocupa as células construíveis.
   building(5,5,'tower');building(5,4,'barracks');building(4,5,'tower');
   ctx.fillStyle='#f1ddac';ctx.font='bold 16px monospace';ctx.textAlign='center';ctx.fillText(base?.name||'Cidadela',384,36);
@@ -54,15 +54,25 @@ window.PeregrinosCity=Object.freeze({create({send}){
   dlg.querySelector('#citySubtitle').textContent='Capital de guilda · Fortaleza nível '+base.level+(myCity()?' · Seu reino':' · Reino visitante');
   choices.replaceChildren();
   if(myCity()){
+   const stock=state?.yourGuild?.stock||{};
+   const overview=document.createElement('p');
+   overview.textContent='ESTOQUE DO REINO · Alimentos '+(stock.food||0)+' · Madeira '+(stock.timber||0)+' · Pedra '+(stock.stone||0)+' · Tesouro '+(stock.coins||0);
+   choices.append(overview);
+   const collect=document.createElement('button');collect.type='button';collect.textContent='✦ Coletar produção (15 min)';
+   collect.onclick=()=>send('kingdom',{action:'collect'});choices.append(collect);
+   const instruction=document.createElement('p');instruction.textContent='Cada edifício produz recursos. Clique em um prédio construído para evoluí-lo com alimentos, madeira e pedra (até nível 5).';choices.append(instruction);
    for(const [id,t] of Object.entries(types)){const b=document.createElement('button');b.type='button';b.style.display='block';b.style.width='100%';b.style.marginBottom='6px';b.textContent=t.label+' · '+t.cost+' moedas';b.setAttribute('aria-pressed',String(selected===id));b.onclick=()=>{selected=id;feedback.textContent='Clique em um terreno disponível para construir '+t.label.toLowerCase()+'.';refresh()};choices.append(b)}
   }else{const p=document.createElement('p');p.textContent='Você está visitando a capital de outra guilda. Somente a liderança do reino pode construir aqui.';choices.append(p)}
   draw();
  }
  canvas.addEventListener('click',e=>{
-  if(!myCity()||!selected)return;
+  if(!myCity())return;
   const rect=canvas.getBoundingClientRect(),px=(e.clientX-rect.left)*canvas.width/rect.width,py=(e.clientY-rect.top)*canvas.height/rect.height;
   const dx=(px-ox)/(TW/2),dy=(py-oy-TH/2)/(TH/2),x=Math.round((dx+dy)/2),y=Math.round((dy-dx)/2);
-  if(x<0||x>=N||y<0||y>=N||x===5||y===5||structures().some(b=>b.x===x&&b.y===y)){feedback.textContent='Escolha um terreno livre, fora das estradas.';return}
+  const existing=structures().find(b=>b.x===x&&b.y===y);
+  if(existing){feedback.textContent='Solicitando melhoria do edifício…';send('kingdom',{action:'buildingUpgrade',x,y});return}
+  if(!selected){feedback.textContent='Selecione um edifício na lista para construir.';return}
+  if(x<0||x>=N||y<0||y>=N||x===5||y===5){feedback.textContent='Escolha um terreno livre, fora das estradas.';return}
   feedback.textContent='Enviando construção para validação do servidor…';
   send('kingdom',{action:'construct',type:selected,x,y,target:base.name});
  });
