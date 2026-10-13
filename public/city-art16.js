@@ -206,6 +206,36 @@
    if(i%2===0)box(c,x-3,y+4,5,2,'#c8b692');
   }
  }
+ function neighborRoad(x,y,occupied){
+  // Vias secundárias crescem perto de bairros e edifícios sem ocupar lotes compráveis.
+  if(x===5||y===5)return true;
+  if(occupied.has(x+','+y))return false;
+  return ((x===3||x===7)&&y>=2&&y<=8)
+   ||((y===3||y===7)&&x>=2&&x<=8)
+   ||((x===2||x===8)&&(y===1||y===9));
+ }
+ function merchantCart(c,x,y,seed){
+  box(c,x-11,y-5,20,9,'#835437');box(c,x-9,y-7,16,3,'#c3975b');
+  box(c,x-8,y+3,5,5,'#302e26');box(c,x+5,y+3,5,5,'#302e26');
+  for(let i=0;i<3;i++)box(c,x-6+i*5,y-13,4,6,(seed+i)%2?'#b65d40':'#dec077');
+ }
+ function grainField(c,x,y,seed){
+  poly(c,[[x-18,y],[x,y-8],[x+18,y],[x,y+9]],'#806a37','#4f5b37');
+  for(let i=0;i<6;i++)for(let j=0;j<3;j++){
+   const px=x-14+i*5+j,py=y-1+j*3-(i%2);
+   box(c,px,py-5,2,7,(i+j+seed)%2?'#bca75e':'#d6bc73');
+   box(c,px-2,py-5,4,2,'#7f9951');
+  }
+ }
+ function roofTiles(c,p){
+  const h=p.type==='tower'?0:p.type==='barracks'?37:p.type==='market'?27:31;
+  if(!h)return;
+  const pt=P(p.x,p.y),x=pt.x,y=pt.y+16;
+  for(let row=0;row<4;row++)for(let col=0;col<5;col++){
+   const dx=(col-2)*7+(row%2?3:0),dy=-h-8+row*5+Math.abs(col-2)*2;
+   box(c,x+dx,y+dy,5,2,(hash(p.x+col,p.y+row)%3===0)?'#df955e':'#714431');
+  }
+ }
  function render(c,{buildings=[],name='',selected=null,hover=null,now=0}={}){
   c.imageSmoothingEnabled=false;
   canvasLandscape(c);
@@ -225,7 +255,7 @@
   const occupied=new Set(buildings.map(b=>b.x+','+b.y));
   for(let z=0;z<N*2;z++)for(let y=0;y<N;y++){
    const x=z-y;if(x<0||x>=N)continue;
-   const isRoad=x===5||y===5,seed=hash(x,y);
+   const isRoad=neighborRoad(x,y,occupied),seed=hash(x,y);
    diamond(c,x,y,isRoad?((x+y)%2?'#c0a978':'#b3a077'):seed%3?'#658250':'#6d8855');
    const p=P(x,y);
    if(isRoad){
@@ -235,14 +265,18 @@
    }else if(!occupied.has(x+','+y)&&!(x===4&&y===5)&&!(x===5&&y===4)&&!(x===5&&y===5)){
     if(seed%9===0)broadleaf(c,p.x+4,p.y+15,seed);
     else if(seed%7===0)tree(c,p.x+3,p.y+14,seed);
-    else if(seed%11===0)garden(c,p.x,p.y+13,seed);
+    else if(seed%11===0)grainField(c,p.x,p.y+13,seed);
     else if(seed%5===0){flowers(c,p.x-7,p.y+12,seed);flowers(c,p.x+5,p.y+16,seed+1)}
     else if(seed%4===0)stone(c,p.x,p.y+15,seed);
     else {box(c,p.x-7,p.y+9,5,3,'#476d42');box(c,p.x+6,p.y+13,4,3,'#87a569')}
    }
    if(isRoad&&seed%9===0)lantern(c,p.x+14,p.y+10);
    if(isRoad&&seed%14===0)resident(c,p.x,p.y+11,seed,now);
-   for(const b of buildings)if(b.x===x&&b.y===y){building(c,b);detailBuilding(c,b)}
+   if(isRoad&&seed%31===0&&x!==5&&y!==5)merchantCart(c,p.x,p.y+11,seed);
+   for(const b of buildings)if(b.x===x&&b.y===y){
+    // As construções são desenhadas em ordem isométrica para sobreposição correta.
+    building(c,b);roofTiles(c,b);detailBuilding(c,b);
+   }
    if(x===5&&y===5)citadel(c);
    if(x===5&&y===7)fountain(c,p.x,p.y+13);
    if(hover&&hover.x===x&&hover.y===y){
