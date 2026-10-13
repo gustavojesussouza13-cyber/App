@@ -56,19 +56,22 @@ test('salas criadas pelos jogadores: senha, lotação, isolamento e contagem glo
   assert.equal(publicRoom.room.locked,false);
   assert.equal(privateRoom.room.capacity,10);
   listing=await(await fetch(BASE+'/api/rooms')).json();
-  assert.equal(listing.rooms.length,3);
+  assert.equal(listing.rooms.length,1,'salas ainda não ocupadas não aparecem para outros jogadores');
   assert.equal(JSON.stringify(listing).includes('CajadoVerde!2026'),false);
   assert.equal(JSON.stringify(listing).includes(owner),false);
   assert.equal((await createRoom('Outra Sala','',owner)).status,409,'dono não pode criar salas ilimitadas');
 
-  const bad=await join({name:'IntrusoVerde',roomId:privateRoom.room.id,password:'incorreta'});
-  clients.push(bad.socket);
-  assert.equal(bad.result.code,'wrong_room_password');
-  const invitee=await join({name:'GuardiaoVerde',roomId:privateRoom.room.id,password:'CajadoVerde!2026'});
+  const beforeOwner=await join({name:'IntrusoVerde',roomId:privateRoom.room.id,password:'CajadoVerde!2026'});
+  clients.push(beforeOwner.socket);
+  assert.equal(beforeOwner.result.code,'room_pending','apenas o criador pode ativar a sala inicialmente');
+  const invitee=await join({name:'GuardiaoVerde',roomId:privateRoom.room.id,password:'CajadoVerde!2026',token:otherOwner});
   clients.push(invitee.socket);assert.equal(invitee.result.type,'welcome');
   assert.equal(invitee.result.room.id,privateRoom.room.id);
   assert.equal(invitee.result.online,1);
-  const publicPlayer=await join({name:'ExploradorVerde',roomId:publicRoom.room.id});
+  const bad=await join({name:'IntrusoVerde',roomId:privateRoom.room.id,password:'incorreta'});
+  clients.push(bad.socket);
+  assert.equal(bad.result.code,'wrong_room_password');
+  const publicPlayer=await join({name:'ExploradorVerde',roomId:publicRoom.room.id,token:owner});
   clients.push(publicPlayer.socket);assert.equal(publicPlayer.result.type,'welcome');
   assert.equal(publicPlayer.result.online,1);
   assert.equal(publicPlayer.result.room.id,publicRoom.room.id);
