@@ -31,7 +31,7 @@ test('jogador recebe NPCs, livro de capítulos e nenhum cadastro',t=>{
  const w=mk();t.after(w.cleanup);
  const msg=w.last('welcome');assert.equal(msg.npcs.length,56);
  assert.equal(msg.self.story.stage,0);assert.equal(msg.self.story.total,40);
- assert.equal(msg.self.story.title,'O sino que não tocou');assert.equal(msg.maxPlayers,10);
+ assert.equal(msg.self.story.title,'O sino que não tocou');assert.equal(msg.maxPlayers,60);
 });
 test('falar com NPC distante, desconhecido ou de região diferente não exibe diálogo',t=>{
  const w=mk();t.after(w.cleanup);const n=chapters[0];
