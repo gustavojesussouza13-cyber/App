@@ -206,6 +206,8 @@ function connect(){
   if(authed){clearTimeout(reconnectTimer);reconnectTimer=setTimeout(connect,reconnectMs);reconnectMs=Math.min(14000,reconnectMs*1.7)}
  }
 }
+$('nameForm').addEventListener('submit',e=>{e.preventDefault();accountMode=false;$('logoutBtn').hidden=true;$('emailSettingsBtn').hidden=true;const name=$('name').value.trim().normalize('NFC');if(!/^[\p{L}\p{N}][\p{L}\p{N} _-]{2,17}$/u.test(name)){alert('Escolha um nome válido de 3–18 caracteres');return}
+ session.name=name;session.formClass=$('role').value;connect();});
 
 function updateRoomSelection(){
  const select=$('roomSelect'),room=roomCatalog.find(r=>r.id===selectedRoomId);
@@ -263,8 +265,6 @@ if(requestedRoom&&/^[a-f0-9]{18}$/.test(requestedRoom))selectedRoomId=requestedR
 loadRooms();
 setInterval(()=>{if(!$('welcomeOverlay').hidden)return;void loadRooms()},15000);
 
-$('nameForm').addEventListener('submit',e=>{e.preventDefault();accountMode=false;$('logoutBtn').hidden=true;$('emailSettingsBtn').hidden=true;const name=$('name').value.trim().normalize('NFC');if(!/^[\p{L}\p{N}][\p{L}\p{N} _-]{2,17}$/u.test(name)){alert('Escolha um nome válido de 3–18 caracteres');return}
- session.name=name;session.formClass=$('role').value;connect();});
 // Autenticação opcional. Sessão via cookie HttpOnly, nunca salvamos senha no navegador.
 const AUTH_TAB_IDS={guest:'nameForm',login:'loginForm',register:'registerForm'};
 function setAuthTab(tab){
