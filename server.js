@@ -363,7 +363,7 @@ async function worldHello(c,data){
   const accessKey=roomAttemptKey(c.socket,requestedId);
   if(roomAttemptState(accessKey).count>=8)
    return send(c.socket,{type:'error',code:'room_password_locked',message:'Muitas tentativas de senha. Aguarde dois minutos.'});
-  try{room=rooms.check(requestedId,data.roomPassword,{uid})}
+  try{room=rooms.check(requestedId,data.roomPassword,{uid,owner:ownerId({uid:c.authUser?.uid,token:data.token})})}
   catch(error){
    if(error.code==='wrong_room_password'){
     const current=roomAttemptState(accessKey);current.count++;
@@ -372,12 +372,16 @@ async function worldHello(c,data){
    return send(c.socket,{type:'error',code:error.code||'room_error',message:error.message});
   }
   roomPasswordFails.delete(accessKey);
-  for(const other of [...sockets])if(other!==c&&other.mode==='world'&&other.worldPlayer?.uid===uid)terminate(other);
+  const duplicates=[...sockets].filter(other=>other!==c&&other.mode==='world'&&other.worldPlayer?.uid===uid);
+  // Para outra sala, salvar primeiro a conta. Na mesma sala, deixar a
+  // instância ativa até o novo WebSocket ocupar a vaga anterior.
+  for(const other of duplicates)if(other.worldRoom!==room)terminate(other);
   c.worldRoom=room;
   room.world.receive(c,data);
   if(c.worldPlayer){
    rooms.entered(room);
    c.roomToken=accountMode?null:data.token;
+   for(const other of duplicates)if(other.worldRoom===room)terminate(other);
   }else c.worldRoom=null;
  }catch(err){console.error('[contas] falha ao validar sessão:',err.message);send(c.socket,{type:'error',code:'auth_unavailable',message:'Não foi possível verificar a conta.'});}
  finally{c.joinPending=false}
@@ -396,7 +400,7 @@ function switchWorldRoom(c,data){
  if(roomAttemptState(key).count>=8)
   return send(c.socket,{type:'roomSwitchError',code:'room_password_locked',message:'Muitas tentativas de senha. Aguarde dois minutos.'});
  let target;
- try{target=rooms.check(id,data.password,{uid:player.uid})}
+ try{target=rooms.check(id,data.password,{uid:player.uid,owner:ownerId({uid:c.authUser?.uid,token:c.roomToken})})}
  catch(err){
   if(err.code==='wrong_room_password'){
    const state=roomAttemptState(key);state.count++;roomPasswordFails.set(key,state);
@@ -413,12 +417,13 @@ function switchWorldRoom(c,data){
  c.roomTransferSave=save;
  c.roomTransferUid=uid;
  from.world.leave(c);
- rooms.left(from);
+ // Só remover a sala anterior após confirmar a entrada na nova.
  c.worldRoom=target;
  try{
   target.world.join(c,login);
   if(!c.worldPlayer)throw new Error('Não foi possível entrar na nova sala.');
   rooms.entered(target);
+  rooms.left(from);
   console.info('[salas] transferência concluída entre salas.');
  }catch(err){
   // Restaura a mesma sessão e o mesmo personagem se algo inesperado impedir
