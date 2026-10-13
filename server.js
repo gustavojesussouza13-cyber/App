@@ -50,7 +50,7 @@ function renderPublicText(source,req){
    .replaceAll('<!-- PRIVATE_SUPPORT_EMAIL -->',contactHtml());
   // Todos os documentos HTML recebem o aviso global, inclusive homepage,
   // política, guia e mundo aberto. Não interferir nas rotas de arquivos.
-  const script='<script defer src="/site-maintenance.js?v=maintenance-v1"></script>';
+  const script='<script defer src="/site-maintenance.js?v=maintenance-v2"></script>';
   return content.includes('</head>')?content.replace('</head>',script+'</head>'):content;
 }
 
@@ -238,7 +238,7 @@ const httpServer = http.createServer((req,res)=>{
       return fs.readFile(filename,(readErr,raw)=>{
         if(readErr)return reply(res,500,'Falha ao abrir a campanha');
         const html=raw.toString('utf8');
-        const htmlWithNav=html.replace('</head>','<script defer src="/classic-return.js"></script><script defer src="/site-maintenance.js?v=maintenance-v1"></script></head>');
+        const htmlWithNav=html.replace('</head>','<script defer src="/classic-return.js"></script><script defer src="/site-maintenance.js?v=maintenance-v2"></script></head>');
         if(htmlWithNav===html)return reply(res,500,'Documento da campanha inválido');
         const body=Buffer.from(htmlWithNav,'utf8');
         res.writeHead(200,{'Content-Type':MIME['.html'],'Content-Length':body.length,'Cache-Control':'no-cache','X-Content-Type-Options':'nosniff','Referrer-Policy':'strict-origin-when-cross-origin','X-Frame-Options':'SAMEORIGIN'});
