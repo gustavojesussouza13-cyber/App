@@ -41,3 +41,27 @@ test('marcha atravessa apenas portais terrestres e interpola a posição',t=>{
  assert.ok(politics.marchPosition(march,now+22500).zone>=0);
  assert.equal(politics.marchRoute(world,{zone:12,x:300,y:400},goal),null);
 });
+
+test('patrulha caminha, retorna e nunca duplica soldados',t=>{
+ const world=new World({persistentStore:{enqueue:()=>{}},send:()=>{},getOnline:()=>0,hasClassicName:()=>false});
+ t.after(()=>world.stop());
+ const client={socket:{},authUser:{uid:'account:general',username:'General'},worldPlayer:null};
+ world.join(client,{name:'General',role:'guardiao'});
+ const p=client.worldPlayer;p.x=768;p.y=512;p.save.coins=20000;
+ world.guild(p,{action:'create',name:'Guardas do Vale'});
+ const options={walkable:()=>true,portals:[],npcs:[],now:100000};
+ assert.equal(politics.action(world,p,{action:'place',x:768,y:512},options),true);
+ assert.equal(politics.action(world,p,{action:'recruit',unit:'militia',count:12},options),true);
+ const guild=world.guilds.get('guardas do vale');
+ assert.equal(politics.action(world,p,{action:'patrol',zone:3},options),true);
+ assert.equal(politics.troopCount(guild.army),0);
+ assert.equal(politics.action(world,p,{action:'patrol',zone:2},options),false);
+ assert.equal(politics.resolve(world,144999).length,0);
+ assert.equal(politics.resolve(world,145001).length,1);
+ assert.equal(guild.march.returning,true);
+ assert.equal(politics.troopCount(guild.army),0);
+ assert.equal(politics.resolve(world,190002).length,1);
+ assert.equal(guild.march,undefined);
+ assert.equal(guild.army.militia,12);
+ assert.equal(politics.action(world,p,{action:'patrol',zone:12},options),false);
+});
