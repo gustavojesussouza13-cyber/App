@@ -3,7 +3,7 @@
  * Atelier de Auren — detalhes finais de pixel art 16-bit ORIGINAL.
  * Nenhum recurso de terceiros, imagens borradas ou dependência externa.
  * Todos os pixels são retângulos inteiros, com luz na parte superior esquerda.
- * Personalidades visuais independentes para 4 heróis, 32 NPCs e 32 espécies.
+ * Personalidades visuais independentes para 4 heróis, 56 NPCs e 32 espécies.
  */
 (function(root,factory){
  const api=factory();
@@ -13,6 +13,12 @@
  const NPC_STYLES=Object.freeze([
   'sineira','jardineiro','crianca','barqueira','cartografo','escriba','vigia','guarda',
   'bibliotecario','padeira','barqueiro','faroleira','curandeira','conselheiro','sentinela','guardiao-antigo',
+  // Vinte e quatro personagens da Vigília Depois do Sino, quatro novos atos.
+  'sementeira','pontifice','mensageira-musgo','ancia-nomes','guia-abismo','neri-vigilia',
+  'porteiro-cartas','ferreira-fornalha','relator-cinzas','mestre-cinzas','juiz-vazio','ada-vigilia',
+  'afinador-hino','regente-coro','ouvinte-pedra','copista-notas','vigia-vibracao','eli-vigilia',
+  'guardia-lanternas','escriba-pacto','emissaria-portas','relator-mar','vigia-limiar','calen-lembrado',
+  // Os dezesseis moradores antigos mantêm seus estilos originais.
   'mensageiro','tecelã','escavador','pescador','guia','encadernador','escalador','historiadora',
   'copista','colhedora','barqueiro-nevoa','marinheira','aprendiz','sineiro','guarda-aurora','viajante'
  ]);
@@ -48,7 +54,31 @@
   aprendiz:['#d0a8b3','#f8e9d7','#aa6e89','#e6b6a1','#7c5267'],
   sineiro:['#88734f','#e0c799','#a28150','#d8a27a','#554632'],
   'guarda-aurora':['#4771ac','#e3dfee','#d6ad5c','#e4b28b','#263c65'],
-  viajante:['#8e6d51','#e6cb9e','#b4745f','#e7b68e','#4d3a32']
+  viajante:['#8e6d51','#e6cb9e','#b4745f','#e7b68e','#4d3a32'],
+  sementeira:['#426e42','#cbe8aa','#e2ac67','#efb58e','#2b5334'],
+  pontifice:['#8b7756','#d5ccb3','#a98b60','#c9997d','#584a3a'],
+  'mensageira-musgo':['#3d8c73','#d7e3b4','#8cb063','#ecb692','#2f594d'],
+  'ancia-nomes':['#715b80','#e0d3bb','#d4a56e','#d7ac9a','#403650'],
+  'guia-abismo':['#527277','#d2d7c2','#9fb5a3','#b98f76','#344c53'],
+  'neri-vigilia':['#a75d91','#f7d9e8','#88a671','#e8b4a0','#654462'],
+  'porteiro-cartas':['#886b59','#efe1c6','#bb9b79','#e3af83','#524537'],
+  'ferreira-fornalha':['#a05246','#f0cd9d','#d48b5c','#edbb94','#582e32'],
+  'relator-cinzas':['#777b98','#dfd7d0','#b9ae8f','#cca28d','#3f455d'],
+  'mestre-cinzas':['#ac796b','#f7ddbc','#8e7a81','#e6bb9e','#673f42'],
+  'juiz-vazio':['#695889','#ecdfca','#bba16e','#d6b19f','#403457'],
+  'ada-vigilia':['#936b4a','#ffdfb1','#ba8860','#f0b989','#573c2f'],
+  'afinador-hino':['#5c89a4','#e7e1b1','#d7bb68','#c39c84','#38546c'],
+  'regente-coro':['#8b5177','#f0d0d6','#daa877','#e3ae8e','#512f4d'],
+  'ouvinte-pedra':['#648077','#c0e2cf','#88aa9b','#c79b7f','#325348'],
+  'copista-notas':['#8f7299','#f0e1d3','#c8a283','#e2afa0','#533e69'],
+  'vigia-vibracao':['#48647b','#bedfe6','#e0bd7f','#b89a83','#263f59'],
+  'eli-vigilia':['#7868aa','#dedbe9','#aea8c5','#dab59c','#433c6d'],
+  'guardia-lanternas':['#a17c45','#ffdda0','#efb965','#d7a07e','#674b2e'],
+  'escriba-pacto':['#607ba2','#e0e6ca','#a8bad2','#c9a390','#354968'],
+  'emissaria-portas':['#ab6d68','#f7d6c0','#b8a080','#d9b19b','#754548'],
+  'relator-mar':['#528b95','#e0f0d5','#acc6be','#c99e85','#326371'],
+  'vigia-limiar':['#85718b','#dbd7df','#cfb4a0','#daa98f','#4d3f60'],
+  'calen-lembrado':['#5b7196','#eddbbb','#dec485','#e8b395','#36466b']
  });
  const VARIANTS=Object.freeze([
   ['esmeralda','#75db79','#e6ffb9','bubbles'],['faminto','#756a83','#cdcee0','fur'],
@@ -80,7 +110,7 @@
  function npcStyle(n){
   const match=/^(?:historia|morador)-(\d+)$/.exec(String(n?.id||''));
   if(match){
-   const i=Number(match[1]),ix=match[0].startsWith('historia')?i:16+i;
+   const i=Number(match[1]),ix=match[0].startsWith('historia')?i:40+i;
    if(ix>=0&&ix<NPC_STYLES.length)return NPC_STYLES[ix];
   }
   const name=(n?.name||'').toLocaleLowerCase('pt-BR');
