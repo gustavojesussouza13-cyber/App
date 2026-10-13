@@ -47,14 +47,14 @@ test('salas criadas pelos jogadores: senha, lotação, isolamento e contagem glo
   let listing=await(await fetch(BASE+'/api/rooms')).json();
   assert.equal(listing.rooms.length,1);
   assert.equal(listing.rooms[0].id,'auren-publica');
-  assert.equal(listing.capacityPerRoom,10);
+  assert.equal(listing.capacityPerRoom,60);
   const publicRoom=await createRoom('Arvore de Auren','',owner);
   assert.equal(publicRoom.status,201,publicRoom.error);
   const privateRoom=await createRoom('Fortaleza Verde','CajadoVerde!2026',otherOwner);
   assert.equal(privateRoom.status,201,privateRoom.error);
   assert.equal(privateRoom.room.locked,true);
   assert.equal(publicRoom.room.locked,false);
-  assert.equal(privateRoom.room.capacity,10);
+  assert.equal(privateRoom.room.capacity,60);
   listing=await(await fetch(BASE+'/api/rooms')).json();
   assert.equal(listing.rooms.length,1,'salas ainda não ocupadas não aparecem para outros jogadores');
   assert.equal(JSON.stringify(listing).includes('CajadoVerde!2026'),false);
@@ -87,7 +87,7 @@ test('salas criadas pelos jogadores: senha, lotação, isolamento e contagem glo
   assert.equal(listing.rooms.find(x=>x.id===privateRoom.room.id).online,1);
 
   const roomMembers=[publicPlayer];
-  for(let i=0;i<9;i++){
+  for(let i=0;i<59;i++){
    const c=await join({name:'GuerreiroSala'+i,roomId:publicRoom.room.id});
    clients.push(c.socket);roomMembers.push(c);
    assert.equal(c.result.type,'welcome');
@@ -99,16 +99,16 @@ test('salas criadas pelos jogadores: senha, lotação, isolamento e contagem glo
   clients.push(another.socket);
   assert.equal(another.result.type,'welcome','outra sala mantém vagas livres');
   const status=await(await fetch(BASE+'/api/status')).json();
-  assert.equal(status.online,12);
+  assert.equal(status.online,62);
   assert.equal(status.rooms,3);
-  assert.equal(status.capacityPerRoom,10);
-  assert.equal(status.maxPlayers,10);
-  roomMembers[9].socket.close();
+  assert.equal(status.capacityPerRoom,60);
+  assert.equal(status.maxPlayers,60);
+  roomMembers[59].socket.close();
   await delay(220);
   const recovered=await join({name:'SubstitutoSala',roomId:publicRoom.room.id});
   clients.push(recovered.socket);
   assert.equal(recovered.result.type,'welcome');
-  assert.equal(recovered.result.online,10);
+  assert.equal(recovered.result.online,60);
   // Desconectando todos, nenhum servidor de 0/10 deve continuar listado.
   for(const c of clients)try{c.close()}catch{}
   await delay(380);
