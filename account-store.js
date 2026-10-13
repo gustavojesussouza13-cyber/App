@@ -153,7 +153,7 @@ class AccountStore{
  }
  async session(cookieHeader){
   const token=parseCookie(cookieHeader);if(!token)return null;
-  const r=await this.pool.query(`SELECT a.id,a.username,a.email,a.email_key,a.email_verified_at FROM game_sessions s JOIN game_accounts a ON a.id=s.account_id
+  const r=await this.pool.query(`SELECT a.id,a.username,a.email,a.email_verified_at FROM game_sessions s JOIN game_accounts a ON a.id=s.account_id
    WHERE s.token_hash=$1 AND s.expires_at>CURRENT_TIMESTAMP`,[sha(token)]);
   return r.rows.length?publicAccount(r.rows[0]):null;
  }
