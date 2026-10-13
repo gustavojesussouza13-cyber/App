@@ -331,7 +331,17 @@
    const sheet=obtain('hero',p.role,p.dir,sel.action,sel.frame,false,0);
    if(!sheet)return false;
    g.imageSmoothingEnabled=false;
-   g.drawImage(sheet,Math.round(p.x-28),Math.round(p.y-69),56,69);
+   const pc=state.desktopPremium===true;
+   const w=pc?70:56,h=pc?87:69;
+   if(pc){
+    // Sombras duras do contorno: preservam pixel art sobre folhas e pedras.
+    g.save();
+    g.shadowColor='#071a18';g.shadowBlur=0;
+    g.shadowOffsetX=2;g.shadowOffsetY=2;
+    g.drawImage(sheet,Math.round(p.x-w/2),Math.round(p.y-h),w,h);
+    g.restore();
+   }
+   g.drawImage(sheet,Math.round(p.x-w/2),Math.round(p.y-h),w,h);
    return true;
   }
   function drawMonster(g,m,now,state={}){
@@ -341,12 +351,20 @@
    const type=state.type||m.type||'limo';
    const sheet=obtain('monster',type,dir,sel.action,sel.frame,!!m.boss,m.zone||0,Number.isInteger(m.species)?m.species:0);
    if(!sheet)return false;
-   const w=m.boss?77:54,h=m.boss?92:61;
+   const pc=state.desktopPremium===true;
+   const w=pc?(m.boss?106:66):(m.boss?77:54);
+   const h=pc?(m.boss?132:81):(m.boss?92:61);
    g.imageSmoothingEnabled=false;
+   if(pc){
+    g.save();g.shadowColor='#071b1c';g.shadowBlur=0;
+    g.shadowOffsetX=2;g.shadowOffsetY=2;
+    g.drawImage(sheet,Math.round(m.x-w/2),Math.round(m.y-h),w,h);
+    g.restore();
+   }
    g.drawImage(sheet,Math.round(m.x-w/2),Math.round(m.y-h),w,h);
    return true;
   }
-  function drawNpc(g,n,now){
+  function drawNpc(g,n,now,state={}){
    if(!g?.drawImage)return false;
    // Personagens da história e moradores têm identidade própria; não vestem
    // as roupas das classes jogáveis. Os quadros são reutilizados do cache.
@@ -357,7 +375,15 @@
     dir,sel.action,sel.frame,false,n.zone||0,0,n);
    if(!sprite)return false;
    g.imageSmoothingEnabled=false;
-   g.drawImage(sprite,Math.round(n.x-26),Math.round(n.y-62),52,62);
+   const pc=state.desktopPremium===true;
+   const w=pc?62:52,h=pc?78:62;
+   if(pc){
+    g.save();g.shadowColor='#071b1c';g.shadowBlur=0;
+    g.shadowOffsetX=2;g.shadowOffsetY=2;
+    g.drawImage(sprite,Math.round(n.x-w/2),Math.round(n.y-h),w,h);
+    g.restore();
+   }
+   g.drawImage(sprite,Math.round(n.x-w/2),Math.round(n.y-h),w,h);
    return true;
   }
   function clear(){cache.clear()}
