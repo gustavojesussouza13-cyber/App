@@ -35,7 +35,14 @@ const touchUI=$('touchControls');
 const joystick=window.OsPeregrinosTouchControls.create({pad:$('touchPad'),knob:$('touchKnob')});
 let socket=null,reconnectMs=1000,reconnectTimer=null,movingAt=0,lastDraw=0,fx=[],toastTimer=0,lastAction=0,tab='inventory',authed=false;
 let progressToken=null,accountMode=false,accountReady=false,emailRecoveryAvailable=false;
-try{progressToken=localStorage.getItem('os-peregrinos-world-token');if(!progressToken){progressToken=Array.from(crypto.getRandomValues(new Uint8Array(32)),b=>b.toString(16).padStart(2,'0')).join('');localStorage.setItem('os-peregrinos-world-token',progressToken)}$('name').value=localStorage.getItem('os-peregrinos-last-name')||''}catch{$('connectionError').textContent='O armazenamento precisa estar habilitado para reconhecer seu progresso.'}
+// Cada abertura do site cria uma nova jornada Visitante. O token existe
+// somente nesta execução da página; queda da conexão reutiliza o token.
+// Dados de contas cadastradas continuam no servidor, sob login/senha.
+try{
+ progressToken=Array.from(crypto.getRandomValues(new Uint8Array(32)),b=>b.toString(16).padStart(2,'0')).join('');
+ try{localStorage.removeItem('os-peregrinos-world-token');localStorage.removeItem('os-peregrinos-last-name')}catch{}
+ $('name').value='';$('role').value='peregrino';
+}catch{$('connectionError').textContent='Não foi possível iniciar uma nova jornada segura. Atualize o navegador.';}
 const tint=['#6d9a68','#345947','#44818a','#d4b578','#8f938e','#5f6b59','#97b673','#4a735c','#4b8ba3','#477b58','#9c8a6c','#655970','#536453','#8b6b54','#647a92','#c4a975'];
 const shade=['#427444','#25573d','#37737b','#b38f4e','#697a76','#445d55','#698d55','#365b50','#35738d','#306b47','#7d6d58','#554b68','#425146','#65503e','#566b81','#a58f59'];
 const alert=msg=>{const el=$('toast');el.textContent=msg;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),3100)};
@@ -137,7 +144,7 @@ function dispatch(msg){
   if(['full','name_taken','invalid_name','login_required','name_reserved','auth_unavailable'].includes(msg.code)){authed=false;$('welcomeOverlay').hidden=false;clearTimeout(reconnectTimer);socket?.close();if(msg.code==='login_required')setAuthTab('login');}
  }}
 function connect(){
- if(!progressToken){alert('Armazenamento indisponível');return}
+ if(!progressToken){alert('Não foi possível iniciar a jornada. Atualize a página.');return}
  // Evita duas conexões simultâneas e sessões concorrentes para o mesmo personagem.
  if(socket&&(socket.readyState===WebSocket.OPEN||socket.readyState===WebSocket.CONNECTING))return;
  clearTimeout(reconnectTimer);reconnectTimer=null;
@@ -166,7 +173,7 @@ function connect(){
  }
 }
 $('nameForm').addEventListener('submit',e=>{e.preventDefault();accountMode=false;$('logoutBtn').hidden=true;$('emailSettingsBtn').hidden=true;const name=$('name').value.trim().normalize('NFC');if(!/^[\p{L}\p{N}][\p{L}\p{N} _-]{2,17}$/u.test(name)){alert('Escolha um nome válido de 3–18 caracteres');return}
- session.name=name;session.formClass=$('role').value;try{localStorage.setItem('os-peregrinos-last-name',name)}catch{};connect();});
+ session.name=name;session.formClass=$('role').value;connect();});
 // Autenticação opcional. Sessão via cookie HttpOnly, nunca salvamos senha no navegador.
 const AUTH_TAB_IDS={guest:'nameForm',login:'loginForm',register:'registerForm'};
 function setAuthTab(tab){
@@ -561,9 +568,9 @@ setInterval(()=>{
 },1000);
 updatePingIndicator();
 window.addEventListener('pagehide',()=>{joystick.release();try{socket?.close()}catch{}});
-if(new URLSearchParams(location.search).get('auto')==='1'&&$('name').value.trim()&&progressToken){
- session.name=$('name').value.trim().normalize('NFC');session.formClass=$('role').value;connect();
-}
+// Restaurar uma aba do histórico (BFCache) também inicia uma nova jornada.
+window.addEventListener('pageshow',event=>{if(event.persisted)location.reload()});
+// Nunca iniciar Visitante automaticamente: sempre pedir nome e classe.
 void setupLogin();
 window.OsPeregrinosMundo=Object.freeze({get online(){return session.online},get zone(){return session.zone},get connected(){return session.connected},get monsters(){return session.monsters.size},get name(){return session.name}});
 })();
