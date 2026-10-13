@@ -353,7 +353,7 @@ $('roomSwitchDialog').addEventListener('cancel',event=>{
 $('roomSwitchBtn').addEventListener('click',async()=>{
  if(!session.connected||roomSwitchPending)return;
  const dialog=$('roomSwitchDialog');
- $('roomSwitchCurrent').textContent=roomName+' · '+session.online+'/10 jogadores';
+ $('roomSwitchCurrent').textContent=roomName+' · '+session.online+'/60 jogadores';
  $('roomSwitchError').textContent='';
  $('roomSwitchPassword').value='';
  $('roomSwitchInfo').textContent='Consultando salas disponíveis…';
