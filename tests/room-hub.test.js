@@ -7,7 +7,7 @@ const {World}=require('../world-engine');
 
 function fakeHub(){
  let time=1000,stopped=0;
- const world=()=>({count:0,stop(){stopped++}});
+ const world=()=>({count:0,players:new Map(),stop(){stopped++}});
  const hub=new RoomHub({mainWorld:world(),createWorld:world,now:()=>time,maxRooms:12});
  return {hub,world,tick(ms){time+=ms},get stopped(){return stopped}};
 }
@@ -55,6 +55,8 @@ test('capacidade é por sala, sem esgotar a capacidade de salas distintas',()=>{
  assert.throws(()=>h.hub.check(a.id,''),e=>e.code==='room_full');
  assert.equal(h.hub.check(b.id,'').id,b.id);
  assert.equal(h.hub.check(MAIN_ID,'').id,MAIN_ID);
+ h.hub.get(a.id).world.players.set('active',{uid:'account:a'});
+ assert.equal(h.hub.check(a.id,'',{uid:'account:a'}).id,a.id,'reconexão do próprio jogador não deve falhar por lotação');
 });
 test('salas sem jogadores são fechadas após dez minutos; sala principal fica sempre aberta',()=>{
  const h=fakeHub();
