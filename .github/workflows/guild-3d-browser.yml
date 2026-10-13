@@ -1,0 +1,51 @@
+name: Guild 3D - navegador e WebGL
+on:
+  push:
+    branches:
+      - feature/reinos-cidades-isometricas-v1
+    paths:
+      - '.github/workflows/guild-3d-browser.yml'
+      - 'public/guild-*'
+      - 'public/cidade-demo.html'
+      - 'public/city-layout.js'
+      - 'server.js'
+      - 'package.json'
+      - 'tests/guild-3d-browser.mjs'
+  workflow_dispatch:
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Instalar motor 3D e navegador de teste
+        run: |
+          npm install --ignore-scripts --no-audit --no-fund
+          npm install --no-save --ignore-scripts playwright@1.56.1 --no-audit --no-fund
+          npx playwright install --with-deps chromium
+      - name: Iniciar servidor isolado para a demonstração 3D
+        run: |
+          PORT=3105 DATABASE_URL= NODE_ENV=test npm start >/tmp/peregrinos-3d-browser.log 2>&1 &
+          for i in $(seq 1 80); do
+            if curl -sf http://127.0.0.1:3105/health >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/peregrinos-3d-browser.log
+          exit 1
+      - name: Testar cena real 3D no Chromium
+        run: node tests/guild-3d-browser.mjs
+      - name: Guardar captura de tela para revisão
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: guild-3d-chromium
+          path: /tmp/guild-3d-preview.png
+          if-no-files-found: ignore
+      - name: Logs do servidor em caso de falha
+        if: failure()
+        run: cat /tmp/peregrinos-3d-browser.log
