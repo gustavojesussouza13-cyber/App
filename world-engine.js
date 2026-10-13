@@ -22,6 +22,17 @@ const LEGACY_ZONE_COUNT=16,DEPTH_PER_DUNGEON=6;
 const dungeonRoot=zone=>zone>=16&&zone<ZONES.length?12+Math.floor((zone-16)/DEPTH_PER_DUNGEON):zone>=12&&zone<16?zone:null;
 const dungeonDepth=zone=>zone>=16?1+(zone-16)%DEPTH_PER_DUNGEON:0;
 const dungeonFloor=(root,depth)=>root+4+(root-12)*(DEPTH_PER_DUNGEON-1)+depth-1;
+// Dificuldade cresce conforme o percurso REAL: cada uma das quatro masmorras
+// sucede o sexto subsolo da anterior (IDs 12–15 são masmorras clássicas).
+// Escala também os prêmios para que a progressão continue recompensadora.
+function zoneDifficulty(zone){
+ if(!Number.isInteger(zone)||zone<0||zone>=ZONES.length)return 1;
+ if(zone<12)return 1+zone*.17;
+ if(zone<16)return 3.05+(zone-12)*1.8;
+ const rootIndex=Math.floor((zone-16)/DEPTH_PER_DUNGEON);
+ return 3.31+rootIndex*1.8+(dungeonDepth(zone)-1)*.28;
+}
+const autoAggroZone=zone=>zone>=16&&zone<ZONES.length&&dungeonDepth(zone)>=3;
 
 const ZONE_W=1536, ZONE_H=1024;
 const CLASSES={guardiao:{name:'Guardião',hp:165,attack:17,range:85,defense:7},arqueiro:{name:'Arqueiro',hp:112,attack:21,range:250,defense:2},curandeiro:{name:'Curandeiro',hp:125,attack:12,range:160,defense:4},peregrino:{name:'Peregrino',hp:135,attack:16,range:118,defense:4}};
@@ -157,7 +168,7 @@ class World {
    for(let i=0;i<count;i++){
     const boss=i===count-1;const seed=hash32(zone*9217+i*5711+77);
     const speciesId=boss?(dungeon?31:(zone+11)%32):(zone*2+i*7+((seed>>4)%5))%SPECIES.length;
-    const sp=SPECIES[speciesId],tier=zone>=16?2+Math.floor((zone-16)/6)+Math.floor(dungeonDepth(zone)/2):1+Math.floor(zone/3),mult=boss?5.5:1+(zone%3)*.12;
+    const sp=SPECIES[speciesId],tier=zoneDifficulty(zone),mult=boss?5.5:1;
     const eliteNames=['Guardião das Raízes','Marechal das Cinzas','Oráculo das Vozes','Arauto do Amanhecer'];
     const name=boss&&zone>=16?'★ '+eliteNames[Math.floor((zone-16)/6)]+' · Piso '+dungeonDepth(zone):(boss?'★ ':'')+sp[0];
     const chosen={x:130+hash32(seed+1)%(ZONE_W-260),y:130+hash32(seed+2)%(ZONE_H-260)};
@@ -394,7 +405,9 @@ class World {
   if(p.save.visited.length>=8)this.unlockAchievement(p,'explorar-8');
   if(p.save.visited.length>=16)this.unlockAchievement(p,'explorar-16');
   this.dirty=true;
-  this.send(p.socket,{type:'travel',zone:b,name:ZONES[b][0],x:p.x,y:p.y,portals:this.zonePortals(b)});this.send(p.socket,this.ownStatus(p));this.snapshotTo(p);
+  this.send(p.socket,{type:'travel',zone:b,name:ZONES[b][0],x:p.x,y:p.y,portals:this.zonePortals(b)});
+  if(autoAggroZone(b))this.tell(p,'⚠ Subsolo '+dungeonDepth(b)+': criaturas comuns atacam por aproximação. Os chefes só revidam quando forem atacados.');
+  this.send(p.socket,this.ownStatus(p));this.snapshotTo(p);
  }
  healParty(p){
   // A cura é uma habilidade de suporte independente de acertar monstros.
@@ -642,8 +655,25 @@ class World {
     if(now>=m.deadUntil){m.hp=m.maxHp;m.x=m.home.x;m.y=m.home.y;m.damageFrom.clear();m.aggroTarget=null;m.aggroUntil=0;m.lastAttack=0;m.windupUntil=0;m.markUntil=0;m.markOwner=null;m.wanderGoal=null;m.wander=now+1500}
     else continue;
    }
-   const target=m.aggroTarget?this.players.get(m.aggroTarget):null;
-   const hostile=!!(target&&target.zone===zone&&now<m.aggroUntil&&dist(target,m.home)<400&&dist(m,m.home)<440);
+   let target=m.aggroTarget?this.players.get(m.aggroTarget):null;
+   let hostile=!!(target&&target.live&&target.zone===zone&&now<m.aggroUntil&&dist(target,m.home)<400&&dist(m,m.home)<440);
+   // Terceiro subsolo em diante: somente criaturas COMUNS iniciam combate
+   // ao perceber jogadores a até 205px. Bosses permanecem neutros até
+   // receber o primeiro golpe. Perseguição tem limite para não arrastar
+   // monstros por todo o mapa e não teletransporta criaturas.
+   if(!hostile&&autoAggroZone(zone)&&!m.boss&&dist(m,m.home)<440){
+    let nearest=null,nearestDist=205;
+    for(const candidate of this.players.values()){
+     if(!candidate.live||candidate.zone!==zone||dist(candidate,m.home)>=400)continue;
+     const distance=dist(candidate,m);
+     if(distance<nearestDist){nearestDist=distance;nearest=candidate}
+    }
+    if(nearest){
+     target=nearest;hostile=true;m.aggroTarget=nearest.id;
+     m.aggroUntil=now+16000;
+     m.wanderGoal=null;
+    }
+   }
    if(!hostile){
     m.aggroTarget=null;m.aggroUntil=0;m.windupUntil=0;
     // Caminhada tranquila em um pequeno raio do local de origem, sem perseguir quem passa.
@@ -706,4 +736,4 @@ class World {
  status(){return {connected:this.count,monsters:this.totalMonsters(),regions:ZONES.length,guilds:this.guilds.size,version:'mmo-aurora-historia-alpha'}}
  stop(){clearInterval(this.saveTimer);for(const p of this.players.values())if(p.isAccount)this.saved.characters[p.uid]=safeSave(p.save);this.guestReconnect.clear();this.dirty=true;this.persist();try{this.db?.close()}catch{}}
 }
-module.exports={World,ZONES,ZONE_W,ZONE_H,GOODS,RELICS,BOSS_RELICS,QUESTS,questProgress,SPECIES,CLASSES,ACHIEVEMENTS,xpNeed};
+module.exports={World,ZONES,ZONE_W,ZONE_H,GOODS,RELICS,BOSS_RELICS,QUESTS,questProgress,SPECIES,CLASSES,ACHIEVEMENTS,xpNeed,zoneDifficulty,autoAggroZone,dungeonDepth};
