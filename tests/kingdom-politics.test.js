@@ -80,6 +80,19 @@ test('guilda apenas de visitante não pode criar um reino com tropas persistente
  assert.equal(h.action(a,{action:'place',x:768,y:512}),false);
  assert.equal(a.save.coins,coins);
 });
+test('rei pode erguer muralhas até nível cinco; a defesa aumenta sem gerar ouro',t=>{
+ const h=setup(t),p=h.player('Muralheiro');
+ const g=h.guild(p,'Torres da Esperanca');
+ h.action(p,{action:'place',x:768,y:512});
+ const before=p.save.coins;
+ assert.equal(h.action(p,{action:'upgrade'}),true);
+ assert.equal(g.base.level,2);
+ assert.equal(p.save.coins,before-1000);
+ assert.equal(policy.politicalMap(h.world)[0].ruler,'Torres da Esperanca');
+ for(let i=3;i<=5;i++){p.save.coins=100000;assert.equal(h.action(p,{action:'upgrade'}),true)}
+ assert.equal(g.base.level,5);
+ assert.equal(h.action(p,{action:'upgrade'}),false);
+});
 test('recrutamento cobra moedas, exige capital próxima e limita exércitos a 300',t=>{
  const h=setup(t),a=h.player('Comandante'),g=h.guild(a,'Forca das Torres');
  assert.equal(h.action(a,{action:'recruit',unit:'knight',count:3}),false);
