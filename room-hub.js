@@ -1,7 +1,7 @@
 'use strict';
 /** Salas virtuais em uma única instância Render: instâncias de mundo isoladas. */
 const crypto=require('node:crypto');
-const MAX_PER_ROOM=10,MAX_ROOMS=12,PENDING_MS=60*1000;
+const MAX_PER_ROOM=60,MAX_ROOMS=12,PENDING_MS=60*1000;
 const MAIN_ID='auren-publica';
 const idFor=()=>crypto.randomBytes(9).toString('hex');
 const normalized=title=>typeof title==='string'?title.trim().normalize('NFC'):'';
@@ -77,7 +77,7 @@ class RoomHub{
     throw new RoomError('Senha da sala incorreta.','wrong_room_password',403);
   }
   const replacing=uid&&[...room.world.players.values()].some(p=>p.uid===uid);
-  if(room.world.count>=MAX_PER_ROOM&&!replacing)throw new RoomError('Sala cheia: 10/10 jogadores.','room_full',409);
+  if(room.world.count>=MAX_PER_ROOM&&!replacing)throw new RoomError('Sala cheia: 60/60 jogadores.','room_full',409);
   return room;
  }
  entered(room){
