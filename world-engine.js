@@ -396,8 +396,44 @@ class World {
   this.dirty=true;
   this.send(p.socket,{type:'travel',zone:b,name:ZONES[b][0],x:p.x,y:p.y,portals:this.zonePortals(b)});this.send(p.socket,this.ownStatus(p));this.snapshotTo(p);
  }
+ healParty(p){
+  // A cura é uma habilidade de suporte independente de acertar monstros.
+  // Só cura o próprio Curandeiro e membros de sua equipe na mesma região.
+  const amount=28+p.save.level*4+
+   ((p.save.inventory.cajado_misericordia||0)>0?RELICS.cajado_misericordia.healing:0);
+  let healed=0;
+  for(const ally of this.players.values()){
+   if(ally.zone!==p.zone||dist(p,ally)>=230||
+      !(ally.id===p.id||(p.party&&ally.party===p.party)))continue;
+   const before=ally.save.hp;
+   ally.save.hp=Math.min(hpMax(ally.save),before+amount);
+   const restored=ally.save.hp-before;
+   if(restored<=0)continue;
+   healed++;
+   this.send(ally.socket,this.ownStatus(ally));
+   this.broadcast({type:'healed',zone:p.zone,by:p.name,target:ally.id,
+    targetName:ally.name,amount:restored,x:Math.round(ally.x),y:Math.round(ally.y)},
+    q=>q.zone===p.zone&&dist(q,ally)<780);
+  }
+  if(healed)this.dirty=true;
+  return healed;
+ }
  attack(p,tid,skill){const now=Date.now(),role=CLASSES[p.save.role];const cooldown=skill?4000:600;
   if(now-(skill?p.lastSpell:p.lastAttack)<cooldown)return;
+  // Curandeiro pode usar K mesmo sem criatura marcada. Quando um inimigo
+  // válido estiver selecionado, mantém a habilidade combinada de luz e cura.
+  if(skill&&p.save.role==='curandeiro'){
+   const monster=(this.monsters.get(p.zone)||[]).find(x=>x.id===tid&&x.hp>0);
+   const canHit=monster&&dist(monster,p)<=role.range*1.4;
+   const healed=this.healParty(p);
+   if(!canHit){
+    if(healed){p.lastSpell=now;this.tell(p,'✦ Luz Restauradora: '+healed+
+     (healed===1?' personagem recuperou vida.':' personagens recuperaram vida.'))}
+    else if(now-(p.lastHealNotice||0)>1500){p.lastHealNotice=now;
+     this.tell(p,'✦ Nenhum membro ferido da sua equipe está a até 230 de distância.')}
+    return;
+   }
+  }
   let m=(this.monsters.get(p.zone)||[]).find(x=>x.id===tid&&x.hp>0);if(!m||dist(m,p)>(skill?role.range*1.4:role.range))return;
   if(skill)p.lastSpell=now;else p.lastAttack=now;
   const level=p.save.level;
@@ -423,13 +459,6 @@ class World {
   if(skill&&p.save.role==='peregrino'){
    p.save.hp=Math.min(hpMax(p.save),p.save.hp+12+level*2);
    this.send(p.socket,this.ownStatus(p));
-  }
-  if(skill&&p.save.role==='curandeiro'){
-   for(const ally of this.players.values()){
-    if(ally.zone!==p.zone||dist(p,ally)>=230||!(ally.id===p.id||(p.party&&ally.party===p.party)))continue;
-    ally.save.hp=clamp(ally.save.hp+28+level*4+((p.save.inventory.cajado_misericordia||0)>0?RELICS.cajado_misericordia.healing:0),1,hpMax(ally.save));
-    this.send(ally.socket,this.ownStatus(ally));
-   }
   }
   m.hp=Math.max(0,m.hp-damage);m.damageFrom.set(p.id,(m.damageFrom.get(p.id)||0)+damage);
   // Sem agressividade por proximidade: o monstro só enfrenta quem o atacou.
