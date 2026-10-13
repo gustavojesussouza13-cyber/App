@@ -59,11 +59,15 @@ test('injeção global aparece em todas as páginas HTML, incluindo campanha cl�
  assert.match(server,/renderPublicText\(source,req\)/);
  assert.match(server,/return content\.includes\('<\/head>'\)\?content\.replace/);
  assert.match(server,/\/classic-return\.js/);
- assert.match(server,/\/site-maintenance\.js\?v=maintenance-v1/);
+ assert.match(server,/\/site-maintenance\.js\?v=maintenance-v2/);
  assert.match(browser,/new EventSource\('\/api\/maintenance\/events'\)/);
  assert.match(browser,/document\.fullscreenElement\|\|document\.body/);
  assert.match(browser,/aria-live/);
  assert.match(browser,/textContent=message|detail\.textContent=message/);
+ assert.match(browser,/Dispensar aviso de manutenção/);
+ assert.match(browser,/document\.title=.*originalTitle/);
+ assert.match(browser,/Notification\.permission==='granted'/);
+ assert.doesNotMatch(browser,/restoreTimer=setTimeout/);
  assert.doesNotThrow(()=>new vm.Script(browser));
 });
 test('desligamento do Render envia aviso e aguarda antes de cortar conexões',()=>{
