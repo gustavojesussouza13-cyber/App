@@ -74,7 +74,7 @@ function say(sender,text,kind='',reportId=null){const line=document.createElemen
  while($('chatLog').children.length>85)$('chatLog').firstElementChild.remove();$('chatLog').scrollTop=$('chatLog').scrollHeight;
 }
 function send(type,data={}){
- if(socket&&socket.readyState===WebSocket.OPEN){
+ if(socket&&socket.readyState===WebSocket.OPEN&&(type!=='kingdom'||session.connected)){
   socket.send(JSON.stringify({type,...data}));
   return true;
  }
@@ -84,7 +84,7 @@ function setOnline(state,msg){
  session.connected=state;$('statusDot').classList.toggle('on',state);$('status').textContent=msg;
  $('roomSwitchBtn').disabled=!state||roomSwitchPending;
  touchUI.hidden=!state||!touchDevice;
- if(!state){joystick.release();latency.reset();updatePingIndicator();spriteActions.monsters.clear();spriteActions.players.clear();spriteActions.fallen.length=0;classSkillFx.clear()}
+ if(!state){cityUI.onConnectionLost?.();joystick.release();latency.reset();updatePingIndicator();spriteActions.monsters.clear();spriteActions.players.clear();spriteActions.fallen.length=0;classSkillFx.clear()}
 }
 function character(c){session.characters=c;session.zone=c.zone;session.role=c.role;session.x=c.x;session.y=c.y;
  $('charName').textContent=(c.administrator?'✦ ':'')+(c.name||session.name);$('playerClass').textContent=({peregrino:'Peregrino',guardiao:'Guardião',arqueiro:'Arqueiro',curandeiro:'Curandeiro'}[c.role]||c.role)+(c.administrator?' · ADMIN':'');
