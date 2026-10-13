@@ -37,7 +37,7 @@ const touchUI=$('touchControls');
 const joystick=window.OsPeregrinosTouchControls.create({pad:$('touchPad'),knob:$('touchKnob')});
 let socket=null,reconnectMs=1000,reconnectTimer=null,movingAt=0,lastDraw=0,fx=[],toastTimer=0,lastAction=0,lastActionWasSkill=false,tab='inventory',authed=false;
 let progressToken=null,accountMode=false,accountReady=false,emailRecoveryAvailable=false;
-let selectedRoomId='auren-publica',selectedRoomPassword='',roomCatalog=[],roomName='Praça Pública';
+let selectedRoomId='auren-publica',selectedRoomPassword='',roomCatalog=[],roomName='Praça Pública',pendingRoom=null,pendingRoomUntil=0;
 let roomSwitchPending=false,roomSwitchTarget=null;
 // Cada abertura do site cria uma nova jornada Visitante. O token existe
 // somente nesta execução da página; queda da conexão reutiliza o token.
@@ -122,7 +122,10 @@ function dispatch(msg){
   session.partyInvite=null;session.tradeOffer=null;
  }
  $('welcomeOverlay').hidden=true;
- if(msg.room){selectedRoomId=msg.room.id;roomName=msg.room.name}
+ if(msg.room){
+  selectedRoomId=msg.room.id;roomName=msg.room.name;
+  if(pendingRoom?.id===msg.room.id)pendingRoom=null;
+ }
  if(roomChanged){
   roomSwitchPending=false;roomSwitchTarget=null;
   $('roomSwitchDialog').close();
@@ -266,7 +269,14 @@ async function loadRooms(){
   if(!res.ok)throw Error('Indisponível');
   const data=await res.json();
   if(!Array.isArray(data.rooms))throw Error('Resposta inválida');
-  roomCatalog=data.rooms;updateRoomSelection();
+  roomCatalog=data.rooms.filter(r=>r.primary||r.online>0);
+  // A reserva que ESTE jogador acabou de criar pode ser selecionada por
+  // ele antes de entrar, mas jamais é anunciada aos demais visitantes.
+  if(pendingRoom&&Date.now()<pendingRoomUntil){
+   if(roomCatalog.some(r=>r.id===pendingRoom.id))pendingRoom=null;
+   else roomCatalog.push(pendingRoom);
+  }else pendingRoom=null;
+  updateRoomSelection();
   if($('roomSwitchDialog').open)renderSwitchRooms();
  }catch{$('roomSummary').textContent='Não foi possível atualizar a lista de salas.'}
 }
@@ -284,6 +294,7 @@ $('createRoomForm').addEventListener('submit',async e=>{
   });
   const data=await response.json();
   if(!response.ok)throw Error(data.error||'Não foi possível criar a sala.');
+  pendingRoom=data.room;pendingRoomUntil=Date.now()+60000;
   roomCatalog.push(data.room);selectedRoomId=data.room.id;
   selectedRoomPassword=$('newRoomPassword').value;updateRoomSelection();
   if(data.room.locked)$('roomJoinPassword').value=selectedRoomPassword;
@@ -357,6 +368,7 @@ $('roomSwitchCreateForm').addEventListener('submit',async event=>{
   });
   const data=await result.json();
   if(!result.ok)throw new Error(data.error||'Falha ao criar sala.');
+  pendingRoom=data.room;pendingRoomUntil=Date.now()+60000;
   roomCatalog.push(data.room);renderSwitchRooms();
   $('roomSwitchSelect').value=data.room.id;
   $('roomSwitchPassword').value=password;
