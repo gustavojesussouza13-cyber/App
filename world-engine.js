@@ -94,7 +94,7 @@ function hash32(n){n|=0;n=Math.imul(n^(n>>>16),0x7feb352d);n=Math.imul(n^(n>>>15
 class World {
  constructor({send,getOnline,hasClassicName,dataFile,autosave=false,persistentStore=null}){
   this.send=send;this.getOnline=getOnline;this.hasClassicName=hasClassicName;
-  this.players=new Map();this.monsters=new Map();this.parties=new Map();this.guilds=new Map();this.pendingTrades=new Map();this.chatGuard=new ChatGuard();this.chatReceipts=new Map();this.chatReports=new Map();this.chatReportRate=new Map();
+  this.players=new Map();this.guestReconnect=new Map();this.monsters=new Map();this.parties=new Map();this.guilds=new Map();this.pendingTrades=new Map();this.chatGuard=new ChatGuard();this.chatReceipts=new Map();this.chatReports=new Map();this.chatReportRate=new Map();
   this.dirty=false;this.lastTick=Date.now();this.day=1;
   this.dataFile=dataFile||path.join(__dirname,'data','world.sqlite');
   this.db=null;this.persistentStore=persistentStore;this.saved={version:3,characters:{},guilds:{},day:1};if(!persistentStore)this.load();
@@ -127,7 +127,10 @@ class World {
    if(this.persistentStore?.pending)void this.persistentStore.flush().catch(err=>console.error('[world] repetição do salvamento falhou:',err.message));
    return;
   }
-  for(const p of this.players.values())this.saved.characters[p.uid]=safeSave(p.save);this.saved.guilds=Object.fromEntries(this.guilds);this.saved.day=this.day;
+  // Sessões visitantes não são gravadas no Postgres/SQLite. Somente contas
+  // registradas preservam personagens entre visitas ao site.
+  for(const p of this.players.values())if(p.isAccount)this.saved.characters[p.uid]=safeSave(p.save);
+  this.saved.guilds=Object.fromEntries(this.guilds);this.saved.day=this.day;
   if(this.persistentStore){this.dirty=false;this.persistentStore.enqueue(this.saved);return;}
   try{
    if(this.db){
@@ -218,7 +221,19 @@ class World {
   if(this.players.size+this.getOnline()>=10){this.send(c.socket,{type:'error',code:'full',message:'Servidor cheio: 10 de 10 peregrinos. Aguarde uma vaga.'});return}
   if([...this.players.values()].some(p=>p.name.toLocaleLowerCase('pt-BR')===name.toLocaleLowerCase('pt-BR'))||this.hasClassicName(name)){
    this.send(c.socket,{type:'error',code:'name_taken',message:'Esse nome já está em uso agora. Escolha outro.'});return}
-  let raw=this.saved.characters[uid]||defaultSave();const s={...defaultSave(),...raw};
+  // Visitante: jornada temporária por aba aberta; se a conexão cair por
+  // alguns segundos, o mesmo token retoma em RAM. Um novo acesso gera
+  // token diferente e sempre começa do nível 1. Tokens antigos gravados em
+  // versões anteriores não são carregados e permanecem intocados no banco.
+  const now=Date.now();
+  let raw;
+  if(owner)raw=this.saved.characters[uid]||defaultSave();
+  else{
+   const pending=this.guestReconnect.get(uid);
+   this.guestReconnect.delete(uid);
+   raw=pending&&pending.expires>now?pending.save:defaultSave();
+  }
+  const s={...defaultSave(),...raw};
   if(!CLASSES[s.role])s.role='peregrino';if(!Number.isInteger(s.zone)||s.zone<0||s.zone>=ZONES.length)s.zone=0;
   s.level=clamp(Math.floor(Number(s.level)||1),1,100);s.hp=clamp(Math.floor(Number(s.hp)||hpMax(s)),1,hpMax(s));s.x=clamp(Number(s.x)||ZONE_W/2,28,ZONE_W-28);s.y=clamp(Number(s.y)||ZONE_H/2,28,ZONE_H-28);
   const safeLocation=terrain.nearestWalkable(s.zone,s.x,s.y,ZONES);
@@ -226,26 +241,29 @@ class World {
   s.inventory={...defaultSave().inventory,...(s.inventory||{})};if(!Array.isArray(s.quests))s.quests=[];if(!Array.isArray(s.visited))s.visited=[0];if(!Array.isArray(s.achievements))s.achievements=[];if(!Array.isArray(s.bossRelics))s.bossRelics=[];s.bossRelics=s.bossRelics.filter(z=>Number.isInteger(z)&&z>=0&&z<ZONES.length);
   s.blocked=Array.isArray(s.blocked)?[...new Set(s.blocked.filter(n=>typeof n==='string'&&assertName(n)).map(n=>n.toLocaleLowerCase('pt-BR')))].slice(0,30):[];
   s.story=normalizeStory(s.story);
-  // A seleção feita no formulário Visitante precisa valer inclusive para um
-  // personagem já salvo nesse token. A classe anterior pode ter sido Arqueiro
-  // porque o join antigo ignorava completamente o campo d.role.
+  // Classe selecionada no novo início vale imediatamente para visitante.
   // Em contas registradas, NÃO ler d.role: a classe é a da conta persistida.
   if(!owner&&typeof d.role==='string'&&Object.hasOwn(CLASSES,d.role)&&s.role!==d.role){
    const healthMissing=Math.max(0,hpMax(s)-s.hp);
    s.role=d.role;
    s.hp=clamp(hpMax(s)-healthMissing,1,hpMax(s));
-   // Preserva nível, XP, inventário, moedas, missões, guilda e exploração.
-   // Persistência usa o fluxo já existente de dirty -> enqueue/flush.
-   this.dirty=true;
+   // Reconexões da mesma aba mantêm atributos; novo token cria a jornada zero.
   }
-  const p={id:crypto.randomUUID(),uid,name,socket:c.socket,save:s,x:s.x,y:s.y,zone:s.zone,dir:2,lastMove:Date.now(),moveCredit:12,lastAttack:0,lastSpell:0,lastChat:0,lastUse:0,party:null,live:true};
+  const p={id:crypto.randomUUID(),uid,name,isAccount:!!owner,socket:c.socket,save:s,x:s.x,y:s.y,zone:s.zone,dir:2,lastMove:Date.now(),moveCredit:12,lastAttack:0,lastSpell:0,lastChat:0,lastUse:0,party:null,live:true};
   c.worldPlayer=p;c.socket._worldClient=c;this.players.set(p.id,p);
   this.send(c.socket,{type:'welcome',self:this.ownStatus(p),zones:this.zoneInfo(),shop:GOODS,relics:RELICS,quests:QUESTS,achievements:ACHIEVEMENTS,portals:this.zonePortals(p.zone),npcs:NPCS.map(publicNpc),maxPlayers:10,online:this.players.size+this.getOnline(),monsterTotal:this.totalMonsters()});
   this.broadcast({type:'system',text:p.name+' chegou ao mundo.'},q=>q.id!==p.id);
   this.dirty=true;this.snapshotTo(p);
  }
  leave(c){const p=c.worldPlayer;if(!p||!p.live)return;p.live=false;
-  this.saved.characters[p.uid]=safeSave(p.save);this.dirty=true;
+  if(p.isAccount){this.saved.characters[p.uid]=safeSave(p.save);this.dirty=true}
+  else{
+   // Pequena tolerância a queda de rede; não sobrevive a reinício de aba.
+   const now=Date.now();
+   for(const [uid,snapshot] of this.guestReconnect)if(snapshot.expires<=now)this.guestReconnect.delete(uid);
+   if(this.guestReconnect.size>=100)this.guestReconnect.delete(this.guestReconnect.keys().next().value);
+   this.guestReconnect.set(p.uid,{save:safeSave(p.save),expires:now+120000});
+  }
   this.players.delete(p.id);c.worldPlayer=null;
   if(p.party)this.partyLeave(p,false);
   for(const k of this.pendingTrades.keys())if(k.includes(p.id))this.pendingTrades.delete(k);
@@ -624,6 +642,6 @@ class World {
   for(const p of this.players.values())this.snapshotTo(p);
  }
  status(){return {connected:this.count,monsters:this.totalMonsters(),regions:ZONES.length,guilds:this.guilds.size,version:'mmo-aurora-historia-alpha'}}
- stop(){clearInterval(this.saveTimer);for(const p of this.players.values())this.saved.characters[p.uid]=safeSave(p.save);this.dirty=true;this.persist();try{this.db?.close()}catch{}}
+ stop(){clearInterval(this.saveTimer);for(const p of this.players.values())if(p.isAccount)this.saved.characters[p.uid]=safeSave(p.save);this.guestReconnect.clear();this.dirty=true;this.persist();try{this.db?.close()}catch{}}
 }
 module.exports={World,ZONES,ZONE_W,ZONE_H,GOODS,RELICS,BOSS_RELICS,QUESTS,questProgress,SPECIES,CLASSES,ACHIEVEMENTS,xpNeed};
