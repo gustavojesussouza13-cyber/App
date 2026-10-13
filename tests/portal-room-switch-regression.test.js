@@ -77,5 +77,5 @@ test('O renderizador desenha os portais recebidos do servidor e a interação E 
  const welcome=script.slice(welcomeStart,welcomeEnd);
  assert.doesNotMatch(welcome,/session\.portals=\[\]/,'troca de sala não pode apagar os portais');
  assert.match(welcome,/session\.portals=Array\.isArray\(msg\.portals\)\?msg\.portals:\[\]/);
- assert.match(html,/art16\.js\?v=pixel-art-v1&pc=portal-hud-v2/);
+ assert.match(html,/art16\.js\?v=pixel-art-v1&pc=reinos-v1/);
 });
