@@ -123,3 +123,45 @@ test('quartéis treinam soldados com recursos sem duplicar nem aceitar quantidad
  assert.equal(act({action:'train',unit:'militia',count:41}),false);
  assert.equal(guild.army.militia,2);
 });
+
+
+test('retorno do servidor informa se construiu ou recusou e revela saldo pessoal sem confundir tesouro',t=>{
+ const notices=[];
+ const world=new World({persistentStore:{enqueue:()=>{}},send:(_socket,message)=>notices.push(message),getOnline:()=>0,hasClassicName:()=>false});
+ t.after(()=>world.stop());
+ const client={socket:{},authUser:{uid:'account:builder',username:'Builder'},worldPlayer:null};
+ world.join(client,{name:'Builder',role:'peregrino'});
+ const p=client.worldPlayer;p.x=768;p.y=512;p.save.coins=2000;
+ world.guild(p,{action:'create',name:'Guilda das Muralhas'});
+ const act=(data)=>politics.action(world,p,data,{walkable:()=>true,portals:[],npcs:[],now:1000});
+ assert.equal(act({action:'place',x:768,y:512}),true);
+ notices.length=0;
+ assert.equal(act({action:'construct',type:'house',x:5,y:5,requestId:101}),true);
+ const first=notices.find(x=>x.type==='kingdomActionResult'&&x.id===101);
+ assert.equal(first.action,'construct');
+ assert.equal(first.ok,true);
+ assert.match(first.message,/Construção concluída/);
+ const state=politics.publicState(world,p);
+ assert.equal(state.walletCoins,1880);
+ assert.equal(state.yourGuild.stock.coins,0,'tesouro da guilda não é a carteira do personagem');
+ notices.length=0;
+ assert.equal(act({action:'construct',type:'house',x:5,y:5,requestId:102}),false);
+ const invalid=notices.find(x=>x.type==='kingdomActionResult'&&x.id===102);
+ assert.equal(invalid.ok,false);
+ assert.match(invalid.message,/Terreno ou edifício inválido/);
+ assert.equal(notices.find(x=>x.type==='kingdomState').data.walletCoins,1880);
+ p.save.coins=0;notices.length=0;
+ assert.equal(act({action:'construct',type:'tower',x:1,y:1,requestId:103}),false);
+ const poor=notices.find(x=>x.type==='kingdomActionResult'&&x.id===103);
+ assert.equal(poor.ok,false);
+ assert.match(poor.message,/Moedas insuficientes/);
+ notices.length=0;
+ assert.equal(act({action:'collect',requestId:104}),false);
+ assert.equal(notices.find(x=>x.type==='kingdomActionResult'&&x.id===104).ok,false);
+ notices.length=0;
+ assert.equal(act({action:'inspect',requestId:105}),false);
+ assert.equal(notices.some(x=>x.type==='kingdomActionResult'),false,'inspeção não resolve pedidos de construção');
+ notices.length=0;
+ assert.equal(act({action:'construct',type:'invalid',x:3,y:3,requestId:'106'}),false);
+ assert.equal(notices.some(x=>x.type==='kingdomActionResult'),false,'identificador inválido não gera resposta rastreada');
+});
