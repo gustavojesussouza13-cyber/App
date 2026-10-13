@@ -18,18 +18,19 @@ const mk=()=>{
  const last=type=>events.filter(x=>x.type===type).at(-1);
  return {world,p,c,events,token,dir,go,last,cleanup};
 };
-test('32 personagens originais, 16 capítulos em regiões corretas e sete centelhas',()=>{
- assert.equal(chapters.length,16);assert.equal(NPCS.length,32);
- assert.equal(new Set(NPCS.map(x=>x.id)).size,32);
- assert.deepEqual(chapters.map(x=>x.zone),[0,1,12,2,3,13,4,5,14,6,7,8,9,10,11,15]);
+test('16 capítulos preservados, 24 inéditos nos subsolos e sete centelhas',()=>{
+ assert.equal(chapters.length,40);assert.equal(NPCS.length,56);
+ assert.equal(new Set(NPCS.map(x=>x.id)).size,56);
+ assert.deepEqual(chapters.slice(0,16).map(x=>x.zone),[0,1,12,2,3,13,4,5,14,6,7,8,9,10,11,15]);
+ assert.deepEqual(chapters.slice(16).map(x=>x.zone),Array.from({length:24},(_,i)=>16+i));
  assert.equal(chapters.filter(x=>x.shard).length,7);
  assert.ok(chapters.reduce((n,x)=>n+x.lines.length+(x.ending?.length||0),0)>=90);
  for(const npc of NPCS){assert.ok(npc.x>0&&npc.x<1536);assert.ok(npc.y>0&&npc.y<1024);assert.ok(npc.lines.length>=2)}
 });
 test('jogador recebe NPCs, livro de capítulos e nenhum cadastro',t=>{
  const w=mk();t.after(w.cleanup);
- const msg=w.last('welcome');assert.equal(msg.npcs.length,32);
- assert.equal(msg.self.story.stage,0);assert.equal(msg.self.story.total,16);
+ const msg=w.last('welcome');assert.equal(msg.npcs.length,56);
+ assert.equal(msg.self.story.stage,0);assert.equal(msg.self.story.total,40);
  assert.equal(msg.self.story.title,'O sino que não tocou');assert.equal(msg.maxPlayers,10);
 });
 test('falar com NPC distante, desconhecido ou de região diferente não exibe diálogo',t=>{
@@ -72,7 +73,7 @@ test('combate da história conta apenas vitórias depois da aceitação, dentro 
  w.world.receive(w.c,{type:'storyChoice',npc:n.id,choice:'coragem'});
  assert.equal(w.p.save.story.stage,initial+1);assert.ok(w.p.save.story.shards.includes('Centelha da Memória'));
 });
-test('história completa tem desfecho, 7 centelhas, chaves para as quatro masmorras e escolha final',t=>{
+test('história de 40 capítulos preserva 7 centelhas, quatro testemunhos e decisões',t=>{
  const w=mk();t.after(w.cleanup);let keys=0;
  for(const n of chapters){
   w.go(n);w.p.lastTalk=0;
@@ -86,7 +87,8 @@ test('história completa tem desfecho, 7 centelhas, chaves para as quatro masmor
   if(n.key)keys++;
  }
  assert.equal(keys,4);assert.equal(w.p.save.inventory.chave,4);
- assert.equal(w.p.save.story.shards.length,7);assert.equal(w.p.save.story.decisions.length,16);
+ assert.equal(w.p.save.story.shards.length,7);assert.equal(w.p.save.story.decisions.length,40);
+ assert.equal(w.p.save.story.testimonies.length,4);
  assert.ok(w.last('storyResolved').epilogue.includes('Compaixão'));
  assert.equal(journal(w.p.save.story).finished,true);
 });
