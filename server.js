@@ -6,6 +6,7 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const { TextDecoder } = require('node:util');
 const {World} = require('./world-engine');
+const {RoomHub,RoomError,MAIN_ID,MAX_PER_ROOM,ownerId}=require('./room-hub');
 const {MobileCoop} = require('./mobile-coop');
 const {ChatGuard,inspectNickname}=require('./chat-safety');
 const {AccountStore,AuthError,authCookie,clearCookie,cleanEmail,validEmail}=require('./account-store');
@@ -15,7 +16,7 @@ const {grantOwnerBenefits}=require('./owner-benefits');
 
 const PORT = Number(process.env.PORT || 3000);
 const HOST = process.env.HOST || '0.0.0.0';
-const MAX_PLAYERS = 10; // limite total compartilhado entre campanha e mundo aberto
+const MAX_PLAYERS = 10; // capacidade de cada sala e da campanha clássica
 const PUBLIC = path.join(__dirname, 'public');
 
 // Configure PUBLIC_SITE_URL depois de verificar um domínio próprio no Render.
@@ -64,7 +65,16 @@ const maintenanceNotices=new MaintenanceNotices();
 const MIME = {'.xml':'application/xml; charset=utf-8','.txt':'text/plain; charset=utf-8','.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'application/javascript; charset=utf-8','.png':'image/png','.webp':'image/webp','.jpg':'image/jpeg','.jpeg':'image/jpeg','.svg':'image/svg+xml','.ico':'image/x-icon'};
 const decoder = new TextDecoder('utf-8', {fatal:true});
 const accountStore=process.env.DATABASE_URL?new AccountStore({databaseUrl:process.env.DATABASE_URL}):null;
-const world=new World({send,getOnline:()=>players.size,hasClassicName:name=>[...players.values()].some(p=>p.name.toLocaleLowerCase('pt-BR')===name.toLocaleLowerCase('pt-BR')),dataFile:process.env.DATA_FILE||path.join(__dirname,'data','world.sqlite'),autosave:true,persistentStore:accountStore});
+const world=new World({send,getOnline:()=>0,hasClassicName:name=>[...players.values()].some(p=>p.name.toLocaleLowerCase('pt-BR')===name.toLocaleLowerCase('pt-BR')),dataFile:process.env.DATA_FILE||path.join(__dirname,'data','world.sqlite'),autosave:true,persistentStore:accountStore});
+const rooms=new RoomHub({mainWorld:world,createWorld:()=>{
+ const instance=new World({send,getOnline:()=>0,hasClassicName:name=>[...players.values()].some(p=>p.name.toLocaleLowerCase('pt-BR')===name.toLocaleLowerCase('pt-BR')),persistentStore:accountStore||{enqueue:()=>{world.dirty=true;world.persist()}},autosave:false});
+ // Uma única fonte para contas, níveis e guildas; criaturas, equipes e
+ // colisões permanecem isoladas em cada sala.
+ instance.saved=world.saved;
+ instance.guilds=world.guilds;
+ instance.day=world.day;
+ return instance;
+}});
 const authRate=new Map();
 const mailService=new MailService();
 console.info('[e-mail] recuperação de senha: '+(mailService.ready?'pronta':'indisponível; conferir variáveis privadas do Render'));
@@ -96,6 +106,27 @@ function bodyJson(req){return new Promise((resolve,reject)=>{
  req.on('end',()=>{try{resolve(JSON.parse(Buffer.concat(parts).toString('utf8')))}catch{reject(new AuthError('Dados inválidos.'))}});
  req.on('error',reject);
  })}
+async function handleCreateRoom(req,res){
+ try{
+  if(shuttingDown)return jsonResponse(res,503,{error:'Servidor em manutenção.'});
+  if(req.method!=='POST')return jsonResponse(res,405,{error:'Método não permitido.'});
+  const origin=req.headers.origin;
+  if(origin&&new URL(origin).host!==req.headers.host)throw new RoomError('Origem não permitida.','bad_origin',403);
+  if(req.headers['sec-fetch-site']==='cross-site')throw new RoomError('Origem não permitida.','bad_origin',403);
+  if(!(req.headers['content-type']||'').startsWith('application/json'))throw new RoomError('Envie dados em JSON.','bad_content',415);
+  if(limited(req.socket.remoteAddress||'unknown'))throw new RoomError('Muitas solicitações. Tente depois.','rate_limited',429);
+  const body=await bodyJson(req);
+  if(!body||typeof body!=='object'||Array.isArray(body))throw new RoomError('Dados inválidos.','bad_request');
+  const account=await accountStore?.session(req.headers.cookie);
+  const creator=ownerId({uid:account?.uid,token:body.guestToken});
+  if(!creator)throw new RoomError('Informe seu personagem ou entre com uma conta.','owner_required',401);
+  const room=rooms.create({name:body.name,password:body.password||'',owner:creator});
+  return jsonResponse(res,201,{room});
+ }catch(err){
+  if(!(err instanceof RoomError||err instanceof AuthError))console.warn('[salas] falha ao criar:',err.message);
+  return jsonResponse(res,err.status||400,{error:err.message||'Não foi possível criar a sala.',code:err.code||'room_error'});
+ }
+}
 async function handleAuth(req,res,route){
  const secure=process.env.NODE_ENV==='production' || !/^localhost(?::\d+)?$|^127\.0\.0\.1(?::\d+)?$/.test(String(req.headers.host||''));
  if(!accountStore||!accountStore.ready)return jsonResponse(res,503,{error:'Cadastro indisponível: aguardando banco persistente.',code:'storage_offline'});
@@ -197,14 +228,16 @@ async function checkReadiness(){
 const httpServer = http.createServer((req,res)=>{
   const u = new URL(req.url||'/', 'http://localhost');
   if(u.pathname.startsWith('/api/auth/')){void handleAuth(req,res,u.pathname);return}
+  if(u.pathname==='/api/rooms'&&req.method==='POST'){void handleCreateRoom(req,res);return}
   if(req.method !== 'GET') return reply(res,405,'Método não permitido');
+  if(u.pathname==='/api/rooms')return jsonResponse(res,200,{rooms:rooms.list(),totalOnline:rooms.count(),capacityPerRoom:MAX_PER_ROOM});
   if(u.pathname==='/api/maintenance/events'){
     maintenanceNotices.subscribe(req,res);return;
   }
   if(u.pathname==='/api/maintenance/status'){
     return jsonResponse(res,200,maintenanceNotices.payload());
   }
-  if(u.pathname==='/api/status') return reply(res,200,JSON.stringify({online:players.size+world.count,maxPlayers:MAX_PLAYERS,availableSlots:Math.max(0,MAX_PLAYERS-players.size-world.count),regions:[...new Set([...players.values()].map(p=>p.zone))].length,world:world.status(),registeredAccounts:!!accountStore?.ready,persistentStorage:!!accountStore?.ready,version:'2.0-5.1-auth'}),'application/json; charset=utf-8');
+  if(u.pathname==='/api/status') return reply(res,200,JSON.stringify({online:players.size+rooms.count(),maxPlayers:MAX_PLAYERS,availableSlots:Math.max(0,MAX_PLAYERS-rooms.get(MAIN_ID).world.count),rooms:rooms.list().length,capacityPerRoom:MAX_PER_ROOM,regions:[...new Set([...players.values()].map(p=>p.zone))].length,world:world.status(),registeredAccounts:!!accountStore?.ready,persistentStorage:!!accountStore?.ready,version:'2.2-rooms'}),'application/json; charset=utf-8');
   if(u.pathname==='/health') return reply(res,200,'ok');
   if(u.pathname==='/health/ready'){
     void checkReadiness().then(ok=>jsonResponse(res,ok?200:503,{ready:ok,database:ok?'connected':'unavailable'}))
@@ -269,7 +302,7 @@ function terminate(c){
   if(c.terminated)return;c.terminated=true;
   sockets.delete(c);
   if(c.mode==='mobile')mobileCoop.leave(c);
-  if(c.mode==='world')world.leave(c);
+  if(c.mode==='world'&&c.worldRoom){c.worldRoom.world.leave(c);rooms.left(c.worldRoom);c.worldRoom=null}
   if(c.profile){players.delete(c.profile.id);emitAll({type:'leave',id:c.profile.id,name:c.profile.name,zone:c.profile.zone});}
   try{c.socket.end(frame(Buffer.alloc(0),8))}catch{}
   c.socket.destroy();
@@ -281,7 +314,7 @@ function join(c,data){
   const name=typeof data.name==='string'?data.name.trim().normalize('NFC'):'';
   if(!validName(name)){return refuse(c,{type:'error',code:'invalid_name',message:'Use de 3 a 18 caracteres: letras, números, espaço ou hífen.'})}
   if(!inspectNickname(name).ok)return refuse(c,{type:'error',code:'invalid_name',message:'Esse apelido não é permitido no chat protegido.'});
-  if(players.size+world.count>=MAX_PLAYERS){return refuse(c,{type:'error',code:'full',message:'Servidor cheio (10/10). Aguarde uma vaga.'})}
+  if(players.size>=MAX_PLAYERS){return refuse(c,{type:'error',code:'full',message:'Campanha clássica cheia (10/10). Aguarde uma vaga.'})}
   const token=typeof data.token==='string'&&/^[a-f0-9-]{20,60}$/i.test(data.token)?data.token:'';
   for(const other of sockets)if(other!==c&&other.profile&&other.profile.name.toLocaleLowerCase('pt-BR')===name.toLocaleLowerCase('pt-BR')){
     if(token && token===other.profile.token){terminate(other);break;}
@@ -309,7 +342,16 @@ async function worldHello(c,data){
    const name=typeof data.name==='string'?data.name.trim().normalize('NFC'):'';
    if(accountStore?.ready&&await accountStore.nameReserved(name))return send(c.socket,{type:'error',code:'name_reserved',message:'Esse nome pertence a uma conta. Use o login ou escolha outro apelido.'});
   }
-  if(!c.terminated)world.receive(c,data);
+  if(c.terminated)return;
+  let room;
+  try{room=rooms.check(typeof data.roomId==='string'?data.roomId:MAIN_ID,data.roomPassword)}
+  catch(error){return send(c.socket,{type:'error',code:error.code||'room_error',message:error.message})}
+  const uid=c.authUser?.uid||ownerId({token:data.token});
+  for(const other of [...sockets])if(other!==c&&other.mode==='world'&&other.worldPlayer?.uid===uid)terminate(other);
+  c.worldRoom=room;
+  room.world.receive(c,data);
+  if(c.worldPlayer)rooms.entered(room);
+  else c.worldRoom=null;
  }catch(err){console.error('[contas] falha ao validar sessão:',err.message);send(c.socket,{type:'error',code:'auth_unavailable',message:'Não foi possível verificar a conta.'});}
  finally{c.joinPending=false}
 }
@@ -317,7 +359,7 @@ function receive(c,data){
   if(c.mode==='mobile'){mobileCoop.receive(c,data);return}
   if(c.mode==='world'){
    if(!c.worldPlayer){if(data&&data.type==='hello')void worldHello(c,data);return}
-   world.receive(c,data);return
+   c.worldRoom?.world.receive(c,data);return
   }
   if(!data||typeof data!=='object'||Array.isArray(data))return;
   if(!c.profile){if(data.type==='hello')join(c,data);return}
@@ -395,7 +437,8 @@ setInterval(()=>{
     if(c.profile){const peers=[...players.values()].filter(p=>p.zone===c.profile.zone&&p.id!==c.profile.id).map(publicPlayer);send(c.socket,{type:'snapshot',players:peers,online:players.size,zone:c.profile.zone})}
   }
 },250).unref();
-setInterval(()=>world.tick(),350).unref();
+setInterval(()=>{for(const active of rooms.allWorlds())active.tick()},350).unref();
+setInterval(()=>rooms.clean(),60000).unref();
 const start=async()=>{
  try{
   if(accountStore){
@@ -423,7 +466,7 @@ for(const sig of ['SIGTERM','SIGINT'])process.on(sig,()=>{
  const shutdown=()=>{
   for(const c of [...sockets])terminate(c);
   maintenanceNotices.close();
-  world.stop();
+  rooms.close();
   const kill=setTimeout(()=>process.exit(1),14000);kill.unref();
   Promise.resolve(accountStore?.close()).then(()=>{
    httpServer.close(()=>{clearTimeout(kill);process.exit(0)});
