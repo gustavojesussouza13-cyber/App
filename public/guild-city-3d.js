@@ -169,7 +169,7 @@
    if(scene||loading||!dlg.open)return;
    loading=true;const seq=++token;
    try{
-    const engine=await import('/guild-scene-3d.mjs?v=guild3d-v1');
+    const engine=await import('/guild-scene-3d.mjs?v=guild3d-instant-v2');
     if(!dlg.open||seq!==token)return;
     scene=engine.createGuildScene({mount:viewport,layout,onCell,onHover});
     q('guild3dLoading')?.remove();
