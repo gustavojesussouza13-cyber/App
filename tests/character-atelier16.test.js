@@ -43,11 +43,11 @@ function studio(){
  return {instance:STUDIO.create({documentRef:browser}),images,screen,get count(){return count}};
 }
 function sig(ops){return ops.map(x=>x.join(':')).join('|')}
-test('32 NPCs narrativos possuem perfis de arte reconhecíveis e individuais',()=>{
- assert.equal(ART.NPC_STYLES.length,32);
- assert.equal(new Set(ART.NPC_STYLES).size,32);
- assert.equal(NPCS.length,32);
- assert.equal(new Set(NPCS.map(n=>ART.npcStyle(n))).size,32);
+test('56 NPCs narrativos possuem perfis de arte reconhecíveis e individuais',()=>{
+ assert.equal(ART.NPC_STYLES.length,56);
+ assert.equal(new Set(ART.NPC_STYLES).size,56);
+ assert.equal(NPCS.length,56);
+ assert.equal(new Set(NPCS.map(n=>ART.npcStyle(n))).size,56);
  for(const [i,n] of NPCS.entries()){
   const s=ART.npcStyle(n);
   assert.equal(s,ART.NPC_STYLES[i],n.name);
@@ -63,8 +63,8 @@ test('NPCs da história e moradores não usam o sprite das quatro classes como s
   assert.ok(sheet.ops.length>=30,'NPC pouco detalhado: '+n.name);
   unique.push(sig(sheet.ops));
  }
- assert.equal(new Set(unique).size,32,'os NPCs devem ter aparências reconhecíveis diferentes');
- assert.equal(b.instance.stats.cached,32);
+ assert.equal(new Set(unique).size,56,'os NPCs devem ter aparências reconhecíveis diferentes');
+ assert.equal(b.instance.stats.cached,56);
 });
 test('o mesmo NPC mantém a identidade e cache entre quadros; direções são diferentes',()=>{
  const b=studio();
