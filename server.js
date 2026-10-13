@@ -238,7 +238,7 @@ const httpServer = http.createServer((req,res)=>{
   if(u.pathname==='/api/maintenance/status'){
     return jsonResponse(res,200,maintenanceNotices.payload());
   }
-  if(u.pathname==='/api/status') return reply(res,200,JSON.stringify({online:players.size+rooms.count(),maxPlayers:MAX_PLAYERS,availableSlots:Math.max(0,MAX_PLAYERS-rooms.get(MAIN_ID).world.count),rooms:rooms.list().length,capacityPerRoom:MAX_PER_ROOM,regions:[...new Set([...players.values()].map(p=>p.zone))].length,world:world.status(),registeredAccounts:!!accountStore?.ready,persistentStorage:!!accountStore?.ready,version:'2.2-rooms'}),'application/json; charset=utf-8');
+  if(u.pathname==='/api/status') return reply(res,200,JSON.stringify({online:players.size+rooms.count(),maxPlayers:MAX_PLAYERS,availableSlots:Math.max(0,MAX_PLAYERS-players.size),mainRoomSlots:Math.max(0,MAX_PLAYERS-rooms.get(MAIN_ID).world.count),rooms:rooms.list().length,capacityPerRoom:MAX_PER_ROOM,regions:[...new Set([...players.values()].map(p=>p.zone))].length,world:world.status(),registeredAccounts:!!accountStore?.ready,persistentStorage:!!accountStore?.ready,version:'2.2-rooms'}),'application/json; charset=utf-8');
   if(u.pathname==='/health') return reply(res,200,'ok');
   if(u.pathname==='/health/ready'){
     void checkReadiness().then(ok=>jsonResponse(res,ok?200:503,{ready:ok,database:ok?'connected':'unavailable'}))
