@@ -40,6 +40,7 @@ let progressToken=null,accountMode=false,accountReady=false,emailRecoveryAvailab
 let selectedRoomId='auren-publica',selectedRoomPassword='',roomCatalog=[],roomName='Praça Pública',pendingRoom=null,pendingRoomUntil=0;
 let roomSwitchPending=false,roomSwitchTarget=null;
 let kingdomState=null,visibleKingdomBases=[];
+const cityUI=window.PeregrinosCity.create({send:(type,data)=>send(type,data)});
 // Cada abertura do site cria uma nova jornada Visitante. O token existe
 // somente nesta execução da página; queda da conexão reutiliza o token.
 // Dados de contas cadastradas continuam no servidor, sob login/senha.
@@ -112,6 +113,7 @@ function dispatch(msg){
  if(msg.type==='kingdomState'){
   kingdomState=msg.data||null;
   visibleKingdomBases=(kingdomState?.bases||[]).filter(b=>b.zone===session.zone);
+  cityUI.update(kingdomState);
   if(tab==='social')drawTab();return;
  }
  if(msg.type==='pong'){if(latency.receive(msg,performance.now()))updatePingIndicator();return}
@@ -597,6 +599,8 @@ $('talkBtn').onclick=talkToNearest;$('attackBtn').onclick=()=>attack(false);$('s
 cvs.addEventListener('click',e=>{if(!session.connected)return;const rect=cvs.getBoundingClientRect(),wx=(e.clientX-rect.left)*W/rect.width+session.cameraX,wy=(e.clientY-rect.top)*H/rect.height+session.cameraY;
  // O sprite real tem 92px de altura, portanto toda a porta é clicável,
  // não apenas a posição dos pés; o servidor ainda valida proximidade do jogador.
+ const stronghold=visibleKingdomBases.find(b=>Math.abs(b.x-wx)<65&&wy>=b.y-110&&wy<=b.y+32);
+ if(stronghold){cityUI.open(stronghold,kingdomState);return}
  const gate=session.portals.find(p=>Math.abs(p.x-wx)<=58&&wy>=p.y-140&&wy<=p.y+34);
  if(gate){send('portal',{zone:gate.zone});return}
  const touchRadius=touchDevice?Math.max(50,34*W/Math.max(1,rect.width)):50;
@@ -709,6 +713,18 @@ function drawTab(){const parent=$('tabContent');parent.replaceChildren();const s
       const fortress=button('♜ Evoluir muralhas (nível '+(k.base.level||1)+'/5)','kingdom',{action:'upgrade'});
       fortress.disabled=(k.base.level||1)>=5;
       kingdom.append(fortress);
+      const patrolRow=document.createElement('div');patrolRow.className='entry-actions';
+      const patrolZone=document.createElement('select');
+      patrolZone.setAttribute('aria-label','Região de destino da patrulha');
+      for(let z=0;z<Math.min(12,session.zones.length);z++){
+       const option=document.createElement('option');option.value=String(z);
+       option.textContent=session.zones[z].name;patrolZone.append(option);
+      }
+      const patrolButton=document.createElement('button');patrolButton.type='button';
+      patrolButton.textContent='⚑ Enviar patrulha';
+      patrolButton.disabled=!!k.march;
+      patrolButton.onclick=()=>send('kingdom',{action:'patrol',zone:Number(patrolZone.value)});
+      patrolRow.append(patrolZone,patrolButton);kingdom.append(patrolRow);
       const targets=kingdomState.bases.filter(b=>b.name!==k.name);
       if(targets.length){
        const targetSelect=document.createElement('select');
@@ -868,11 +884,12 @@ function canvasDraw(now,dt){
       self:{id:session.id,x:session.x,y:session.y}}),
     drawSkillEffects:(drawCtx,events)=>classSkillFx.paint(drawCtx,events),
     moving:Math.hypot(session.x-lastFrameX,session.y-lastFrameY)>0.06});
-  lastFrameX=session.x;lastFrameY=session.y;
+  cityUI.drawMarches(ctx,{zone:session.zone,cameraX:session.cameraX,cameraY:session.cameraY,now});
+   lastFrameX=session.x;lastFrameY=session.y;
 }
 let lastFrameX=768,lastFrameY=512;
 let lastFrame=0;function tick(t){const dt=Math.min(.065,(t-lastFrame)/1000||0);lastFrame=t;
- if(session.connected&&$('welcomeOverlay').hidden&&$('npcDialogue').hidden){let dx=0,dy=0;if(moves.up.some(k=>keys.has(k)))dy--;if(moves.down.some(k=>keys.has(k)))dy++;if(moves.left.some(k=>keys.has(k)))dx--;if(moves.right.some(k=>keys.has(k)))dx++;
+ if(session.connected&&$('welcomeOverlay').hidden&&$('npcDialogue').hidden&&(typeof document==='undefined'||!document.querySelector('.city-dialog')?.open)){let dx=0,dy=0;if(moves.up.some(k=>keys.has(k)))dy--;if(moves.down.some(k=>keys.has(k)))dy++;if(moves.left.some(k=>keys.has(k)))dx--;if(moves.right.some(k=>keys.has(k)))dx++;
   if(touchDevice){const v=joystick.vector;dx+=v.x;dy+=v.y}
   if(dx||dy){const l=Math.hypot(dx,dy);session.x=clamp(session.x+dx/l*166*dt,24,ZONE_W-24);session.y=clamp(session.y+dy/l*166*dt,24,ZONE_H-24);session.dir=Math.abs(dx)>Math.abs(dy)?dx>0?1:3:dy>0?2:0}
   if(t-movingAt>85){send('move',{x:Math.round(session.x),y:Math.round(session.y),dir:session.dir});movingAt=t}

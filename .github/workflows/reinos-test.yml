@@ -1,0 +1,22 @@
+name: Reinos de Auren - testes
+on:
+  push:
+    branches:
+      - feature/reinos-cidades-isometricas-v1
+  pull_request:
+    branches:
+      - os-peregrinos-online
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --ignore-scripts
+      - run: npm test
+      - run: node --check public/city-isometric.js
+      - run: node --check public/mmo.js

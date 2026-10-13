@@ -1,0 +1,124 @@
+'use strict';
+const {test}=require('node:test');
+const assert=require('node:assert/strict');
+const {World}=require('../world-engine');
+const politics=require('../kingdom-politics');
+test('cidades isométricas são validadas pelo servidor e persistem por guilda',t=>{
+ const states=[],world=new World({persistentStore:{enqueue:s=>states.push(structuredClone(s))},send:()=>{},getOnline:()=>0,hasClassicName:()=>false});
+ t.after(()=>world.stop());
+ const client={socket:{},authUser:{uid:'account:rei',username:'Rei'},worldPlayer:null};
+ world.join(client,{name:'Rei',role:'peregrino'});
+ const p=client.worldPlayer;p.x=768;p.y=512;p.save.coins=20000;
+ world.guild(p,{action:'create',name:'Reino da Luz'});
+ const act=d=>politics.action(world,p,d,{walkable:()=>true,portals:[],npcs:[],now:1000});
+ assert.equal(act({action:'place',x:768,y:512}),true);
+ const before=p.save.coins;
+ assert.equal(act({action:'construct',type:'house',x:1,y:2}),true);
+ assert.equal(p.save.coins,before-120);
+ assert.equal(act({action:'construct',type:'house',x:1,y:2}),false);
+ assert.equal(act({action:'construct',type:'house',x:5,y:3}),false);
+ assert.equal(act({action:'construct',type:'invalid',x:3,y:3}),false);
+ assert.equal(politics.publicState(world,p).cities[0].buildings.length,1);
+ world.persist();
+ assert.equal(states.at(-1).guilds['reino da luz'].city.buildings[0].type,'house');
+});
+
+test('marcha atravessa apenas portais terrestres e interpola a posição',t=>{
+ const world=new World({persistentStore:{enqueue:()=>{}},send:()=>{},getOnline:()=>0,hasClassicName:()=>false});
+ t.after(()=>world.stop());
+ const origin={zone:0,x:350,y:440},goal={zone:7,x:900,y:520};
+ const route=politics.marchRoute(world,origin,goal);
+ assert.ok(route.length>3,'rota cruza múltiplas regiões');
+ assert.equal(route[0].zone,0);
+ assert.equal(route.at(-1).zone,7);
+ assert.ok(route.every(p=>p.zone<12),'nenhuma marcha entra em masmorras');
+ for(let i=0;i<route.length-1;i++)if(route[i].zone!==route[i+1].zone){
+  assert.ok(world.zonePortals(route[i].zone).some(g=>g.zone===route[i+1].zone),'travessia deve usar portal existente');
+ }
+ const now=1700000000000, march={route,startedAt:now,arrivesAt:now+45000};
+ assert.deepEqual(politics.marchPosition(march,now),origin);
+ assert.deepEqual(politics.marchPosition(march,now+45000),goal);
+ assert.ok(politics.marchPosition(march,now+22500).zone>=0);
+ assert.equal(politics.marchRoute(world,{zone:12,x:300,y:400},goal),null);
+});
+
+test('patrulha caminha, retorna e nunca duplica soldados',t=>{
+ const world=new World({persistentStore:{enqueue:()=>{}},send:()=>{},getOnline:()=>0,hasClassicName:()=>false});
+ t.after(()=>world.stop());
+ const client={socket:{},authUser:{uid:'account:general',username:'General'},worldPlayer:null};
+ world.join(client,{name:'General',role:'guardiao'});
+ const p=client.worldPlayer;p.x=768;p.y=512;p.save.coins=20000;
+ world.guild(p,{action:'create',name:'Guardas do Vale'});
+ const options={walkable:()=>true,portals:[],npcs:[],now:100000};
+ assert.equal(politics.action(world,p,{action:'place',x:768,y:512},options),true);
+ assert.equal(politics.action(world,p,{action:'recruit',unit:'militia',count:12},options),true);
+ const guild=world.guilds.get('guardas do vale');
+ assert.equal(politics.action(world,p,{action:'patrol',zone:3},options),true);
+ assert.equal(politics.troopCount(guild.army),0);
+ assert.equal(politics.action(world,p,{action:'patrol',zone:2},options),false);
+ assert.equal(politics.resolve(world,144999).length,0);
+ assert.equal(politics.resolve(world,145001).length,1);
+ assert.equal(guild.march.returning,true);
+ assert.equal(politics.troopCount(guild.army),0);
+ assert.equal(politics.resolve(world,190002).length,1);
+ assert.equal(guild.march,undefined);
+ assert.equal(guild.army.militia,12);
+ assert.equal(politics.action(world,p,{action:'patrol',zone:12},options),false);
+});
+
+test('produção da cidade acumula em ciclos limitados e edifícios evoluem usando recursos',t=>{
+ const delivered=[],world=new World({persistentStore:{enqueue:()=>{}},send:(socket,msg)=>delivered.push(msg),getOnline:()=>0,hasClassicName:()=>false});
+ t.after(()=>world.stop());
+ const client={socket:{},authUser:{uid:'account:rainha',username:'Rainha'},worldPlayer:null};
+ world.join(client,{name:'Rainha',role:'peregrino'});
+ const p=client.worldPlayer;p.x=768;p.y=512;p.save.coins=20000;
+ world.guild(p,{action:'create',name:'Reino Verde'});
+ const at=(time,data)=>politics.action(world,p,data,{walkable:()=>true,portals:[],npcs:[],now:time});
+ assert.equal(at(1000,{action:'place',x:768,y:512}),true);
+ assert.equal(at(1000,{action:'construct',type:'farm',x:1,y:2}),true);
+ assert.equal(at(1000,{action:'construct',type:'market',x:3,y:2}),true);
+ const guild=world.guilds.get('reino verde');
+ assert.equal(at(1000,{action:'collect'}),false);
+ assert.equal(at(1000+15*60*1000,{action:'collect'}),true);
+ assert.equal(guild.city.stock.food,8);
+ assert.equal(guild.city.stock.timber,2);
+ assert.equal(guild.city.stock.coins,5);
+ assert.equal(at(1000+15*60*1000,{action:'collect'}),false);
+ assert.equal(at(1000+1000*60*60*1000,{action:'collect'}),true);
+ assert.equal(guild.city.stock.food,8+8*24);
+ const old=guild.city.stock.food;
+ assert.equal(at(1000+1000*60*60*1000,{action:'buildingUpgrade',x:1,y:2}),true);
+ assert.equal(guild.city.buildings[0].level,2);
+ assert.equal(guild.city.stock.food,old-8);
+ assert.equal(at(1000+1000*60*60*1000,{action:'buildingUpgrade',x:5,y:5}),false);
+ assert.equal(at(1000+1000*60*60*1000,{action:'buildingUpgrade',x:2,y:8}),false);
+ assert.equal(at(1000+1000*60*60*1000,{action:'buildingUpgrade',x:1.5,y:2}),false);
+ assert.equal(politics.publicState(world,p).cities[0].buildings[0].level,2);
+});
+
+test('quartéis treinam soldados com recursos sem duplicar nem aceitar quantidades falsas',t=>{
+ const world=new World({persistentStore:{enqueue:()=>{}},send:()=>{},getOnline:()=>0,hasClassicName:()=>false});
+ t.after(()=>world.stop());
+ const client={socket:{},authUser:{uid:'account:capitao',username:'Capitao'},worldPlayer:null};
+ world.join(client,{name:'Capitao',role:'guardiao'});
+ const p=client.worldPlayer;p.x=768;p.y=512;p.save.coins=15000;
+ world.guild(p,{action:'create',name:'Reino dos Campos'});
+ const act=(data,now=1000)=>politics.action(world,p,data,{walkable:()=>true,portals:[],npcs:[],now});
+ assert.equal(act({action:'place',x:768,y:512}),true);
+ assert.equal(act({action:'construct',type:'farm',x:1,y:1}),true);
+ assert.equal(act({action:'construct',type:'market',x:2,y:2}),true);
+ assert.equal(act({action:'train',unit:'militia',count:1}),false,'treinar exige quartel');
+ assert.equal(act({action:'construct',type:'barracks',x:3,y:3}),true);
+ const guild=world.guilds.get('reino dos campos');
+ assert.equal(act({action:'train',unit:'militia',count:1}),false,'requer materiais');
+ assert.equal(act({action:'collect'},1000+10*60*60*1000),true);
+ const stock={...guild.city.stock};
+ assert.equal(act({action:'train',unit:'militia',count:2}),true);
+ assert.equal(guild.army.militia,2);
+ assert.equal(guild.city.stock.food,stock.food-8);
+ assert.equal(guild.city.stock.timber,stock.timber-4);
+ assert.equal(act({action:'train',unit:'invalid',count:1}),false);
+ assert.equal(act({action:'train',unit:'militia',count:1.5}),false);
+ assert.equal(act({action:'train',unit:'militia',count:41}),false);
+ assert.equal(guild.army.militia,2);
+});

@@ -30,7 +30,7 @@ test('lobby e indicador mostram até 60 por sala, com arte e cliente versionados
  assert.match(page,/0\/60/);
  assert.match(page,/CRIAR SALA · 60 VAGAS/);
  assert.match(page,/id="playerCount">0\/60/);
- assert.match(page,/mmo\.js\?v=reinos-continentais-v1/);
+ assert.match(page,/mmo\.js\?v=city-v1/);
  assert.match(page,/art16\.js\?v=pixel-art-v1&pc=reinos-v1/);
  assert.match(js,/session\.online=n;.*?n\+'\/60'/);
 });
