@@ -17,6 +17,7 @@ function create({ctx,W,H}){
  const landscape=window.OsPeregrinosLandscape16?.create({documentRef:document});
  const spriteStudio=window.OsPeregrinosSpriteStudio?.create({documentRef:document});
  const desktopSprites=window.OsPeregrinosDesktopSprites16?.create({windowRef:window});
+ const desktopCharactersV3=window.OsPeregrinosDesktopCharactersV3?.create({windowRef:window,documentRef:document});
  const desktopBestiary=window.OsPeregrinosDesktopBestiary16?.create({windowRef:window});
  let cache=null,objects=[],artReady=false;
  atlas.addEventListener('load',()=>{artReady=true;cache=null});
@@ -394,7 +395,10 @@ function create({ctx,W,H}){
    seed:local?0:(p.name?.length||0)*107};
   // No desktop usa QUADROS DESENHADOS de um atlas real, não bonecos
   // procedurais. Em touch ou durante download, usa o Studio sem alterações.
-  const detailed=Boolean(desktopSprites?.drawHero(g,p,now,state));
+  // O novo atlas 64x80 do PC tem prioridade. O atlas clássico e o
+  // SpriteStudio permanecem como alternativas se ele não estiver disponível.
+  const illustratedV3=Boolean(desktopCharactersV3?.drawHero(g,p,now,state));
+  const detailed=illustratedV3||Boolean(desktopSprites?.drawHero(g,p,now,state));
   const animated=detailed||Boolean(spriteStudio?.drawHero(g,p,now,state));
   if(!animated){
    frameSprite(g,key,dir,moved?Math.floor(now/155)%4:0,p.x,p.y,w,h);
@@ -404,24 +408,26 @@ function create({ctx,W,H}){
   // O sprite detalhado do Studio já contém a identidade da classe.
   // Uma camada de blocos opacos aqui escondia olhos, roupas e sombreamento.
   // A proteção antiga permanece APENAS quando o Studio não está disponível.
-  const finalRole=detailed?desktopSprites.normalizeRole(p.role):
-   animated?spriteStudio.normalizeRole(p.role):drawClassIdentity(g,p,dir,now,moved);
+  const finalRole=illustratedV3?desktopCharactersV3.normalizeRole(p.role):
+   detailed?desktopSprites.normalizeRole(p.role):animated?spriteStudio.normalizeRole(p.role):
+   drawClassIdentity(g,p,dir,now,moved);
   g.save();g.textAlign='center';g.font=(local?'bold 15px':'bold 13px')+' monospace';
   g.shadowColor='#000b';g.shadowBlur=5;g.lineWidth=3;g.strokeStyle='#0e271e';
   const roleName={guardiao:'Guardião',curandeiro:'Curandeiro',arqueiro:'Arqueiro',peregrino:'Peregrino'}[finalRole];
   const label=(p.name||'Peregrino')+(local?' · '+roleName:' · Lv.'+(p.level||1));
-  const labelY=p.y-(detailed?80:h)-5;
+  const labelY=p.y-(illustratedV3?94:detailed?80:h)-5;
   g.strokeText(label,p.x,labelY);g.fillStyle=local?'#ffe4a3':'#f1edd4';g.fillText(label,p.x,labelY);g.restore();
  }
  function npcActor(g,n,active,finished,now){
   const x=n.x,y=n.y;drawShadow(g,x,y,42);
-  const detailed=Boolean(desktopSprites?.drawNpc(g,n,now));
+  const illustratedNpcV3=Boolean(desktopCharactersV3?.drawNpc(g,n,now));
+  const detailed=illustratedNpcV3||Boolean(desktopSprites?.drawNpc(g,n,now));
   if(!detailed&&!spriteStudio?.drawNpc(g,n,now))
    frameSprite(g,heroSheets[n.role]||'viajante_andar',2,Math.floor(now/500+(n.index||0))%2,x,y,47,59);
   g.save();g.textAlign='center';g.shadowColor='#000e';g.shadowBlur=5;
   const primary=n.kind==='chapter';
   g.font='bold 12px monospace';g.lineWidth=3;g.strokeStyle='#0c2118';
-  const nameY=y-(detailed?82:65);
+  const nameY=y-(illustratedNpcV3?97:detailed?82:65);
   g.strokeText(n.name,x,nameY);g.fillStyle=primary?'#ffe6a7':'#ccebd7';g.fillText(n.name,x,nameY);
   const indicator=primary?(finished?'✓':active?'!':'◆'):'✦';
   g.fillStyle=active?'#fff3ae':finished?'#a3d8a0':'#aee3ce';
