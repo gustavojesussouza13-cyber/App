@@ -9,7 +9,7 @@
   // Mantém a visualização de exércitos no continente principal SEM alterar o motor 2D.
   const oldUI=old.create({send});
   let state=null,base=null,selected=null,scene=null,token=0,loading=false;
-  let pending=null,pendingTimer=null,requestSeq=0;
+  let pending=null,pendingTimer=null,requestSeq=0,provisional=null;
   const dlg=document.createElement('dialog');dlg.className='guild3d-dialog';dlg.setAttribute('aria-label','Capital tridimensional da guilda');
   dlg.innerHTML='<div class="guild3d-shell">'+
    '<header class="guild3d-header"><div class="guild3d-brand"><span class="guild3d-kicker">OS PEREGRINOS · REINOS DE AUREN</span><strong id="guild3dTitle">Capital da guilda</strong><small id="guild3dSubtitle">Gestão do reino</small></div>'+
@@ -44,6 +44,16 @@
    if(pendingTimer!==null)clearTimeout(pendingTimer);
    pendingTimer=null;pending=null;
   }
+  const isPersisted=building=>structures().some(b=>
+   b.type===building.type&&b.x===building.x&&b.y===building.y);
+  function clearProvisional(){
+   provisional=null;
+   scene?.clearPendingBuilding?.();
+  }
+  function showProvisional(building){
+   provisional=building;
+   scene?.showPendingBuilding?.(building);
+  }
   function sendOperation(action,details,progress){
    if(pending){
     say('Aguarde a resposta sobre a operação anterior antes de tentar novamente.','warning');
@@ -55,12 +65,15 @@
    // Timeout começa antes do envio: a demonstração responde sincronicamente.
    pendingTimer=setTimeout(()=>{
     if(pending?.id!==id)return;
+    const action=pending.action;
     clearPending();
-    say('O servidor demorou para confirmar a operação. Verifique a construção e seu saldo antes de tentar novamente.','warning');
+    if(action==='construct')clearProvisional();
+    say('O servidor não confirmou a operação. A prévia foi retirada; confira o saldo e os edifícios antes de tentar novamente.','warning');
    },12000);
    const delivered=send('kingdom',{action,...details,requestId:id});
    if(delivered===false){
     clearPending();
+    if(action==='construct')clearProvisional();
     say('Não há conexão com o servidor. Verifique a internet e aguarde reconectar antes de construir.','error');
     return false;
    }
@@ -69,8 +82,17 @@
   function onActionResult(result){
    if(!dlg.open||!pending)return;
    if(result?.id!==pending.id||result?.action!==pending.action)return;
+   const action=pending.action;
    clearPending();
-   say(result.message|| (result.ok?'Operação concluída.':'O servidor não autorizou a operação.'),result.ok?'success':'error');
+   if(!result.ok){
+    if(action==='construct')clearProvisional();
+    say(result.message||'O servidor não autorizou a operação.','error');
+    return;
+   }
+   // A construção já existe no WebGL; trocar pela definitiva quando o estado chegar.
+   if(action==='construct'&&provisional&&isPersisted(provisional))clearProvisional();
+   say(result.message||'Operação confirmada pelo servidor.','success');
+   if(action==='construct'&&provisional)send('kingdom',{action:'inspect'});
   }
   function paint(){
    if(!dlg.open||!base)return;
@@ -129,8 +151,16 @@
     say('Moedas pessoais insuficientes: você possui '+wallet.toLocaleString('pt-BR')+' e a construção custa '+price+'. Consiga moedas no continente para construir.','error');
     return;
    }
+   if(pending){
+    say('Aguarde a operação anterior antes de construir novamente.','warning');
+    return;
+   }
+   // Atualização visual local, síncrona: o próximo frame já mostra o edifício.
+   // Apenas o servidor pode salvar e debitar moedas; recusas desfazem a prévia.
+   const building={...layout.plan(selected,x,y),level:1};
+   showProvisional(building);
    sendOperation('construct',{type:selected,x,y,target:base.name},
-    'Enviando '+types[selected][0].toLowerCase()+' para validação do servidor…');
+    types[selected][0]+' posicionado imediatamente. Confirmando o salvamento…');
   }
   function onHover(cell){
    q('guild3dCoords').textContent=cell?'Lote '+(cell.x+1)+' / '+(cell.y+1)+' · '+layout.N+'×'+layout.N:'Terreno '+layout.N+'×'+layout.N;
@@ -159,10 +189,10 @@
    if(!owns()||!soldier.value)return;
    sendOperation('train',{unit:soldier.value,count:Number(count.value)},'Enviando treinamento para validação…');
   };
-  dlg.addEventListener('close',()=>{token++;clearPending();scene?.destroy();scene=null;selected=null;viewport.querySelector('canvas')?.remove()});
+  dlg.addEventListener('close',()=>{token++;clearPending();clearProvisional();scene?.destroy();scene=null;selected=null;viewport.querySelector('canvas')?.remove()});
   function open(b,kingdom){
    if(dlg.open)dlg.close();
-   base=b;state=kingdom;selected=null;clearPending();say('Selecione um edifício ou explore o terreno com a câmera.');
+   base=b;state=kingdom;selected=null;clearPending();clearProvisional();say('Selecione um edifício ou explore o terreno com a câmera.');
    if(!dlg.open)dlg.showModal();
    paint();void load();
    send('kingdom',{action:'inspect'});
@@ -172,6 +202,13 @@
    if(dlg.open){
     const next=(kingdom?.bases||[]).find(b=>b.name===base?.name);
     if(next)base=next;
+    if(provisional&&isPersisted(provisional)){
+     clearProvisional();
+     if(pending?.action==='construct'){
+      clearPending();
+      say('Construção concluída e confirmada pelo servidor.','success');
+     }
+    }
     scene?.updateBuildings(structures(),owns()?kingdom?.yourGuild?.army||{}:{});
     paint();
    }
