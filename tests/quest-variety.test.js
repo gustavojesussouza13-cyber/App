@@ -8,7 +8,7 @@ function env(t){
  const events=[],file=path.join(dir,'save.json');
  const world=new World({send:(_s,m)=>events.push(m),getOnline:()=>0,hasClassicName:()=>false,dataFile:file});
  t.after(()=>{world.stop();fs.rmSync(dir,{recursive:true,force:true})});
- const token=crypto.randomBytes(32).toString('hex'),c={socket:{},worldPlayer:null};
+ const token=crypto.randomBytes(32).toString('hex'),c={socket:{},worldPlayer:null,authUser:{uid:'account:QuestTeste',username:'QuestTeste'}};
  world.join(c,{name:'QuestTeste',token});
  return {world,p:c.worldPlayer,c,events,file,token};
 }
@@ -59,7 +59,7 @@ test('objetivos e recompensas permanecem salvos depois de reconectar',t=>{
  world.leave(c);
  const reopen=new World({send:()=>{},getOnline:()=>0,hasClassicName:()=>false,dataFile:e.file});
  t.after(()=>reopen.stop());
- const c2={socket:{},worldPlayer:null};
+ const c2={socket:{},worldPlayer:null,authUser:{uid:'account:QuestTeste',username:'QuestTeste'}};
  reopen.join(c2,{name:'QuestTeste',token});
  assert.ok(c2.worldPlayer.save.quests.includes('trilhas-aurora'));
  assert.ok(c2.worldPlayer.save.coins>60);
