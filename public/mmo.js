@@ -344,6 +344,29 @@ $('roomSwitchBtn').addEventListener('click',async()=>{
  await loadRooms();
  if(dialog.open)renderSwitchRooms();
 });
+$('roomSwitchCreateForm').addEventListener('submit',async event=>{
+ event.preventDefault();
+ if(roomSwitchPending||!session.connected)return;
+ const form=$('roomSwitchCreateForm'),button=form.querySelector('[type=submit]');
+ button.disabled=true;$('roomSwitchError').textContent='';
+ try{
+  const password=$('roomSwitchNewPassword').value;
+  const result=await fetch('/api/rooms',{
+   method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},
+   body:JSON.stringify({name:$('roomSwitchNewName').value.trim(),password,guestToken:progressToken})
+  });
+  const data=await result.json();
+  if(!result.ok)throw new Error(data.error||'Falha ao criar sala.');
+  roomCatalog.push(data.room);renderSwitchRooms();
+  $('roomSwitchSelect').value=data.room.id;
+  $('roomSwitchPassword').value=password;
+  updateSwitchChoice();
+  $('roomSwitchNewName').value='';$('roomSwitchNewPassword').value='';
+  form.parentElement.open=false;
+  $('roomSwitchInfo').textContent='Sala criada! Confirme a troca para entrar.';
+ }catch(err){$('roomSwitchError').textContent=err.message||'Não foi possível criar a sala.'}
+ finally{button.disabled=false}
+});
 $('roomSwitchConfirm').addEventListener('click',()=>{
  if(roomSwitchPending||!session.connected)return;
  const chosen=roomCatalog.find(r=>r.id===$('roomSwitchSelect').value);
