@@ -61,10 +61,68 @@ try{
    free:layout.canPlace(buildings,'house',x,y)};
  });
  assert.equal(buildTarget.free,true,'lote de teste deve estar livre');
+ // Adia apenas o servidor simulado; a construção visual deve aparecer já no clique.
+ await page.evaluate(()=>{
+  window.__guildDemoReplyDelayMs=1600;
+  window.__guildInstantEventLog=[];
+  const canvas=document.querySelector('.guild3d-canvas');
+  // Registrado depois da cena: o observador verifica o estado NO MESMO
+  // evento pointerup, antes de timers e respostas de rede.
+  canvas.addEventListener('pointerup',()=>{
+   window.__guildInstantEventLog.push({
+    pending:canvas.dataset.pendingBuilding||null,
+    feedback:document.querySelector('#guild3dFeedback')?.textContent||''
+   });
+  });
+ });
  await page.mouse.click(buildTarget.x,buildTarget.y);
- await page.waitForFunction(()=>document.querySelector('.guild3d-dialog[open] #guild3dFeedback')?.textContent?.includes('Construção concluída!'),null,{timeout:6000});
+ const instantFirst=await page.evaluate(()=>window.__guildInstantEventLog.at(-1));
+ assert.equal(instantFirst?.pending,'house:8:12','edifício 3D aparece no próprio clique, antes da rede');
+ assert.match(instantFirst?.feedback||'',/posicionado imediatamente/);
+ // A mensagem pode já ter sido confirmada quando o Playwright volta a executar.
+ // A confirmação ainda será analisada após a latência simulada.
+ await page.waitForFunction(()=>document.querySelector('.guild3d-dialog[open] #guild3dFeedback')?.textContent?.includes('Construção concluída'),null,{timeout:6000});
  assert.equal(await page.locator('#guild3dFeedback').getAttribute('data-status'),'success');
  assert.match(await page.locator('.guild3d-wallet').innerText(),/8.380 moedas/,'saldo deve ser atualizado após construir');
+ assert.equal(await canvas.getAttribute('data-pending-building'),null,'prévia vira construção definitiva após confirmar');
+ // Uma negativa do servidor deve desfazer a prévia SEM descontar moedas.
+ const projectPoint=async(x,y)=>page.evaluate(async({x,y})=>{
+  const THREE=await import('/vendor/three.module.js');
+  const c=document.querySelector('.guild3d-canvas'),r=c.getBoundingClientRect();
+  const cam=new THREE.PerspectiveCamera(47,r.width/r.height,0.1,450);
+  const distance=70,azimuth=.77,elevation=.92;
+  cam.position.set(distance*Math.sin(elevation)*Math.sin(azimuth),
+   distance*Math.cos(elevation),distance*Math.sin(elevation)*Math.cos(azimuth));
+  cam.lookAt(0,0,0);cam.updateMatrixWorld();
+  const CELL=2.85,half=window.PeregrinosCityLayout.N*CELL/2;
+  const p=new THREE.Vector3((x+.5)*CELL-half,0,(y+.5)*CELL-half).project(cam);
+  return {x:r.x+(p.x+1)*.5*r.width,y:r.y+(1-p.y)*.5*r.height};
+ },{x,y});
+ await page.evaluate(()=>{window.__guildDemoRejectNextBuild=true});
+ const denied=await projectPoint(8,15);
+ assert.equal(await page.evaluate(()=>layout.canPlace(buildings,'house',8,15)),true,'lote de recusa simulada precisa estar vazio');
+ await page.mouse.move(denied.x,denied.y);
+ const projectedCell=await page.locator('#guild3dCoords').innerText();
+ console.log('GUILD_TEST_DENIED_TARGET',JSON.stringify({denied,projectedCell}));
+ await page.mouse.click(denied.x,denied.y);
+ const instantDenied=await page.evaluate(()=>window.__guildInstantEventLog.at(-1));
+ assert.equal(instantDenied?.pending,'house:8:15','recusa também deve mostrar edifício no próprio evento antes de desfazer');
+ // A prévia pode já ter sumido quando o Chromium concluir o click com WebGL
+ // sob carga; a primeira construção comprova o aparecimento imediato.
+ // Aqui validamos a recusa definitiva sem depender de um estado transitório.
+ await page.waitForFunction(()=>document.querySelector('#guild3dFeedback')?.textContent?.includes('recusou a construção'),null,{timeout:6000});
+ assert.equal(await page.locator('#guild3dFeedback').getAttribute('data-status'),'error');
+ assert.equal(await canvas.getAttribute('data-pending-building'),null,'edifício recusado deve desaparecer');
+ assert.match(await page.locator('.guild3d-wallet').innerText(),/8.380 moedas/);
+ // O botão não pode deixar uma casa fantasma quando não há WebSocket.
+ await page.evaluate(()=>{window.__guildDemoOffline=true});
+ const offline=await projectPoint(4,12);
+ await page.mouse.click(offline.x,offline.y);
+ const instantOffline=await page.evaluate(()=>window.__guildInstantEventLog.at(-1));
+ assert.equal(instantOffline?.pending,null,'sem conexão, a prévia é revertida dentro do mesmo clique');
+ await page.waitForFunction(()=>document.querySelector('#guild3dFeedback')?.textContent?.includes('Não há conexão'),null,{timeout:2000});
+ assert.equal(await canvas.getAttribute('data-pending-building'),null,'prévia offline precisa ser removida imediatamente');
+ await page.evaluate(()=>{window.__guildDemoOffline=false});
 
  await page.screenshot({path:'/tmp/guild-3d-preview.png',fullPage:true,animations:'disabled'});
  await page.locator('#guild3dClose').click();

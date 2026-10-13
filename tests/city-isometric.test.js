@@ -139,6 +139,7 @@ test('retorno do servidor informa se construiu ou recusou e revela saldo pessoal
  notices.length=0;
  assert.equal(act({action:'construct',type:'house',x:5,y:5,requestId:101}),true);
  const first=notices.find(x=>x.type==='kingdomActionResult'&&x.id===101);
+ assert.ok(notices.findIndex(x=>x.type==='kingdomActionResult'&&x.id===101)<notices.findIndex(x=>x.type==='kingdomState'),'confirmação prioritária deve chegar antes do estado pesado');
  assert.equal(first.action,'construct');
  assert.equal(first.ok,true);
  assert.match(first.message,/Construção concluída/);

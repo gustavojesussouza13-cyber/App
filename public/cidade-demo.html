@@ -18,7 +18,7 @@ a{color:#d9c184}#openDemo{font-size:18px}
 <small>Esta página utiliza a mesma interface de cidades do MMORPG em desenvolvimento. Nenhuma ação será enviada ao servidor oficial.</small>
 <a href="/mundo.html">← Voltar ao Mundo Aberto</a>
 </main>
-<script src="/city-layout.js?v=guild3d-v1"></script><script src="/city-art16.js?v=auren-city-art-v9"></script><script src="/city-isometric.js?v=auren-city-art-v9"></script><script src="/guild-city-3d.js?v=guild3d-v2"></script>
+<script src="/city-layout.js?v=guild3d-v1"></script><script src="/city-art16.js?v=auren-city-art-v9"></script><script src="/city-isometric.js?v=auren-city-art-v9"></script><script src="/guild-city-3d.js?v=guild3d-instant-v4"></script>
 <script>
 'use strict';
 const name='Fortaleza da Alvorada',start=Date.now();
@@ -45,11 +45,19 @@ const base={name,zone:0,x:768,y:512,level:2};
 let localCoins=8500,lastCollected=start-15*60*1000;
 function current(){return {bases:[base],cities:[{name,buildings}],walletCoins:localCoins,yourGuild:{name,leader:true,stock,army},trainingCosts:units,marches:[]}}
 function result(request,ok,message){
- city.update(current());
- city.onActionResult?.({id:request.requestId,action:request.action,ok,message});
+ const respond=()=>{
+  city.update(current());
+  city.onActionResult?.({id:request.requestId,action:request.action,ok,message});
+ };
+ // Simula latência em testes WebGL; não atrasa o servidor real.
+ const delay=Number(window.__guildDemoReplyDelayMs)||0;
+ if(delay>0)setTimeout(respond,Math.min(5000,delay));
+ else respond();
 }
 const city=window.PeregrinosCity.create({send(type,request){
  if(type!=='kingdom'||request.action==='inspect'){city.update(current());return}
+ if(window.__guildDemoOffline)return false;
+ if(request.action==='construct'&&window.__guildDemoRejectNextBuild){window.__guildDemoRejectNextBuild=false;return result(request,false,'O servidor de demonstração recusou a construção.');}
  if(request.action==='construct'){
   const {x,y,type}=request;
   if(!Object.hasOwn(costs,type)||!layout.canPlace(buildings,type,x,y))
