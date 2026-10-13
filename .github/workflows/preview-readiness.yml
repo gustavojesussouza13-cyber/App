@@ -1,0 +1,37 @@
+name: Preview - PostgreSQL e prontidão
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/reinos-cidades-isometricas-v1
+    paths:
+      - '.github/workflows/preview-readiness.yml'
+jobs:
+  readiness:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Confirmar que o preview responde com banco persistente
+        shell: bash
+        run: |
+          node <<'NODE'
+          const base='https://os-peregrinos-reinos-preview.onrender.com';
+          const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+          (async()=>{
+            for(let attempt=1;attempt<=8;attempt++){
+              try{
+                const ready=await fetch(base+'/health/ready',{signal:AbortSignal.timeout(20000)});
+                const check=await ready.json();
+                const status=await fetch(base+'/api/status',{signal:AbortSignal.timeout(20000)});
+                const body=await status.json();
+                if(ready.status===200&&check.ready===true&&check.database==='connected'&&status.ok&&body.registeredAccounts===true&&body.persistentStorage===true){
+                  console.log('Preview OK: PostgreSQL pronto e contas persistentes habilitadas.');
+                  process.exit(0);
+                }
+                console.log('Tentativa '+attempt+': HTTP '+ready.status+' / status '+status.status+'; ready='+check.ready+'; storage='+body.persistentStorage);
+              }catch(e){console.log('Tentativa '+attempt+': '+e.message)}
+              await sleep(12000);
+            }
+            console.error('Preview não passou na verificação de PostgreSQL e persistência.');
+            process.exit(1);
+          })();
+          NODE
