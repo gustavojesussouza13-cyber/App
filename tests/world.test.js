@@ -92,8 +92,11 @@ test('personagem e guilda são preservados no banco SQLite, quando disponível',
  const file=path.join(dir,'world.sqlite'),send=()=>{};
  const a=new World({send,getOnline:()=>0,hasClassicName:()=>false,dataFile:file});
  const token=crypto.randomBytes(32).toString('hex');const c={socket:{},worldPlayer:null,authUser:{uid:'account:PersistenteTeste',username:'PersistenteTeste'}};a.join(c,{name:'PersistenteTeste',token});
- c.worldPlayer.save.level=17;c.worldPlayer.save.coins=1234;a.guild(c.worldPlayer,{action:'create',name:'Luz Eterna'});a.stop();
+ c.worldPlayer.save.level=17;c.worldPlayer.save.coins=1234;a.guild(c.worldPlayer,{action:'create',name:'Luz Eterna'});
+ assert.equal(c.worldPlayer.isAccount,true,'personagem de teste deve ser conta');
+ a.stop();assert.equal(a.saved.characters['account:PersistenteTeste']?.level,17,'o estado da conta deve estar no snapshot');
  const b=new World({send,getOnline:()=>0,hasClassicName:()=>false,dataFile:file});
+ assert.equal(b.saved.characters['account:PersistenteTeste']?.level,17,'SQLite deve restaurar snapshot de conta');
  const d={socket:{},worldPlayer:null,authUser:{uid:'account:PersistenteTeste',username:'PersistenteTeste'}};b.join(d,{name:'PersistenteTeste',token});assert.equal(d.worldPlayer.save.level,17);assert.equal(d.worldPlayer.save.coins,984);assert.equal(d.worldPlayer.save.guild,'Luz Eterna');b.stop();
 });
 
