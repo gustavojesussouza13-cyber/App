@@ -123,7 +123,7 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
  }
  if(op==='construct'){
   if(g.leader!==p.uid||!g.base){response(world,p,'Somente o líder de uma guilda com fortaleza pode construir.');return false}
-  const {type,x,y}=d,cost=CITY_BUILDINGS[type];
+  const {type,x,y}=d,cost=Object.hasOwn(CITY_BUILDINGS,type)?CITY_BUILDINGS[type]:null;
   if(!cost||!integer(x)||!integer(y)||x<0||x>=11||y<0||y>=11||x===5||y===5){
    response(world,p,'Terreno ou edifício inválido.');return false
   }
