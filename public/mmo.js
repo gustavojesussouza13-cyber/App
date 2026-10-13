@@ -202,7 +202,7 @@ $('registerForm').addEventListener('submit',async e=>{
  e.preventDefault();if(!accountReady)return authError('O armazenamento de contas está indisponível.');
  if($('registerPassword').value!==$('registerConfirm').value)return authError('As senhas não coincidem.');
  const btn=e.currentTarget.querySelector('[type=submit]');btn.disabled=true;authError('');
- try{const r=await authPost('register',{username:$('registerName').value,email:$('registerEmail').value,password:$('registerPassword').value,guestToken:$('importGuest').checked?progressToken:null});
+ try{const r=await authPost('register',{username:$('registerName').value,email:$('registerEmail').value,password:$('registerPassword').value,guestToken:null});
  $('registerPassword').value='';$('registerConfirm').value='';playAccount(r.account,$('registerRole').value);if(r.verificationSent)alert('Verifique seu e-mail para ativar a recuperação de senha.');else alert('Sua conta foi criada. Vincule e confirme um e-mail nas configurações da conta.');}
  catch(err){authError(err.message)}finally{btn.disabled=false}
 });
