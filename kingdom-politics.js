@@ -13,6 +13,8 @@ const RELOCATE_COOLDOWN=24*60*60*1000;
 const RAID_COOLDOWN=10*60*1000;
 const MARCH_DURATION=45*1000;
 const MAX_TROOPS=300;
+const CITY_BUILDINGS=Object.freeze({house:120,farm:160,barracks:280,tower:360,market:240});
+const CITY_LIMIT=60;
 const UNITS=Object.freeze({
  militia:{name:'Milícia',cost:22,power:2,defense:2},
  archer:{name:'Arqueiros',cost:48,power:6,defense:3},
@@ -69,6 +71,8 @@ function publicState(world,p){
    base:your.guild.base||null,army:armyCopy(your.guild.army),
    march:your.guild.march||null,nextRaidAt:your.guild.nextRaidAt||0,
    influence:your.guild.influence||{}}:null,
+  cities:[...world.guilds.values()].filter(g=>g.base).map(g=>({name:g.name,buildings:(Array.isArray(g.city?.buildings)?g.city.buildings:[]).filter(b=>b&&CITY_BUILDINGS[b.type]&&Number.isInteger(b.x)&&Number.isInteger(b.y)).slice(0,CITY_LIMIT).map(b=>({type:b.type,x:b.x,y:b.y}))})),
+  marches:[...world.guilds.values()].filter(g=>g.march&&g.base).map(g=>({name:g.name,targetName:world.guilds.get(g.march.target)?.name||'',from:g.march.from,to:g.march.to,startedAt:g.march.startedAt,arrivesAt:g.march.arrivesAt})),
   unitTypes:UNITS,baseCost:BASE_COST,relocateCost:RELOCATE_COST,maxTroops:MAX_TROOPS};
 }
 function response(world,p,text,notify=true){
@@ -116,6 +120,22 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
   response(world,p,old?'Capital da guilda transferida para esta região.':'Fortaleza fundada! Seu reino já aparece no mapa.');
   world.send(p.socket,world.ownStatus(p));
   return true;
+ }
+ if(op==='construct'){
+  if(g.leader!==p.uid||!g.base){response(world,p,'Somente o líder de uma guilda com fortaleza pode construir.');return false}
+  const {type,x,y}=d,cost=CITY_BUILDINGS[type];
+  if(!cost||!integer(x)||!integer(y)||x<0||x>=11||y<0||y>=11||x===5||y===5){
+   response(world,p,'Terreno ou edifício inválido.');return false
+  }
+  const buildings=Array.isArray(g.city?.buildings)?g.city.buildings:[];
+  if(buildings.length>=CITY_LIMIT||buildings.some(b=>b.x===x&&b.y===y)){
+   response(world,p,'Este terreno já está ocupado ou a cidade atingiu seu limite.');return false
+  }
+  if(p.save.coins<cost){response(world,p,'Moedas insuficientes para construir ('+cost+').');return false}
+  p.save.coins-=cost;
+  g.city={buildings:[...buildings,{type,x,y}]};
+  world.dirty=true;response(world,p,'Construção concluída na cidadela de '+g.name+'.');
+  world.send(p.socket,world.ownStatus(p));return true;
  }
  if(op==='upgrade'){
   if(g.leader!==p.uid||!g.base){response(world,p,'Somente o líder pode ampliar as muralhas de sua capital.');return false}

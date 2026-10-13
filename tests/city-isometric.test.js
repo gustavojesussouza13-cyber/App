@@ -1,0 +1,24 @@
+'use strict';
+const {test}=require('node:test');
+const assert=require('node:assert/strict');
+const {World}=require('../world-engine');
+const politics=require('../kingdom-politics');
+test('cidades isométricas são validadas pelo servidor e persistem por guilda',t=>{
+ const states=[],world=new World({persistentStore:{enqueue:s=>states.push(structuredClone(s))},send:()=>{},getOnline:()=>0,hasClassicName:()=>false});
+ t.after(()=>world.stop());
+ const client={socket:{},authUser:{uid:'account:rei',username:'Rei'},worldPlayer:null};
+ world.join(client,{name:'Rei',role:'peregrino'});
+ const p=client.worldPlayer;p.x=768;p.y=512;p.save.coins=20000;
+ world.guild(p,{action:'create',name:'Reino da Luz'});
+ const act=d=>politics.action(world,p,d,{walkable:()=>true,portals:[],npcs:[],now:1000});
+ assert.equal(act({action:'place',x:768,y:512}),true);
+ const before=p.save.coins;
+ assert.equal(act({action:'construct',type:'house',x:1,y:2}),true);
+ assert.equal(p.save.coins,before-120);
+ assert.equal(act({action:'construct',type:'house',x:1,y:2}),false);
+ assert.equal(act({action:'construct',type:'house',x:5,y:3}),false);
+ assert.equal(act({action:'construct',type:'invalid',x:3,y:3}),false);
+ assert.equal(politics.publicState(world,p).cities[0].buildings.length,1);
+ world.persist();
+ assert.equal(states.at(-1).guilds['reino da luz'].city.buildings[0].type,'house');
+});

@@ -40,6 +40,7 @@ let progressToken=null,accountMode=false,accountReady=false,emailRecoveryAvailab
 let selectedRoomId='auren-publica',selectedRoomPassword='',roomCatalog=[],roomName='Praça Pública',pendingRoom=null,pendingRoomUntil=0;
 let roomSwitchPending=false,roomSwitchTarget=null;
 let kingdomState=null,visibleKingdomBases=[];
+const cityUI=window.PeregrinosCity.create({send:(type,data)=>send(type,data)});
 // Cada abertura do site cria uma nova jornada Visitante. O token existe
 // somente nesta execução da página; queda da conexão reutiliza o token.
 // Dados de contas cadastradas continuam no servidor, sob login/senha.
@@ -112,6 +113,7 @@ function dispatch(msg){
  if(msg.type==='kingdomState'){
   kingdomState=msg.data||null;
   visibleKingdomBases=(kingdomState?.bases||[]).filter(b=>b.zone===session.zone);
+  cityUI.update(kingdomState);
   if(tab==='social')drawTab();return;
  }
  if(msg.type==='pong'){if(latency.receive(msg,performance.now()))updatePingIndicator();return}
@@ -597,6 +599,8 @@ $('talkBtn').onclick=talkToNearest;$('attackBtn').onclick=()=>attack(false);$('s
 cvs.addEventListener('click',e=>{if(!session.connected)return;const rect=cvs.getBoundingClientRect(),wx=(e.clientX-rect.left)*W/rect.width+session.cameraX,wy=(e.clientY-rect.top)*H/rect.height+session.cameraY;
  // O sprite real tem 92px de altura, portanto toda a porta é clicável,
  // não apenas a posição dos pés; o servidor ainda valida proximidade do jogador.
+ const stronghold=visibleKingdomBases.find(b=>Math.abs(b.x-wx)<65&&wy>=b.y-110&&wy<=b.y+32);
+ if(stronghold){cityUI.open(stronghold,kingdomState);return}
  const gate=session.portals.find(p=>Math.abs(p.x-wx)<=58&&wy>=p.y-140&&wy<=p.y+34);
  if(gate){send('portal',{zone:gate.zone});return}
  const touchRadius=touchDevice?Math.max(50,34*W/Math.max(1,rect.width)):50;
@@ -868,7 +872,8 @@ function canvasDraw(now,dt){
       self:{id:session.id,x:session.x,y:session.y}}),
     drawSkillEffects:(drawCtx,events)=>classSkillFx.paint(drawCtx,events),
     moving:Math.hypot(session.x-lastFrameX,session.y-lastFrameY)>0.06});
-  lastFrameX=session.x;lastFrameY=session.y;
+  cityUI.drawMarches(ctx,{zone:session.zone,cameraX:session.cameraX,cameraY:session.cameraY,now});
+   lastFrameX=session.x;lastFrameY=session.y;
 }
 let lastFrameX=768,lastFrameY=512;
 let lastFrame=0;function tick(t){const dt=Math.min(.065,(t-lastFrame)/1000||0);lastFrame=t;
