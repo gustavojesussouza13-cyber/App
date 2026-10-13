@@ -85,6 +85,7 @@ test('produção da cidade acumula em ciclos limitados e edifícios evoluem usan
  assert.equal(guild.city.stock.coins,5);
  assert.equal(at(1000+15*60*1000,{action:'collect'}),false);
  assert.equal(at(1000+1000*60*60,{action:'collect'}),true);
+ console.log('CITY_DEBUG',JSON.stringify({stock:guild.city.stock,buildings:guild.city.buildings,lastCollectedAt:guild.city.lastCollectedAt}));
  assert.equal(guild.city.stock.food,8+8*24);
  const old=guild.city.stock.food;
  assert.equal(at(1000+1000*60*60,{action:'buildingUpgrade',x:1,y:2}),true);
