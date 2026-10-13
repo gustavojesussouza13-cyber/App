@@ -33,6 +33,7 @@ window.PeregrinosCity=Object.freeze({create({send}){
   ctx.fillStyle='#e8c878';ctx.fillRect(px-3,py-h+13,6,7);
  }
  function myCity(){return state?.yourGuild?.name===base?.name}
+ function canBuild(){return myCity()&&state?.yourGuild?.leader===true}
  function structures(){return (state?.cities||[]).find(c=>c.name===base?.name)?.buildings||[]}
  function draw(){
   if(!dlg.open)return;
@@ -61,12 +62,12 @@ window.PeregrinosCity=Object.freeze({create({send}){
    const collect=document.createElement('button');collect.type='button';collect.textContent='✦ Coletar produção (15 min)';
    collect.onclick=()=>send('kingdom',{action:'collect'});choices.append(collect);
    const instruction=document.createElement('p');instruction.textContent='Cada edifício produz recursos. Clique em um prédio construído para evoluí-lo com alimentos, madeira e pedra (até nível 5).';choices.append(instruction);
-   for(const [id,t] of Object.entries(types)){const b=document.createElement('button');b.type='button';b.style.display='block';b.style.width='100%';b.style.marginBottom='6px';b.textContent=t.label+' · '+t.cost+' moedas';b.setAttribute('aria-pressed',String(selected===id));b.onclick=()=>{selected=id;feedback.textContent='Clique em um terreno disponível para construir '+t.label.toLowerCase()+'.';refresh()};choices.append(b)}
+   for(const [id,t] of Object.entries(types)){const b=document.createElement('button');b.disabled=!canBuild();b.type='button';b.style.display='block';b.style.width='100%';b.style.marginBottom='6px';b.textContent=t.label+' · '+t.cost+' moedas';b.setAttribute('aria-pressed',String(selected===id));b.onclick=()=>{selected=id;feedback.textContent='Clique em um terreno disponível para construir '+t.label.toLowerCase()+'.';refresh()};choices.append(b)}
   }else{const p=document.createElement('p');p.textContent='Você está visitando a capital de outra guilda. Somente a liderança do reino pode construir aqui.';choices.append(p)}
   draw();
  }
  canvas.addEventListener('click',e=>{
-  if(!myCity())return;
+  if(!canBuild())return;
   const rect=canvas.getBoundingClientRect(),px=(e.clientX-rect.left)*canvas.width/rect.width,py=(e.clientY-rect.top)*canvas.height/rect.height;
   const dx=(px-ox)/(TW/2),dy=(py-oy-TH/2)/(TH/2),x=Math.round((dx+dy)/2),y=Math.round((dy-dx)/2);
   const existing=structures().find(b=>b.x===x&&b.y===y);
