@@ -114,6 +114,20 @@ function action(world,p,d,{walkable,portals=[],now=Date.now()}={}){
   world.send(p.socket,world.ownStatus(p));
   return true;
  }
+ if(op==='upgrade'){
+  if(g.leader!==p.uid||!g.base){response(world,p,'Somente o líder pode ampliar as muralhas de sua capital.');return false}
+  if(p.zone!==g.base.zone||Math.hypot(p.x-g.base.x,p.y-g.base.y)>180){
+   response(world,p,'Visite a sua fortaleza para melhorar as defesas.');return false}
+  const level=Math.max(1,Math.floor(Number(g.base.level)||1));
+  if(level>=5){response(world,p,'Sua fortaleza já alcançou o nível máximo 5.');return false}
+  const cost=(level+1)*500;
+  if(p.save.coins<cost){response(world,p,'Moedas insuficientes para ampliar a fortaleza ('+cost+').');return false}
+  p.save.coins-=cost;g.base.level=level+1;
+  g.influence=g.influence||{};
+  g.influence[g.base.zone]=Math.min(1000,Math.max(0,Number(g.influence[g.base.zone])||0)+1);
+  world.dirty=true;response(world,p,'Muralhas ampliadas! Fortaleza de nível '+g.base.level+'.');
+  world.send(p.socket,world.ownStatus(p));return true;
+ }
  if(op==='recruit'){
   if(!g.base){response(world,p,'Sua guilda precisa construir uma fortaleza antes de recrutar.');return false}
   if(p.zone!==g.base.zone||Math.hypot(p.x-g.base.x,p.y-g.base.y)>180){
