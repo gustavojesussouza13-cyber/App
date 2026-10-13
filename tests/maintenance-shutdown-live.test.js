@@ -35,8 +35,8 @@ test('desligamento real avisa visitantes SSE e jogadores WebSocket antes de ence
  })(),6500,'startup');
  const home=await(await fetch(origin+'/')).text();
  const world=await(await fetch(origin+'/mundo.html')).text();
- assert.match(home,/site-maintenance\.js\?v=maintenance-v1/);
- assert.match(world,/site-maintenance\.js\?v=maintenance-v1/);
+ assert.match(home,/site-maintenance\.js\?v=maintenance-v2/);
+ assert.match(world,/site-maintenance\.js\?v=maintenance-v2/);
  const status=await(await fetch(origin+'/api/maintenance/status')).json();
  assert.equal(status.active,false);
  const stream=await fetch(origin+'/api/maintenance/events');
