@@ -1,7 +1,7 @@
 'use strict';
 /** Salas virtuais em uma única instância Render: instâncias de mundo isoladas. */
 const crypto=require('node:crypto');
-const MAX_PER_ROOM=10,MAX_ROOMS=12,IDLE_MS=10*60*1000;
+const MAX_PER_ROOM=10,MAX_ROOMS=12,PENDING_MS=60*1000;
 const MAIN_ID='auren-publica';
 const idFor=()=>crypto.randomBytes(9).toString('hex');
 const normalized=title=>typeof title==='string'?title.trim().normalize('NFC'):'';
@@ -34,7 +34,11 @@ class RoomHub{
   locked:room.locked,primary:!!room.primary};}
  list(){
   this.clean();
-  return [...this.rooms.values()].map(room=>this.publicInfo(room));
+  // As salas só são anunciadas quando possuem participantes. A sala
+  // criada mas ainda não ocupada existe apenas como convite provisório
+  // para seu dono. Nunca listar servidores de 0 jogadores.
+  return [...this.rooms.values()].filter(room=>room.primary||room.world.count>0)
+   .map(room=>this.publicInfo(room));
  }
  create({name,password,owner}){
   this.clean();
@@ -52,13 +56,19 @@ class RoomHub{
   const salt=password?crypto.randomBytes(16):null;
   const room={id:idFor(),name:title,ownerId:owner,locked:!!password,salt,
    hash:password?hashPassword(password,salt):null,createdAt:this.now(),
-   world:this.createWorld(),emptySince:this.now(),primary:false};
+   world:this.createWorld(),emptySince:this.now(),pending:true,primary:false};
   this.rooms.set(room.id,room);
   return this.publicInfo(room);
  }
- check(id,password,{uid=null}={}){
+ check(id,password,{uid=null,owner=null}={}){
+  this.clean();
   const room=this.rooms.get(id);
   if(!room)throw new RoomError('Esta sala não existe mais. Escolha outra.','room_missing',404);
+  // Antes da primeira entrada, a sala é um convite exclusivo do criador.
+  // Impede salas fantasma de aparecerem e outros usuários de ativá-las
+  // antes de o dono conseguir entrar.
+  if(room.pending&&owner!==room.ownerId)
+   throw new RoomError('A sala está aguardando seu criador.','room_pending',403);
   if(room.locked){
    if(typeof password!=='string'||password.length>64)
     throw new RoomError('Senha da sala incorreta.','wrong_room_password',403);
@@ -70,16 +80,30 @@ class RoomHub{
   if(room.world.count>=MAX_PER_ROOM&&!replacing)throw new RoomError('Sala cheia: 10/10 jogadores.','room_full',409);
   return room;
  }
- entered(room){room.emptySince=null}
- left(room){if(room&&!room.primary&&room.world.count===0)room.emptySince=this.now()}
+ entered(room){
+  if(!room||!this.rooms.has(room.id))return;
+  room.pending=false;room.emptySince=null;
+ }
+ remove(room){
+  if(!room||room.primary||this.rooms.get(room.id)!==room)return false;
+  // Apagar a sala do catálogo ANTES do encerramento impede qualquer
+  // entrada numa sala vazia durante a gravação do progresso das contas.
+  this.rooms.delete(room.id);
+  room.world.stop();
+  return true;
+ }
+ left(room){
+  if(!room||room.primary)return;
+  if(room.world.count===0&&!room.pending)this.remove(room);
+ }
  clean(){
   const now=this.now();
-  for(const [id,room] of this.rooms){
-   if(room.primary||room.world.count!==0||room.emptySince===null||now-room.emptySince<IDLE_MS)continue;
-   room.world.stop();this.rooms.delete(id);
+  for(const room of [...this.rooms.values()]){
+   if(room.primary||room.world.count!==0)continue;
+   if((room.pending&&now-room.createdAt>=PENDING_MS)||!room.pending)this.remove(room);
   }
  }
  allWorlds(){return [...this.rooms.values()].map(r=>r.world)}
  close(){for(const r of this.rooms.values())r.world.stop();this.rooms.clear()}
 }
-module.exports={RoomHub,RoomError,MAIN_ID,MAX_PER_ROOM,MAX_ROOMS,IDLE_MS,ownerId,validRoomName};
+module.exports={RoomHub,RoomError,MAIN_ID,MAX_PER_ROOM,MAX_ROOMS,PENDING_MS,ownerId,validRoomName};
