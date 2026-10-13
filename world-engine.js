@@ -235,7 +235,7 @@ class World {
   // A titularidade é baseada no token deste navegador; o nome é apenas um apelido.
   for(const existing of this.players.values())if(existing.uid===uid){this.tell(existing,'Sua sessão foi aberta em outra aba.');this.leave(existing.socket._worldClient||{worldPlayer:existing});try{existing.socket.destroy()}catch{}break}
   if(this.players.size+this.getOnline()>=10){this.send(c.socket,{type:'error',code:'full',message:'Servidor cheio: 10 de 10 peregrinos. Aguarde uma vaga.'});return}
-  if([...this.players.values()].some(p=>p.name.toLocaleLowerCase('pt-BR')===name.toLocaleLowerCase('pt-BR'))||this.hasClassicName(name)){
+  if([...this.players.values()].some(p=>p.name.toLocaleLowerCase('pt-BR')===name.toLocaleLowerCase('pt-BR'))||(this.hasClassicName(name)&&c.roomTransferUid!==uid)){
    this.send(c.socket,{type:'error',code:'name_taken',message:'Esse nome já está em uso agora. Escolha outro.'});return}
   // Visitante: jornada temporária por aba aberta; se a conexão cair por
   // alguns segundos, o mesmo token retoma em RAM. Um novo acesso gera
