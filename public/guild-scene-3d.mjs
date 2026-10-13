@@ -309,6 +309,8 @@ export function createGuildScene({mount,layout,onCell,onHover}){
   foundation.receiveShadow=false;
   drawBuilding(building,provisionalStructures);
   renderer.domElement.dataset.pendingBuilding=building.type+':'+building.x+':'+building.y;
+  // Sem aguardar próximo requestAnimationFrame: pinta durante o próprio clique.
+  renderer.render(scene,camera);
  }
  function clearPendingBuilding(){
   disposeGroup(provisionalStructures);
