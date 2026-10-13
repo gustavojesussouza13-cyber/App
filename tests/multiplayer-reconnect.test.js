@@ -25,7 +25,7 @@ function harness(){
   WebSocket:FakeSocket,location:{protocol:'https:',host:'localhost'},
   progressToken:'guest-test',socket:null,reconnectMs:1000,reconnectTimer:null,
   session:{name:'Teste',formClass:'peregrino',monsters:new Map(),players:new Map()},
-  accountMode:false,authed:true,
+  accountMode:false,authed:true,selectedRoomId:'auren-publica',selectedRoomPassword:'',
   spriteActions:{monsters:new Map(),players:new Map(),fallen:[],localHurtAt:0},
   setOnline:()=>{},closeDialogue:()=>{},monsterMotion:{clear:()=>{}},playerMotion:{clear:()=>{}},combatFx:{clear:()=>{}},
   alert:()=>{},console,JSON,Map,
