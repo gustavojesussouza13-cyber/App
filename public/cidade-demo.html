@@ -9,44 +9,44 @@ h1{font:32px Georgia,serif;color:#f4d18d}p{line-height:1.55}
 button{background:#274d3c;color:#f9e1a7;border:1px solid #a68d60;padding:13px 19px;cursor:pointer;font-weight:700}
 button:hover{background:#375f4b}small{display:block;margin:20px;color:#b4c4b1}
 a{color:#d9c184}#openDemo{font-size:18px}
-</style></head><body><main>
+</style><link rel="stylesheet" href="/guild-city-3d.css?v=guild3d-v1"></head><body><main>
 <h1>✦ Reinos de Auren</h1>
-<h2>Demonstração da Cidade Isométrica</h2>
-<p>Explore uma cidadela medieval em pixel art, posicione casas, fazendas, quartéis, torres e mercados, consulte recursos e visualize as melhorias dos edifícios.</p>
+<h2>Demonstração da Capital 3D</h2>
+<p>Explore uma cidade medieval 3D de Os Peregrinos: gire a câmera, use zoom, construa por todo o terreno livre, reúna recursos e treine soldados. Arte 3D original, sem alterar o mapa 2D principal.</p>
 <p><strong>Atenção:</strong> esta é uma demonstração local, sem conta, multiplayer ou salvamento. As moedas e construções são fictícias e reiniciam quando a página é atualizada.</p>
 <button id="openDemo" type="button">♜ Entrar na cidadela de demonstração</button>
 <small>Esta página utiliza a mesma interface de cidades do MMORPG em desenvolvimento. Nenhuma ação será enviada ao servidor oficial.</small>
 <a href="/mundo.html">← Voltar ao Mundo Aberto</a>
 </main>
-<script src="/city-layout.js?v=city-multicell-v1"></script><script src="/city-art16.js?v=auren-city-art-v9"></script><script src="/city-isometric.js?v=auren-city-art-v9"></script>
+<script src="/city-layout.js?v=guild3d-v1"></script><script src="/city-art16.js?v=auren-city-art-v9"></script><script src="/city-isometric.js?v=auren-city-art-v9"></script><script src="/guild-city-3d.js?v=guild3d-v1"></script>
 <script>
 'use strict';
 const name='Fortaleza da Alvorada',start=Date.now();
-let stock={food:120,timber:100,stone:90,coins:80},buildings=[
- {type:'farm',x:2,y:2,level:1},{type:'house',x:3,y:1,level:1},
- {type:'market',x:8,y:8,level:1},{type:'barracks',x:7,y:3,level:1},
- {type:'tower',x:1,y:8,level:2},
- {type:'house',x:1,y:1,level:2},{type:'house',x:1,y:2,level:1},
- {type:'house',x:2,y:1,level:1},{type:'house',x:3,y:2,level:3},
- {type:'house',x:1,y:3,level:1},{type:'house',x:2,y:3,level:2},
- {type:'house',x:8,y:1,level:1},{type:'house',x:9,y:1,level:2},
- {type:'house',x:9,y:2,level:1},{type:'market',x:8,y:2,level:2},
- {type:'farm',x:1,y:7,level:1},{type:'farm',x:2,y:8,level:2},
- {type:'farm',x:2,y:9,level:1},{type:'farm',x:3,y:8,level:1},
- {type:'house',x:7,y:8,level:2},{type:'house',x:9,y:8,level:1},
- {type:'house',x:8,y:9,level:2},{type:'house',x:9,y:9,level:1},
- {type:'market',x:7,y:9,level:1},{type:'tower',x:8,y:3,level:2},
- {type:'barracks',x:7,y:2,level:1},{type:'house',x:3,y:7,level:1}
-],army={militia:12,archer:5,knight:2,siege:0};
+let stock={food:240,timber:180,stone:160,coins:100},army={militia:12,archer:5,knight:2,siege:0};
 const layout=window.PeregrinosCityLayout;
+const seeds=[
+ ['house',2,2],['house',5,2],['market',8,2],['house',2,5],['house',5,5],
+ ['farm',8,6],['tower',2,9],['barracks',4,9],['house',2,13],
+ ['house',16,2],['house',19,2],['market',22,3],['house',16,5],
+ ['farm',20,6],['tower',23,9],['barracks',17,10],['market',22,11],
+ ['house',17,14],['house',20,15],['house',23,16],
+ ['farm',3,16],['farm',7,17],['market',11,19],['house',15,20],
+ ['house',18,21],['farm',21,20],['market',2,20],['house',6,22],
+ ['tower',9,23],['farm',11,2],['barracks',12,6],['house',15,9],
+ ['barracks',11,16],['market',15,18],['house',12,23]
+];
+const buildings=[];
+for(const [type,x,y] of seeds){
+ if(layout.canPlace(buildings,type,x,y))buildings.push({...layout.plan(type,x,y),level:1+(x+y)%3});
+}
 const costs={house:120,farm:160,barracks:280,tower:360,market:240},
 units={militia:{food:4,timber:2,stone:0},archer:{food:5,timber:5,stone:0},knight:{food:8,timber:3,stone:3},siege:{food:12,timber:12,stone:8}};
 const base={name,zone:0,x:768,y:512,level:2};
-let localCoins=1800,lastCollected=start-15*60*1000;
+let localCoins=8500,lastCollected=start-15*60*1000;
 function current(){return {bases:[base],cities:[{name,buildings}],yourGuild:{name,leader:true,stock,army},trainingCosts:units,marches:[]}}
 const city=window.PeregrinosCity.create({send(type,request){
  if(type!=='kingdom'||request.action==='inspect'){city.update(current());return}
- const say=msg=>{document.querySelector('#cityFeedback').textContent=msg};
+ const say=msg=>{const p=document.querySelector('.guild3d-dialog[open] #guild3dFeedback')||document.querySelector('.city-dialog[open] #cityFeedback');if(p)p.textContent=msg};
  if(request.action==='construct'){
   const {x,y,type}=request;
   if(!Object.hasOwn(costs,type)||!layout.canPlace(buildings,type,x,y)||localCoins<costs[type]){say('Terreno ocupado ou moedas insuficientes na demonstração.');return}

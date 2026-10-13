@@ -1,0 +1,137 @@
+'use strict';
+/* Interface da cidade 3D: só substitui a fortaleza, preserva o MMORPG e suas marchas. */
+(function(root){
+ const old=root.PeregrinosCity;
+ if(!old||!root.PeregrinosCityLayout)throw Error('Dependências de guilda indisponíveis');
+ const layout=root.PeregrinosCityLayout;
+ const types={house:['Casario',120,'⌂'],farm:['Fazenda',160,'♧'],barracks:['Quartel',280,'⚔'],tower:['Torre',360,'♜'],market:['Mercado',240,'✦']};
+ root.PeregrinosCity=Object.freeze({create({send}){
+  // Mantém a visualização de exércitos no continente principal SEM alterar o motor 2D.
+  const oldUI=old.create({send});
+  let state=null,base=null,selected=null,scene=null,token=0,loading=false;
+  const dlg=document.createElement('dialog');dlg.className='guild3d-dialog';dlg.setAttribute('aria-label','Capital tridimensional da guilda');
+  dlg.innerHTML='<div class="guild3d-shell">'+
+   '<header class="guild3d-header"><div class="guild3d-brand"><span class="guild3d-kicker">OS PEREGRINOS · REINOS DE AUREN</span><strong id="guild3dTitle">Capital da guilda</strong><small id="guild3dSubtitle">Gestão do reino</small></div>'+
+   '<div class="guild3d-header-actions"><button type="button" id="guild3dFocus" title="Centralizar câmera">◎ Centralizar</button><button type="button" id="guild3dClose">✕ Voltar ao continente</button></div></header>'+
+   '<div class="guild3d-main"><div class="guild3d-stage"><div id="guild3dViewport" class="guild3d-viewport"><p id="guild3dLoading">Preparando sua capital tridimensional…</p></div>'+
+   '<div class="guild3d-hud"><span>Arraste para girar · Roda para aproximar · Shift + arraste para mover</span><span id="guild3dCoords">Terreno 26×26 · 3D</span></div></div>'+
+   '<aside class="guild3d-sidebar"><div class="guild3d-label">TESOURO E RECURSOS</div><div id="guild3dStock" class="guild3d-stocks"></div>'+
+   '<button type="button" id="guild3dCollect" class="guild3d-action">✦ Coletar produção</button>'+
+   '<div class="guild3d-label">URBANISMO</div><div class="guild3d-note">Toda a área verde é edificável. Apenas os terrenos ocupados e o castelo central são reservados.</div>'+
+   '<div id="guild3dChoices" class="guild3d-choices"></div>'+
+   '<div id="guild3dArmy" class="guild3d-army"><div class="guild3d-label">TREINAMENTO MILITAR</div><select id="guild3dSoldier" aria-label="Tipo de tropa"></select>'+
+   '<div class="guild3d-train"><input id="guild3dCount" type="number" min="1" max="40" value="1" aria-label="Quantidade de soldados"><button type="button" id="guild3dTrain">⚔ Treinar tropas</button></div></div>'+
+   '<div class="guild3d-label">DIÁRIO DA CAPITAL</div><p id="guild3dFeedback" class="guild3d-feedback" role="status" aria-live="polite">Escolha uma construção e selecione um terreno livre.</p>'+
+   '<p id="guild3dVisitor" class="guild3d-note" hidden>Esta cidade pertence a outra guilda. Somente seu líder pode construir ou melhorar edifícios.</p>'+
+   '</aside></div></div>';
+  document.body.append(dlg);
+  const q=id=>dlg.querySelector('#'+id);
+  const opts=q('guild3dChoices');
+  const info=q('guild3dFeedback');
+  const stock=q('guild3dStock');
+  const viewport=q('guild3dViewport');
+  const soldier=q('guild3dSoldier'),count=q('guild3dCount');
+  const trained=q('guild3dArmy'),collect=q('guild3dCollect');
+  const owns=()=>state?.yourGuild?.name===base?.name;
+  const canBuild=()=>owns()&&state?.yourGuild?.leader===true;
+  const structures=()=>(state?.cities||[]).find(c=>c.name===base?.name)?.buildings||[];
+  const say=t=>{info.textContent=t};
+  function paint(){
+   if(!dlg.open||!base)return;
+   q('guild3dTitle').textContent='♜ '+base.name;
+   q('guild3dSubtitle').textContent='Fortaleza nível '+(base.level||1)+(owns()?' · Seu reino':' · Reino visitante');
+   const resources=owns()?state?.yourGuild?.stock||{}:{};
+   stock.replaceChildren();
+   for(const [label,id,emoji]of [['Alimentos','food','🌾'],['Madeira','timber','🪵'],['Pedra','stone','🪨'],['Tesouro','coins','◆']]){
+    const d=document.createElement('div');d.className='guild3d-stock';
+    const n=document.createElement('strong');n.textContent=(resources[id]||0).toLocaleString('pt-BR');
+    const l=document.createElement('small');l.textContent=emoji+' '+label;
+    d.append(n,l);stock.append(d);
+   }
+   collect.hidden=!owns();collect.disabled=!owns();
+   q('guild3dVisitor').hidden=owns();
+   opts.replaceChildren();
+   for(const [id,[label,cost,glyph]]of Object.entries(types)){
+    const button=document.createElement('button');button.type='button';
+    button.className='guild3d-building';button.disabled=!canBuild();
+    button.setAttribute('aria-pressed',String(selected===id));
+    const size=layout.footprints[id].join(' × ');
+    button.textContent=glyph+' '+label+' · '+size+' · '+cost+' moedas';
+    button.onclick=()=>{selected=id;scene?.setSelection(id);say('Construindo '+label.toLowerCase()+'. Clique em um lote livre '+size+'.');paint()};
+    opts.append(button);
+   }
+   const costs=state?.trainingCosts||{};
+   const prior=soldier.value;
+   soldier.replaceChildren();
+   const labels={militia:'Milícia',archer:'Arqueiros',knight:'Cavaleiros',siege:'Máquinas de cerco'};
+   for(const [id,c]of Object.entries(costs)){
+    const option=document.createElement('option');option.value=id;
+    option.textContent=(labels[id]||id)+' · '+c.food+' alimentos / '+c.timber+' madeira / '+c.stone+' pedra';
+    soldier.append(option);
+   }
+   if(costs[prior])soldier.value=prior;
+   trained.hidden=!owns()||!structures().some(b=>b.type==='barracks');
+  }
+  function onCell({x,y}){
+   if(!canBuild()){say('Somente o líder pode construir ou melhorar edifícios.');return}
+   const old=layout.at(structures(),x,y);
+   if(old){
+    say('Solicitando evolução de '+(types[old.type]?.[0]||'edifício')+' para o servidor…');
+    send('kingdom',{action:'buildingUpgrade',x,y});
+    return;
+   }
+   if(!selected){say('Selecione um edifício no painel para começar.');return}
+   if(!layout.canPlace(structures(),selected,x,y)){
+    say('Lote '+x+','+y+' indisponível: outra construção ou castelo ocupa parte do terreno.');
+    return;
+   }
+   say('Enviando '+types[selected][0].toLowerCase()+' para validação do servidor…');
+   send('kingdom',{action:'construct',type:selected,x,y,target:base.name});
+  }
+  function onHover(cell){
+   q('guild3dCoords').textContent=cell?'Lote '+(cell.x+1)+' / '+(cell.y+1)+' · '+layout.N+'×'+layout.N:'Terreno '+layout.N+'×'+layout.N;
+  }
+  async function load(){
+   if(scene||loading||!dlg.open)return;
+   loading=true;const seq=++token;
+   try{
+    const engine=await import('/guild-scene-3d.mjs?v=guild3d-v1');
+    if(!dlg.open||seq!==token)return;
+    scene=engine.createGuildScene({mount:viewport,layout,onCell,onHover});
+    q('guild3dLoading')?.remove();
+    scene.updateBuildings(structures(),state?.yourGuild?.army||{});
+    scene.setSelection(selected);
+    say('Cidade 3D pronta. Gire a câmera, explore e construa em todo o terreno livre.');
+   }catch(err){
+    console.error('Guild3D:',err);
+    say('Seu navegador não iniciou o ambiente 3D. Abrindo a cidade em modo de compatibilidade.');
+    dlg.close();oldUI.open(base,state);
+   }finally{loading=false}
+  }
+  q('guild3dClose').onclick=()=>dlg.close();
+  q('guild3dFocus').onclick=()=>scene?.focus();
+  collect.onclick=()=>send('kingdom',{action:'collect'});
+  q('guild3dTrain').onclick=()=>{
+   if(!owns()||!soldier.value)return;
+   send('kingdom',{action:'train',unit:soldier.value,count:Number(count.value)});
+  };
+  dlg.addEventListener('close',()=>{token++;scene?.destroy();scene=null;selected=null;viewport.querySelector('canvas')?.remove()});
+  function open(b,kingdom){
+   if(dlg.open)dlg.close();
+   base=b;state=kingdom;selected=null;info.textContent='Selecione um edifício ou explore o terreno com a câmera.';
+   if(!dlg.open)dlg.showModal();
+   paint();void load();
+   send('kingdom',{action:'inspect'});
+  }
+  function update(kingdom){
+   state=kingdom;oldUI.update(kingdom);
+   if(dlg.open){
+    const next=(kingdom?.bases||[]).find(b=>b.name===base?.name);
+    if(next)base=next;
+    scene?.updateBuildings(structures(),owns()?kingdom?.yourGuild?.army||{}:{});
+    paint();
+   }
+  }
+  return {open,update,drawMarches:oldUI.drawMarches};
+ }});
+})(window);

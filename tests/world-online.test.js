@@ -8,7 +8,7 @@ const os=require('node:os');
 const path=require('node:path');
 const PORT=33467;
 const temp=fs.mkdtempSync(path.join(os.tmpdir(),'peregrinos-online-'));
-const server=spawn(process.execPath,['server.js'],{cwd:path.resolve(__dirname,'..'),env:{...process.env,PORT:String(PORT),DATA_FILE:path.join(temp,'db.sqlite')},stdio:['ignore','pipe','pipe']});
+const server=spawn(process.execPath,['server.js'],{cwd:path.resolve(__dirname,'..'),env:{...process.env,DATABASE_URL:'',PORT:String(PORT),DATA_FILE:path.join(temp,'db.sqlite')},stdio:['ignore','pipe','pipe']});
 server.stderr.on('data',b=>process.stderr.write(b));
 after(()=>{server.kill('SIGTERM');setTimeout(()=>fs.rmSync(temp,{recursive:true,force:true}),200).unref()});
 const delay=ms=>new Promise(ok=>setTimeout(ok,ms));
