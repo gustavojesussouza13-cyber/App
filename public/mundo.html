@@ -18,6 +18,14 @@
  <small id="roomSwitchInfo" role="status">Consultando servidores…</small>
  <label for="roomSwitchPassword" id="roomSwitchPasswordLabel" hidden>SENHA DA SALA PRIVADA</label>
  <input type="password" id="roomSwitchPassword" maxlength="64" autocomplete="off" placeholder="Digite a senha desta sala" hidden>
+ <details class="room-create room-switch-create"><summary>+ Criar uma nova sala</summary>
+  <form id="roomSwitchCreateForm"><label for="roomSwitchNewName">NOME DA SALA</label>
+   <input type="text" id="roomSwitchNewName" minlength="3" maxlength="32" placeholder="Ex.: Caminho dos Heróis" required>
+   <label for="roomSwitchNewPassword">SENHA (OPCIONAL)</label>
+   <input type="password" id="roomSwitchNewPassword" minlength="4" maxlength="64" autocomplete="new-password" placeholder="Vazio para sala pública">
+   <button type="submit">✦ Criar e selecionar sala</button>
+  </form>
+ </details>
  <p id="roomSwitchError" role="alert" aria-live="assertive"></p>
  <div class="room-switch-actions"><button type="button" id="roomSwitchCancel">Continuar jogando</button><button type="button" id="roomSwitchConfirm">Trocar de servidor →</button></div>
 </dialog>
