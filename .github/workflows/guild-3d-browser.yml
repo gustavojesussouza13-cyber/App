@@ -11,6 +11,16 @@ on:
       - 'server.js'
       - 'package.json'
       - 'tests/guild-3d-browser.mjs'
+  pull_request:
+    branches:
+      - os-peregrinos-online
+    paths:
+      - 'public/guild-*'
+      - 'public/cidade-demo.html'
+      - 'public/mmo.js'
+      - 'public/mundo.html'
+      - 'kingdom-politics.js'
+      - 'tests/guild-3d-browser.mjs'
   workflow_dispatch:
 jobs:
   browser:

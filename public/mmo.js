@@ -73,7 +73,13 @@ function say(sender,text,kind='',reportId=null){const line=document.createElemen
  $('chatLog').appendChild(line);
  while($('chatLog').children.length>85)$('chatLog').firstElementChild.remove();$('chatLog').scrollTop=$('chatLog').scrollHeight;
 }
-function send(type,data={}){if(socket&&socket.readyState===WebSocket.OPEN)socket.send(JSON.stringify({type,...data}))}
+function send(type,data={}){
+ if(socket&&socket.readyState===WebSocket.OPEN){
+  socket.send(JSON.stringify({type,...data}));
+  return true;
+ }
+ return false;
+}
 function setOnline(state,msg){
  session.connected=state;$('statusDot').classList.toggle('on',state);$('status').textContent=msg;
  $('roomSwitchBtn').disabled=!state||roomSwitchPending;
@@ -109,6 +115,10 @@ function dispatch(msg){
   $('roomSwitchCancel').disabled=false;
   $('roomSwitchBtn').disabled=!session.connected;
   updateSwitchChoice();return;
+ }
+ if(msg.type==='kingdomActionResult'){
+  cityUI.onActionResult?.(msg);
+  return;
  }
  if(msg.type==='kingdomState'){
   kingdomState=msg.data||null;

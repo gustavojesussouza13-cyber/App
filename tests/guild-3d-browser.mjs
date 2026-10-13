@@ -37,6 +37,35 @@ try{
  assert.deepEqual(city.size,[4,3]);
  await page.locator('.guild3d-building').first().click();
  assert.equal(await page.locator('.guild3d-building').first().getAttribute('aria-pressed'),'true');
+ assert.match(await page.locator('.guild3d-wallet').innerText(),/8.500 moedas/);
+ // A demonstração responde como o servidor: coleta confirmada e erro confirmado aparecem no diário.
+ await page.locator('#guild3dCollect').click();
+ await page.waitForFunction(()=>document.querySelector('.guild3d-dialog[open] #guild3dFeedback')?.textContent?.includes('Produção fictícia coletada.'),null,{timeout:6000});
+ assert.equal(await page.locator('#guild3dFeedback').getAttribute('data-status'),'success');
+ await page.locator('#guild3dCollect').click();
+ await page.waitForFunction(()=>document.querySelector('.guild3d-dialog[open] #guild3dFeedback')?.textContent?.includes('15 minutos'),null,{timeout:6000});
+ assert.equal(await page.locator('#guild3dFeedback').getAttribute('data-status'),'error');
+ // Clique real no WebGL: projeta a posição de um lote livre usando a mesma câmera pública inicial.
+ const buildTarget=await page.evaluate(async()=>{
+  const THREE=await import('/vendor/three.module.js');
+  const c=document.querySelector('.guild3d-canvas'),r=c.getBoundingClientRect();
+  const camera=new THREE.PerspectiveCamera(47,r.width/r.height,0.1,450);
+  const distance=70,azimuth=.77,elevation=.92;
+  camera.position.set(distance*Math.sin(elevation)*Math.sin(azimuth),
+   distance*Math.cos(elevation),distance*Math.sin(elevation)*Math.cos(azimuth));
+  camera.lookAt(0,0,0);camera.updateMatrixWorld();
+  const N=window.PeregrinosCityLayout.N,CELL=2.85,half=N*CELL/2;
+  const x=8,y=12;
+  const p=new THREE.Vector3((x+.5)*CELL-half,0,(y+.5)*CELL-half).project(camera);
+  return {x:r.x+(p.x+1)*.5*r.width,y:r.y+(1-p.y)*.5*r.height,
+   free:layout.canPlace(buildings,'house',x,y)};
+ });
+ assert.equal(buildTarget.free,true,'lote de teste deve estar livre');
+ await page.mouse.click(buildTarget.x,buildTarget.y);
+ await page.waitForFunction(()=>document.querySelector('.guild3d-dialog[open] #guild3dFeedback')?.textContent?.includes('Construção concluída!'),null,{timeout:6000});
+ assert.equal(await page.locator('#guild3dFeedback').getAttribute('data-status'),'success');
+ assert.match(await page.locator('.guild3d-wallet').innerText(),/8.380 moedas/,'saldo deve ser atualizado após construir');
+
  await page.screenshot({path:'/tmp/guild-3d-preview.png',fullPage:true,animations:'disabled'});
  await page.locator('#guild3dClose').click();
  assert.equal(await page.locator('.guild3d-dialog').evaluate(d=>d.open),false,'fechamento limpa a cena');

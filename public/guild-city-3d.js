@@ -9,6 +9,7 @@
   // Mantém a visualização de exércitos no continente principal SEM alterar o motor 2D.
   const oldUI=old.create({send});
   let state=null,base=null,selected=null,scene=null,token=0,loading=false;
+  let pending=null,pendingTimer=null,requestSeq=0;
   const dlg=document.createElement('dialog');dlg.className='guild3d-dialog';dlg.setAttribute('aria-label','Capital tridimensional da guilda');
   dlg.innerHTML='<div class="guild3d-shell">'+
    '<header class="guild3d-header"><div class="guild3d-brand"><span class="guild3d-kicker">OS PEREGRINOS · REINOS DE AUREN</span><strong id="guild3dTitle">Capital da guilda</strong><small id="guild3dSubtitle">Gestão do reino</small></div>'+
@@ -35,13 +36,52 @@
   const owns=()=>state?.yourGuild?.name===base?.name;
   const canBuild=()=>owns()&&state?.yourGuild?.leader===true;
   const structures=()=>(state?.cities||[]).find(c=>c.name===base?.name)?.buildings||[];
-  const say=t=>{info.textContent=t};
+  const say=(text,status='info')=>{
+   info.textContent=text;
+   info.dataset.status=status;
+  };
+  function clearPending(){
+   if(pendingTimer!==null)clearTimeout(pendingTimer);
+   pendingTimer=null;pending=null;
+  }
+  function sendOperation(action,details,progress){
+   if(pending){
+    say('Aguarde a resposta sobre a operação anterior antes de tentar novamente.','warning');
+    return false;
+   }
+   const id=++requestSeq;
+   pending={id,action};
+   say(progress,'pending');
+   // Timeout começa antes do envio: a demonstração responde sincronicamente.
+   pendingTimer=setTimeout(()=>{
+    if(pending?.id!==id)return;
+    clearPending();
+    say('O servidor demorou para confirmar a operação. Verifique a construção e seu saldo antes de tentar novamente.','warning');
+   },12000);
+   const delivered=send('kingdom',{action,...details,requestId:id});
+   if(delivered===false){
+    clearPending();
+    say('Não há conexão com o servidor. Verifique a internet e aguarde reconectar antes de construir.','error');
+    return false;
+   }
+   return true;
+  }
+  function onActionResult(result){
+   if(!dlg.open||!pending)return;
+   if(result?.id!==pending.id||result?.action!==pending.action)return;
+   clearPending();
+   say(result.message|| (result.ok?'Operação concluída.':'O servidor não autorizou a operação.'),result.ok?'success':'error');
+  }
   function paint(){
    if(!dlg.open||!base)return;
    q('guild3dTitle').textContent='♜ '+base.name;
    q('guild3dSubtitle').textContent='Fortaleza nível '+(base.level||1)+(owns()?' · Seu reino':' · Reino visitante');
    const resources=owns()?state?.yourGuild?.stock||{}:{};
    stock.replaceChildren();
+   const wallet=document.createElement('div');wallet.className='guild3d-stock guild3d-wallet';
+   const balance=document.createElement('strong');balance.textContent=Math.max(0,Number(state?.walletCoins)||0).toLocaleString('pt-BR')+' moedas';
+   const balanceLabel=document.createElement('small');balanceLabel.textContent='◈ Seu saldo pessoal · usado para construir edifícios';
+   wallet.append(balance,balanceLabel);stock.append(wallet);
    for(const [label,id,emoji]of [['Alimentos','food','🌾'],['Madeira','timber','🪵'],['Pedra','stone','🪨'],['Tesouro','coins','◆']]){
     const d=document.createElement('div');d.className='guild3d-stock';
     const n=document.createElement('strong');n.textContent=(resources[id]||0).toLocaleString('pt-BR');
@@ -76,8 +116,7 @@
    if(!canBuild()){say('Somente o líder pode construir ou melhorar edifícios.');return}
    const old=layout.at(structures(),x,y);
    if(old){
-    say('Solicitando evolução de '+(types[old.type]?.[0]||'edifício')+' para o servidor…');
-    send('kingdom',{action:'buildingUpgrade',x,y});
+    sendOperation('buildingUpgrade',{x,y},'Solicitando melhoria de '+(types[old.type]?.[0]||'edifício')+'…');
     return;
    }
    if(!selected){say('Selecione um edifício no painel para começar.');return}
@@ -85,8 +124,13 @@
     say('Lote '+x+','+y+' indisponível: outra construção ou castelo ocupa parte do terreno.');
     return;
    }
-   say('Enviando '+types[selected][0].toLowerCase()+' para validação do servidor…');
-   send('kingdom',{action:'construct',type:selected,x,y,target:base.name});
+   const price=types[selected][1],wallet=Number(state?.walletCoins);
+   if(Number.isFinite(wallet)&&wallet<price){
+    say('Moedas pessoais insuficientes: você possui '+wallet.toLocaleString('pt-BR')+' e a construção custa '+price+'. Consiga moedas no continente para construir.','error');
+    return;
+   }
+   sendOperation('construct',{type:selected,x,y,target:base.name},
+    'Enviando '+types[selected][0].toLowerCase()+' para validação do servidor…');
   }
   function onHover(cell){
    q('guild3dCoords').textContent=cell?'Lote '+(cell.x+1)+' / '+(cell.y+1)+' · '+layout.N+'×'+layout.N:'Terreno '+layout.N+'×'+layout.N;
@@ -110,15 +154,15 @@
   }
   q('guild3dClose').onclick=()=>dlg.close();
   q('guild3dFocus').onclick=()=>scene?.focus();
-  collect.onclick=()=>send('kingdom',{action:'collect'});
+  collect.onclick=()=>sendOperation('collect',{},'Consultando produção acumulada…');
   q('guild3dTrain').onclick=()=>{
    if(!owns()||!soldier.value)return;
-   send('kingdom',{action:'train',unit:soldier.value,count:Number(count.value)});
+   sendOperation('train',{unit:soldier.value,count:Number(count.value)},'Enviando treinamento para validação…');
   };
-  dlg.addEventListener('close',()=>{token++;scene?.destroy();scene=null;selected=null;viewport.querySelector('canvas')?.remove()});
+  dlg.addEventListener('close',()=>{token++;clearPending();scene?.destroy();scene=null;selected=null;viewport.querySelector('canvas')?.remove()});
   function open(b,kingdom){
    if(dlg.open)dlg.close();
-   base=b;state=kingdom;selected=null;info.textContent='Selecione um edifício ou explore o terreno com a câmera.';
+   base=b;state=kingdom;selected=null;clearPending();say('Selecione um edifício ou explore o terreno com a câmera.');
    if(!dlg.open)dlg.showModal();
    paint();void load();
    send('kingdom',{action:'inspect'});
@@ -132,6 +176,6 @@
     paint();
    }
   }
-  return {open,update,drawMarches:oldUI.drawMarches};
+  return {open,update,onActionResult,drawMarches:oldUI.drawMarches};
  }});
 })(window);
