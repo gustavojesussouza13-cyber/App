@@ -101,7 +101,7 @@ test('HTML carrega código corrigido e invalida cache de navegadores',()=>{
  const html=read('mundo.html');
  assert.ok(html.indexOf('/character-atelier16.js')<html.indexOf('/sprite-studio.js'));
  assert.match(html,/character-atelier16\.js\?v=classes-v9/);
- assert.match(html,/sprite-studio\.js\?v=pixel-art-v1/);
+ assert.match(html,/sprite-studio\.js\?v=pc-studio-v5/);
  assert.match(html,/art16\.js\?v=pixel-art-v1/);
  assert.match(read('sprite-studio.js'),/ATELIER\?\.classIdentity\?\.\(g,c,/);
 });
