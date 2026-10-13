@@ -1,5 +1,6 @@
 'use strict';
 /** Crônicas da Aurora: campanha narrativa principal e NPCs de ambientação, sem login. */
+const {additionalChapters,BOOKS}=require('./story-afterlight');
 const ROAD=z=>x=>496+Math.sin((x+z*117)/225)*54+Math.sin(x/79+z*2)*12;
 const main=[
  {zone:0,name:'Lia, a Acendedora',title:'A guardiã do sino',chapter:'O sino que não tocou',objective:0,shard:null,
@@ -156,12 +157,36 @@ const extras=[
  [11,'Raquel, a Sentinela','Sentinela da última luz',['Vi Tomás ficar sob a chuva, noite após noite. Ele pensava que ninguém via.','A porta da câmara não tem fechadura do lado de fora: a chave é o compromisso de voltar com quem está lá dentro.']],
  [15,'Ari, o Peregrino','Viajante sem lembranças',['Não lembro de onde vim. Às vezes tenho medo de que isso signifique que nunca pertenci a lugar algum.','Mas hoje alguém dividiu pão comigo. Sei que sou bem-vindo, mesmo sem conseguir explicar quem fui.']]
 ];
-const chapters=Object.freeze(main.map((c,index)=>Object.freeze({...c,index,id:'historia-'+index,kind:'chapter',x:820+(index%2)*48,y:Math.round(ROAD(c.zone)(820+(index%2)*48)-16),role:index%4===0?'curandeiro':index%4===1?'guardiao':index%4===2?'arqueiro':'peregrino',xp:95+index*45,coins:25+index*10})));
+// IDs, ordem e recompensas dos 16 capítulos existentes não mudam.
+const chapters=Object.freeze([...main,...additionalChapters].map((c,index)=>Object.freeze({
+ ...c,index,id:'historia-'+index,kind:'chapter',
+ x:820+(index%2)*48,y:Math.round(ROAD(c.zone)(820+(index%2)*48)-16),
+ role:c.role||(index%4===0?'curandeiro':index%4===1?'guardiao':index%4===2?'arqueiro':'peregrino'),
+ xp:c.xp??(95+index*45),coins:c.coins??(25+index*10)
+})));
 const lore=Object.freeze(extras.map(([zone,name,title,lines],i)=>Object.freeze({id:'morador-'+i,kind:'lore',name,title,zone,lines,x:625,y:Math.round(ROAD(zone)(625)-10),role:['peregrino','curandeiro','arqueiro','guardiao'][i%4]})));
 const NPCS=Object.freeze([...chapters,...lore]);
 const byId=new Map(NPCS.map(n=>[n.id,n]));
 function publicNpc(n){return {id:n.id,zone:n.zone,name:n.name,title:n.title,kind:n.kind,index:n.index??null,x:n.x,y:n.y,role:n.role}}
-function freshStory(){return {stage:0,active:false,progress:0,decisions:[],shards:[]}}
-function normalizeStory(s){const raw=s&&typeof s==='object'&&!Array.isArray(s)?s:{};const stage=Number.isInteger(raw.stage)?Math.max(0,Math.min(chapters.length,raw.stage)):0;return {stage,active:stage<chapters.length&&raw.active===true,progress:Number.isInteger(raw.progress)?Math.max(0,Math.min(10,raw.progress)):0,decisions:Array.isArray(raw.decisions)?raw.decisions.filter(x=>x&&Number.isInteger(x.chapter)&&typeof x.id==='string').slice(0,16):[],shards:Array.isArray(raw.shards)?[...new Set(raw.shards.filter(x=>typeof x==='string'))].slice(0,7):[]}}
-function journal(story){const s=normalizeStory(story),next=chapters[s.stage];return {stage:s.stage,total:chapters.length,active:s.active,progress:s.progress,required:next?.objective||0,title:next?.chapter||'A Aurora renasceu',npc:next?.name||'Jornada concluída',zone:next?.zone??15,shards:s.shards,decisions:s.decisions,finished:s.stage>=chapters.length}}
+function freshStory(){return {stage:0,active:false,progress:0,decisions:[],shards:[],testimonies:[]}}
+function normalizeStory(s){
+ const raw=s&&typeof s==='object'&&!Array.isArray(s)?s:{};
+ const stage=Number.isInteger(raw.stage)?Math.max(0,Math.min(chapters.length,raw.stage)):0;
+ const validWitnesses=new Set(BOOKS.map(b=>b.witness));
+ const testimonies=Array.isArray(raw.testimonies)?[...new Set(raw.testimonies.filter(x=>validWitnesses.has(x)))]:[];
+ return {stage,active:stage<chapters.length&&raw.active===true,
+  progress:Number.isInteger(raw.progress)?Math.max(0,Math.min(10,raw.progress)):0,
+  decisions:Array.isArray(raw.decisions)?
+   raw.decisions.filter(x=>x&&Number.isInteger(x.chapter)&&x.chapter>=0&&x.chapter<chapters.length&&typeof x.id==='string').slice(0,chapters.length):[],
+  shards:Array.isArray(raw.shards)?[...new Set(raw.shards.filter(x=>typeof x==='string'))].slice(0,7):[],
+  testimonies};
+}
+function journal(story){
+ const s=normalizeStory(story),next=chapters[s.stage];
+ return {stage:s.stage,total:chapters.length,active:s.active,progress:s.progress,
+  required:next?.objective||0,title:next?.chapter||'A aurora pertence a todos',
+  npc:next?.name||'Jornada concluída',zone:next?.zone??39,book:next?.book||'O Sino da Aurora',
+  shards:s.shards,testimonies:s.testimonies,decisions:s.decisions,
+  finished:s.stage>=chapters.length};
+}
 module.exports={NPCS,chapters,lore,byId,publicNpc,freshStory,normalizeStory,journal};
