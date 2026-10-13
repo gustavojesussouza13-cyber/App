@@ -46,7 +46,7 @@ let localCoins=8500,lastCollected=start-15*60*1000;
 function current(){return {bases:[base],cities:[{name,buildings}],yourGuild:{name,leader:true,stock,army},trainingCosts:units,marches:[]}}
 const city=window.PeregrinosCity.create({send(type,request){
  if(type!=='kingdom'||request.action==='inspect'){city.update(current());return}
- const say=msg=>{document.querySelector('#cityFeedback').textContent=msg};
+ const say=msg=>{const p=document.querySelector('.guild3d-dialog[open] #guild3dFeedback')||document.querySelector('.city-dialog[open] #cityFeedback');if(p)p.textContent=msg};
  if(request.action==='construct'){
   const {x,y,type}=request;
   if(!Object.hasOwn(costs,type)||!layout.canPlace(buildings,type,x,y)||localCoins<costs[type]){say('Terreno ocupado ou moedas insuficientes na demonstração.');return}
