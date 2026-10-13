@@ -3,11 +3,11 @@
    Canvas raster em baixa resolução, pixels definidos, sem assets externos. */
 (function(root){
  function create(){
-  const N=11,TW=48,TH=24,OX=384,OY=78;
+  const N=11,TW=58,TH=29,OX=384,OY=70;
   const P=(x,y)=>({x:OX+(x-y)*TW/2,y:OY+(x+y)*TH/2});
   function poly(c,pts,fill,edge){c.beginPath();c.moveTo(pts[0][0],pts[0][1]);for(const p of pts.slice(1))c.lineTo(p[0],p[1]);c.closePath();c.fillStyle=fill;c.fill();if(edge){c.strokeStyle=edge;c.lineWidth=1;c.stroke()}}
   function box(c,x,y,w,h,col){c.fillStyle=col;c.fillRect(Math.round(x),Math.round(y),Math.round(w),Math.round(h))}
-  function diamond(c,x,y,col){const p=P(x,y);poly(c,[[p.x,p.y],[p.x+24,p.y+12],[p.x,p.y+24],[p.x-24,p.y+12]],col)}
+  function diamond(c,x,y,col){const p=P(x,y);poly(c,[[p.x,p.y],[p.x+TW/2,p.y+TH/2],[p.x,p.y+TH],[p.x-TW/2,p.y+TH/2]],col)}
   const hash=(x,y,z=0)=>{let n=(x*374761393+y*668265263+z*1442695041)|0;n=Math.imul(n^(n>>>13),1274126177);return (n^(n>>>16))>>>0};
   function tree(c,px,py,n=0){
    const h=15+(n%7);box(c,px-2,py-h+8,4,h-3,'#4d3925');
@@ -95,7 +95,7 @@
    const x=hash(i,9)%768,y=hash(i,2)%475;
    box(c,x,y,14+(i%5)*5,3,'#476348');
   }
-  poly(c,[[384,63],[664,204],[384,356],[104,204]],'#293a2f','#17271e');
+  poly(c,[[384,56],[719,231],[384,410],[49,231]],'#293a2f','#17271e');
   const occupied=new Set(buildings.map(b=>b.x+','+b.y));
   for(let z=0;z<N*2;z++)for(let y=0;y<N;y++){
    const x=z-y;if(x<0||x>=N)continue;
