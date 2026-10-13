@@ -11,6 +11,7 @@ const {ChatGuard,inspectNickname}=require('./chat-safety');
 const {AccountStore,AuthError,authCookie,clearCookie,cleanEmail,validEmail}=require('./account-store');
 const {MailService}=require('./email-service');
 const {MaintenanceNotices}=require('./maintenance-notices');
+const {grantOwnerBenefits}=require('./owner-benefits');
 
 const PORT = Number(process.env.PORT || 3000);
 const HOST = process.env.HOST || '0.0.0.0';
@@ -397,7 +398,13 @@ setInterval(()=>{
 setInterval(()=>world.tick(),350).unref();
 const start=async()=>{
  try{
-  if(accountStore){await accountStore.initialize(world);console.log('[contas] Postgres conectado: contas e progresso no armazenamento externo');}
+  if(accountStore){
+   await accountStore.initialize(world);
+   console.log('[contas] Postgres conectado: contas e progresso no armazenamento externo');
+   const grant=await grantOwnerBenefits({pool:accountStore.pool,world,ownerEmail:process.env.OWNER_ACCOUNT_EMAIL});
+   if(grant.status!=='disabled')console.log('[privilégios] Concessão ao proprietário: '+grant.status+
+    (grant.status==='granted'?' · nível '+grant.level+' · moedas '+grant.coins:''));
+  }
   else console.warn('[contas] DATABASE_URL ausente: visitantes podem jogar, mas cadastro durável está indisponível');
   httpServer.listen(PORT,HOST,()=>console.log(`Os Peregrinos online em http://localhost:${PORT}`));
  }catch(err){console.error('[contas] Não foi possível iniciar com segurança o banco:',err.message);process.exitCode=1;await accountStore?.pool.end().catch(()=>{});}
