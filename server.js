@@ -73,6 +73,18 @@ const rooms=new RoomHub({mainWorld:world,createWorld:()=>{
  instance.saved=world.saved;
  instance.guilds=world.guilds;
  instance.day=world.day;
+ instance.kingdomTickLeader=false; // Uma campanha se resolve uma vez, mesmo com várias salas.
+ // As contas e fortificações pertencem ao continente, não à sala temporária.
+ // Persista pelo mundo principal para não perder a última atualização de
+ // um guerreiro que estava em outra sala.
+ instance.persist=function(){
+  for(const p of this.players.values())if(p.isAccount)this.saved.characters[p.uid]={
+   ...p.save,
+   guild:p.save.guild
+  };
+  if(this.dirty){world.dirty=true;this.dirty=false}
+  world.persist();
+ };
  return instance;
 }});
 const authRate=new Map();
