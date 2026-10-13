@@ -713,6 +713,18 @@ function drawTab(){const parent=$('tabContent');parent.replaceChildren();const s
       const fortress=button('♜ Evoluir muralhas (nível '+(k.base.level||1)+'/5)','kingdom',{action:'upgrade'});
       fortress.disabled=(k.base.level||1)>=5;
       kingdom.append(fortress);
+      const patrolRow=document.createElement('div');patrolRow.className='entry-actions';
+      const patrolZone=document.createElement('select');
+      patrolZone.setAttribute('aria-label','Região de destino da patrulha');
+      for(let z=0;z<Math.min(12,session.zones.length);z++){
+       const option=document.createElement('option');option.value=String(z);
+       option.textContent=session.zones[z].name;patrolZone.append(option);
+      }
+      const patrolButton=document.createElement('button');patrolButton.type='button';
+      patrolButton.textContent='⚑ Enviar patrulha';
+      patrolButton.disabled=!!k.march;
+      patrolButton.onclick=()=>send('kingdom',{action:'patrol',zone:Number(patrolZone.value)});
+      patrolRow.append(patrolZone,patrolButton);kingdom.append(patrolRow);
       const targets=kingdomState.bases.filter(b=>b.name!==k.name);
       if(targets.length){
        const targetSelect=document.createElement('select');
