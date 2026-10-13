@@ -66,7 +66,8 @@
  }
  function building(c,b){
   const {x,y,type}=b,lv=Math.min(5,Math.max(1,b.level||1)),p=P(x,y),px=p.x,py=p.y+16;
-  box(c,px-21,py+5,42,4,'#3d4a34');
+  box(c,px-23,py+6,46,5,'#27372b');
+  box(c,px-19,py+5,38,2,'#b8a77b');
   if(type==='farm'){
    poly(c,[[px-18,py-9],[px+4,py],[px+18,py-7],[px-2,py-16]],'#8b6b3e','#493f2c');
    for(let q=0;q<5;q++){box(c,px-16+q*6,py-4-(q%2)*3,3,5,'#d5ba6e');box(c,px-14+q*6,py-10-(q%2)*3,2,6,'#9fbb64')}
@@ -75,7 +76,7 @@
    box(c,px+7,py-13,5,9,'#514331');facade(c,px,py,hash(x,y),lv,type);return;
   }
   if(type==='tower'){
-   const h=46+lv*4;
+   const h=44+lv*4;
    wall(c,px,py-1,14,h,{left:'#898e83',right:'#bbb8a4',mortar:'#72796f'});
    box(c,px-15,py-h-4,30,5,'#8f938a');
    for(let i=0;i<5;i++)box(c,px-15+i*6,py-h-11,5,8,'#a8aca1');
@@ -95,10 +96,16 @@
    box(c,px-3,py-11,9,17,'#3c352c');
    box(c,px+18,py-26,3,27,'#523b25');box(c,px+20,py-26,12,12,'#aa5c3d');facade(c,px,py,hash(x,y),lv,type);return;
   }
-  wall(c,px,py-3,17,26+lv*2,{left:'#948475',right:'#d1bda3',mortar:'#897b69'});
-  roof(c,px,py-7,23,29+lv*2,'#94452f','#c87547');
-  windows(c,px,py,26);
-  box(c,px-3,py-7,8,12,'#584432');
+  const seed=hash(x,y,24),style=seed%4,roofTone=['#994e36','#a45b36','#875b38','#74534d'][style];
+  const width=15+(seed%5),height=21+lv*2+(style===2?5:0);
+  wall(c,px,py-3,width,height,{left:style===1?'#8d765d':'#948475',right:style===3?'#b6ae99':'#d1bda3',mortar:'#897b69'});
+  roof(c,px,py-9,width+5,height+5,roofTone,style%2?'#d99c56':'#cb7848');
+  windows(c,px,py,height);
+  box(c,px-3,py-7,7,12,'#584432');
+  box(c,px-2,py-6,5,9,'#392d27');
+  if(style===0){box(c,px+10,py-height-28,7,15,'#9d8171');box(c,px+9,py-height-29,9,4,'#694439')}
+  if(style===1){box(c,px-20,py-10,7,11,'#725139');box(c,px-22,py-12,11,3,'#b97a4c')}
+  if(style===2){box(c,px+14,py+1,12,3,'#8c7457');box(c,px+22,py-6,3,9,'#72543c')}
   box(c,px-15,py+1,3,4,'#e0c7a2');facade(c,px,py,hash(x,y),lv,type);
  }
  function citadel(c){
@@ -169,11 +176,39 @@
    for(let i=0;i<4;i++)box(c,p.x-12+i*8,y+5,4,2,'#747b70');
   }
  }
+ function path(c,px,py,k){
+  box(c,px-3,py+5,12,5,'#b5a47e');
+  box(c,px-2,py+6,3,2,'#d2c5a1');
+  box(c,px+4,py+7,4,2,'#8c805f');
+  if(k%3===0)box(c,px+12,py+3,4,3,'#8d896e');
+ }
+ function fountain(c,px,py){
+  poly(c,[[px-19,py],[px,py-8],[px+19,py],[px,py+10]],'#8a8e82','#b0afa0');
+  poly(c,[[px-12,py-1],[px,py-6],[px+12,py-1],[px,py+5]],'#568c99','#b5c4b2');
+  box(c,px-3,py-20,6,19,'#a8a79c');
+  box(c,px-5,py-23,10,4,'#d7cbb0');
+  box(c,px+4,py-13,3,7,'#a0d1d2');
+ }
+ function canvasLandscape(c){
+  // O cenário continua além dos limites dos lotes: florestas, clareiras e pedras.
+  c.fillStyle='#38553f';c.fillRect(0,0,768,520);
+  for(let gy=0;gy<520;gy+=11)for(let gx=0;gx<768;gx+=13){
+   const h=hash(gx,gy);
+   box(c,gx,gy,13,11,h%7===0?'#435f45':h%5===0?'#3e5b42':'#395740');
+   if(h%5===0)box(c,gx+6,gy+5,4,2,'#5b7951');
+   if(h%19===0)flowers(c,gx+3,gy+4,h);
+  }
+  // Trilha de acesso à cidade, visível nos arredores.
+  for(let i=0;i<18;i++){
+   const x=377+i*7,y=410+i*8;
+   if(y>=520)break;
+   box(c,x-15,y,29,10,'#9d9170');
+   if(i%2===0)box(c,x-3,y+4,5,2,'#c8b692');
+  }
+ }
  function render(c,{buildings=[],name='',selected=null,hover=null,now=0}={}){
   c.imageSmoothingEnabled=false;
-  const sky=c.createLinearGradient(0,0,0,520);
-  sky.addColorStop(0,'#1d352f');sky.addColorStop(.48,'#375342');sky.addColorStop(1,'#1c302a');
-  c.fillStyle=sky;c.fillRect(0,0,768,520);
+  canvasLandscape(c);
   // Arredores florestais e encostas dão profundidade; a cidade não é uma ilha no vazio.
   for(let i=0;i<190;i++){
    const x=hash(i,7)%768,y=hash(i,19)%485;
@@ -184,7 +219,9 @@
    if(seed%9===0)broadleaf(c,x,y,seed);
    else if(seed%13===0)stone(c,x,y,seed);
   }
-  poly(c,[[384,56],[719,231],[384,410],[49,231]],'#293a2f','#17271e');
+  // Talude gramado e muro baixo ao redor do assentamento.
+  poly(c,[[384,60],[720,230],[384,421],[48,230]],'#253f30','#253d30');
+  poly(c,[[384,56],[719,231],[384,410],[49,231]],'#6b8159','#253d30');
   const occupied=new Set(buildings.map(b=>b.x+','+b.y));
   for(let z=0;z<N*2;z++)for(let y=0;y<N;y++){
    const x=z-y;if(x<0||x>=N)continue;
@@ -192,6 +229,7 @@
    diamond(c,x,y,isRoad?((x+y)%2?'#c0a978':'#b3a077'):seed%3?'#658250':'#6d8855');
    const p=P(x,y);
    if(isRoad){
+    path(c,p.x,p.y,seed);
     box(c,p.x-7,p.y+11,4,2,'#d4c39d');
     if(seed%3===0)box(c,p.x+5,p.y+15,3,2,'#807b61');
    }else if(!occupied.has(x+','+y)&&!(x===4&&y===5)&&!(x===5&&y===4)&&!(x===5&&y===5)){
@@ -206,6 +244,7 @@
    if(isRoad&&seed%14===0)resident(c,p.x,p.y+11,seed,now);
    for(const b of buildings)if(b.x===x&&b.y===y){building(c,b);detailBuilding(c,b)}
    if(x===5&&y===5)citadel(c);
+   if(x===5&&y===7)fountain(c,p.x,p.y+13);
    if(hover&&hover.x===x&&hover.y===y){
     poly(c,[[p.x,p.y],[p.x+TW/2,p.y+TH/2],[p.x,p.y+TH],[p.x-TW/2,p.y+TH/2]],'rgba(245,215,121,.22)','#ffe1a2');
    }
