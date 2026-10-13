@@ -233,4 +233,4 @@ class AccountStore{
   await this.pool.end();
  }
 }
-module.exports={AccountStore,AuthError,COOKIE,authCookie,clearCookie,parseCookie,validName,validPassword,validEmail,cleanEmail,keyFor};
+module.exports={AccountStore,AuthError,COOKIE,authCookie,clearCookie,parseCookie,validName,validPassword,validEmail,cleanEmail,keyFor,publicAccount};
