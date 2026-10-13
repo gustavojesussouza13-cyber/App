@@ -13,7 +13,7 @@ function env(t){
  return {world,p:c.worldPlayer,c,events,file,token};
 }
 test('catálogo contém missões diferentes de derrotar monstros',()=>{
- assert.equal(QUESTS.length,14);
+ assert.equal(QUESTS.length,16);
  const types=new Set(QUESTS.map(q=>q.type||'kills'));
  assert.deepEqual([...types].sort(),['bosses','chapters','depths','kills','regions']);
  assert.equal(new Set(QUESTS.map(q=>q.id)).size,QUESTS.length);
@@ -34,7 +34,7 @@ test('derrotas comuns não liberam premiações de exploração nem chefes',t=>{
 });
 test('exploração libera recompensas somente uma vez',t=>{
  const {world,p}=env(t);
- p.save.visited=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15];
+ p.save.visited=Array.from({length:40},(_,i)=>i);
  const initialCoins=p.save.coins;
  world.claimQuests(p);
  for(const id of ['trilhas-aurora','cartografo-auren','mapa-completo'])
