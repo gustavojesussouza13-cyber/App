@@ -22,3 +22,22 @@ test('cidades isométricas são validadas pelo servidor e persistem por guilda',
  world.persist();
  assert.equal(states.at(-1).guilds['reino da luz'].city.buildings[0].type,'house');
 });
+
+test('marcha atravessa apenas portais terrestres e interpola a posição',t=>{
+ const world=new World({persistentStore:{enqueue:()=>{}},send:()=>{},getOnline:()=>0,hasClassicName:()=>false});
+ t.after(()=>world.stop());
+ const origin={zone:0,x:350,y:440},goal={zone:7,x:900,y:520};
+ const route=politics.marchRoute(world,origin,goal);
+ assert.ok(route.length>3,'rota cruza múltiplas regiões');
+ assert.equal(route[0].zone,0);
+ assert.equal(route.at(-1).zone,7);
+ assert.ok(route.every(p=>p.zone<12),'nenhuma marcha entra em masmorras');
+ for(let i=0;i<route.length-1;i++)if(route[i].zone!==route[i+1].zone){
+  assert.ok(world.zonePortals(route[i].zone).some(g=>g.zone===route[i+1].zone),'travessia deve usar portal existente');
+ }
+ const now=1700000000000, march={route,startedAt:now,arrivesAt:now+45000};
+ assert.deepEqual(politics.marchPosition(march,now),origin);
+ assert.deepEqual(politics.marchPosition(march,now+45000),goal);
+ assert.ok(politics.marchPosition(march,now+22500).zone>=0);
+ assert.equal(politics.marchRoute(world,{zone:12,x:300,y:400},goal),null);
+});
