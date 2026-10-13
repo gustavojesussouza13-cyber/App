@@ -40,7 +40,9 @@ class MaintenanceNotices{
    if(res.writableLength<8192)res.write(': ping\n\n');
   },this.heartbeatMs);
   record.ticker.unref?.();
-  req.on('close',remove);res.on('close',remove);
+  // IncomingMessage pode emitir 'close' ao terminar de ler o GET mesmo
+  // com a resposta SSE aberta; observar a resposta, não o request.
+  res.on('close',remove);
   this.clients.add(record);
   return true;
  }
