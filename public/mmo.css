@@ -424,7 +424,7 @@ body.world-fullscreen{overflow:hidden!important}
 
 
 /* Lobby de salas virtuais de Os Peregrinos. Não interfere nos controles de toque. */
-.intro-panel:has(.room-lobby){max-width:550px;max-height:min(95vh,880px)}
+.game-overlay .intro-panel:has(.room-lobby){max-width:550px;max-height:calc(100% - 14px);overflow-y:auto;min-height:0}
 .room-lobby{text-align:left;margin:12px 0 4px;padding:13px 14px;background:#0c251e;border:1px solid #8a885d}
 .room-lobby h3{margin:0 0 5px;color:#f4dcab;font:600 17px Georgia,serif}
 .room-lobby>p{font:12px/1.6 system-ui;color:#b9cbbb;margin:5px 0 10px}
@@ -438,4 +438,4 @@ body.world-fullscreen{overflow:hidden!important}
 .room-create form{margin:9px 0 0;display:flex;flex-direction:column;gap:8px}
 .room-create button{padding:10px;border:0;background:#e2c083;color:#0b271f;font-weight:800}
 #roomError{color:#ffb7a1;min-height:10px;margin:6px 0 0}
-@media(max-width:700px){.room-lobby{padding:10px}.room-lobby>p{font-size:11px}.intro-panel:has(.room-lobby){max-height:94vh}}
+@media(max-width:700px){.room-lobby{padding:10px}.room-lobby>p{font-size:11px}.game-overlay .intro-panel:has(.room-lobby){max-height:calc(100% - 8px)}}
