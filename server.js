@@ -363,7 +363,7 @@ async function worldHello(c,data){
   const accessKey=roomAttemptKey(c.socket,requestedId);
   if(roomAttemptState(accessKey).count>=8)
    return send(c.socket,{type:'error',code:'room_password_locked',message:'Muitas tentativas de senha. Aguarde dois minutos.'});
-  try{room=rooms.check(requestedId,data.roomPassword,{uid,owner:ownerId({uid:c.authUser?.uid,token:data.token})})}
+  try{room=rooms.check(requestedId,data.roomPassword,{uid,owner:ownerId({uid:c.authUser?.uid,token:data.token}),guestOwner:ownerId({token:data.token})})}
   catch(error){
    if(error.code==='wrong_room_password'){
     const current=roomAttemptState(accessKey);current.count++;
@@ -380,7 +380,7 @@ async function worldHello(c,data){
   room.world.receive(c,data);
   if(c.worldPlayer){
    rooms.entered(room);
-   c.roomToken=accountMode?null:data.token;
+   c.roomToken=data.token;
    for(const other of duplicates)if(other.worldRoom===room)terminate(other);
   }else c.worldRoom=null;
  }catch(err){console.error('[contas] falha ao validar sessão:',err.message);send(c.socket,{type:'error',code:'auth_unavailable',message:'Não foi possível verificar a conta.'});}
@@ -400,7 +400,7 @@ function switchWorldRoom(c,data){
  if(roomAttemptState(key).count>=8)
   return send(c.socket,{type:'roomSwitchError',code:'room_password_locked',message:'Muitas tentativas de senha. Aguarde dois minutos.'});
  let target;
- try{target=rooms.check(id,data.password,{uid:player.uid,owner:ownerId({uid:c.authUser?.uid,token:c.roomToken})})}
+ try{target=rooms.check(id,data.password,{uid:player.uid,owner:ownerId({uid:c.authUser?.uid,token:c.roomToken}),guestOwner:ownerId({token:c.roomToken})})}
  catch(err){
   if(err.code==='wrong_room_password'){
    const state=roomAttemptState(key);state.count++;roomPasswordFails.set(key,state);
