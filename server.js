@@ -120,6 +120,7 @@ async function handleCreateRoom(req,res){
   const account=await accountStore?.session(req.headers.cookie);
   const creator=ownerId({uid:account?.uid,token:body.guestToken});
   if(!creator)throw new RoomError('Informe seu personagem ou entre com uma conta.','owner_required',401);
+  if(!inspectNickname(body.name).ok)throw new RoomError('Nome de sala inadequado.','invalid_room',400);
   const room=rooms.create({name:body.name,password:body.password||'',owner:creator});
   return jsonResponse(res,201,{room});
  }catch(err){
@@ -346,7 +347,7 @@ async function worldHello(c,data){
   let room;
   try{room=rooms.check(typeof data.roomId==='string'?data.roomId:MAIN_ID,data.roomPassword)}
   catch(error){return send(c.socket,{type:'error',code:error.code||'room_error',message:error.message})}
-  const uid=c.authUser?.uid||ownerId({token:data.token});
+  const uid=c.authUser?.uid||(typeof data.token==='string'?crypto.createHash('sha256').update(data.token).digest('hex'):null);
   for(const other of [...sockets])if(other!==c&&other.mode==='world'&&other.worldPlayer?.uid===uid)terminate(other);
   c.worldRoom=room;
   room.world.receive(c,data);
