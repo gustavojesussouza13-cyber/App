@@ -8,7 +8,7 @@ function setup(t){
  const file=path.join(dir,'world.json'),events=[];
  const world=new World({send:(_socket,event)=>events.push(event),getOnline:()=>0,hasClassicName:()=>false,dataFile:file});
  t.after(()=>{world.stop();fs.rmSync(dir,{recursive:true,force:true})});
- const token=crypto.randomBytes(32).toString('hex'),client={socket:{},worldPlayer:null};
+ const token=crypto.randomBytes(32).toString('hex'),client={socket:{},worldPlayer:null,authUser:{uid:'account:ExploradorDungeon',username:'ExploradorDungeon'}};
  world.join(client,{name:'ExploradorDungeon',token});
  return {world,p:client.worldPlayer,client,token,events,file};
 }
@@ -85,7 +85,7 @@ test('personagem salvo num novo subsolo mantém posição e inventário ao recon
  world.leave(client);world.stop();
  const recovered=new World({send:()=>{},getOnline:()=>0,hasClassicName:()=>false,dataFile:file});
  t.after(()=>recovered.stop());
- const rejoin={socket:{},worldPlayer:null};
+ const rejoin={socket:{},worldPlayer:null,authUser:{uid:'account:ExploradorDungeon',username:'ExploradorDungeon'}};
  recovered.join(rejoin,{name:'ExploradorDungeon',token});
  assert.equal(rejoin.worldPlayer.zone,39);
  assert.equal(rejoin.worldPlayer.save.inventory.pocao,9);
