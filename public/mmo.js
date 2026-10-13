@@ -706,6 +706,9 @@ function drawTab(){const parent=$('tabContent');parent.replaceChildren();const s
      recruit.onclick=()=>send('kingdom',{action:'recruit',unit:unitSelect.value,count:Number(howMany.value)});
      kingdom.append(unitSelect,howMany,recruit);
      if(k.leader){
+      const fortress=button('♜ Evoluir muralhas (nível '+(k.base.level||1)+'/5)','kingdom',{action:'upgrade'});
+      fortress.disabled=(k.base.level||1)>=5;
+      kingdom.append(fortress);
       const targets=kingdomState.bases.filter(b=>b.name!==k.name);
       if(targets.length){
        const targetSelect=document.createElement('select');
