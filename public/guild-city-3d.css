@@ -26,6 +26,7 @@
 .guild3d-stocks{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .guild3d-stock{display:flex;flex-direction:column;gap:5px;background:#22392d;border:1px solid #38513e;padding:10px 12px;border-radius:8px}
 .guild3d-stock strong{font-size:21px;color:#e8dbaa;font-variant-numeric:tabular-nums}
+.guild3d-wallet{grid-column:1/-1;background:#35422b;border-color:#988451}.guild3d-wallet strong{color:#f4d891}.guild3d-wallet small{color:#e2d5ab}
 .guild3d-stock small{font-size:11px;color:#bac9b6}
 .guild3d-dialog .guild3d-action{background:#756036;border-color:#ba9c62;color:#fff0c6;font-size:14px}
 .guild3d-note{font-size:12px;line-height:1.55;color:#bdcbbb;margin:0}
@@ -35,6 +36,10 @@
 .guild3d-army{display:flex;flex-direction:column;gap:9px}
 .guild3d-dialog select,.guild3d-dialog input{min-width:0;width:100%;background:#20392e;color:#efdfb2;border:1px solid #68774c;padding:10px;border-radius:6px;font:12px system-ui}
 .guild3d-train{display:grid;grid-template-columns:76px 1fr;gap:8px}
+.guild3d-feedback[data-status=success]{border-left-color:#69c690;background:#244638;color:#dbf2df}
+.guild3d-feedback[data-status=error]{border-left-color:#ef8f7f;background:#50342d;color:#ffe5d7}
+.guild3d-feedback[data-status=warning]{border-left-color:#efbd72;background:#54442b;color:#ffebbf}
+.guild3d-feedback[data-status=pending]{border-left-color:#8db6d5;background:#253b46;color:#d6eafb}
 .guild3d-feedback{font-size:12px;line-height:1.55;min-height:30px;border-left:3px solid #c1a66e;background:#2a3b2c;padding:10px;margin:0;border-radius:3px;color:#f4e5b7}
 .guild3d-sidebar [hidden]{display:none!important}
 @media(max-width:850px){
