@@ -13,7 +13,7 @@ function fakeHub(){
 }
 test('a praça pública existe sem senha; salas dos jogadores têm capacidade de dez',()=>{
  const h=fakeHub();
- assert.deepEqual(h.hub.list(),[{id:MAIN_ID,name:'Auren — Praça Pública',online:0,capacity:10,locked:false,primary:true}]);
+ assert.deepEqual(h.hub.list(),[{id:MAIN_ID,name:'Auren — Praça Pública',online:0,capacity:60,locked:false,primary:true}]);
  const room=h.hub.create({name:'Cavaleiros da Aurora',password:'',owner:'account:alpha'});
  assert.equal(room.capacity,MAX_PER_ROOM);assert.equal(room.locked,false);
  assert.equal(h.hub.list().length,1,'salas vazias não aparecem no catálogo');
@@ -56,9 +56,9 @@ test('capacidade é por sala, sem esgotar a capacidade de salas distintas',()=>{
  const h=fakeHub();
  const a=h.hub.create({name:'Sala Sol',owner:'account:a'});
  const b=h.hub.create({name:'Sala Lua',owner:'account:b'});
- h.hub.get(a.id).world.count=10;h.hub.entered(h.hub.get(a.id));
+ h.hub.get(a.id).world.count=60;h.hub.entered(h.hub.get(a.id));
  h.hub.get(b.id).world.count=3;h.hub.entered(h.hub.get(b.id));
- assert.equal(h.hub.count(),13);
+ assert.equal(h.hub.count(),63);
  assert.throws(()=>h.hub.check(a.id,''),e=>e.code==='room_full');
  assert.equal(h.hub.check(b.id,'').id,b.id);
  assert.equal(h.hub.check(MAIN_ID,'').id,MAIN_ID);
