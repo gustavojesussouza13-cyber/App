@@ -38,6 +38,7 @@ const joystick=window.OsPeregrinosTouchControls.create({pad:$('touchPad'),knob:$
 let socket=null,reconnectMs=1000,reconnectTimer=null,movingAt=0,lastDraw=0,fx=[],toastTimer=0,lastAction=0,lastActionWasSkill=false,tab='inventory',authed=false;
 let progressToken=null,accountMode=false,accountReady=false,emailRecoveryAvailable=false;
 let selectedRoomId='auren-publica',selectedRoomPassword='',roomCatalog=[],roomName='Praça Pública';
+let roomSwitchPending=false,roomSwitchTarget=null;
 // Cada abertura do site cria uma nova jornada Visitante. O token existe
 // somente nesta execução da página; queda da conexão reutiliza o token.
 // Dados de contas cadastradas continuam no servidor, sob login/senha.
@@ -73,6 +74,7 @@ function say(sender,text,kind='',reportId=null){const line=document.createElemen
 function send(type,data={}){if(socket&&socket.readyState===WebSocket.OPEN)socket.send(JSON.stringify({type,...data}))}
 function setOnline(state,msg){
  session.connected=state;$('statusDot').classList.toggle('on',state);$('status').textContent=msg;
+ $('roomSwitchBtn').disabled=!state||roomSwitchPending;
  touchUI.hidden=!state||!touchDevice;
  if(!state){joystick.release();latency.reset();updatePingIndicator();spriteActions.monsters.clear();spriteActions.players.clear();spriteActions.fallen.length=0;classSkillFx.clear()}
 }
@@ -98,12 +100,37 @@ function dispatch(msg){
   // Segunda via de aviso caso o canal global SSE seja bloqueado no navegador.
   window.OsPeregrinosMaintenance?.notify(msg);return;
  }
+ if(msg.type==='roomSwitchError'){
+  roomSwitchPending=false;roomSwitchTarget=null;
+  $('roomSwitchError').textContent=msg.message||'Não foi possível trocar de servidor.';
+  $('roomSwitchConfirm').disabled=false;
+  $('roomSwitchCancel').disabled=false;
+  $('roomSwitchBtn').disabled=!session.connected;
+  updateSwitchChoice();return;
+ }
  if(msg.type==='pong'){if(latency.receive(msg,performance.now()))updatePingIndicator();return}
  if(msg.type==='welcome'){
  session.id=msg.self.id;session.name=msg.self.name;session.zones=msg.zones;session.portals=msg.portals||[];session.shop=msg.shop;session.relics=msg.relics||{};session.quests=msg.quests;session.achievements=msg.achievements||{};session.npcs=Array.isArray(msg.npcs)?msg.npcs:[];
+ const roomChanged=Boolean(roomSwitchPending&&msg.room?.id===roomSwitchTarget&&selectedRoomId!==msg.room.id);
+ if(roomChanged){
+  // Não deixar sprites, efeitos e diálogos da sala anterior no novo mundo.
+  closeDialogue();
+  keys.clear();joystick.release();
+  session.monsters.clear();monsterMotion.clear();playerMotion.clear();combatFx.clear();
+  session.players.clear();spriteActions.monsters.clear();spriteActions.players.clear();
+  spriteActions.fallen.length=0;session.portals=[];
+  session.partyInvite=null;session.tradeOffer=null;
+ }
  $('welcomeOverlay').hidden=true;
  if(msg.room){selectedRoomId=msg.room.id;roomName=msg.room.name}
+ if(roomChanged){
+  roomSwitchPending=false;roomSwitchTarget=null;
+  $('roomSwitchDialog').close();
+  $('roomSwitchCancel').disabled=false;
+  $('roomSwitchConfirm').disabled=false;
+ }
  setOnline(true,'Conectado');displayOnline(msg.online);character(msg.self);
+ if(roomChanged)alert('✦ Você entrou na sala '+roomName+'!');
  if(!authed){
   authed=true;
   const freshSwitch=accountMode&&msg.self.level===1&&msg.self.kills===0&&msg.self.role==='peregrino'&&session.formClass!=='peregrino';
@@ -195,7 +222,12 @@ function connect(){
   };
   sock.onclose=()=>{
    if(socket!==sock)return;
-   socket=null;closeDialogue();setOnline(false,'Desconectado');
+   socket=null;closeDialogue();roomSwitchPending=false;roomSwitchTarget=null;
+   if($('roomSwitchDialog').open){
+    $('roomSwitchError').textContent='A conexão caiu. Aguarde a reconexão antes de trocar de servidor.';
+    $('roomSwitchConfirm').disabled=true;$('roomSwitchCancel').disabled=false;
+   }
+   setOnline(false,'Desconectado');
    session.monsters.clear();monsterMotion.clear();playerMotion.clear();combatFx.clear();session.players.clear();spriteActions.monsters.clear();spriteActions.players.clear();spriteActions.fallen.length=0;session.portals=[];
    if(!authed)return;
    clearTimeout(reconnectTimer);reconnectTimer=setTimeout(connect,reconnectMs);
@@ -235,6 +267,7 @@ async function loadRooms(){
   const data=await res.json();
   if(!Array.isArray(data.rooms))throw Error('Resposta inválida');
   roomCatalog=data.rooms;updateRoomSelection();
+  if($('roomSwitchDialog').open)renderSwitchRooms();
  }catch{$('roomSummary').textContent='Não foi possível atualizar a lista de salas.'}
 }
 $('roomSelect').addEventListener('change',()=>{
@@ -260,6 +293,76 @@ $('createRoomForm').addEventListener('submit',async e=>{
  }catch(err){$('roomError').textContent=err.message||'Não foi possível criar a sala.'}
  finally{submit.disabled=false}
 });
+
+function updateSwitchChoice(){
+ const id=$('roomSwitchSelect').value,room=roomCatalog.find(r=>r.id===id);
+ const same=id===selectedRoomId,full=room&&room.online>=room.capacity;
+ const locked=Boolean(room?.locked);
+ $('roomSwitchPassword').hidden=!locked;
+ $('roomSwitchPasswordLabel').hidden=!locked;
+ const suffix=same?'Esta é a sala atual.':full?'Esta sala está cheia.':locked?'Sala privada: informe a senha.':'Sala pública: entrada livre.';
+ $('roomSwitchInfo').textContent=room?room.online+'/'+room.capacity+' jogadores · '+suffix:'Sala indisponível.';
+ $('roomSwitchConfirm').disabled=roomSwitchPending||!room||same||full||!session.connected;
+}
+function renderSwitchRooms(){
+ const selector=$('roomSwitchSelect'),current=selector.value||selectedRoomId;
+ selector.replaceChildren();
+ for(const r of roomCatalog){
+  const option=document.createElement('option');
+  option.value=r.id;option.textContent=(r.locked?'🔒 ':'✦ ')+r.name+' · '+r.online+'/'+r.capacity;
+  option.disabled=r.id!==selectedRoomId&&r.online>=r.capacity;
+  selector.append(option);
+ }
+ selector.value=roomCatalog.some(r=>r.id===current)?current:selectedRoomId;
+ updateSwitchChoice();
+}
+$('roomSwitchSelect').addEventListener('change',()=>{
+ $('roomSwitchPassword').value='';$('roomSwitchError').textContent='';
+ updateSwitchChoice();
+});
+$('roomSwitchCancel').addEventListener('click',()=>{
+ if(roomSwitchPending)return;
+ $('roomSwitchDialog').close();
+});
+$('roomSwitchDialog').addEventListener('cancel',event=>{
+ if(roomSwitchPending)event.preventDefault();
+});
+$('roomSwitchBtn').addEventListener('click',async()=>{
+ if(!session.connected||roomSwitchPending)return;
+ const dialog=$('roomSwitchDialog');
+ $('roomSwitchCurrent').textContent=roomName+' · '+session.online+'/10 jogadores';
+ $('roomSwitchError').textContent='';
+ $('roomSwitchPassword').value='';
+ $('roomSwitchInfo').textContent='Consultando salas disponíveis…';
+ $('roomSwitchSelect').replaceChildren();
+ $('roomSwitchConfirm').disabled=true;
+ $('roomSwitchCancel').disabled=false;
+ // Em tela cheia, o diálogo precisa fazer parte do elemento fullscreen.
+ const parent=document.fullscreenElement===fullScreenContainer?fullScreenContainer:document.body;
+ if(dialog.parentElement!==parent)parent.appendChild(dialog);
+ if(!dialog.open)dialog.showModal();
+ await loadRooms();
+ if(dialog.open)renderSwitchRooms();
+});
+$('roomSwitchConfirm').addEventListener('click',()=>{
+ if(roomSwitchPending||!session.connected)return;
+ const chosen=roomCatalog.find(r=>r.id===$('roomSwitchSelect').value);
+ if(!chosen||chosen.id===selectedRoomId)return;
+ if(chosen.online>=chosen.capacity){
+  $('roomSwitchError').textContent='Esta sala já está cheia. Escolha outra.';return;
+ }
+ const password=chosen.locked?$('roomSwitchPassword').value:'';
+ if(chosen.locked&&(!password||password.length>64)){
+  $('roomSwitchError').textContent='Informe a senha da sala privada.';return;
+ }
+ roomSwitchPending=true;roomSwitchTarget=chosen.id;
+ $('roomSwitchError').textContent='';
+ $('roomSwitchInfo').textContent='Conectando à nova sala…';
+ $('roomSwitchConfirm').disabled=true;$('roomSwitchCancel').disabled=true;
+ $('roomSwitchBtn').disabled=true;
+ send('switchRoom',{roomId:chosen.id,password});
+});
+
 const requestedRoom=new URLSearchParams(location.search).get('room');
 if(requestedRoom&&/^[a-f0-9]{18}$/.test(requestedRoom))selectedRoomId=requestedRoom;
 loadRooms();
