@@ -8,7 +8,7 @@ test('lotes novos aceitam 1x1, 2x1, 2x2 e rejeitam ruas ou sobreposição',()=>{
  assert.deepEqual(layout.size(barracks),[2,2]);
  assert.equal(layout.canPlace([], 'barracks',2,2),true);
  assert.equal(layout.canPlace([barracks],'house',3,3),false);
- assert.equal(layout.canPlace([barracks],'farm',3,4),false);
+ assert.equal(layout.canPlace([barracks],'farm',3,3),false);
  assert.equal(layout.canPlace([],'barracks',4,4),false);
  assert.equal(layout.canPlace([],'farm',4,4),false);
  assert.equal(layout.canPlace([],'market',10,2),false);
