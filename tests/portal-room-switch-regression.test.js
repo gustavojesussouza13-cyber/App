@@ -72,6 +72,10 @@ test('O renderizador desenha os portais recebidos do servidor e a interação E 
  assert.match(art,/for\(const p of portals\)\{if\(p\.x<cameraX-140/);
  assert.match(art,/actors\.push\(\{depth:p\.y-1,paint:\(\)=>portal\(ctx,p,now,\{x,y\}\)\}\)/);
  assert.match(art,/portalInteractionHud\(ctx,portals,\{x,y\}\)/);
- assert.doesNotMatch(script,/spriteActions\.fallen\.length=0;session\.portals=\[\]/);
+ const welcomeStart=script.indexOf("if(msg.type==='welcome'){");
+ const welcomeEnd=script.indexOf("}else if(msg.type==='character'){",welcomeStart);
+ const welcome=script.slice(welcomeStart,welcomeEnd);
+ assert.doesNotMatch(welcome,/session\.portals=\[\]/,'troca de sala não pode apagar os portais');
+ assert.match(welcome,/session\.portals=Array\.isArray\(msg\.portals\)\?msg\.portals:\[\]/);
  assert.match(html,/art16\.js\?v=pixel-art-v1&pc=portal-hud-v2/);
 });
