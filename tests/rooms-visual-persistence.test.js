@@ -23,8 +23,8 @@ test('lobby contém seleção, criação e senha protegida; CSS mantém formulá
  for(const id of ['roomSelect','roomJoinPassword','newRoomName','newRoomPassword','createRoomForm','roomSummary','roomError'])
   assert.match(html,new RegExp('id="'+id+'"'));
  assert.match(html,/até 10 jogadores/);
- assert.match(html,/10 minutos vazias/);
- assert.match(html,/mmo\.js\?v=rooms-switch-v1/);
+ assert.match(html,/último jogador sai/);
+ assert.match(html,/mmo\.js\?v=rooms-empty-v2/);
  assert.match(client,/fetch\('\/api\/rooms'/);
  assert.match(client,/roomId:selectedRoomId,roomPassword:selectedRoomPassword/);
  assert.match(client,/response\.ok/);
