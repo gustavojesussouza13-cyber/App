@@ -36,8 +36,8 @@ test('classe do servidor, nome e posicionamento obedecem a arte desenhada em PC'
 test('versões atualizadas invalidam cache do Chrome sem mudar mobile',()=>{
  const html=source('mundo.html'),studio=source('sprite-studio.js');
  assert.match(html,/sprite-studio\.js\?v=pc-studio-v5/);
- assert.match(html,/art16\.js\?v=pixel-art-v1&pc=studio-restored-v5/);
+ assert.match(html,/art16\.js\?v=pixel-art-v1&pc=class-skill-fx-v1/);
  assert.match(studio,/state\.desktopPremium===true/);
  assert.ok(html.indexOf('/sprite-studio.js')<html.indexOf('/art16.js'));
- assert.doesNotMatch(source('mmo.css'),/studio-restored-v5/);
+ assert.doesNotMatch(source('mmo.css'),/class-skill-fx-v1/);
 });
