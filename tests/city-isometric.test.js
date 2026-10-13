@@ -65,3 +65,33 @@ test('patrulha caminha, retorna e nunca duplica soldados',t=>{
  assert.equal(guild.army.militia,12);
  assert.equal(politics.action(world,p,{action:'patrol',zone:12},options),false);
 });
+
+test('produção da cidade acumula em ciclos limitados e edifícios evoluem usando recursos',t=>{
+ const delivered=[],world=new World({persistentStore:{enqueue:()=>{}},send:(socket,msg)=>delivered.push(msg),getOnline:()=>0,hasClassicName:()=>false});
+ t.after(()=>world.stop());
+ const client={socket:{},authUser:{uid:'account:rainha',username:'Rainha'},worldPlayer:null};
+ world.join(client,{name:'Rainha',role:'peregrino'});
+ const p=client.worldPlayer;p.x=768;p.y=512;p.save.coins=20000;
+ world.guild(p,{action:'create',name:'Reino Verde'});
+ const at=(time,data)=>politics.action(world,p,data,{walkable:()=>true,portals:[],npcs:[],now:time});
+ assert.equal(at(1000,{action:'place',x:768,y:512}),true);
+ assert.equal(at(1000,{action:'construct',type:'farm',x:1,y:2}),true);
+ assert.equal(at(1000,{action:'construct',type:'market',x:2,y:2}),true);
+ const guild=world.guilds.get('reino verde');
+ assert.equal(at(1000,{action:'collect'}),false);
+ assert.equal(at(1000+15*60*1000,{action:'collect'}),true);
+ assert.equal(guild.city.stock.food,8);
+ assert.equal(guild.city.stock.timber,2);
+ assert.equal(guild.city.stock.coins,5);
+ assert.equal(at(1000+15*60*1000,{action:'collect'}),false);
+ assert.equal(at(1000+1000*60*60,{action:'collect'}),true);
+ assert.equal(guild.city.stock.food,8+8*24);
+ const old=guild.city.stock.food;
+ assert.equal(at(1000+1000*60*60,{action:'buildingUpgrade',x:1,y:2}),true);
+ assert.equal(guild.city.buildings[0].level,2);
+ assert.equal(guild.city.stock.food,old-8);
+ assert.equal(at(1000+1000*60*60,{action:'buildingUpgrade',x:5,y:5}),false);
+ assert.equal(at(1000+1000*60*60,{action:'buildingUpgrade',x:2,y:8}),false);
+ assert.equal(at(1000+1000*60*60,{action:'buildingUpgrade',x:1.5,y:2}),false);
+ assert.equal(politics.publicState(world,p).cities[0].buildings[0].level,2);
+});
