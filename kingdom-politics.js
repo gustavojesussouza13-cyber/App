@@ -37,8 +37,12 @@ function forts(world){
 function politicalMap(world){
  const bases=forts(world);
  return Array.from({length:CONTINENT_REGIONS},(_,zone)=>{
-  const contenders=bases.filter(b=>b.zone===zone)
-   .map(b=>({key:b.key,name:b.name,influence:Math.max(1,Number(b.influence?.[zone])||1)}))
+  const contenders=zone>=BUILDABLE_REGIONS?[]:
+   [...world.guilds.entries()].filter(([key,g])=>g?.base&&
+    g.base.zone<BUILDABLE_REGIONS&&
+    (g.base.zone===zone||Number(g.influence?.[zone])>0))
+   .map(([key,g])=>({key,name:g.name,influence:Math.max(0,Number(g.influence?.[zone])||(g.base.zone===zone?1:0))}))
+   .filter(c=>c.influence>0)
    .sort((a,b)=>b.influence-a.influence||a.name.localeCompare(b.name,'pt-BR'));
   return {zone,buildable:zone<BUILDABLE_REGIONS,ruler:contenders[0]?.name||null,
    influence:contenders[0]?.influence||0,contested:contenders.length>1};
