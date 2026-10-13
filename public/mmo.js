@@ -110,7 +110,7 @@ function dispatch(msg){
  }
  if(msg.type==='pong'){if(latency.receive(msg,performance.now()))updatePingIndicator();return}
  if(msg.type==='welcome'){
- session.id=msg.self.id;session.name=msg.self.name;session.zones=msg.zones;session.portals=msg.portals||[];session.shop=msg.shop;session.relics=msg.relics||{};session.quests=msg.quests;session.achievements=msg.achievements||{};session.npcs=Array.isArray(msg.npcs)?msg.npcs:[];
+ session.id=msg.self.id;session.name=msg.self.name;session.zones=msg.zones;session.shop=msg.shop;session.relics=msg.relics||{};session.quests=msg.quests;session.achievements=msg.achievements||{};session.npcs=Array.isArray(msg.npcs)?msg.npcs:[];
  const roomChanged=Boolean(roomSwitchPending&&msg.room?.id===roomSwitchTarget&&selectedRoomId!==msg.room.id);
  if(roomChanged){
   // Não deixar sprites, efeitos e diálogos da sala anterior no novo mundo.
@@ -118,9 +118,13 @@ function dispatch(msg){
   keys.clear();joystick.release();
   session.monsters.clear();monsterMotion.clear();playerMotion.clear();combatFx.clear();
   session.players.clear();spriteActions.monsters.clear();spriteActions.players.clear();
-  spriteActions.fallen.length=0;session.portals=[];
+  spriteActions.fallen.length=0;
   session.partyInvite=null;session.tradeOffer=null;
  }
+ // Os portais são autoritativos em TODOS os welcomes (login ou troca de
+ // servidor). Nunca zerar após aplicar a lista recebida na nova sala.
+ session.portals=Array.isArray(msg.portals)?msg.portals:[];
+ drawTravel();
  $('welcomeOverlay').hidden=true;
  if(msg.room){
   selectedRoomId=msg.room.id;roomName=msg.room.name;
