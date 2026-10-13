@@ -4,6 +4,7 @@ const fs=require('node:fs');
 const path=require('node:path');
 const crypto=require('node:crypto');
 const {NPCS,chapters,byId,publicNpc,freshStory,normalizeStory,journal}=require('./story-data');
+const {MAX_GOLD}=require('./owner-benefits');
 const terrain=require('./world-terrain');
 const {ChatGuard,inspectNickname}=require('./chat-safety');
 
@@ -86,6 +87,7 @@ function questProgress(save,quest){
 }
 const assertName=n=>typeof n==='string'&&n.trim()===n&&n.length>=3&&n.length<=18&&/^[\p{L}\p{N}][\p{L}\p{N} _-]*$/u.test(n);
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const addCoins=(save,n)=>{save.coins=clamp((Number(save.coins)||0)+n,0,MAX_GOLD)};
 const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 const roadY=(x,z)=>496+Math.sin((x+z*117)/225)*54+Math.sin(x/79+z*2)*12;
 const cap=(s,n=90)=>String(s||'').slice(0,n);
@@ -181,7 +183,7 @@ class World {
    this.monsters.set(zone,mons);
   }}
  totalMonsters(){return [...this.monsters.values()].reduce((n,a)=>n+a.length,0)}
- publicPlayer(p){return {id:p.id,name:p.name,zone:p.zone,x:Math.round(p.x),y:Math.round(p.y),dir:p.dir,level:p.save.level,role:p.save.role,hp:p.save.hp,maxHp:hpMax(p.save),guild:p.save.guild,party:p.party||null}}
+ publicPlayer(p){return {id:p.id,name:p.name,administrator:!!p.isAdministrator,zone:p.zone,x:Math.round(p.x),y:Math.round(p.y),dir:p.dir,level:p.save.level,role:p.save.role,hp:p.save.hp,maxHp:hpMax(p.save),guild:p.save.guild,party:p.party||null}}
  publicMonster(m){return {id:m.id,name:m.name,species:m.species,zone:m.zone,x:Math.round(m.x),y:Math.round(m.y),hp:m.hp,maxHp:m.maxHp,boss:m.boss}}
  zoneInfo(){return ZONES.map((z,i)=>({id:i,name:z[0],biome:z[1],count:this.monsters.get(i).length}))}
  zonePortals(zone){
@@ -215,12 +217,12 @@ class World {
   if(!gate||dist(p,gate)>96){this.tell(p,'Aproxime-se da passagem para atravessar.');return}
   this.travel(p,z);
  }
- ownStatus(p){const s=p.save;return {type:'character',id:p.id,name:p.name,level:s.level,xp:s.xp,nextXp:xpNeed(s.level),hp:s.hp,maxHp:hpMax(s),coins:s.coins,role:s.role,inventory:s.inventory,kills:s.kills,quests:s.quests,visited:s.visited,guild:s.guild,party:p.party||null,story:journal(s.story),achievements:s.achievements,bossRelics:s.bossRelics,blocked:s.blocked,zone:p.zone,x:p.x,y:p.y}}
+ ownStatus(p){const s=p.save;return {type:'character',id:p.id,name:p.name,administrator:!!p.isAdministrator,level:s.level,xp:s.xp,nextXp:xpNeed(s.level),hp:s.hp,maxHp:hpMax(s),coins:s.coins,role:s.role,inventory:s.inventory,kills:s.kills,quests:s.quests,visited:s.visited,guild:s.guild,party:p.party||null,story:journal(s.story),achievements:s.achievements,bossRelics:s.bossRelics,blocked:s.blocked,zone:p.zone,x:p.x,y:p.y}}
  tell(p,msg,type='notice'){this.send(p.socket,{type,text:msg})}
  unlockAchievement(p,id){
   const award=ACHIEVEMENTS[id],s=p.save;
   if(!award||!Array.isArray(s.achievements)||s.achievements.includes(id))return false;
-  s.achievements.push(id);s.coins+=award.coins;this.dirty=true;
+  s.achievements.push(id);addCoins(s,award.coins);this.dirty=true;
   this.tell(p,'✦ Conquista: '+award.name+'! +'+award.coins+' moedas.');
   return true;
  }
@@ -249,7 +251,7 @@ class World {
   }
   const s={...defaultSave(),...raw};
   if(!CLASSES[s.role])s.role='peregrino';if(!Number.isInteger(s.zone)||s.zone<0||s.zone>=ZONES.length)s.zone=0;
-  s.level=clamp(Math.floor(Number(s.level)||1),1,100);s.hp=clamp(Math.floor(Number(s.hp)||hpMax(s)),1,hpMax(s));s.x=clamp(Number(s.x)||ZONE_W/2,28,ZONE_W-28);s.y=clamp(Number(s.y)||ZONE_H/2,28,ZONE_H-28);
+  s.level=clamp(Math.floor(Number(s.level)||1),1,100);s.coins=clamp(Math.floor(Number(s.coins)||0),0,MAX_GOLD);s.hp=clamp(Math.floor(Number(s.hp)||hpMax(s)),1,hpMax(s));s.x=clamp(Number(s.x)||ZONE_W/2,28,ZONE_W-28);s.y=clamp(Number(s.y)||ZONE_H/2,28,ZONE_H-28);
   const safeLocation=terrain.nearestWalkable(s.zone,s.x,s.y,ZONES);
   if(s.x!==safeLocation.x||s.y!==safeLocation.y){s.x=safeLocation.x;s.y=safeLocation.y;this.dirty=true;}
   s.inventory={...defaultSave().inventory,...(s.inventory||{})};if(!Array.isArray(s.quests))s.quests=[];if(!Array.isArray(s.visited))s.visited=[0];if(!Array.isArray(s.achievements))s.achievements=[];if(!Array.isArray(s.bossRelics))s.bossRelics=[];s.bossRelics=s.bossRelics.filter(z=>Number.isInteger(z)&&z>=0&&z<ZONES.length);
@@ -263,7 +265,7 @@ class World {
    s.hp=clamp(hpMax(s)-healthMissing,1,hpMax(s));
    // Reconexões da mesma aba mantêm atributos; novo token cria a jornada zero.
   }
-  const p={id:crypto.randomUUID(),uid,name,isAccount:!!owner,socket:c.socket,save:s,x:s.x,y:s.y,zone:s.zone,dir:2,lastMove:Date.now(),moveCredit:12,lastAttack:0,lastSpell:0,lastChat:0,lastUse:0,party:null,live:true};
+  const p={id:crypto.randomUUID(),uid,name,isAccount:!!owner,isAdministrator:!!owner?.administrator,socket:c.socket,save:s,x:s.x,y:s.y,zone:s.zone,dir:2,lastMove:Date.now(),moveCredit:12,lastAttack:0,lastSpell:0,lastChat:0,lastUse:0,party:null,live:true};
   c.worldPlayer=p;c.socket._worldClient=c;this.players.set(p.id,p);
   this.send(c.socket,{type:'welcome',self:this.ownStatus(p),zones:this.zoneInfo(),shop:GOODS,relics:RELICS,quests:QUESTS,achievements:ACHIEVEMENTS,portals:this.zonePortals(p.zone),npcs:NPCS.map(publicNpc),maxPlayers:10,online:this.players.size+this.getOnline(),monsterTotal:this.totalMonsters()});
   this.broadcast({type:'system',text:p.name+' chegou ao mundo.'},q=>q.id!==p.id);
@@ -383,7 +385,7 @@ class World {
   if(npc.witness&&!s.testimonies.includes(npc.witness))s.testimonies.push(npc.witness);
   s.stage+=1;s.active=false;s.progress=0;
   const save=p.save;
-  save.coins+=npc.coins;save.xp+=npc.xp;
+  addCoins(save,npc.coins);save.xp+=npc.xp;
   if(npc.key)save.inventory.chave=(save.inventory.chave||0)+1;
   while(save.level<100&&save.xp>=xpNeed(save.level)){save.xp-=xpNeed(save.level);save.level++;save.hp=hpMax(save)}
   this.dirty=true;
@@ -538,7 +540,7 @@ class World {
    m.damageFrom.clear();this.dirty=true;
   }
  }
- award(p,xp,gold,boss=false,zone=p.zone){const s=p.save;const story=s.story;const chapter=chapters[story.stage];if(chapter&&story.active&&chapter.objective>0&&chapter.zone===zone){story.progress=Math.min(chapter.objective,story.progress+1);if(story.progress===chapter.objective)this.tell(p,`✦ Objetivo concluído! Volte e converse com ${chapter.name}.`)}s.xp+=xp;s.coins+=gold;s.kills++;while(s.level<100&&s.xp>=xpNeed(s.level)){s.xp-=xpNeed(s.level);s.level++;s.hp=hpMax(s);this.tell(p,'✦ Você alcançou o nível '+s.level+'!')}
+ award(p,xp,gold,boss=false,zone=p.zone){const s=p.save;const story=s.story;const chapter=chapters[story.stage];if(chapter&&story.active&&chapter.objective>0&&chapter.zone===zone){story.progress=Math.min(chapter.objective,story.progress+1);if(story.progress===chapter.objective)this.tell(p,`✦ Objetivo concluído! Volte e converse com ${chapter.name}.`)}s.xp+=xp;addCoins(s,gold);s.kills++;while(s.level<100&&s.xp>=xpNeed(s.level)){s.xp-=xpNeed(s.level);s.level++;s.hp=hpMax(s);this.tell(p,'✦ Você alcançou o nível '+s.level+'!')}
   if(s.kills>=1)this.unlockAchievement(p,'primeira-vitoria');
   if(s.kills>=25)this.unlockAchievement(p,'cacas-25');
   if(s.kills>=100)this.unlockAchievement(p,'cacas-100');
@@ -560,7 +562,7 @@ class World {
  buy(p,id){const item=GOODS[id];if(!item||p.save.coins<item.price){this.tell(p,'Moedas insuficientes ou item desconhecido.');return}
   p.save.coins-=item.price;p.save.inventory[id]=(p.save.inventory[id]||0)+1;this.send(p.socket,this.ownStatus(p));this.tell(p,item.name+' comprado!');this.dirty=true}
  claimQuests(p){let completed=0;for(const q of QUESTS){if(questProgress(p.save,q)>=q.target&&!p.save.quests.includes(q.id)){
-  p.save.quests.push(q.id);p.save.xp+=q.reward;p.save.coins+=q.coins;completed++;
+  p.save.quests.push(q.id);p.save.xp+=q.reward;addCoins(p.save,q.coins);completed++;
   while(p.save.level<100&&p.save.xp>=xpNeed(p.save.level)){p.save.xp-=xpNeed(p.save.level);p.save.level++;p.save.hp=hpMax(p.save)}
  }}this.tell(p,completed?'Missões concluídas: '+completed+'!':'Ainda não há missões para resgatar.');this.send(p.socket,this.ownStatus(p));this.dirty=true}
  ignore(p,d){
@@ -655,7 +657,7 @@ class World {
    const giver=this.players.get(trade.from);if(!giver||giver.zone!==p.zone||dist(giver,p)>200)return;
    if((giver.save.inventory[trade.item]||0)<trade.count||giver.save.coins<trade.gold)return;
    giver.save.inventory[trade.item]-=trade.count;p.save.inventory[trade.item]=(p.save.inventory[trade.item]||0)+trade.count;
-   giver.save.coins-=trade.gold;p.save.coins+=trade.gold;
+   giver.save.coins-=trade.gold;addCoins(p.save,trade.gold);
    this.pendingTrades.delete(key);this.send(p.socket,this.ownStatus(p));this.send(giver.socket,this.ownStatus(giver));this.tell(p,'Troca recebida com sucesso.');this.tell(giver,'Troca confirmada por '+p.name+'.');this.dirty=true;
   } else if(mode==='reject'){this.pendingTrades.delete(key);this.tell(other,'Troca recusada.')}
  }
