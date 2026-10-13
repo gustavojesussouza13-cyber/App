@@ -68,21 +68,43 @@ window.PeregrinosCity=Object.freeze({create({send}){
  });
  function open(b,kingdom){base=b;state=kingdom;selected=null;feedback.textContent='';if(!dlg.open)dlg.showModal();refresh();send('kingdom',{action:'inspect'})}
  function update(kingdom){state=kingdom;if(dlg.open){const next=(state?.bases||[]).find(b=>b.name===base?.name);if(next)base=next;refresh()}}
+ function troopPosition(m,now){
+  const route=m.route;
+  if(!Array.isArray(route)||route.length<2)return null;
+  const progress=Math.max(0,Math.min(1,(Date.now()-m.startedAt)/Math.max(1,m.arrivesAt-m.startedAt)));
+  const weights=route.slice(1).map((p,i)=>p.zone===route[i].zone?
+   Math.max(1,Math.hypot(p.x-route[i].x,p.y-route[i].y)):180);
+  let remaining=progress*weights.reduce((a,b)=>a+b,0);
+  for(let i=0;i<weights.length;i++){
+   if(remaining>weights[i]&&i<weights.length-1){remaining-=weights[i];continue}
+   const a=route[i],b=route[i+1],t=Math.min(1,remaining/weights[i]);
+   if(a.zone!==b.zone)return t<.5?a:b;
+   return {zone:a.zone,x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t};
+  }
+  return route[route.length-1];
+ }
  function drawMarches(mainCtx,{zone,cameraX,cameraY,now}){
-  for(const m of state?.marches||[]){
-   if(m.from!==zone&&m.to!==zone)continue;
-   const progress=Math.max(0,Math.min(1,(Date.now()-m.startedAt)/(m.arrivesAt-m.startedAt||1)));
-   const origin=(state?.bases||[]).find(b=>b.name===m.name),target=(state?.bases||[]).find(b=>b.name===m.targetName);
-   if(!origin||!target)continue;
-   // Na versão inicial, uma marcha aparece junto à fortaleza de partida/destino.
-   // A navegação entre múltiplas regiões será implementada com rotas reais posteriormente.
-   const point=m.from===zone?origin:target;
-   const step=m.from===zone?progress:1-progress;
-   const x=point.x+Math.sin(step*Math.PI)*85, y=point.y+Math.cos(step*Math.PI)*48;
-   const px=x-cameraX,py=y-cameraY;if(px<-30||py<-30||px>960||py>576)continue;
-   mainCtx.fillStyle='#302b22';mainCtx.fillRect(px-13,py-2,26,7);
-   mainCtx.fillStyle='#d6a75b';for(let i=0;i<3;i++){mainCtx.fillRect(px-11+i*9,py-14+Math.sin(now/180+i)*2,6,11);mainCtx.fillStyle='#b0c8cb';mainCtx.fillRect(px-10+i*9,py-17+Math.sin(now/180+i)*2,4,3);mainCtx.fillStyle='#d6a75b'}
-   mainCtx.font='bold 10px monospace';mainCtx.textAlign='center';mainCtx.fillStyle='#ffe4a6';mainCtx.fillText('⚔ '+m.name,px,py-23);
+  const marches=state?.marches||[];
+  for(const m of marches){
+   const pos=troopPosition(m,now);
+   if(!pos||pos.zone!==zone)continue;
+   const px=Math.round(pos.x-cameraX),py=Math.round(pos.y-cameraY);
+   if(px<-60||py<-60||px>1020||py>636)continue;
+   const walkers=Math.min(7,Math.max(3,Math.ceil((m.units||5)/25)));
+   mainCtx.save();
+   mainCtx.imageSmoothingEnabled=false;
+   mainCtx.fillStyle='#282b24';mainCtx.fillRect(px-26,py-1,55,7);
+   for(let i=0;i<walkers;i++){
+    const column=i%4,row=Math.floor(i/4),sx=px-18+column*12,sy=py-11-row*13;
+    const stride=Math.sin(now/130+i*2)*2;
+    mainCtx.fillStyle='#3b3430';mainCtx.fillRect(sx-3,sy+9,3,6+stride);mainCtx.fillRect(sx+2,sy+9,3,6-stride);
+    mainCtx.fillStyle='#bba073';mainCtx.fillRect(sx-5,sy,10,11);
+    mainCtx.fillStyle='#a9c5bb';mainCtx.fillRect(sx-5,sy-5,10,6);
+    mainCtx.fillStyle='#f0db99';mainCtx.fillRect(sx+4,sy+2,2,8);
+   }
+   mainCtx.font='bold 11px monospace';mainCtx.textAlign='center';mainCtx.fillStyle='#ffe4a6';
+   mainCtx.fillText('⚔ '+m.name+' · '+(m.units||0),px,py-38);
+   mainCtx.restore();
   }
  }
  return {open,update,drawMarches};
