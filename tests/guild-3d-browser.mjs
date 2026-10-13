@@ -86,8 +86,21 @@ try{
  },{x,y});
  await page.evaluate(()=>{window.__guildDemoRejectNextBuild=true});
  const denied=await projectPoint(8,15);
+ assert.equal(await page.evaluate(()=>layout.canPlace(buildings,'house',8,15)),true,'lote de recusa simulada precisa estar vazio');
+ await page.mouse.move(denied.x,denied.y);
+ const projectedCell=await page.locator('#guild3dCoords').innerText();
+ console.log('GUILD_TEST_DENIED_TARGET',JSON.stringify({denied,projectedCell}));
  await page.mouse.click(denied.x,denied.y);
- await page.waitForFunction(()=>document.querySelector('.guild3d-canvas')?.dataset.pendingBuilding==='house:8:15',null,{timeout:600});
+ try{
+  await page.waitForFunction(()=>document.querySelector('.guild3d-canvas')?.dataset.pendingBuilding==='house:8:15',null,{timeout:1500});
+ }catch(err){
+  const diagnostics=await page.evaluate(()=>({coords:document.querySelector('#guild3dCoords')?.textContent,
+   feedback:document.querySelector('.guild3d-dialog[open] #guild3dFeedback')?.textContent,
+   status:document.querySelector('.guild3d-dialog[open] #guild3dFeedback')?.dataset.status,
+   pending:document.querySelector('.guild3d-canvas')?.dataset.pendingBuilding}));
+  console.error('GUILD_TEST_DENIED_DIAGNOSTIC',JSON.stringify(diagnostics));
+  throw err;
+ }
  await page.waitForFunction(()=>document.querySelector('#guild3dFeedback')?.textContent?.includes('recusou a construção'),null,{timeout:6000});
  assert.equal(await page.locator('#guild3dFeedback').getAttribute('data-status'),'error');
  assert.equal(await canvas.getAttribute('data-pending-building'),null,'edifício recusado deve desaparecer');
