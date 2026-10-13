@@ -64,11 +64,13 @@ const QUESTS=[
  {id:'luz-renovada',name:'A luz renovada',target:90,reward:1600,coins:700,description:'Enfrente noventa ameaças pelo mundo'},
  {id:'trilhas-aurora',name:'Trilhas da Aurora',type:'regions',target:4,reward:170,coins:65,description:'Explore quatro regiões diferentes do reino'},
  {id:'cartografo-auren',name:'Cartógrafo de Auren',type:'regions',target:10,reward:650,coins:180,description:'Conheça dez regiões de Auren'},
- {id:'mapa-completo',name:'Mundo Revelado',type:'regions',target:16,reward:1450,coins:420,description:'Visite as dezesseis regiões'},
+ {id:'mapa-completo',name:'Mundo Revelado',type:'regions',target:40,reward:3200,coins:1120,description:'Explore as 40 regiões de Auren, incluindo os 24 subsolos'},
  {id:'primeiro-legado',name:'O Primeiro Legado',type:'bosses',target:1,reward:235,coins:95,description:'Conquiste sua primeira relíquia de chefe'},
  {id:'sem-medo',name:'Quebrador de Maldições',type:'bosses',target:4,reward:850,coins:290,description:'Recupere relíquias de quatro chefes diferentes'},
  {id:'voz-desperta',name:'Vozes da Aurora',type:'chapters',target:4,reward:330,coins:130,description:'Conclua quatro capítulos da jornada principal'},
  {id:'livro-luz',name:'O Livro da Luz',type:'chapters',target:12,reward:1250,coins:390,description:'Conclua doze capítulos da história'},
+ {id:'primeira-vigilia',name:'A Vigília Depois do Sino',type:'chapters',target:24,reward:2350,coins:740,description:'Conclua 24 capítulos e desvende o primeiro testemunho'},
+ {id:'cronicas-completas',name:'Crônicas da Aurora',type:'chapters',target:40,reward:5400,coins:1700,description:'Conclua os 40 capítulos dos cinco atos da campanha'},
  {id:'primeira-descida',name:'Sob a Terra',type:'depths',target:1,reward:140,coins:65,description:'Alcance seu primeiro subsolo em uma masmorra'},
  {id:'rumos-profundos',name:'Caminhos Esquecidos',type:'depths',target:12,reward:950,coins:300,description:'Descubra doze subsolos diferentes'},
  {id:'eco-das-profundezas',name:'Ecos das Profundezas',type:'depths',target:24,reward:2250,coins:880,description:'Explore todos os vinte e quatro subsolos de Auren'}
@@ -95,7 +97,8 @@ const ACHIEVEMENTS=Object.freeze({
  'primeiro-chefe':{name:'Quebrador de Sombras',coins:90},
  'explorar-8':{name:'Caminhante da Aurora',coins:70},
  'explorar-16':{name:'Cartógrafo de Auren',coins:180},
- 'aurora-restaurada':{name:'Guardião do Sétimo Verso',coins:300}
+ 'aurora-restaurada':{name:'Guardião do Sétimo Verso',coins:300},
+ 'vigilia-completa':{name:'Guardião dos Quatro Testemunhos',coins:750}
 });
 const defaultSave=()=>({level:1,xp:0,hp:135,coins:60,zone:0,x:ZONE_W/2,y:ZONE_H/2,role:'peregrino',inventory:{pocao:3},kills:0,quests:[],visited:[0],guild:null,achievements:[],bossRelics:[],blocked:[],story:freshStory()});
 function hpMax(s){return CLASSES[s.role].hp+(s.level-1)*12}
@@ -353,7 +356,7 @@ class World {
   }
   if(npc.objective>0&&s.active){
    if(s.progress<npc.objective){
-    this.send(p.socket,{...base,mode:'progress',pages:[`Você já aceitou ajudar. Progresso: ${s.progress} de ${npc.objective} criaturas vencidas nesta região.`, 'As criaturas não atacam por proximidade. Escolha as ameaças que precisa enfrentar, vença-as e volte a conversar comigo.'],choices:[]});return;
+    this.send(p.socket,{...base,mode:'progress',pages:[`Você já aceitou ajudar. Progresso: ${s.progress} de ${npc.objective} criaturas vencidas nesta região.`, (npc.zone>=16&&((npc.zone-16)%6)>=2?'Neste subsolo, as criaturas comuns atacam por aproximação. Proteja-se, vença o desafio e volte a conversar comigo.':'Escolha as ameaças que precisa enfrentar, vença-as e volte a conversar comigo.')],choices:[]});return;
    }
    this.send(p.socket,{...base,mode:'complete',pages:npc.ending||['Você cumpriu sua palavra. O caminho da Aurora pode prosseguir.'],choices:npc.choices.map(([id,label])=>({id,label}))});return;
   }
@@ -377,6 +380,7 @@ class World {
   const [,,reply]=option;
   s.decisions.push({chapter:npc.index,id:choice});
   if(npc.shard&&!s.shards.includes(npc.shard))s.shards.push(npc.shard);
+  if(npc.witness&&!s.testimonies.includes(npc.witness))s.testimonies.push(npc.witness);
   s.stage+=1;s.active=false;s.progress=0;
   const save=p.save;
   save.coins+=npc.coins;save.xp+=npc.xp;
@@ -385,12 +389,20 @@ class World {
   this.dirty=true;
   const next=chapters[s.stage];
   const completion=s.stage===chapters.length;
-  if(completion)this.unlockAchievement(p,'aurora-restaurada');
+  // Capítulo 16 mantém seu desfecho e sua conquista originais.
+  // A expansão é o segundo arco, disponível também a contas que
+  // já haviam concluído a história antiga (stage === 16).
+  if(s.stage===16)this.unlockAchievement(p,'aurora-restaurada');
+  if(completion)this.unlockAchievement(p,'vigilia-completa');
   const mercy=s.decisions.filter(x=>x.id==='compaixao').length;
-  const epilogue=completion?(mercy>=8?'Você se tornou o Peregrino da Compaixão. A cidade aprende que ouvir é também um ato de coragem.':'Você se tornou o Peregrino da Perseverança. A cidade aprende que a coragem precisa caminhar ao lado do cuidado.') : null;
-  this.send(p.socket,{type:'storyResolved',message:reply,reward:{xp:npc.xp,coins:npc.coins,key:!!npc.key,shard:npc.shard||null},stage:s.stage,complete:completion,epilogue,next:next?{name:next.name,zone:next.zone,region:ZONES[next.zone][0]}:null});
+  const epilogue=completion?(mercy>=20?
+   'Você concluiu a Vigília da Compaixão. As quatro comunidades se reúnem sem apagar suas diferenças, e a Aurora volta a pertencer a todos.':
+   'Você concluiu a Vigília da Perseverança. O novo pacto protege os que discordam e exige que a coragem responda pelos próprios atos.') : null;
+  this.send(p.socket,{type:'storyResolved',message:reply,reward:{xp:npc.xp,coins:npc.coins,key:!!npc.key,shard:npc.shard||null,testimony:npc.witness||null},
+   stage:s.stage,complete:completion,epilogue,next:next?{name:next.name,zone:next.zone,region:ZONES[next.zone][0]}:null});
   this.send(p.socket,this.ownStatus(p));
-  if(completion)this.tell(p,'✦ As sete Centelhas foram reunidas. O Sino da Aurora voltou a tocar!');
+  if(s.stage===16)this.tell(p,'✦ As sete Centelhas foram reunidas. O Sino voltou a tocar! A Vigília Depois do Sino começa nos subsolos da Raiz.');
+  if(completion)this.tell(p,'✦ Quatro testemunhos reunidos. A Aurora pertence a todos!');
  }
  chooseClass(p,role){if(!CLASSES[role])return;if(p.save.level>1||p.save.kills>0){this.tell(p,'A classe não pode ser alterada após começar a evolução.');return}const previous=hpMax(p.save);p.save.role=role;p.save.hp=clamp(p.save.hp+hpMax(p.save)-previous,1,hpMax(p.save));this.dirty=true;this.send(p.socket,this.ownStatus(p));this.tell(p,'Classe alterada para '+CLASSES[role].name+'.')}
  travel(p,z){z=Number(z);if(!Number.isInteger(z)||z<0||z>=ZONES.length)return;
