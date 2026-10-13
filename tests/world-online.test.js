@@ -23,7 +23,7 @@ test('mundo novo é servido com scripts, css, status e 576 criaturas',async()=>{
  await ready();const [home,script,style,status]=await Promise.all([
  fetch(`http://127.0.0.1:${PORT}/mundo`),fetch(`http://127.0.0.1:${PORT}/mmo.js`),fetch(`http://127.0.0.1:${PORT}/mmo.css`),fetch(`http://127.0.0.1:${PORT}/api/status`)]);
  assert.equal(home.status,200);assert.match(await home.text(),/MUNDO ABERTO/);assert.equal(script.status,200);assert.match(await script.text(),/OsPeregrinosMundo/);assert.equal(style.status,200);
- const data=await status.json();assert.equal(data.maxPlayers,10);assert.equal(data.world.monsters,576);assert.equal(data.world.regions,40);
+ const data=await status.json();assert.equal(data.maxPlayers,60);assert.equal(data.world.monsters,576);assert.equal(data.world.regions,40);
 });
 test('dois jogadores sem conta entram no mundo, compartilham monstros e conversam',async()=>{
  const a=await wsConnect('world-ws','AmigoCerto'),b=await wsConnect('world-ws','AmigaCerta');
@@ -34,14 +34,14 @@ test('dois jogadores sem conta entram no mundo, compartilham monstros e conversa
   assert.ok(b.all.some(e=>e.type==='snapshot'&&e.monsters.length>0));
  }finally{a.sock.close();b.sock.close();await delay(100)}
 });
-test('a campanha clássica e as salas MMO têm limites de 10 independentes',async()=>{
+test('a campanha clássica e as salas MMO têm limites de 60 independentes',async()=>{
  const con=[];try{
   for(let i=0;i<5;i++){const c=await wsConnect('ws','Antigo'+i);assert.equal(c.result.type,'welcome');con.push(c)}
-  for(let i=0;i<10;i++){const c=await wsConnect('world-ws','MundoNovo'+i);assert.equal(c.result.type,'welcome');con.push(c)}
+  for(let i=0;i<60;i++){const c=await wsConnect('world-ws','MundoNovo'+i);assert.equal(c.result.type,'welcome');con.push(c)}
   const status=await(await fetch(`http://127.0.0.1:${PORT}/api/status`)).json();
-  assert.equal(status.online,15);
-  assert.equal(status.availableSlots,5,'campanha clássica mantém cinco vagas');
-  assert.equal(status.mainRoomSlots,0,'sala inicial chega a 10/10');
+  assert.equal(status.online,65);
+  assert.equal(status.availableSlots,55,'campanha clássica mantém cinquenta e cinco vagas');
+  assert.equal(status.mainRoomSlots,0,'sala inicial chega a 60/60');
   const overflow=await wsConnect('world-ws','ExtraNovo');
   assert.equal(overflow.result.code,'room_full');overflow.sock.close();
   const stillClassic=await wsConnect('ws','MaisUmAntigo');
