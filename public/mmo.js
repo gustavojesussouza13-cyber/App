@@ -93,6 +93,10 @@ function character(c){session.characters=c;session.zone=c.zone;session.role=c.ro
 }
 function displayOnline(n){session.online=n;$('playerCount').textContent=n+'/10';setOnline(true,'✦ '+n+'/10 peregrinos online')}
 function dispatch(msg){
+ if(msg.type==='maintenance'){
+  // Segunda via de aviso caso o canal global SSE seja bloqueado no navegador.
+  window.OsPeregrinosMaintenance?.notify(msg);return;
+ }
  if(msg.type==='pong'){if(latency.receive(msg,performance.now()))updatePingIndicator();return}
  if(msg.type==='welcome'){
  session.id=msg.self.id;session.name=msg.self.name;session.zones=msg.zones;session.portals=msg.portals||[];session.shop=msg.shop;session.relics=msg.relics||{};session.quests=msg.quests;session.achievements=msg.achievements||{};session.npcs=Array.isArray(msg.npcs)?msg.npcs:[];
