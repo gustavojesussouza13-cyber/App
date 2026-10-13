@@ -21,7 +21,7 @@ test('a praça pública existe sem senha; salas dos jogadores têm capacidade de
  assert.equal(h.hub.check(room.id,'',{owner:'account:alpha'}).id,room.id);
  h.hub.get(room.id).world.count=1;h.hub.entered(h.hub.get(room.id));
  assert.equal(h.hub.list().length,2);
- assert.equal(h.hub.count(),0);
+ assert.equal(h.hub.count(),1);
  assert.equal(h.hub.get(room.id).ownerId,'account:alpha');
 });
 test('uma sala privada nunca revela a senha e rejeita acessos incorretos',()=>{
@@ -48,7 +48,8 @@ test('não aceitar nomes inadequados, duplicados, senhas curtas nem salas ilimit
  assert.throws(()=>h.hub.create({name:'novo reino',owner:'account:b'}),e=>e.code==='room_name_taken');
  assert.throws(()=>h.hub.create({name:'Outra Sala',owner:'account:a'}),e=>e.code==='owner_has_room');
  for(let i=1;i<11;i++)h.hub.create({name:'Sala '+i,owner:'account:'+i});
- assert.equal(h.hub.list().length,12);
+ assert.equal(h.hub.rooms.size,12,'salas pendentes também ocupam vagas de criação');
+ assert.equal(h.hub.list().length,1,'salas pendentes não aparecem como 0/10');
  assert.throws(()=>h.hub.create({name:'Sala Lotada',owner:'account:extra'}),e=>e.code==='rooms_full');
 });
 test('capacidade é por sala, sem esgotar a capacidade de salas distintas',()=>{
