@@ -79,6 +79,12 @@
    }
    return true;
   }
+  function onConnectionLost(){
+   if(!dlg.open||!pending)return;
+   clearPending();
+   clearProvisional();
+   say('Conexão perdida: a construção provisória foi retirada para evitar gasto duplicado. Reconecte antes de tentar novamente.','error');
+  }
   function onActionResult(result){
    if(!dlg.open||!pending)return;
    if(result?.id!==pending.id||result?.action!==pending.action)return;
@@ -213,6 +219,6 @@
     paint();
    }
   }
-  return {open,update,onActionResult,drawMarches:oldUI.drawMarches};
+  return {open,update,onActionResult,onConnectionLost,drawMarches:oldUI.drawMarches};
  }});
 })(window);
