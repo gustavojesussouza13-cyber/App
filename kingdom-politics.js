@@ -25,6 +25,7 @@ const CITY_YIELDS=Object.freeze({
  market:{food:0,timber:2,stone:1,coins:5}
 });
 const CITY_CAP=50000;
+const MILITARY_SUPPLIES=Object.freeze({militia:{food:4,timber:2,stone:0},archer:{food:5,timber:5,stone:0},knight:{food:8,timber:3,stone:3},siege:{food:12,timber:12,stone:8}});
 const stockCopy=v=>Object.fromEntries(['food','timber','stone','coins'].map(id=>
  [id,Math.min(CITY_CAP,Math.max(0,Number.isSafeInteger(v?.[id])?v[id]:0))]));
 function collectCity(g,now){
@@ -150,7 +151,7 @@ function publicState(world,p){
    influence:your.guild.influence||{},stock:stockCopy(your.guild.city?.stock),lastCollectedAt:your.guild.city?.lastCollectedAt||0}:null,
   cities:[...world.guilds.values()].filter(g=>g.base).map(g=>({name:g.name,buildings:(Array.isArray(g.city?.buildings)?g.city.buildings:[]).filter(b=>b&&CITY_BUILDINGS[b.type]&&Number.isInteger(b.x)&&Number.isInteger(b.y)).slice(0,CITY_LIMIT).map(b=>({type:b.type,x:b.x,y:b.y,level:Math.min(5,Math.max(1,Number.isSafeInteger(b.level)?b.level:1))}))})),
   marches:[...world.guilds.values()].filter(g=>g.march&&g.base).map(g=>({name:g.name,targetName:world.guilds.get(g.march.target)?.name||'',from:g.march.from,to:g.march.to,kind:g.march.kind||'attack',startedAt:g.march.startedAt,arrivesAt:g.march.arrivesAt,route:g.march.route||null,units:troopCount(g.march.units)})),
-  unitTypes:UNITS,baseCost:BASE_COST,relocateCost:RELOCATE_COST,maxTroops:MAX_TROOPS};
+  unitTypes:UNITS,trainingCosts:MILITARY_SUPPLIES,baseCost:BASE_COST,relocateCost:RELOCATE_COST,maxTroops:MAX_TROOPS};
 }
 function response(world,p,text,notify=true){
  if(notify)world.tell(p,text);
@@ -273,6 +274,33 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
   world.send(p.socket,world.ownStatus(p));
   return true;
  }
+ if(op==='train'){
+  if(!g.base||!g.city||!Array.isArray(g.city.buildings)){
+   response(world,p,'Construa uma cidade e um quartel para treinar tropas com materiais.');return false
+  }
+  if(!g.city.buildings.some(b=>b.type==='barracks')){
+   response(world,p,'É necessário construir um quartel para treinar soldados.');return false
+  }
+  if(p.zone!==g.base.zone||Math.hypot(p.x-g.base.x,p.y-g.base.y)>180){
+   response(world,p,'Aproxime-se da sua fortaleza para treinar tropas.');return false
+  }
+  const unit=d.unit,count=d.count;
+  if(!Object.hasOwn(MILITARY_SUPPLIES,unit)||!integer(count)||count<1||count>40){
+   response(world,p,'Escolha de 1 a 40 unidades militares válidas.');return false
+  }
+  const troops=armyCopy(g.army);
+  if(troopCount(troops)+count>MAX_TROOPS){
+   response(world,p,'Capacidade máxima de 300 soldados atingida.');return false
+  }
+  const cost=MILITARY_SUPPLIES[unit],stock=stockCopy(g.city.stock);
+  if(Object.entries(cost).some(([id,fee])=>stock[id]<fee*count)){
+   response(world,p,'Alimentos, madeira ou pedra insuficientes para treinar este exército.');return false
+  }
+  for(const [id,fee] of Object.entries(cost))stock[id]-=fee*count;
+  g.city.stock=stock;troops[unit]+=count;g.army=troops;world.dirty=true;
+  response(world,p,count+' unidades de '+UNITS[unit].name.toLowerCase()+' treinadas com recursos da cidade.');
+  return true;
+ }
  if(op==='patrol'){
   if(g.leader!==p.uid||!g.base){response(world,p,'Apenas o líder de um reino pode mobilizar patrulhas.');return false}
   if(g.march){response(world,p,'Já existe um exército mobilizado.');return false}
@@ -341,8 +369,11 @@ function resolve(world,now=Date.now()){
    for(const unit of Object.keys(UNITS))troops[unit]=Math.min(MAX_TROOPS,troops[unit]+returning[unit]);
    g.army=troops;text='A campanha terminou sem confronto: a fortaleza rival não está mais disponível.';
   }else{
+   const towerDefense=(Array.isArray(enemy.city?.buildings)?enemy.city.buildings:[])
+    .filter(b=>b?.type==='tower').slice(0,CITY_LIMIT)
+    .reduce((sum,b)=>sum+8*Math.min(5,Math.max(1,Number.isSafeInteger(b.level)?b.level:1)),0);
    const attackers=power(march.units),defenders=power(enemy.army,'defense')+
-    Math.max(35,(enemy.base.level||1)*35);
+    Math.max(35,(enemy.base.level||1)*35)+towerDefense;
    const won=attackers>defenders;
    const lossRatio=won?.35:.7,remaining=armyCopy(g.army);
    for(const type of Object.keys(UNITS))
@@ -367,4 +398,4 @@ function resolve(world,now=Date.now()){
  return finished;
 }
 module.exports={CONTINENT_REGIONS,BUILDABLE_REGIONS,BASE_COST,RELOCATE_COST,MAX_TROOPS,UNITS,
- armyCopy,troopCount,power,publicState,politicalMap,rank,marchRoute,marchPosition,collectCity,action,resolve};
+ armyCopy,troopCount,power,publicState,politicalMap,rank,marchRoute,marchPosition,collectCity,MILITARY_SUPPLIES,action,resolve};
