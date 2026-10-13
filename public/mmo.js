@@ -76,7 +76,7 @@ function setOnline(state,msg){
  if(!state){joystick.release();latency.reset();updatePingIndicator();spriteActions.monsters.clear();spriteActions.players.clear();spriteActions.fallen.length=0;classSkillFx.clear()}
 }
 function character(c){session.characters=c;session.zone=c.zone;session.role=c.role;session.x=c.x;session.y=c.y;
- $('charName').textContent=c.name||session.name;$('playerClass').textContent={peregrino:'Peregrino',guardiao:'Guardião',arqueiro:'Arqueiro',curandeiro:'Curandeiro'}[c.role]||c.role;
+ $('charName').textContent=(c.administrator?'✦ ':'')+(c.name||session.name);$('playerClass').textContent=({peregrino:'Peregrino',guardiao:'Guardião',arqueiro:'Arqueiro',curandeiro:'Curandeiro'}[c.role]||c.role)+(c.administrator?' · ADMIN':'');
  // Explicar a função da habilidade K sem mudar o layout do controle mobile.
  $('skillBtn').lastChild.textContent=c.role==='curandeiro'?' Curar':' Habilidade';
  const skillHelp={
@@ -87,7 +87,7 @@ function character(c){session.characters=c;session.zone=c.zone;session.role=c.ro
  };
  $('skillBtn').title=skillHelp[c.role]||'K: habilidade especial da sua classe';
  $('touchSkillBtn').title=$('skillBtn').title;
- $('playerLevel').textContent='Nível '+c.level;$('playerCoins').textContent='◈ '+c.coins+' moedas';$('hpText').textContent=c.hp+' / '+c.maxHp;
+ $('playerLevel').textContent=c.level===100?'Nível 100 · MÁXIMO':'Nível '+c.level;$('playerCoins').textContent='◈ '+Number(c.coins).toLocaleString('pt-BR')+' moedas';$('hpText').textContent=c.hp+' / '+c.maxHp;
  $('xpText').textContent=c.xp+' / '+c.nextXp;$('hpBar').style.width=clamp(c.hp/c.maxHp*100,0,100)+'%';$('xpBar').style.width=clamp(c.xp/c.nextXp*100,0,100)+'%';
  session.story=c.story||null;$('kills').textContent=c.kills;$('visited').textContent=c.visited.length+'/'+(session.zones.length||40);$('zoneTitle').textContent=session.zones[c.zone]?.name||('Região '+c.zone);drawTravel();drawTab();
 }
