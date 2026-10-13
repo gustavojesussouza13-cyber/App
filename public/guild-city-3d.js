@@ -21,13 +21,13 @@
    '<div id="guild3dChoices" class="guild3d-choices"></div>'+
    '<div id="guild3dArmy" class="guild3d-army"><div class="guild3d-label">TREINAMENTO MILITAR</div><select id="guild3dSoldier" aria-label="Tipo de tropa"></select>'+
    '<div class="guild3d-train"><input id="guild3dCount" type="number" min="1" max="40" value="1" aria-label="Quantidade de soldados"><button type="button" id="guild3dTrain">⚔ Treinar tropas</button></div></div>'+
-   '<div class="guild3d-label">DIÁRIO DA CAPITAL</div><p id="cityFeedback" class="guild3d-feedback" role="status" aria-live="polite">Escolha uma construção e selecione um terreno livre.</p>'+
+   '<div class="guild3d-label">DIÁRIO DA CAPITAL</div><p id="guild3dFeedback" class="guild3d-feedback" role="status" aria-live="polite">Escolha uma construção e selecione um terreno livre.</p>'+
    '<p id="guild3dVisitor" class="guild3d-note" hidden>Esta cidade pertence a outra guilda. Somente seu líder pode construir ou melhorar edifícios.</p>'+
    '</aside></div></div>';
   document.body.append(dlg);
   const q=id=>dlg.querySelector('#'+id);
   const opts=q('guild3dChoices');
-  const info=q('cityFeedback');
+  const info=q('guild3dFeedback');
   const stock=q('guild3dStock');
   const viewport=q('guild3dViewport');
   const soldier=q('guild3dSoldier'),count=q('guild3dCount');
