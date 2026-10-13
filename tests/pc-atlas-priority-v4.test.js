@@ -6,32 +6,38 @@ const path=require('node:path');
 const root=path.join(__dirname,'../public');
 const source=p=>fs.readFileSync(path.join(root,p),'utf8');
 
-test('desktop dá prioridade ao atlas PNG desenhado, nunca à geometria V3',()=>{
+test('PC retorna ao Atelier detalhado antes dos recortes PNG e dos bonecos V3',()=>{
  const art=source('art16.js');
- const heroAtlas=art.indexOf('const pngSprite=Boolean(desktopSprites?.drawHero');
- const heroFallback=art.indexOf('const illustratedV3=!pngSprite&&Boolean(desktopCharactersV3?.drawHero');
- const npcAtlas=art.indexOf('const pngNpc=Boolean(desktopSprites?.drawNpc');
- const npcFallback=art.indexOf('const illustratedNpcV3=!pngNpc&&Boolean(desktopCharactersV3?.drawNpc');
- assert.ok(heroAtlas>0&&heroFallback>heroAtlas,'o herói deve usar ilustração antes de blocos');
- assert.ok(npcAtlas>0&&npcFallback>npcAtlas,'NPCs devem usar ilustração antes de blocos');
- assert.match(art,/const detailed=pngSprite\|\|illustratedV3/);
- assert.match(art,/const detailed=pngNpc\|\|illustratedNpcV3/);
+ const hero=art.indexOf('const studioHero=premiumPc&&Boolean(spriteStudio?.drawHero');
+ const png=art.indexOf('const pngSprite=!studioHero&&Boolean(desktopSprites?.drawHero');
+ const v3=art.indexOf('const illustratedV3=!studioHero&&!pngSprite&&Boolean(desktopCharactersV3?.drawHero');
+ const npc=art.indexOf('const studioNpc=premiumPc&&Boolean(spriteStudio?.drawNpc');
+ const npcPng=art.indexOf('const pngNpc=!studioNpc&&Boolean(desktopSprites?.drawNpc');
+ assert.ok(hero>0&&png>hero&&v3>png,'a camada de blocos não pode substituir sprites detalhados');
+ assert.ok(npc>0&&npcPng>npc,'identidade própria dos NPCs restaurada');
+ assert.match(art,/const animated=studioHero\|\|detailed/);
+ assert.match(art,/const detailed=studioNpc\|\|pngNpc\|\|illustratedNpcV3/);
 });
-test('classe continua selecionada pelo servidor e sprite do PC mantém contraste',()=>{
+test('criaturas e chefes no PC usam animação exclusiva do Atelier antes do atlas minúsculo',()=>{
  const art=source('art16.js');
- const sprites=source('desktop-sprites16.js');
- assert.match(art,/const finalRole=pngSprite\?desktopSprites\.normalizeRole\(p\.role\)/);
- assert.match(art,/const labelY=p\.y-\(pngSprite\?80:illustratedV3\?94:h\)-5/);
+ assert.match(art,/const studioMonster=premiumPc&&Boolean\(spriteStudio\?\.drawMonster/);
+ assert.match(art,/const detailedBoss=!studioMonster&&Boolean/);
+ assert.match(art,/const illustrated=!studioMonster&&!detailedBoss&&Boolean/);
+ assert.match(art,/const top=studioMonster\?\(m\.boss\?132:81\)/);
+ assert.match(art,/const width=studioMonster\?\(m\.boss\?106:66\)/);
+});
+test('classe do servidor, nome e posicionamento obedecem a arte desenhada em PC',()=>{
+ const art=source('art16.js');
+ assert.match(art,/const finalRole=studioHero\?spriteStudio\.normalizeRole\(p\.role\)/);
+ assert.match(art,/const labelY=p\.y-\(studioHero\?87:pngSprite\?80/);
+ assert.match(art,/const nameY=y-\(studioNpc\?91:pngNpc\?82/);
  assert.match(art,/#0d202019/);
- assert.match(sprites,/classic-atlas\.png/);
- for(const role of ['peregrino','guardiao','arqueiro','curandeiro'])
-  assert.match(sprites,new RegExp(role+':\\{idle:\\['));
 });
-test('modificações são apenas no Canvas do PC, sem touch ou CSS mobile',()=>{
- const art=source('art16.js'),html=source('mundo.html');
- assert.match(art,/if\(desktopSprites\?\.enabled\)\{ctx\.fillStyle='#0d202019'/);
- assert.match(html,/art16\.js\?v=pixel-art-v1&pc=real-atlas-v4/);
- assert.ok(html.indexOf('/desktop-sprites16.js')<html.indexOf('/art16.js'));
+test('versões atualizadas invalidam cache do Chrome sem mudar mobile',()=>{
+ const html=source('mundo.html'),studio=source('sprite-studio.js');
+ assert.match(html,/sprite-studio\.js\?v=pc-studio-v5/);
+ assert.match(html,/art16\.js\?v=pixel-art-v1&pc=studio-restored-v5/);
+ assert.match(studio,/state\.desktopPremium===true/);
  assert.ok(html.indexOf('/sprite-studio.js')<html.indexOf('/art16.js'));
- assert.doesNotMatch(art,/touchDevice=.*real-atlas-v4/);
+ assert.doesNotMatch(source('mmo.css'),/studio-restored-v5/);
 });
