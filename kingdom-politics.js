@@ -165,8 +165,11 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
  // Resultados são enviados individualmente ao jogador; nunca são difundidos para outras guildas.
  const requestId=Number.isSafeInteger(d.requestId)&&d.requestId>=1&&d.requestId<=2147483647?d.requestId:null;
  const report=(message,ok)=>{
-  response(world,p,message);
+  // Priorizar a confirmação curta antes do estado completo da guilda:
+  // o transporte descarta frames ao atingir 256 KiB na fila de saída.
+  // Assim a confirmação não fica atrás de snapshots grandes do continente.
   if(requestId!==null)world.send(p.socket,{type:'kingdomActionResult',id:requestId,action:op,ok,message});
+  response(world,p,message);
  };
  const reject=message=>report(message,false);
  const accept=message=>report(message,true);
