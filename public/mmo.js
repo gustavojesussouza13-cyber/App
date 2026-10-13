@@ -75,6 +75,12 @@ function setOnline(state,msg){
 }
 function character(c){session.characters=c;session.zone=c.zone;session.role=c.role;session.x=c.x;session.y=c.y;
  $('charName').textContent=c.name||session.name;$('playerClass').textContent={peregrino:'Peregrino',guardiao:'Guardião',arqueiro:'Arqueiro',curandeiro:'Curandeiro'}[c.role]||c.role;
+ // Explicar a função da habilidade K sem mudar o layout do controle mobile.
+ $('skillBtn').lastChild.textContent=c.role==='curandeiro'?' Curar':' Habilidade';
+ $('skillBtn').title=c.role==='curandeiro'?
+  'K: cura você e aliados da sua equipe a até 230 de distância, sem precisar selecionar inimigo.':
+  'K: habilidade especial da sua classe';
+ $('touchSkillBtn').title=$('skillBtn').title;
  $('playerLevel').textContent='Nível '+c.level;$('playerCoins').textContent='◈ '+c.coins+' moedas';$('hpText').textContent=c.hp+' / '+c.maxHp;
  $('xpText').textContent=c.xp+' / '+c.nextXp;$('hpBar').style.width=clamp(c.hp/c.maxHp*100,0,100)+'%';$('xpBar').style.width=clamp(c.xp/c.nextXp*100,0,100)+'%';
  session.story=c.story||null;$('kills').textContent=c.kills;$('visited').textContent=c.visited.length+'/'+(session.zones.length||40);$('zoneTitle').textContent=session.zones[c.zone]?.name||('Região '+c.zone);drawTravel();drawTab();
@@ -116,6 +122,15 @@ function dispatch(msg){
   // O acerto é autoritativo: não desenhar flechas nem magias para cliques rejeitados.
   const started=combatFx.fire(msg,performance.now());
   if(!started)fx.push({x:m?.x||session.x,y:m?.y||session.y,text:'−'+msg.damage,t:performance.now(),color:'#ffe5a6'});
+ }
+ }else if(msg.type==='healed'){if(msg.zone===session.zone){
+   const now=performance.now();
+   if(typeof desktopAudio!=='undefined')desktopAudio.play('magic');
+   // Vida e XP continuam sendo informados pelo servidor, nunca calculados aqui.
+   fx.push({x:msg.x,y:msg.y-60,text:'+'+msg.amount+' VIDA',t:now,color:'#9bf5b9'});
+   for(let i=0;i<3;i++)fx.push({x:msg.x-22+i*22,y:msg.y-25-(i%2)*12,
+    text:'✦',t:now+i*70,color:i===1?'#e6ffd5':'#91ecc7'});
+   if(msg.by)spriteActions.players.set(msg.by,{action:'attack',at:now});
  }
  }else if(msg.type==='monsterWindup'){if(msg.zone===session.zone){
    const m=session.monsters.get(msg.monster);
@@ -323,6 +338,11 @@ $('touchPotionBtn').addEventListener('click',()=>send('use',{item:'pocao'}));
 $('touchTalkBtn').addEventListener('click',()=>talkToNearest());
 function attack(skill){
  if(!session.connected)return;
+ // A habilidade K do Curandeiro não exige clicar num monstro para curar.
+ // Se houver um alvo válido próximo, o servidor pode combinar cura e magia.
+ if(skill&&session.role==='curandeiro'){
+  send('skill',{target:session.target||null});lastAction=performance.now();return;
+ }
  let m=session.monsters.get(session.target);
  if(!m||m.hp<=0){
   session.target=null;
