@@ -143,6 +143,7 @@ function marchPosition(march,now=Date.now()){
 function publicState(world,p){
  const your=guildFor(world,p);
  return {continent:CONTINENT_REGIONS,buildable:BUILDABLE_REGIONS,
+  walletCoins:Math.max(0,Math.floor(Number(p?.save?.coins)||0)),
   zones:politicalMap(world),bases:forts(world).map(b=>({name:b.name,zone:b.zone,x:b.x,y:b.y,
    level:b.level,realm:b.name})),
   ranking:rank(world).slice(0,30),
@@ -160,11 +161,20 @@ function response(world,p,text,notify=true){
 }
 function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
  const op=typeof d.action==='string'?d.action:'';
+ // O pedido possui um identificador somente quando veio da interface da capital 3D.
+ // Resultados são enviados individualmente ao jogador; nunca são difundidos para outras guildas.
+ const requestId=Number.isSafeInteger(d.requestId)&&d.requestId>=1&&d.requestId<=2147483647?d.requestId:null;
+ const report=(message,ok)=>{
+  response(world,p,message);
+  if(requestId!==null)world.send(p.socket,{type:'kingdomActionResult',id:requestId,action:op,ok,message});
+ };
+ const reject=message=>report(message,false);
+ const accept=message=>report(message,true);
  if(op==='inspect'){response(world,p,'',false);return false}
  const owner=guildFor(world,p);
- if(!owner){response(world,p,'Entre em uma guilda para fundar ou defender um reino.');return false}
+ if(!owner){reject('Entre em uma guilda para fundar ou defender um reino.');return false}
  const {guild:g,key}=owner;
- if(!p.isAccount){response(world,p,'Reinos e exércitos exigem uma conta cadastrada para proteger o progresso.');return false}
+ if(!p.isAccount){reject('Reinos e exércitos exigem uma conta cadastrada para proteger o progresso.');return false}
  if(op==='place'){
   if(g.leader!==p.uid){response(world,p,'Somente o líder da guilda pode escolher o local da base.');return false}
   if(!Number.isInteger(p.zone)||p.zone<0||p.zone>=BUILDABLE_REGIONS){
@@ -201,48 +211,48 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
   return true;
  }
  if(op==='construct'){
-  if(g.leader!==p.uid||!g.base){response(world,p,'Somente o líder de uma guilda com fortaleza pode construir.');return false}
+  if(g.leader!==p.uid||!g.base){reject('Somente o líder de uma guilda com fortaleza pode construir.');return false}
   const {type,x,y}=d,cost=Object.hasOwn(CITY_BUILDINGS,type)?CITY_BUILDINGS[type]:null;
   if(!cost||!integer(x)||!integer(y)||!cityLayout.canPlace(Array.isArray(g.city?.buildings)?g.city.buildings:[],type,x,y)){
-   response(world,p,'Terreno ou edifício inválido.');return false
+   reject('Terreno ou edifício inválido.');return false
   }
   const buildings=Array.isArray(g.city?.buildings)?g.city.buildings:[];
   if(buildings.length>=CITY_LIMIT){
-   response(world,p,'Este terreno já está ocupado ou a cidade atingiu seu limite.');return false
+   reject('Este terreno já está ocupado ou a cidade atingiu seu limite.');return false
   }
-  if(p.save.coins<cost){response(world,p,'Moedas insuficientes para construir ('+cost+').');return false}
+  if(p.save.coins<cost){reject('Moedas insuficientes para construir ('+cost+').');return false}
   p.save.coins-=cost;
   const city=g.city||{buildings:[],stock:stockCopy({}),lastCollectedAt:now};
   city.buildings=[...buildings,{...cityLayout.plan(type,x,y),level:1}];
   if(!Number.isSafeInteger(city.lastCollectedAt)||city.lastCollectedAt<=0)city.lastCollectedAt=now;
   g.city=city;
-  world.dirty=true;response(world,p,'Construção concluída na cidadela de '+g.name+'.');
+  world.dirty=true;accept('Construção concluída na cidadela de '+g.name+'.');
   world.send(p.socket,world.ownStatus(p));return true;
  }
  if(op==='collect'){
-  if(!g.base||!g.city){response(world,p,'Seu reino ainda não possui edifícios produtivos.');return false}
-  if(!g.city.lastCollectedAt){g.city.lastCollectedAt=now;world.dirty=true;response(world,p,'Produção iniciada. Volte após 15 minutos.');return true}
+  if(!g.base||!g.city){reject('Seu reino ainda não possui edifícios produtivos.');return false}
+  if(!g.city.lastCollectedAt){g.city.lastCollectedAt=now;world.dirty=true;accept('Produção iniciada. Volte após 15 minutos.');return true}
   const collected=collectCity(g,now);
-  if(!collected){response(world,p,'A produção fica pronta a cada 15 minutos.');return false}
+  if(!collected){reject('A produção fica pronta a cada 15 minutos.');return false}
   world.dirty=true;
-  response(world,p,'Produção coletada: '+Object.entries(collected.yielded).map(([id,v])=>id+' '+v).join(' · '));
+  accept('Produção coletada: '+Object.entries(collected.yielded).map(([id,v])=>id+' '+v).join(' · '));
   return true;
  }
  if(op==='buildingUpgrade'){
-  if(g.leader!==p.uid||!g.base||!g.city){response(world,p,'Somente o líder pode ampliar edifícios da sua cidade.');return false}
+  if(g.leader!==p.uid||!g.base||!g.city){reject('Somente o líder pode ampliar edifícios da sua cidade.');return false}
   const {x,y}=d;
-  if(!integer(x)||!integer(y)){response(world,p,'Edifício inválido.');return false}
+  if(!integer(x)||!integer(y)){reject('Edifício inválido.');return false}
   const b=cityLayout.at(g.city.buildings,x,y);
-  if(!b||!Object.hasOwn(CITY_BUILDINGS,b.type)){response(world,p,'Edifício inexistente.');return false}
+  if(!b||!Object.hasOwn(CITY_BUILDINGS,b.type)){reject('Edifício inexistente.');return false}
   const level=Math.min(5,Math.max(1,Number.isSafeInteger(b.level)?b.level:1));
-  if(level>=5){response(world,p,'Este edifício já está no nível máximo.');return false}
+  if(level>=5){reject('Este edifício já está no nível máximo.');return false}
   const stock=stockCopy(g.city.stock),fee={food:level*8,timber:level*6,stone:level*3};
   if(Object.entries(fee).some(([id,cost])=>stock[id]<cost)){
-   response(world,p,'Materiais insuficientes para ampliar este edifício.');return false
+   reject('Materiais insuficientes para ampliar este edifício.');return false
   }
   for(const [id,cost] of Object.entries(fee))stock[id]-=cost;
   g.city.stock=stock;b.level=level+1;world.dirty=true;
-  response(world,p,'Edifício aprimorado para nível '+b.level+'.');return true;
+  accept('Edifício aprimorado para nível '+b.level+'.');return true;
  }
  if(op==='upgrade'){
   if(g.leader!==p.uid||!g.base){response(world,p,'Somente o líder pode ampliar as muralhas de sua capital.');return false}
@@ -277,29 +287,29 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
  }
  if(op==='train'){
   if(!g.base||!g.city||!Array.isArray(g.city.buildings)){
-   response(world,p,'Construa uma cidade e um quartel para treinar tropas com materiais.');return false
+   reject('Construa uma cidade e um quartel para treinar tropas com materiais.');return false
   }
   if(!g.city.buildings.some(b=>b.type==='barracks')){
-   response(world,p,'É necessário construir um quartel para treinar soldados.');return false
+   reject('É necessário construir um quartel para treinar soldados.');return false
   }
   if(p.zone!==g.base.zone||Math.hypot(p.x-g.base.x,p.y-g.base.y)>180){
-   response(world,p,'Aproxime-se da sua fortaleza para treinar tropas.');return false
+   reject('Aproxime-se da sua fortaleza para treinar tropas.');return false
   }
   const unit=d.unit,count=d.count;
   if(!Object.hasOwn(MILITARY_SUPPLIES,unit)||!integer(count)||count<1||count>40){
-   response(world,p,'Escolha de 1 a 40 unidades militares válidas.');return false
+   reject('Escolha de 1 a 40 unidades militares válidas.');return false
   }
   const troops=armyCopy(g.army);
   if(troopCount(troops)+count>MAX_TROOPS){
-   response(world,p,'Capacidade máxima de 300 soldados atingida.');return false
+   reject('Capacidade máxima de 300 soldados atingida.');return false
   }
   const cost=MILITARY_SUPPLIES[unit],stock=stockCopy(g.city.stock);
   if(Object.entries(cost).some(([id,fee])=>stock[id]<fee*count)){
-   response(world,p,'Alimentos, madeira ou pedra insuficientes para treinar este exército.');return false
+   reject('Alimentos, madeira ou pedra insuficientes para treinar este exército.');return false
   }
   for(const [id,fee] of Object.entries(cost))stock[id]-=fee*count;
   g.city.stock=stock;troops[unit]+=count;g.army=troops;world.dirty=true;
-  response(world,p,count+' unidades de '+UNITS[unit].name.toLowerCase()+' treinadas com recursos da cidade.');
+  accept(count+' unidades de '+UNITS[unit].name.toLowerCase()+' treinadas com recursos da cidade.');
   return true;
  }
  if(op==='patrol'){
