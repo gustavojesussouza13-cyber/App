@@ -117,6 +117,7 @@ test('script desktop carrega antes do render e não altera o CSS do mobile',()=>
  assert.match(html,/desktop-characters-v3/);
  assert.match(art,/desktopCharactersV3\?\.drawHero/);
  assert.match(art,/desktopCharactersV3\?\.drawNpc/);
+ assert.match(art,/studioHero\?spriteStudio\.normalizeRole/);
  assert.match(art,/pngSprite\?desktopSprites\.normalizeRole/);
  assert.match(art,/illustratedV3\?desktopCharactersV3\.normalizeRole/);
  assert.doesNotThrow(()=>new vm.Script(script));
