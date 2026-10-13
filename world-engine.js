@@ -244,7 +244,13 @@ class World {
   const now=Date.now();
   let raw;
   if(owner)raw=this.saved.characters[uid]||defaultSave();
-  else{
+  else if(c.roomTransferSave&&c.roomTransferUid===uid){
+   // Troca de sala via WebSocket: reaproveita o personagem temporário
+   // sem criar um novo visitante e sem salvar seus dados no PostgreSQL.
+   raw=c.roomTransferSave;
+   const pending=this.guestReconnect.get(uid);
+   if(pending)this.guestReconnect.delete(uid);
+  }else{
    const pending=this.guestReconnect.get(uid);
    this.guestReconnect.delete(uid);
    raw=pending&&pending.expires>now?pending.save:defaultSave();
