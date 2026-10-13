@@ -6,7 +6,10 @@ const path=require('node:path');
 const root=path.join(__dirname,'..');const get=p=>fs.readFileSync(path.join(root,p),'utf8');
 test('mundo apresenta visitante, login e cadastro, mantendo campanha clássica intacta',()=>{
  const h=get('public/mundo.html');
- for(const id of ['guestTab','loginTab','registerTab','nameForm','loginForm','registerForm','importGuest','logoutBtn'])assert.ok(h.includes('id="'+id+'"'),id);
+ for(const id of ['guestTab','loginTab','registerTab','nameForm','loginForm','registerForm','logoutBtn'])assert.ok(h.includes('id="'+id+'"'),id);
+ assert.match(h,/Visitante.*nível 1/);
+ assert.doesNotMatch(h,/id="importGuest"/);
+ assert.match(h,/Visitante reinicia a cada visita/);
  assert.match(h,/autocomplete="current-password"/);
  assert.match(h,/autocomplete="new-password"/);
  assert.match(get('public/mmo.js'),/\/api\/auth\/register|authPost\('register'/);
