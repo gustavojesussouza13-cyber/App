@@ -23,7 +23,7 @@ test('Atlas traz coroa política por região e protege masmorras neutras',()=>{
  assert.match(js,/Território neutro · sem fortificações/);
  assert.match(js,/kingdomState\?\.bases\?\.filter\(b=>b\.zone===z\.id\)/);
  assert.match(js,/Classificação política de Auren/);
- assert.match(js,/Trocar de servidor/);
+ assert.match(page,/Trocar de servidor/);
 });
 test('lobby e indicador mostram até 60 por sala, com arte e cliente versionados',()=>{
  assert.match(page,/Cada sala recebe até 60 jogadores/);
