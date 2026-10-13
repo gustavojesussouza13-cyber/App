@@ -62,7 +62,7 @@ test('clicar abre a seleção e Continuar jogando fecha sem enviar troca ou desc
  const h=harness();
  await h.click('roomSwitchBtn');
  assert.equal(h.el('roomSwitchDialog').open,true);
- assert.equal(h.el('roomSwitchCurrent').textContent,'Guilda da Luz · 1/10 jogadores');
+ assert.equal(h.el('roomSwitchCurrent').textContent,'Guilda da Luz · 1/60 jogadores');
  assert.equal(h.context.refreshed,1);
  assert.equal(h.context.rendered,1);
  assert.deepEqual(h.sent,[]);
