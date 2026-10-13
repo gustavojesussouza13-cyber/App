@@ -9,6 +9,8 @@ const keys=new Set(),moves={up:['KeyW','ArrowUp'],down:['KeyS','ArrowDown'],left
 const monsterMotion=window.OsPeregrinosMonsterMotion.create();
 const playerMotion=window.OsPeregrinosPlayerMotion.create();
 const combatFx=window.OsPeregrinosCombatFx.create();
+// Só o PC mostra a arte 16-bit extra. Cada efeito nasce de mensagem do servidor.
+const classSkillFx=window.OsPeregrinosClassSkillFx16.create({windowRef:window});
 // Eventos reais do servidor comandam poses de ataque, impacto e derrota.
 const spriteActions={monsters:new Map(),players:new Map(),fallen:[],localHurtAt:0};
 const latency=window.OsPeregrinosLatency.create();
@@ -33,7 +35,7 @@ function updatePingIndicator(){
 const touchDevice=Boolean(window.matchMedia?.('(pointer: coarse)').matches||navigator.maxTouchPoints>0);
 const touchUI=$('touchControls');
 const joystick=window.OsPeregrinosTouchControls.create({pad:$('touchPad'),knob:$('touchKnob')});
-let socket=null,reconnectMs=1000,reconnectTimer=null,movingAt=0,lastDraw=0,fx=[],toastTimer=0,lastAction=0,tab='inventory',authed=false;
+let socket=null,reconnectMs=1000,reconnectTimer=null,movingAt=0,lastDraw=0,fx=[],toastTimer=0,lastAction=0,lastActionWasSkill=false,tab='inventory',authed=false;
 let progressToken=null,accountMode=false,accountReady=false,emailRecoveryAvailable=false;
 // Cada abertura do site cria uma nova jornada Visitante. O token existe
 // somente nesta execução da página; queda da conexão reutiliza o token.
@@ -71,15 +73,19 @@ function send(type,data={}){if(socket&&socket.readyState===WebSocket.OPEN)socket
 function setOnline(state,msg){
  session.connected=state;$('statusDot').classList.toggle('on',state);$('status').textContent=msg;
  touchUI.hidden=!state||!touchDevice;
- if(!state){joystick.release();latency.reset();updatePingIndicator();spriteActions.monsters.clear();spriteActions.players.clear();spriteActions.fallen.length=0}
+ if(!state){joystick.release();latency.reset();updatePingIndicator();spriteActions.monsters.clear();spriteActions.players.clear();spriteActions.fallen.length=0;classSkillFx.clear()}
 }
 function character(c){session.characters=c;session.zone=c.zone;session.role=c.role;session.x=c.x;session.y=c.y;
  $('charName').textContent=c.name||session.name;$('playerClass').textContent={peregrino:'Peregrino',guardiao:'Guardião',arqueiro:'Arqueiro',curandeiro:'Curandeiro'}[c.role]||c.role;
  // Explicar a função da habilidade K sem mudar o layout do controle mobile.
  $('skillBtn').lastChild.textContent=c.role==='curandeiro'?' Curar':' Habilidade';
- $('skillBtn').title=c.role==='curandeiro'?
-  'K: cura você e aliados da sua equipe a até 230 de distância, sem precisar selecionar inimigo.':
-  'K: habilidade especial da sua classe';
+ const skillHelp={
+  curandeiro:'K: Luz Restauradora — cura você e sua equipe a até 230 de distância sem precisar de inimigo.',
+  guardiao:'K: Proteção da Aurora — protege você e sua equipe por 4,5s sem selecionar inimigo.',
+  peregrino:'K: Recuperação Heroica — recupera sua vida; com inimigo selecionado, também golpeia.',
+  arqueiro:'K: Flecha de Precisão — selecione um inimigo para marcá-lo por 5,5s.'
+ };
+ $('skillBtn').title=skillHelp[c.role]||'K: habilidade especial da sua classe';
  $('touchSkillBtn').title=$('skillBtn').title;
  $('playerLevel').textContent='Nível '+c.level;$('playerCoins').textContent='◈ '+c.coins+' moedas';$('hpText').textContent=c.hp+' / '+c.maxHp;
  $('xpText').textContent=c.xp+' / '+c.nextXp;$('hpBar').style.width=clamp(c.hp/c.maxHp*100,0,100)+'%';$('xpBar').style.width=clamp(c.xp/c.nextXp*100,0,100)+'%';
@@ -113,7 +119,7 @@ function dispatch(msg){
   monsterMotion.sync([...now.values()]);session.monsters=now;
   const people=new Map();for(const p of msg.players||[])people.set(p.id,p);
   playerMotion.sync([...people.values()],performance.now());session.players=people;
- }else if(msg.type==='travel'){desktopAudio.play('travel');session.zone=msg.zone;session.portals=msg.portals||[];session.x=msg.x;session.y=msg.y;session.target=null;session.monsters.clear();monsterMotion.clear();playerMotion.clear();combatFx.clear();$('zoneTitle').textContent=msg.name;alert('✦ '+msg.name);drawTravel();
+ }else if(msg.type==='travel'){desktopAudio.play('travel');session.zone=msg.zone;session.portals=msg.portals||[];session.x=msg.x;session.y=msg.y;session.target=null;session.monsters.clear();monsterMotion.clear();playerMotion.clear();combatFx.clear();classSkillFx.clear();$('zoneTitle').textContent=msg.name;alert('✦ '+msg.name);drawTravel();
  }else if(msg.type==='hit'){if(msg.zone===session.zone){
   if(typeof desktopAudio!=='undefined')desktopAudio.play(msg.projectile==='arrow'?'arrow':msg.projectile==='holy-bolt'?'magic':'hit');
   const m=session.monsters.get(msg.monster);if(m)m.hp=msg.remaining;
@@ -125,12 +131,18 @@ function dispatch(msg){
  }
  }else if(msg.type==='healed'){if(msg.zone===session.zone){
    const now=performance.now();
+   classSkillFx.trigger({...msg,kind:'healer-recovery',duration:1050},now);
    if(typeof desktopAudio!=='undefined')desktopAudio.play('magic');
    // Vida e XP continuam sendo informados pelo servidor, nunca calculados aqui.
    fx.push({x:msg.x,y:msg.y-60,text:'+'+msg.amount+' VIDA',t:now,color:'#9bf5b9'});
    for(let i=0;i<3;i++)fx.push({x:msg.x-22+i*22,y:msg.y-25-(i%2)*12,
     text:'✦',t:now+i*70,color:i===1?'#e6ffd5':'#91ecc7'});
    if(msg.by)spriteActions.players.set(msg.by,{action:'attack',at:now});
+ }
+ }else if(msg.type==='skillEffect'){if(msg.zone===session.zone){
+   const now=performance.now();
+   classSkillFx.trigger(msg,now);
+   if(msg.kind==='pilgrim-renewal')spriteActions.players.set(msg.targetId===session.id?session.name:msg.targetId,{action:'attack',at:now});
  }
  }else if(msg.type==='monsterWindup'){if(msg.zone===session.zone){
    const m=session.monsters.get(msg.monster);
@@ -338,10 +350,11 @@ $('touchPotionBtn').addEventListener('click',()=>send('use',{item:'pocao'}));
 $('touchTalkBtn').addEventListener('click',()=>talkToNearest());
 function attack(skill){
  if(!session.connected)return;
- // A habilidade K do Curandeiro não exige clicar num monstro para curar.
- // Se houver um alvo válido próximo, o servidor pode combinar cura e magia.
- if(skill&&session.role==='curandeiro'){
-  send('skill',{target:session.target||null});lastAction=performance.now();return;
+ // Habilidades de suporte não exigem alvo. Somente Arqueiro exige marcação.
+ // O servidor decide se há cura/defesa e se o golpe também alcança um monstro.
+ if(skill&&['curandeiro','guardiao','peregrino'].includes(session.role)){
+  send('skill',{target:session.target||null});lastActionWasSkill=true;
+  lastAction=performance.now();return;
  }
  let m=session.monsters.get(session.target);
  if(!m||m.hp<=0){
@@ -364,7 +377,7 @@ function attack(skill){
   m=session.monsters.get(session.target);
   if(m){const dx=m.x-session.x,dy=m.y-session.y;session.dir=Math.abs(dx)>Math.abs(dy)?dx>0?1:3:dy>0?2:0;}
  }
- send(skill?'skill':'attack',{target:session.target});lastAction=performance.now();
+ send(skill?'skill':'attack',{target:session.target});lastActionWasSkill=Boolean(skill);lastAction=performance.now();
 }
 $('talkBtn').onclick=talkToNearest;$('attackBtn').onclick=()=>attack(false);$('skillBtn').onclick=()=>attack(true);$('potionBtn').onclick=()=>send('use',{item:'pocao'});$('questBtn').onclick=()=>selectTab('quests');$('mapBtn').onclick=showWorldMap;$('chatFocusBtn').onclick=()=>$('chatInput').focus();
 cvs.addEventListener('click',e=>{if(!session.connected)return;const rect=cvs.getBoundingClientRect(),wx=(e.clientX-rect.left)*W/rect.width+session.cameraX,wy=(e.clientY-rect.top)*H/rect.height+session.cameraY;
@@ -569,7 +582,10 @@ function canvasDraw(now,dt){
     monsterActions:spriteActions.monsters,playerActions:spriteActions.players,fallen:spriteActions.fallen,
     heroPose:now-spriteActions.localHurtAt<310?{action:'hurt',at:spriteActions.localHurtAt}:{action:'attack',at:lastAction},
     npcs:session.npcs.filter(n=>n.zone===session.zone),portals:session.portals,storyStage:session.story?.stage||0,
-    cameraX:session.cameraX,cameraY:session.cameraY,target:session.target,now,fx,lastAction,
+    cameraX:session.cameraX,cameraY:session.cameraY,target:session.target,now,fx,lastAction,lastActionWasSkill,
+    skillEffects:classSkillFx.frame(now,{zone:session.zone,players:session.players,monsters:session.monsters,
+      self:{id:session.id,x:session.x,y:session.y}}),
+    drawSkillEffects:(drawCtx,events)=>classSkillFx.paint(drawCtx,events),
     moving:Math.hypot(session.x-lastFrameX,session.y-lastFrameY)>0.06});
   lastFrameX=session.x;lastFrameY=session.y;
 }
