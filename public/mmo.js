@@ -39,6 +39,7 @@ let socket=null,reconnectMs=1000,reconnectTimer=null,movingAt=0,lastDraw=0,fx=[]
 let progressToken=null,accountMode=false,accountReady=false,emailRecoveryAvailable=false;
 let selectedRoomId='auren-publica',selectedRoomPassword='',roomCatalog=[],roomName='Praça Pública',pendingRoom=null,pendingRoomUntil=0;
 let roomSwitchPending=false,roomSwitchTarget=null;
+let kingdomState=null,visibleKingdomBases=[];
 // Cada abertura do site cria uma nova jornada Visitante. O token existe
 // somente nesta execução da página; queda da conexão reutiliza o token.
 // Dados de contas cadastradas continuam no servidor, sob login/senha.
@@ -94,7 +95,7 @@ function character(c){session.characters=c;session.zone=c.zone;session.role=c.ro
  $('xpText').textContent=c.xp+' / '+c.nextXp;$('hpBar').style.width=clamp(c.hp/c.maxHp*100,0,100)+'%';$('xpBar').style.width=clamp(c.xp/c.nextXp*100,0,100)+'%';
  session.story=c.story||null;$('kills').textContent=c.kills;$('visited').textContent=c.visited.length+'/'+(session.zones.length||40);$('zoneTitle').textContent=session.zones[c.zone]?.name||('Região '+c.zone);drawTravel();drawTab();
 }
-function displayOnline(n){session.online=n;$('playerCount').textContent=n+'/10';setOnline(true,'✦ '+roomName+' · '+n+'/10 jogadores')}
+function displayOnline(n){session.online=n;$('playerCount').textContent=n+'/60';setOnline(true,'✦ '+roomName+' · '+n+'/60 jogadores')}
 function dispatch(msg){
  if(msg.type==='maintenance'){
   // Segunda via de aviso caso o canal global SSE seja bloqueado no navegador.
@@ -108,6 +109,11 @@ function dispatch(msg){
   $('roomSwitchBtn').disabled=!session.connected;
   updateSwitchChoice();return;
  }
+ if(msg.type==='kingdomState'){
+  kingdomState=msg.data||null;
+  visibleKingdomBases=(kingdomState?.bases||[]).filter(b=>b.zone===session.zone);
+  if(tab==='social')drawTab();return;
+ }
  if(msg.type==='pong'){if(latency.receive(msg,performance.now()))updatePingIndicator();return}
  if(msg.type==='welcome'){
  session.id=msg.self.id;session.name=msg.self.name;session.zones=msg.zones;session.shop=msg.shop;session.relics=msg.relics||{};session.quests=msg.quests;session.achievements=msg.achievements||{};session.npcs=Array.isArray(msg.npcs)?msg.npcs:[];
@@ -119,6 +125,7 @@ function dispatch(msg){
   session.monsters.clear();monsterMotion.clear();playerMotion.clear();combatFx.clear();
   session.players.clear();spriteActions.monsters.clear();spriteActions.players.clear();
   spriteActions.fallen.length=0;
+  visibleKingdomBases=[];kingdomState=null;
   session.partyInvite=null;session.tradeOffer=null;
  }
  // Os portais são autoritativos em TODOS os welcomes (login ou troca de
@@ -156,11 +163,12 @@ function dispatch(msg){
  }else if(msg.type==='character'){character(msg);
  }else if(msg.type==='snapshot'){
   session.zone=msg.zone;displayOnline(msg.online);
+  if(Array.isArray(msg.kingdoms))visibleKingdomBases=msg.kingdoms;
   const now=new Map();for(const m of msg.monsters||[])now.set(m.id,m);
   monsterMotion.sync([...now.values()]);session.monsters=now;
   const people=new Map();for(const p of msg.players||[])people.set(p.id,p);
   playerMotion.sync([...people.values()],performance.now());session.players=people;
- }else if(msg.type==='travel'){desktopAudio.play('travel');session.zone=msg.zone;session.portals=msg.portals||[];session.x=msg.x;session.y=msg.y;session.target=null;session.monsters.clear();monsterMotion.clear();playerMotion.clear();combatFx.clear();classSkillFx.clear();$('zoneTitle').textContent=msg.name;alert('✦ '+msg.name);drawTravel();
+ }else if(msg.type==='travel'){desktopAudio.play('travel');session.zone=msg.zone;visibleKingdomBases=[];session.portals=msg.portals||[];session.x=msg.x;session.y=msg.y;session.target=null;session.monsters.clear();monsterMotion.clear();playerMotion.clear();combatFx.clear();classSkillFx.clear();$('zoneTitle').textContent=msg.name;alert('✦ '+msg.name);drawTravel();
  }else if(msg.type==='hit'){if(msg.zone===session.zone){
   if(typeof desktopAudio!=='undefined')desktopAudio.play(msg.projectile==='arrow'?'arrow':msg.projectile==='holy-bolt'?'magic':'hit');
   const m=session.monsters.get(msg.monster);if(m)m.hp=msg.remaining;
@@ -670,6 +678,52 @@ function drawTab(){const parent=$('tabContent');parent.replaceChildren();const s
   const createGuild=document.createElement('button');createGuild.textContent='Criar (250 moedas)';createGuild.onclick=()=>send('guild',{action:'create',name:gn.value.trim()});
   const inviteGuild=document.createElement('button');inviteGuild.textContent='Convidar';inviteGuild.onclick=()=>send('guild',{action:'invite',target:target.value.trim()});gactions.append(createGuild,inviteGuild,button('Sair','guild',{action:'leave'}));g.append(gactions);
   if(session.guildInvite)g.append(button('Aceitar guilda '+session.guildInvite.name,'guild',{action:'accept',name:session.guildInvite.name}));
+  const kingdom=group(parent);kingdom.classList.add('kingdom-panel');
+  appendText(kingdom,'h3','✦ Reinos e política continental');
+  appendText(kingdom,'small','O conselho possui 16 regiões históricas. As 4 masmorras não admitem bases. Construa fortalezas nas 12 regiões da superfície. Exércitos são persistentes e disputam influência territorial.');
+  if(!kingdomState){kingdom.append(button('Consultar reinos','kingdom',{action:'inspect'}))}
+  else{
+   const k=kingdomState.yourGuild;
+   appendText(kingdom,'small','Política: '+kingdomState.ranking.length+' guildas · máximo de '+kingdomState.maxTroops+' soldados por reino');
+   if(k){
+    appendText(kingdom,'b','Seu reino: '+k.name+(k.leader?' · COROA':' · Membro'));
+    appendText(kingdom,'small',k.base?'Capital em '+(session.zones[k.base.zone]?.name||'Região')+' · ('+k.base.x+', '+k.base.y+')':'Sua guilda ainda não tem capital.');
+    if(k.leader){
+     const btn=button(k.base?'Transferir capital (450 moedas)':'Construir fortaleza (800 moedas)','kingdom',{
+      action:'place',x:Math.round(session.x),y:Math.round(session.y)});
+     btn.title='A fortaleza será construída na sua localização atual, desde que seja terreno livre distante dos portais';kingdom.append(btn);
+    }
+    if(k.base){
+     const army=k.army||{};
+     appendText(kingdom,'small','Exército: '+Object.entries(army).map(([id,n])=>(kingdomState.unitTypes[id]?.name||id)+' '+n).join(' · '));
+     const unitSelect=document.createElement('select');unitSelect.id='kingdomRecruitUnit';
+     for(const [id,u]of Object.entries(kingdomState.unitTypes)){
+      const opt=document.createElement('option');opt.value=id;opt.textContent=u.name+' · '+u.cost+' moedas/unidade';unitSelect.append(opt);
+     }
+     const howMany=document.createElement('input');howMany.type='number';howMany.min='1';howMany.max='40';howMany.value='5';howMany.id='kingdomRecruitCount';
+     howMany.setAttribute('aria-label','Quantidade a recrutar (1 a 40)');
+     const recruit=document.createElement('button');recruit.type='button';recruit.textContent='⚔ Recrutar tropas';
+     recruit.onclick=()=>send('kingdom',{action:'recruit',unit:unitSelect.value,count:Number(howMany.value)});
+     kingdom.append(unitSelect,howMany,recruit);
+     if(k.leader){
+      const targets=kingdomState.bases.filter(b=>b.name!==k.name);
+      if(targets.length){
+       const targetSelect=document.createElement('select');
+       for(const b of targets){const opt=document.createElement('option');opt.value=b.name.toLocaleLowerCase('pt-BR');opt.textContent=b.name+' · '+(session.zones[b.zone]?.name||'Região');targetSelect.append(opt)}
+       const attack=document.createElement('button');attack.type='button';attack.textContent='⚑ Enviar exército (45s)';
+       attack.disabled=!!k.march||Date.now()<(k.nextRaidAt||0);
+       attack.onclick=()=>send('kingdom',{action:'attack',target:targetSelect.value});
+       kingdom.append(targetSelect,attack);
+      }
+      if(k.march)appendText(kingdom,'small','⚔ Tropas em marcha. Chegada estimada: '+new Date(k.march.arrivesAt).toLocaleTimeString('pt-BR'));
+     }
+    }
+   }else appendText(kingdom,'small','Crie ou entre em uma guilda para participar da política dos reinos. Requer conta registrada.');
+   const ranking=group(kingdom);appendText(ranking,'b','Classificação política de Auren');
+   for(const [i,entry]of kingdomState.ranking.slice(0,7).entries())
+    appendText(ranking,'small',(i+1)+'º '+entry.name+' · '+entry.title+' · '+entry.territories+' regiões');
+   kingdom.append(button('Atualizar o conselho','kingdom',{action:'inspect'}));
+  }
   const silence=group(parent);appendText(silence,'b','Proteção do chat');
   appendText(silence,'small','Silencie mensagens de outros jogadores. O bloqueio acompanha seu personagem.');
   const muted=field(silence,'mutedName','Nome para silenciar ou liberar',18);
@@ -753,7 +807,7 @@ function showWorldMap(){
  close.onclick=()=>dialog.close();
  header.append(heading,close);dialog.append(header);
  const description=document.createElement('p');
- description.textContent='Explore o continente e desça por quatro complexos de masmorras. Os pontos dourados mostram regiões já visitadas. Use os portais para viajar.';
+ description.textContent='Os reinos disputam o conselho de 16 regiões históricas; bases só podem ser fundadas nas 12 regiões de superfície. As masmorras são neutras. Use os portais para viajar.';
  dialog.append(description);
  const grid=document.createElement('div');grid.className='atlas-grid';
  const explored=new Set(session.characters?.visited||[]);
@@ -763,7 +817,17 @@ function showWorldMap(){
   const sub=document.createElement('small');
   sub.textContent=z.id<12?'Superfície · '+z.biome:
     z.id<16?'Masmorra principal':('Subsolo '+(1+(z.id-16)%6)+' · Complexo '+(1+Math.floor((z.id-16)/6)));
-  tile.append(title,sub);grid.append(tile);
+  tile.append(title,sub);
+  const ruler=kingdomState?.zones?.find(r=>r.zone===z.id);
+  if(ruler){
+   const line=document.createElement('small');line.className='atlas-kingdom';
+   line.textContent=ruler.buildable?(ruler.ruler?'♛ Domínio: '+ruler.ruler:'◇ Território sem domínio'):'⚑ Território neutro · sem fortificações';
+   tile.append(line);
+  }
+  for(const base of kingdomState?.bases?.filter(b=>b.zone===z.id)||[]){
+   const line=document.createElement('small');line.textContent='🏰 '+base.name+' ('+base.x+', '+base.y+')';tile.append(line);
+  }
+  grid.append(tile);
  }
  dialog.append(grid);if(!dialog.open)dialog.showModal();
 }
@@ -790,7 +854,7 @@ function canvasDraw(now,dt){
   spriteActions.fallen=spriteActions.fallen.filter(m=>now-m.defeatedAt<570);
   for(const [id,v] of spriteActions.monsters)if(now-v.at>750)spriteActions.monsters.delete(id);
   for(const [id,v] of spriteActions.players)if(now-v.at>580)spriteActions.players.delete(id);
-  classicRenderer.render({zone:session.zone,zones:session.zones,x:session.x,y:session.y,
+  classicRenderer.render({zone:session.zone,zones:session.zones,x:session.x,y:session.y,kingdomBases:visibleKingdomBases,
     name:session.name||'PEREGRINO',role:session.role,dir:session.dir,
     monsters:monsterMotion.draw([...session.monsters.values()],dt),players:playerMotion.draw([...session.players.values()],now),projectiles,
     monsterActions:spriteActions.monsters,playerActions:spriteActions.players,fallen:spriteActions.fallen,
