@@ -67,7 +67,7 @@ try{
  await page.waitForFunction(()=>document.querySelector('.guild3d-canvas')?.dataset.pendingBuilding==='house:8:12',null,{timeout:600});
  assert.equal(await page.locator('#guild3dFeedback').getAttribute('data-status'),'pending');
  assert.match(await page.locator('#guild3dFeedback').innerText(),/posicionado imediatamente/);
- await page.waitForFunction(()=>document.querySelector('.guild3d-dialog[open] #guild3dFeedback')?.textContent?.includes('Construção concluída!'),null,{timeout:6000});
+ await page.waitForFunction(()=>document.querySelector('.guild3d-dialog[open] #guild3dFeedback')?.textContent?.includes('Construção concluída'),null,{timeout:6000});
  assert.equal(await page.locator('#guild3dFeedback').getAttribute('data-status'),'success');
  assert.match(await page.locator('.guild3d-wallet').innerText(),/8.380 moedas/,'saldo deve ser atualizado após construir');
  assert.equal(await canvas.getAttribute('data-pending-building'),null,'prévia vira construção definitiva após confirmar');
