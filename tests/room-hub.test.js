@@ -2,7 +2,7 @@
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const crypto=require('node:crypto');
-const {RoomHub,RoomError,MAIN_ID,MAX_PER_ROOM,MAX_ROOMS,IDLE_MS,ownerId}=require('../room-hub');
+const {RoomHub,RoomError,MAIN_ID,MAX_PER_ROOM,MAX_ROOMS,PENDING_MS,ownerId}=require('../room-hub');
 const {World}=require('../world-engine');
 
 function fakeHub(){
@@ -16,7 +16,10 @@ test('a praça pública existe sem senha; salas dos jogadores têm capacidade de
  assert.deepEqual(h.hub.list(),[{id:MAIN_ID,name:'Auren — Praça Pública',online:0,capacity:10,locked:false,primary:true}]);
  const room=h.hub.create({name:'Cavaleiros da Aurora',password:'',owner:'account:alpha'});
  assert.equal(room.capacity,MAX_PER_ROOM);assert.equal(room.locked,false);
- assert.equal(h.hub.check(room.id,'').id,room.id);
+ assert.equal(h.hub.list().length,1,'salas vazias não aparecem no catálogo');
+ assert.throws(()=>h.hub.check(room.id,''),e=>e.code==='room_pending');
+ assert.equal(h.hub.check(room.id,'',{owner:'account:alpha'}).id,room.id);
+ h.hub.get(room.id).world.count=1;h.hub.entered(h.hub.get(room.id));
  assert.equal(h.hub.list().length,2);
  assert.equal(h.hub.count(),0);
  assert.equal(h.hub.get(room.id).ownerId,'account:alpha');
@@ -24,14 +27,17 @@ test('a praça pública existe sem senha; salas dos jogadores têm capacidade de
 test('uma sala privada nunca revela a senha e rejeita acessos incorretos',()=>{
  const h=fakeHub();
  const r=h.hub.create({name:'Salão Guardião',password:'secreto42',owner:'account:bravo'});
- const publicInfo=h.hub.list().find(x=>x.id===r.id);
+ assert.equal(h.hub.list().length,1);
+ const publicInfo=r;
  assert.equal(publicInfo.locked,true);
  assert.ok(!JSON.stringify(publicInfo).includes('secreto42'));
  assert.ok(!JSON.stringify(publicInfo).includes('bravo'));
  assert.equal(h.hub.get(r.id).password,undefined);
- assert.throws(()=>h.hub.check(r.id,'outra'),e=>e.code==='wrong_room_password'&&e.status===403);
- assert.throws(()=>h.hub.check(r.id,''),e=>e.code==='wrong_room_password');
- assert.equal(h.hub.check(r.id,'secreto42').id,r.id);
+ assert.throws(()=>h.hub.check(r.id,'outra',{owner:'account:bravo'}),e=>e.code==='wrong_room_password'&&e.status===403);
+ assert.throws(()=>h.hub.check(r.id,'',{owner:'account:bravo'}),e=>e.code==='wrong_room_password');
+ assert.equal(h.hub.check(r.id,'secreto42',{owner:'account:bravo'}).id,r.id);
+ h.hub.get(r.id).world.count=1;h.hub.entered(h.hub.get(r.id));
+ assert.equal(h.hub.list().find(x=>x.id===r.id).locked,true);
 });
 test('não aceitar nomes inadequados, duplicados, senhas curtas nem salas ilimitadas',()=>{
  const h=fakeHub();
@@ -49,8 +55,8 @@ test('capacidade é por sala, sem esgotar a capacidade de salas distintas',()=>{
  const h=fakeHub();
  const a=h.hub.create({name:'Sala Sol',owner:'account:a'});
  const b=h.hub.create({name:'Sala Lua',owner:'account:b'});
- h.hub.get(a.id).world.count=10;
- h.hub.get(b.id).world.count=3;
+ h.hub.get(a.id).world.count=10;h.hub.entered(h.hub.get(a.id));
+ h.hub.get(b.id).world.count=3;h.hub.entered(h.hub.get(b.id));
  assert.equal(h.hub.count(),13);
  assert.throws(()=>h.hub.check(a.id,''),e=>e.code==='room_full');
  assert.equal(h.hub.check(b.id,'').id,b.id);
@@ -58,20 +64,38 @@ test('capacidade é por sala, sem esgotar a capacidade de salas distintas',()=>{
  h.hub.get(a.id).world.players.set('active',{uid:'account:a'});
  assert.equal(h.hub.check(a.id,'',{uid:'account:a'}).id,a.id,'reconexão do próprio jogador não deve falhar por lotação');
 });
-test('salas sem jogadores são fechadas após dez minutos; sala principal fica sempre aberta',()=>{
- const h=fakeHub();
- const created=h.hub.create({name:'Sala Temporária',owner:'account:a'});
- h.tick(IDLE_MS-1);h.hub.clean();assert.ok(h.hub.get(created.id));
+test('salas personalizadas desaparecem assim que o último jogador sai',()=>{
+ const h=fakeHub(),created=h.hub.create({name:'Sala Temporária',owner:'account:a'});
+ const pending=h.hub.get(created.id);
+ assert.equal(h.hub.list().length,1,'sala criada com zero jogadores não aparece');
+ pending.world.count=2;h.hub.entered(pending);
+ assert.equal(h.hub.list().length,2);
+ pending.world.count=1;h.hub.left(pending);
+ assert.ok(h.hub.get(created.id),'sala com jogadores continua');
+ pending.world.count=0;h.hub.left(pending);
+ assert.equal(h.hub.get(created.id),undefined,'sala vazia não pode permanecer');
+ assert.deepEqual(h.hub.list().map(r=>r.id),[MAIN_ID]);
+ assert.equal(h.stopped,1);
+});
+test('reserva vazia fica invisível e desaparece após sessenta segundos',()=>{
+ const h=fakeHub(),created=h.hub.create({name:'Convite Pendente',owner:'account:a'});
+ assert.equal(h.hub.list().length,1);
+ assert.equal(h.hub.check(created.id,'',{owner:'account:a'}).id,created.id);
+ assert.throws(()=>h.hub.check(created.id,'',{owner:'account:b'}),e=>e.code==='room_pending');
+ h.tick(PENDING_MS-1);h.hub.clean();assert.ok(h.hub.get(created.id));
  h.tick(2);h.hub.clean();assert.equal(h.hub.get(created.id),undefined);
  assert.equal(h.stopped,1);
  assert.ok(h.hub.get(MAIN_ID));
- const newRoom=h.hub.create({name:'Sala Temporária',owner:'account:a'});
- h.hub.get(newRoom.id).world.count=2;
- h.hub.entered(h.hub.get(newRoom.id));h.tick(IDLE_MS*2);h.hub.clean();
- assert.ok(h.hub.get(newRoom.id));
- h.hub.get(newRoom.id).world.count=0;h.hub.left(h.hub.get(newRoom.id));
- h.tick(IDLE_MS+1);h.hub.clean();assert.equal(h.hub.get(newRoom.id),undefined);
 });
+test('o nome e a vaga ficam disponíveis imediatamente após o último sair',()=>{
+ const h=fakeHub(),first=h.hub.create({name:'Auren1',owner:'account:criador'});
+ const active=h.hub.get(first.id);active.world.count=1;h.hub.entered(active);
+ active.world.count=0;h.hub.left(active);
+ assert.ok(!h.hub.list().some(r=>r.name==='Auren1'));
+ const next=h.hub.create({name:'Auren1',owner:'account:criador'});
+ assert.notEqual(next.id,first.id);
+});
+
 test('titularidade de conta não depende do nome; token anônimo é secreto e não exposto',()=>{
  const token=crypto.randomBytes(32).toString('hex');
  const u=ownerId({token}),v=ownerId({token}),other=ownerId({token:crypto.randomBytes(32).toString('hex')});
