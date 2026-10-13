@@ -33,6 +33,7 @@ export function createGuildScene({mount,layout,onCell,onHover}){
  scene.add(sun);
  const root=new THREE.Group();scene.add(root);
  const structures=new THREE.Group();scene.add(structures);
+ const provisionalStructures=new THREE.Group();scene.add(provisionalStructures);
  const decor=new THREE.Group();scene.add(decor);
  const walkers=new THREE.Group();scene.add(walkers);
  const pickPlane=new THREE.Mesh(new THREE.PlaneGeometry(N*CELL,N*CELL),new THREE.MeshBasicMaterial({visible:false,side:THREE.DoubleSide}));
@@ -270,22 +271,48 @@ export function createGuildScene({mount,layout,onCell,onHover}){
    if(!layout.at(buildings,7+i%7,9+Math.floor(i/7)*6))lamp(decor,p.x,p.z);
   }
  }
+ function drawBuilding(b,parent){
+  const [w,h]=layout.size(b),g=new THREE.Group();
+  g.position.copy(pos(b.x,b.y,w,h));
+  g.userData.building=b;
+  parent.add(g);
+  if(b.type==='house')timberHouse(g,b);
+  else if(b.type==='farm')farm(g,b);
+  else if(b.type==='barracks')barracks(g,b);
+  else if(b.type==='tower')tower(g,b);
+  else if(b.type==='market')market(g,b);
+  return g;
+ }
+ let lastBuildingState=null;
  function updateBuildings(next=[],nextArmy={}){
-  buildings=Array.isArray(next)?next.filter(b=>b&&layout.footprints[b.type]&&Number.isSafeInteger(b.x)&&Number.isSafeInteger(b.y)).slice(0,60):[];
-  army=nextArmy||{};
+  const nextBuildings=Array.isArray(next)?next.filter(b=>b&&layout.footprints[b.type]&&Number.isSafeInteger(b.x)&&Number.isSafeInteger(b.y)).slice(0,60):[];
+  const nextArmyState=nextArmy||{};
+  const fingerprint=JSON.stringify([nextBuildings,nextArmyState]);
+  // Evitar recriar dezenas de modelos 3D a cada snapshot do servidor.
+  if(fingerprint===lastBuildingState)return;
+  lastBuildingState=fingerprint;
+  buildings=nextBuildings;
+  army=nextArmyState;
   disposeGroup(structures);
-  for(const b of buildings){
-   const [w,h]=layout.size(b),g=new THREE.Group();
-   g.position.copy(pos(b.x,b.y,w,h));
-   g.userData.building=b;
-   structures.add(g);
-   if(b.type==='house')timberHouse(g,b);
-   else if(b.type==='farm')farm(g,b);
-   else if(b.type==='barracks')barracks(g,b);
-   else if(b.type==='tower')tower(g,b);
-   else if(b.type==='market')market(g,b);
-  }
+  for(const b of buildings)drawBuilding(b,structures);
   freshDecor();rebuildWalkers();
+ }
+ function showPendingBuilding(building){
+  disposeGroup(provisionalStructures);
+  if(!building||!layout.footprints[building.type]){
+   delete renderer.domElement.dataset.pendingBuilding;
+   return;
+  }
+  const [w,h]=layout.size(building),p=pos(building.x,building.y,w,h);
+  // Edifício completo surge no instante do clique; o servidor permanece autoritativo.
+  const foundation=box(provisionalStructures,w*CELL-.12,.13,h*CELL-.12,'#d9b66a',p.x,.10,p.z,false);
+  foundation.receiveShadow=false;
+  drawBuilding(building,provisionalStructures);
+  renderer.domElement.dataset.pendingBuilding=building.type+':'+building.x+':'+building.y;
+ }
+ function clearPendingBuilding(){
+  disposeGroup(provisionalStructures);
+  delete renderer.domElement.dataset.pendingBuilding;
  }
  const people=[];
  function figure(parent,color,x,z,isSoldier){
@@ -413,6 +440,7 @@ export function createGuildScene({mount,layout,onCell,onHover}){
     if(obj.userData.ownMaterial)obj.material?.dispose();
    }
   });
+  clearPendingBuilding();
   highlight.geometry.dispose();ghost.material.dispose();highlight.material.dispose();
   for(const g of geometries.values())g.dispose();
   for(const m of mats.values())m.dispose();
@@ -420,5 +448,5 @@ export function createGuildScene({mount,layout,onCell,onHover}){
   pickPlane.material.dispose();
   renderer.dispose();canvas.remove();
  }
- return {setSelection,updateBuildings,destroy,focus(){target.set(0,0,0);distance=68;updateCamera()}};
+ return {setSelection,updateBuildings,showPendingBuilding,clearPendingBuilding,destroy,focus(){target.set(0,0,0);distance=68;updateCamera()}};
 }
