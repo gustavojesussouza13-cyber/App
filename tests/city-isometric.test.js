@@ -16,9 +16,10 @@ test('cidades isométricas são validadas pelo servidor e persistem por guilda',
  assert.equal(act({action:'construct',type:'house',x:1,y:2}),true);
  assert.equal(p.save.coins,before-120);
  assert.equal(act({action:'construct',type:'house',x:1,y:2}),false);
- assert.equal(act({action:'construct',type:'house',x:5,y:3}),false);
+ assert.equal(act({action:'construct',type:'house',x:5,y:3}),true);
+ assert.equal(act({action:'construct',type:'house',x:11,y:11}),false);
  assert.equal(act({action:'construct',type:'invalid',x:3,y:3}),false);
- assert.equal(politics.publicState(world,p).cities[0].buildings.length,1);
+ assert.equal(politics.publicState(world,p).cities[0].buildings.length,2);
  world.persist();
  assert.equal(states.at(-1).guilds['reino da luz'].city.buildings[0].type,'house');
 });
@@ -76,7 +77,7 @@ test('produção da cidade acumula em ciclos limitados e edifícios evoluem usan
  const at=(time,data)=>politics.action(world,p,data,{walkable:()=>true,portals:[],npcs:[],now:time});
  assert.equal(at(1000,{action:'place',x:768,y:512}),true);
  assert.equal(at(1000,{action:'construct',type:'farm',x:1,y:2}),true);
- assert.equal(at(1000,{action:'construct',type:'market',x:3,y:2}),true);
+ assert.equal(at(1000,{action:'construct',type:'market',x:5,y:2}),true);
  const guild=world.guilds.get('reino verde');
  assert.equal(at(1000,{action:'collect'}),false);
  assert.equal(at(1000+15*60*1000,{action:'collect'}),true);
@@ -106,9 +107,9 @@ test('quartéis treinam soldados com recursos sem duplicar nem aceitar quantidad
  const act=(data,now=1000)=>politics.action(world,p,data,{walkable:()=>true,portals:[],npcs:[],now});
  assert.equal(act({action:'place',x:768,y:512}),true);
  assert.equal(act({action:'construct',type:'farm',x:1,y:1}),true);
- assert.equal(act({action:'construct',type:'market',x:2,y:2}),true);
+ assert.equal(act({action:'construct',type:'market',x:5,y:2}),true);
  assert.equal(act({action:'train',unit:'militia',count:1}),false,'treinar exige quartel');
- assert.equal(act({action:'construct',type:'barracks',x:3,y:3}),true);
+ assert.equal(act({action:'construct',type:'barracks',x:8,y:4}),true);
  const guild=world.guilds.get('reino dos campos');
  assert.equal(act({action:'train',unit:'militia',count:1}),false,'requer materiais');
  assert.equal(act({action:'collect'},1000+10*60*60*1000),true);
