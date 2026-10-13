@@ -61,6 +61,23 @@ window.PeregrinosCity=Object.freeze({create({send}){
    choices.append(overview);
    const collect=document.createElement('button');collect.type='button';collect.textContent='✦ Coletar produção (15 min)';
    collect.onclick=()=>send('kingdom',{action:'collect'});choices.append(collect);
+   if(structures().some(b=>b.type==='barracks')){
+    const group=document.createElement('div');
+    const soldier=document.createElement('select');soldier.setAttribute('aria-label','Tipo de unidade');
+    const costs=state?.trainingCosts||{};
+    const labels={militia:'Milícia',archer:'Arqueiros',knight:'Cavaleiros',siege:'Máquinas de cerco'};
+    for(const [id,cost] of Object.entries(costs)){
+     const option=document.createElement('option');option.value=id;
+     option.textContent=(labels[id]||id)+' · '+cost.food+' alimentos, '+cost.timber+' madeira, '+cost.stone+' pedra';
+     soldier.append(option);
+    }
+    const count=document.createElement('input');count.type='number';count.min='1';count.max='40';count.value='1';
+    count.setAttribute('aria-label','Quantidade de soldados');
+    count.style.width='64px';
+    const train=document.createElement('button');train.type='button';train.textContent='⚔ Treinar com recursos';
+    train.onclick=()=>send('kingdom',{action:'train',unit:soldier.value,count:Number(count.value)});
+    group.append(soldier,count,train);choices.append(group);
+   }
    const instruction=document.createElement('p');instruction.textContent='Cada edifício produz recursos. Clique em um prédio construído para evoluí-lo com alimentos, madeira e pedra (até nível 5).';choices.append(instruction);
    for(const [id,t] of Object.entries(types)){const b=document.createElement('button');b.disabled=!canBuild();b.type='button';b.style.display='block';b.style.width='100%';b.style.marginBottom='6px';b.textContent=t.label+' · '+t.cost+' moedas';b.setAttribute('aria-pressed',String(selected===id));b.onclick=()=>{selected=id;feedback.textContent='Clique em um terreno disponível para construir '+t.label.toLowerCase()+'.';refresh()};choices.append(b)}
   }else{const p=document.createElement('p');p.textContent='Você está visitando a capital de outra guilda. Somente a liderança do reino pode construir aqui.';choices.append(p)}
