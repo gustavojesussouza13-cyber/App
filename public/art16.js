@@ -393,13 +393,15 @@ function create({ctx,W,H}){
   const state={moving:moved,attacking,hurt:pose?.action==='hurt',
    elapsed:pose?Math.max(0,now-pose.at):0,
    seed:local?0:(p.name?.length||0)*107};
-  // Os sprites reais do atlas PNG têm prioridade no computador: a camada
-  // geométrica V3 não deve esconder os detalhes ilustrados do personagem.
-  // Enquanto a imagem carrega (ou se falhar), usa os desenhos anteriores.
-  const pngSprite=Boolean(desktopSprites?.drawHero(g,p,now,state));
-  const illustratedV3=!pngSprite&&Boolean(desktopCharactersV3?.drawHero(g,p,now,state));
+  // Qualidade PC V5: o Atelier tem rostos, classe e animações completas.
+  // O atlas clássico truncava rosto/cachecol/armas, e o V3 usava blocos.
+  // NÃO tocar no pipeline touch: o Studio continua nas dimensões originais.
+  const premiumPc=Boolean(desktopCharactersV3?.enabled);
+  const studioHero=premiumPc&&Boolean(spriteStudio?.drawHero(g,p,now,{...state,desktopPremium:true}));
+  const pngSprite=!studioHero&&Boolean(desktopSprites?.drawHero(g,p,now,state));
+  const illustratedV3=!studioHero&&!pngSprite&&Boolean(desktopCharactersV3?.drawHero(g,p,now,state));
   const detailed=pngSprite||illustratedV3;
-  const animated=detailed||Boolean(spriteStudio?.drawHero(g,p,now,state));
+  const animated=studioHero||detailed||Boolean(spriteStudio?.drawHero(g,p,now,state));
   if(!animated){
    frameSprite(g,key,dir,moved?Math.floor(now/155)%4:0,p.x,p.y,w,h);
    if(pixelDetail)pixelDetail.drawHero(g,p,now);
@@ -408,27 +410,30 @@ function create({ctx,W,H}){
   // O sprite detalhado do Studio já contém a identidade da classe.
   // Uma camada de blocos opacos aqui escondia olhos, roupas e sombreamento.
   // A proteção antiga permanece APENAS quando o Studio não está disponível.
-  const finalRole=pngSprite?desktopSprites.normalizeRole(p.role):
+  const finalRole=studioHero?spriteStudio.normalizeRole(p.role):
+   pngSprite?desktopSprites.normalizeRole(p.role):
    illustratedV3?desktopCharactersV3.normalizeRole(p.role):
    animated?spriteStudio.normalizeRole(p.role):drawClassIdentity(g,p,dir,now,moved);
   g.save();g.textAlign='center';g.font=(local?'bold 15px':'bold 13px')+' monospace';
   g.shadowColor='#000b';g.shadowBlur=5;g.lineWidth=3;g.strokeStyle='#0e271e';
   const roleName={guardiao:'Guardião',curandeiro:'Curandeiro',arqueiro:'Arqueiro',peregrino:'Peregrino'}[finalRole];
   const label=(p.name||'Peregrino')+(local?' · '+roleName:' · Lv.'+(p.level||1));
-  const labelY=p.y-(pngSprite?80:illustratedV3?94:h)-5;
+  const labelY=p.y-(studioHero?87:pngSprite?80:illustratedV3?94:h)-5;
   g.strokeText(label,p.x,labelY);g.fillStyle=local?'#ffe4a3':'#f1edd4';g.fillText(label,p.x,labelY);g.restore();
  }
  function npcActor(g,n,active,finished,now){
   const x=n.x,y=n.y;drawShadow(g,x,y,42);
-  const pngNpc=Boolean(desktopSprites?.drawNpc(g,n,now));
-  const illustratedNpcV3=!pngNpc&&Boolean(desktopCharactersV3?.drawNpc(g,n,now));
-  const detailed=pngNpc||illustratedNpcV3;
+  const premiumPc=Boolean(desktopCharactersV3?.enabled);
+  const studioNpc=premiumPc&&Boolean(spriteStudio?.drawNpc(g,n,now,{desktopPremium:true}));
+  const pngNpc=!studioNpc&&Boolean(desktopSprites?.drawNpc(g,n,now));
+  const illustratedNpcV3=!studioNpc&&!pngNpc&&Boolean(desktopCharactersV3?.drawNpc(g,n,now));
+  const detailed=studioNpc||pngNpc||illustratedNpcV3;
   if(!detailed&&!spriteStudio?.drawNpc(g,n,now))
    frameSprite(g,heroSheets[n.role]||'viajante_andar',2,Math.floor(now/500+(n.index||0))%2,x,y,47,59);
   g.save();g.textAlign='center';g.shadowColor='#000e';g.shadowBlur=5;
   const primary=n.kind==='chapter';
   g.font='bold 12px monospace';g.lineWidth=3;g.strokeStyle='#0c2118';
-  const nameY=y-(pngNpc?82:illustratedNpcV3?97:65);
+  const nameY=y-(studioNpc?91:pngNpc?82:illustratedNpcV3?97:65);
   g.strokeText(n.name,x,nameY);g.fillStyle=primary?'#ffe6a7':'#ccebd7';g.fillText(n.name,x,nameY);
   const indicator=primary?(finished?'✓':active?'!':'◆'):'✦';
   g.fillStyle=active?'#fff3ae':finished?'#a3d8a0':'#aee3ce';
@@ -445,9 +450,11 @@ function create({ctx,W,H}){
   const dead=pose?.action==='death';
   const state={type:ty,moving:m.moving===true,attacking:acting,hurt,dead,
    elapsed:pose?Math.max(0,now-pose.at):0};
-  const detailedBoss=Boolean(desktopSprites?.drawMonster(g,{...m,x,y},now,state));
-  const illustrated= !detailedBoss&&Boolean(desktopBestiary?.drawMonster(g,{...m,x,y},now,state));
-  const animated=detailedBoss||illustrated||Boolean(spriteStudio?.drawMonster(g,{...m,x,y},now,state));
+  const premiumPc=Boolean(desktopCharactersV3?.enabled);
+  const studioMonster=premiumPc&&Boolean(spriteStudio?.drawMonster(g,{...m,x,y},now,{...state,desktopPremium:true}));
+  const detailedBoss=!studioMonster&&Boolean(desktopSprites?.drawMonster(g,{...m,x,y},now,state));
+  const illustrated=!studioMonster&&!detailedBoss&&Boolean(desktopBestiary?.drawMonster(g,{...m,x,y},now,state));
+  const animated=studioMonster||detailedBoss||illustrated||Boolean(spriteStudio?.drawMonster(g,{...m,x,y},now,state));
   if(!animated){
    if(ty==='cavaleiro'||ty==='sentinela'||ty==='chefe'){
     const key=ty==='chefe'?'chefe_andar':ty==='sentinela'?'sentinela_andar':'cavaleiro_andar';
@@ -460,11 +467,11 @@ function create({ctx,W,H}){
    if(pixelDetail)pixelDetail.drawMonster(g,m,now);
   }
   if(dead)return;
-  const top=detailedBoss?121:illustrated?(m.boss?137:83):m.boss?90:56;
-  const width=detailedBoss?90:illustrated?(m.boss?110:62):m.boss?61:45;
+  const top=studioMonster?(m.boss?132:81):detailedBoss?121:illustrated?(m.boss?137:83):m.boss?90:56;
+  const width=studioMonster?(m.boss?106:66):detailedBoss?90:illustrated?(m.boss?110:62):m.boss?61:45;
   g.fillStyle='#231d1b';g.fillRect(x-width/2,y-top,width,7);
   g.fillStyle=m.boss?'#f6b66d':'#b1d976';g.fillRect(x-width/2+1,y-top+1,Math.max(0,(width-2)*m.hp/Math.max(1,m.maxHp)),5);
-  if(selected){g.strokeStyle='#ffe29d';g.lineWidth=2;g.strokeRect(x-width/2-6,y-top-1,width+12,detailedBoss?132:illustrated?(m.boss?149:97):m.boss?101:70)}
+  if(selected){g.strokeStyle='#ffe29d';g.lineWidth=2;g.strokeRect(x-width/2-6,y-top-1,width+12,studioMonster?(m.boss?144:96):detailedBoss?132:illustrated?(m.boss?149:97):m.boss?101:70)}
   if(selected||m.boss){g.save();g.fillStyle='#ffefc8';g.font='bold 12px monospace';g.textAlign='center';g.shadowColor='#000';g.shadowBlur=6;g.fillText(m.name,x,y-top-9);g.restore()}
  }
  function prop(g,o){
