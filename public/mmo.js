@@ -440,14 +440,22 @@ function drawTab(){const parent=$('tabContent');parent.replaceChildren();const s
   const q=session.story;if(!q){appendText(parent,'p','Sua história aparecerá aqui após entrar no mundo.');return}
   appendText(parent,'h3','Crônicas da Aurora');
   const bar=document.createElement('div');bar.className='story-progress';const inner=document.createElement('div');inner.style.width=(q.stage/q.total*100)+'%';bar.append(inner);parent.append(bar);
-  const d=group(parent);d.className='story-step';appendText(d,'b',q.finished?'✦ A Aurora renasceu':`Capítulo ${q.stage+1}/${q.total} · ${q.title}`);
-  if(q.finished){appendText(d,'small','Você ouviu o último verso, reuniu as sete centelhas e devolveu o sino ao reino. Pode revisitar todos os personagens.')}
+  const d=group(parent);d.className='story-step';
+  appendText(d,'small',q.finished?'✦ HISTÓRIA CONCLUÍDA':q.stage<16?'ATO I · O SINO DA AURORA':'VIGÍLIA DEPOIS DO SINO · '+(q.book||'Novo ato'));
+  appendText(d,'b',q.finished?'✦ A Aurora pertence a todos':`Capítulo ${q.stage+1}/${q.total} · ${q.title}`);
+  if(q.finished){appendText(d,'small','Você reuniu as sete Centelhas, devolveu o sino ao reino e recuperou os quatro testemunhos da Vigília. Pode revisitar os personagens da história.')}
   else{appendText(d,'small',`Próximo NPC: ${q.npc}`);appendText(d,'small',`Região: ${session.zones[q.zone]?.name||'Região '+(q.zone+1)}`);
    appendText(d,'small',q.required>0?(q.active?`Desafio aceito: ${q.progress}/${q.required} criaturas derrotadas nesta região`:`Converse com o NPC para receber o desafio (${q.required} criaturas)`):'Converse com o NPC para continuar a história.');
    if(q.active&&q.progress>=q.required)appendText(d,'small','✦ Objetivo concluído: volte ao NPC e finalize o capítulo.');
   }
   const shards=document.createElement('div');shards.className='story-shards';shards.textContent=`✦ Centelhas reunidas: ${q.shards.length}/7`;parent.append(shards);
   if(q.shards.length)appendText(parent,'small',q.shards.join(' · '));
+  const testimonyCount=Array.isArray(q.testimonies)?q.testimonies.length:0;
+  const witness=document.createElement('div');witness.className='story-shards';
+  witness.textContent='✧ Testemunhos da Vigília: '+testimonyCount+'/4';parent.append(witness);
+  if(testimonyCount)appendText(parent,'small',q.testimonies.join(' · '));
+  if(q.stage===16&&!q.finished)appendText(parent,'small','O sino voltou a tocar. A nova saga começa nas galerias da Masmorra da Raiz. Siga os portais até o primeiro subsolo.');
+
   parent.append(button('Conversar com NPC próximo', 'talk', {npc:nearNpc()?.id||''}));
  }else if(tab==='shop'){
   appendText(parent,'h3','Mercado de Auren');for(const [id,item] of Object.entries(session.shop)){const d=group(parent);appendText(d,'b',item.name);appendText(d,'small',item.price+' moedas');d.append(button('Comprar', 'buy',{item:id}))}
