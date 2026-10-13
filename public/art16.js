@@ -512,11 +512,28 @@ function create({ctx,W,H}){
   g.font='bold 12px monospace';g.fillStyle=tint;g.fillText(action,0,-95);
   g.fillStyle='#f9e9c5';g.font='bold 12px monospace';
   g.fillText(p.name.slice(0,25),0,-118);
-  if(near){
-   g.shadowBlur=0;g.fillStyle='#ffe8a0';g.fillRect(-80,17,160,19);
-   g.fillStyle='#142c25';g.font='bold 12px monospace';
-   g.fillText('E · USAR PASSAGEM',0,31);
-  }
+  // O comando E foi movido para a camada HUD desenhada por último,
+  // impedindo que personagens, árvores ou monstros escondam o texto.
+  g.restore();
+ }
+ // Mensagem da passagem fica acima de todos os sprites e do minimapa.
+ // Ancoragem no rodapé da tela evita qualquer oclusão por atores do mundo.
+ function portalInteractionHud(g,portals,hero){
+  const nearest=(portals||[]).filter(p=>Math.hypot(hero.x-p.x,hero.y-p.y)<=94)
+   .sort((a,b)=>Math.hypot(hero.x-a.x,hero.y-a.y)-Math.hypot(hero.x-b.x,hero.y-b.y))[0];
+  if(!nearest)return;
+  const width=Math.min(W-30,432),height=67,x=Math.round((W-width)/2),y=H-height-15;
+  g.save();g.imageSmoothingEnabled=false;
+  g.fillStyle='#071811ed';g.fillRect(x+3,y+4,width,height);
+  g.fillStyle='#122a23f7';g.fillRect(x,y,width,height);
+  g.strokeStyle='#ffdc89';g.lineWidth=3;g.strokeRect(x+1,y+1,width-2,height-2);
+  g.fillStyle='#edc676';g.fillRect(x+9,y+10,47,47);
+  g.fillStyle='#17261d';g.font='bold 26px monospace';g.textAlign='center';
+  g.fillText('E',x+32,y+43);
+  g.textAlign='left';g.fillStyle='#fff1c7';g.font='bold 16px monospace';
+  g.fillText('APERTE E · USAR PASSAGEM',x+68,y+27,width-82);
+  g.fillStyle='#b5e9d2';g.font='bold 12px monospace';
+  g.fillText('✦ '+nearest.name,x+68,y+49,width-82);
   g.restore();
  }
  function displayMap(g,opt){
@@ -569,6 +586,8 @@ function create({ctx,W,H}){
     ctx.beginPath();ctx.arc(x+dx*19,y-30+dy*14,31,-Math.PI*.7,Math.PI*.18);ctx.stroke();ctx.restore();}
   for(const f of fx){const t=(now-f.t)/1100;ctx.save();ctx.font='bold 18px monospace';ctx.fillStyle=f.color;ctx.textAlign='center';ctx.shadowColor='#000';ctx.shadowBlur=5;ctx.fillText(f.text,f.x,f.y-45-30*t);ctx.restore()}
   ctx.restore();displayMap(ctx,opt);
+  // Última camada visível, sem depender da profundidade do portal no mapa.
+  portalInteractionHud(ctx,portals,{x,y});
  }
  return {render,ready:()=>artReady,tiles:Object.keys(SPRITES).length};
 }
