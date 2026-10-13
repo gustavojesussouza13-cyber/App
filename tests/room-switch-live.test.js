@@ -54,13 +54,18 @@ test('clique no cabeçalho permite troca real de sala, falha de senha não expul
  const sockets=[];
  try{
   await ready();
-  const first=await room('Vale dos Amigos','',guestToken());
-  const second=await room('Torre Protegida','segredo-forte',guestToken());
+  const firstOwner=guestToken(),secondOwner=guestToken();
+  const first=await room('Vale dos Amigos','',firstOwner);
+  const second=await room('Torre Protegida','segredo-forte',secondOwner);
   assert.equal(first.status,201);assert.equal(second.status,201);
-  const pilgrim=await join('ViajaEntreSalas',first.room.id,'');
+  assert.equal((await(await fetch(base+'/api/rooms')).json()).rooms.length,1,'ambas ficam invisíveis até o primeiro acesso');
+  const pilgrim=await join('ViajaEntreSalas',first.room.id,'',firstOwner);
   sockets.push(pilgrim.socket);
   const peer=await join('CompanheiroDeSala',first.room.id,'');
   sockets.push(peer.socket);
+  const ownerSecond=await join('DonaDaTorre',second.room.id,'segredo-forte',secondOwner);
+  sockets.push(ownerSecond.socket);
+  assert.equal(ownerSecond.result.type,'welcome');
   assert.equal(pilgrim.result.type,'welcome');
   assert.equal(pilgrim.result.room.id,first.room.id);
   assert.equal(pilgrim.result.self.role,'arqueiro');
@@ -85,7 +90,7 @@ test('clique no cabeçalho permite troca real de sala, falha de senha não expul
   assert.equal(pilgrim.socket.readyState,WebSocket.OPEN,'mesmo WebSocket, sem relogar');
   const listing=await(await fetch(base+'/api/rooms')).json();
   assert.equal(listing.rooms.find(r=>r.id===first.room.id).online,1);
-  assert.equal(listing.rooms.find(r=>r.id===second.room.id).online,1);
+  assert.equal(listing.rooms.find(r=>r.id===second.room.id).online,2);
   let leaked=false;
   peer.socket.addEventListener('message',e=>{
    const msg=JSON.parse(e.data);
@@ -102,6 +107,15 @@ test('clique no cabeçalho permite troca real de sala, falha de senha não expul
    ()=>pilgrim.socket.send(JSON.stringify({type:'switchRoom',roomId:first.room.id,password:''})));
   assert.equal(same.code,'same_room');
   assert.equal(pilgrim.socket.readyState,WebSocket.OPEN);
+  // A saída do último membro é imediata, inclusive em uma troca de sala.
+  peer.socket.close();
+  await delay(180);
+  const leaving=await awaitMessage(pilgrim.socket,m=>m.type==='welcome',
+   ()=>pilgrim.socket.send(JSON.stringify({type:'switchRoom',roomId:second.room.id,password:'segredo-forte'})));
+  assert.equal(leaving.room.id,second.room.id);
+  const clean=await(await fetch(base+'/api/rooms')).json();
+  assert.ok(!clean.rooms.some(r=>r.id===first.room.id),'sala vazia não pode ficar como 0/10');
+  assert.equal(clean.rooms.find(r=>r.id===second.room.id).online,2);
  }finally{
   for(const socket of sockets)try{socket.close()}catch{}
   worker.kill('SIGTERM');
