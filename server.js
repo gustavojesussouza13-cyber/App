@@ -76,6 +76,19 @@ const rooms=new RoomHub({mainWorld:world,createWorld:()=>{
  return instance;
 }});
 const authRate=new Map();
+const roomPasswordFails=new Map();
+// Proteção de senhas de sala: 8 tentativas em 2 min por origem e sala,
+// sem gravar IPs, senha ou tentativas em logs do servidor.
+function roomAttemptKey(socket,id){
+ return crypto.createHash('sha256').update(String(socket.remoteAddress||'anon')+':'+id).digest('hex');
+}
+function roomAttemptState(key){
+ const now=Date.now();
+ if(roomPasswordFails.size>2000)for(const [k,v] of roomPasswordFails)if(v.until<now)roomPasswordFails.delete(k);
+ const old=roomPasswordFails.get(key);
+ if(!old||old.until<now)return{count:0,until:now+120000};
+ return old;
+}
 const mailService=new MailService();
 console.info('[e-mail] recuperação de senha: '+(mailService.ready?'pronta':'indisponível; conferir variáveis privadas do Render'));
 
@@ -346,8 +359,19 @@ async function worldHello(c,data){
   if(c.terminated)return;
   const uid=c.authUser?.uid||(typeof data.token==='string'?crypto.createHash('sha256').update(data.token).digest('hex'):null);
   let room;
-  try{room=rooms.check(typeof data.roomId==='string'?data.roomId:MAIN_ID,data.roomPassword,{uid})}
-  catch(error){return send(c.socket,{type:'error',code:error.code||'room_error',message:error.message})}
+  const requestedId=typeof data.roomId==='string'?data.roomId:MAIN_ID;
+  const accessKey=roomAttemptKey(c.socket,requestedId);
+  if(roomAttemptState(accessKey).count>=8)
+   return send(c.socket,{type:'error',code:'room_password_locked',message:'Muitas tentativas de senha. Aguarde dois minutos.'});
+  try{room=rooms.check(requestedId,data.roomPassword,{uid})}
+  catch(error){
+   if(error.code==='wrong_room_password'){
+    const current=roomAttemptState(accessKey);current.count++;
+    roomPasswordFails.set(accessKey,current);
+   }
+   return send(c.socket,{type:'error',code:error.code||'room_error',message:error.message});
+  }
+  roomPasswordFails.delete(accessKey);
   for(const other of [...sockets])if(other!==c&&other.mode==='world'&&other.worldPlayer?.uid===uid)terminate(other);
   c.worldRoom=room;
   room.world.receive(c,data);
