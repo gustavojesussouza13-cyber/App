@@ -62,11 +62,25 @@ try{
  });
  assert.equal(buildTarget.free,true,'lote de teste deve estar livre');
  // Adia apenas o servidor simulado; a construção visual deve aparecer já no clique.
- await page.evaluate(()=>{window.__guildDemoReplyDelayMs=1600});
+ await page.evaluate(()=>{
+  window.__guildDemoReplyDelayMs=1600;
+  window.__guildInstantEventLog=[];
+  const canvas=document.querySelector('.guild3d-canvas');
+  // Registrado depois da cena: o observador verifica o estado NO MESMO
+  // evento pointerup, antes de timers e respostas de rede.
+  canvas.addEventListener('pointerup',()=>{
+   window.__guildInstantEventLog.push({
+    pending:canvas.dataset.pendingBuilding||null,
+    feedback:document.querySelector('#guild3dFeedback')?.textContent||''
+   });
+  });
+ });
  await page.mouse.click(buildTarget.x,buildTarget.y);
- await page.waitForFunction(()=>document.querySelector('.guild3d-canvas')?.dataset.pendingBuilding==='house:8:12',null,{timeout:600});
+ const instantFirst=await page.evaluate(()=>window.__guildInstantEventLog.at(-1));
+ assert.equal(instantFirst?.pending,'house:8:12','edifício 3D aparece no próprio clique, antes da rede');
+ assert.match(instantFirst?.feedback||'',/posicionado imediatamente/);
  assert.equal(await page.locator('#guild3dFeedback').getAttribute('data-status'),'pending');
- assert.match(await page.locator('#guild3dFeedback').innerText(),/posicionado imediatamente/);
+ // A confirmação ainda será analisada após a latência simulada.
  await page.waitForFunction(()=>document.querySelector('.guild3d-dialog[open] #guild3dFeedback')?.textContent?.includes('Construção concluída'),null,{timeout:6000});
  assert.equal(await page.locator('#guild3dFeedback').getAttribute('data-status'),'success');
  assert.match(await page.locator('.guild3d-wallet').innerText(),/8.380 moedas/,'saldo deve ser atualizado após construir');
@@ -91,6 +105,8 @@ try{
  const projectedCell=await page.locator('#guild3dCoords').innerText();
  console.log('GUILD_TEST_DENIED_TARGET',JSON.stringify({denied,projectedCell}));
  await page.mouse.click(denied.x,denied.y);
+ const instantDenied=await page.evaluate(()=>window.__guildInstantEventLog.at(-1));
+ assert.equal(instantDenied?.pending,'house:8:15','recusa também deve mostrar edifício no próprio evento antes de desfazer');
  // A prévia pode já ter sumido quando o Chromium concluir o click com WebGL
  // sob carga; a primeira construção comprova o aparecimento imediato.
  // Aqui validamos a recusa definitiva sem depender de um estado transitório.
@@ -102,6 +118,8 @@ try{
  await page.evaluate(()=>{window.__guildDemoOffline=true});
  const offline=await projectPoint(4,12);
  await page.mouse.click(offline.x,offline.y);
+ const instantOffline=await page.evaluate(()=>window.__guildInstantEventLog.at(-1));
+ assert.equal(instantOffline?.pending,null,'sem conexão, a prévia é revertida dentro do mesmo clique');
  await page.waitForFunction(()=>document.querySelector('#guild3dFeedback')?.textContent?.includes('Não há conexão'),null,{timeout:2000});
  assert.equal(await canvas.getAttribute('data-pending-building'),null,'prévia offline precisa ser removida imediatamente');
  await page.evaluate(()=>{window.__guildDemoOffline=false});
