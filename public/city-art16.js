@@ -65,7 +65,8 @@
   }
  }
  function building(c,b){
-  const {x,y,type}=b,lv=Math.min(5,Math.max(1,b.level||1)),p=P(x,y),px=p.x,py=p.y+16;
+  const {x,y,type}=b,lv=Math.min(5,Math.max(1,b.level||1)),size=window.PeregrinosCityLayout.size(b),p=P(x+(size[0]-1)/2,y+(size[1]-1)/2),px=p.x,py=p.y+16;
+  if(size[0]>1||size[1]>1){const rw=size[0]*TW/2,rh=size[1]*TH/2;poly(c,[[px,py-rh-6],[px+rw,py],[px,py+rh+4],[px-rw,py]],'#a69c78','#6b654d')}
   box(c,px-23,py+6,46,5,'#27372b');
   box(c,px-19,py+5,38,2,'#b8a77b');
   if(type==='farm'){
@@ -158,7 +159,7 @@
   box(c,x+1,y-2,2,4-stride,'#46392f');
  }
  function detailBuilding(c,b){
-  const p=P(b.x,b.y),seed=hash(b.x,b.y),y=p.y+16;
+  const size=window.PeregrinosCityLayout.size(b),p=P(b.x+(size[0]-1)/2,b.y+(size[1]-1)/2),seed=hash(b.x,b.y),y=p.y+16;
   // Jardins, anexos, telhas e detalhes únicos mudam conforme a identidade do lote.
   if(b.type==='house'){
    box(c,p.x-19,y+4,8,3,'#876a4d');box(c,p.x-18,y+1,2,8,'#92774f');
@@ -230,7 +231,7 @@
  function roofTiles(c,p){
   const h=p.type==='tower'?0:p.type==='barracks'?37:p.type==='market'?27:31;
   if(!h)return;
-  const pt=P(p.x,p.y),x=pt.x,y=pt.y+16;
+  const size=window.PeregrinosCityLayout.size(p),pt=P(p.x+(size[0]-1)/2,p.y+(size[1]-1)/2),x=pt.x,y=pt.y+16;
   for(let row=0;row<4;row++)for(let col=0;col<5;col++){
    const dx=(col-2)*7+(row%2?3:0),dy=-h-8+row*5+Math.abs(col-2)*2;
    box(c,x+dx,y+dy,5,2,(hash(p.x+col,p.y+row)%3===0)?'#df955e':'#714431');
@@ -252,7 +253,8 @@
   // Talude gramado e muro baixo ao redor do assentamento.
   poly(c,[[384,60],[720,230],[384,421],[48,230]],'#253f30','#253d30');
   poly(c,[[384,56],[719,231],[384,410],[49,231]],'#6b8159','#253d30');
-  const occupied=new Set(buildings.map(b=>b.x+','+b.y));
+  const cityLayout=window.PeregrinosCityLayout;
+  const occupied=new Set(buildings.flatMap(b=>cityLayout.cells(b).map(([x,y])=>x+','+y)));
   for(let z=0;z<N*2;z++)for(let y=0;y<N;y++){
    const x=z-y;if(x<0||x>=N)continue;
    const isRoad=neighborRoad(x,y,occupied),seed=hash(x,y);
@@ -273,7 +275,7 @@
    if(isRoad&&seed%9===0)lantern(c,p.x+14,p.y+10);
    if(isRoad&&seed%14===0)resident(c,p.x,p.y+11,seed,now);
    if(isRoad&&seed%31===0&&x!==5&&y!==5)merchantCart(c,p.x,p.y+11,seed);
-   for(const b of buildings)if(b.x===x&&b.y===y){
+   for(const b of buildings)if(b.x+cityLayout.size(b)[0]-1===x&&b.y+cityLayout.size(b)[1]-1===y){
     // As construções são desenhadas em ordem isométrica para sobreposição correta.
     building(c,b);roofTiles(c,b);detailBuilding(c,b);
    }
