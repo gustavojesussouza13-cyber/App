@@ -18,7 +18,7 @@ async function status(){
  try{const r=await fetch('/api/status',{cache:'no-store'});if(!r.ok)throw Error('offline');const d=await r.json();
   availableSlots=typeof d.availableSlots==='number'?d.availableSlots:null;
   number.textContent=String(d.online||0);
-  online.textContent='✦ '+(d.rooms||1)+' sala(s) disponível(is) · máximo de 10 por sala';
+  online.textContent='✦ '+(d.rooms||1)+' sala(s) disponível(is) · máximo de 60 por sala';
   online.classList.remove('offline');
  }catch{availableSlots=null;number.textContent='—';online.textContent='Servidor indisponível';online.classList.add('offline')}
 }
