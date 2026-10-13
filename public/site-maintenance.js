@@ -2,8 +2,9 @@
 /* Aviso global de manutenção — aparece também fora do MMORPG, sem login. */
 (()=>{
  if(window.OsPeregrinosMaintenance)return;
- let connected=false,active=false,hadAlert=false,warningTimer=null,restoreTimer=null;
- let banner=null,title=null,detail=null;
+ let connected=false,active=false,hadAlert=false,warningTimer=null;
+ let banner=null,title=null,detail=null,dismiss=null;
+ const originalTitle=document.title;
  const build=()=>{
   if(banner||!document.body)return;
   const style=document.createElement('style');
@@ -18,6 +19,11 @@
 #os-maintenance-banner strong{display:block;font-size:15px;letter-spacing:.01em}
 #os-maintenance-banner small{display:block;font-size:12px;font-weight:400;color:#ffe2bc}
 #os-maintenance-banner.os-restored{background:#153b30;border-bottom-color:#82d5ae}
+#os-maintenance-banner button{border:1px solid #ffe7ba;border-radius:4px;
+ padding:6px 11px;background:#5a4130;color:#fff5db;white-space:nowrap;
+ font-weight:750;cursor:pointer}
+#os-maintenance-banner.os-restored button{background:#225648}
+#os-maintenance-banner button:focus-visible{outline:3px solid white;outline-offset:2px}
 @media(max-width:600px){#os-maintenance-banner{padding:10px 13px;font-size:12px}
 #os-maintenance-banner strong{font-size:13px}}
 `;
@@ -32,7 +38,12 @@
   icon.setAttribute('aria-hidden','true');icon.textContent='⚠';
   const copy=document.createElement('div');
   title=document.createElement('strong');detail=document.createElement('small');
-  copy.append(title,detail);banner.append(icon,copy);
+  copy.append(title,detail);
+  dismiss=document.createElement('button');
+  dismiss.type='button';dismiss.textContent='Entendi';
+  dismiss.setAttribute('aria-label','Dispensar aviso de manutenção');
+  dismiss.addEventListener('click',()=>{banner.hidden=true;document.title=originalTitle});
+  banner.append(icon,copy,dismiss);
   (document.fullscreenElement||document.body).append(banner);
  };
  const locate=()=>{if(banner){const parent=document.fullscreenElement||document.body;
@@ -41,21 +52,27 @@
   build();if(!banner)return;locate();
   banner.classList.toggle('os-restored',restored);
   title.textContent=heading;detail.textContent=message;
+  // Quem deixou a aba em segundo plano verá o aviso ao voltar.
+  document.title=(restored?'✓ ':'⚠ ')+heading+' | '+originalTitle;
   banner.hidden=false;
+  if(document.hidden&&typeof Notification==='function'&&Notification.permission==='granted'){
+   try{new Notification(heading,{body:message,tag:'os-peregrinos-manutencao'})}catch{}
+  }
  };
  const restore=()=>{
   if(!hadAlert)return;
-  clearTimeout(warningTimer);clearTimeout(restoreTimer);
+  clearTimeout(warningTimer);
   active=false;
   display('Servidor disponível novamente',
    'Caso a partida não retorne automaticamente, abra o jogo novamente.',true);
-  restoreTimer=setTimeout(()=>{if(banner&&!active)banner.hidden=true},12000);
+  // Não ocultar automaticamente: em uma aba em segundo plano a mensagem
+  // desapareceria sem nunca ter sido lida. O usuário dispensa ao voltar.
  };
  const notify=(payload)=>{
   if(!payload||typeof payload.active!=='boolean')return;
   clearTimeout(warningTimer);
   if(payload.active){
-   active=true;hadAlert=true;clearTimeout(restoreTimer);
+   active=true;hadAlert=true;
    display('Os Peregrinos em manutenção',
     payload.message||'O site será atualizado. A conexão poderá ser interrompida por alguns instantes.');
   }else if(active)restore();
