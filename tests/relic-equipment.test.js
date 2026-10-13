@@ -12,7 +12,7 @@ function env(t){
  let counter=0;
  function add(role='peregrino'){
   const token=String(++counter).padStart(64,'b');
-  const c={socket:{},worldPlayer:null};
+  const c={socket:{},worldPlayer:null,authUser:{uid:'account:Reliquia'+counter,username:'Reliquia'+counter}};
   world.join(c,{name:'Reliquia'+counter,token});
   assert.ok(c.worldPlayer);
   const p=c.worldPlayer;
@@ -90,7 +90,7 @@ test('relíquias e conquistas persistem após salvar e reiniciar, sem migração
  e.world.stop();
  const world2=new World({send:()=>{},getOnline:()=>0,hasClassicName:()=>false,dataFile:e.file});
  t.after(()=>world2.stop());
- const conn={socket:{},worldPlayer:null};
+ const conn={socket:{},worldPlayer:null,authUser:{uid:'account:'+name,username:name}};
  world2.join(conn,{name,token});
  assert.ok(conn.worldPlayer);
  assert.equal(conn.worldPlayer.save.inventory.sabre_peregrino,1);
