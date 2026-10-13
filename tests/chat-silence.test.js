@@ -8,8 +8,8 @@ function setup(t){
  const mail=new Map();
  const world=new World({send:(s,m)=>{if(!mail.has(s))mail.set(s,[]);mail.get(s).push(m)},getOnline:()=>0,hasClassicName:()=>false,dataFile:file});
  t.after(()=>{world.stop();fs.rmSync(dir,{recursive:true,force:true})});
- function add(name){
-  const token=crypto.randomBytes(32).toString('hex'),c={socket:{},worldPlayer:null};
+ function add(name,registered=false){
+  const token=crypto.randomBytes(32).toString('hex'),c={socket:{},worldPlayer:null,authUser:registered?{uid:'account:'+name.toLowerCase(),username:name}:null};
   world.join(c,{name,token});
   return {p:c.worldPlayer,c,token,events:()=>mail.get(c.socket)||[],clear:()=>mail.set(c.socket,[])};
  }
@@ -50,12 +50,12 @@ test('bloqueios não são aplicados a si mesmo e têm limite de 30 nomes',t=>{
  assert.equal(new Set(a.p.save.blocked).size,30);
 });
 test('bloqueios permanecem após reinício do servidor',t=>{
- const h=setup(t),a=h.add('AliceSave');
+ const h=setup(t),a=h.add('AliceSave',true);
  h.world.ignore(a.p,{action:'add',target:'BrunoSave'});
  h.world.leave(a.c);
  const restarted=new World({send:()=>{},getOnline:()=>0,hasClassicName:()=>false,dataFile:h.file});
  t.after(()=>restarted.stop());
- const c={socket:{},worldPlayer:null};
+ const c={socket:{},worldPlayer:null,authUser:{uid:'account:alicesave',username:'AliceSave'}};
  restarted.join(c,{name:'AliceSave',token:a.token});
  assert.deepEqual(c.worldPlayer.save.blocked,['brunosave']);
  const self=restarted.ownStatus(c.worldPlayer);
