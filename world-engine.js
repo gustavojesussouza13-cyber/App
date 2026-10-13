@@ -418,13 +418,39 @@ class World {
   if(healed)this.dirty=true;
   return healed;
  }
+ protectParty(p,now){
+  let protectedCount=0;
+  for(const ally of this.players.values()){
+   if(ally.zone!==p.zone||dist(p,ally)>=230||
+      !(ally.id===p.id||(p.party&&ally.party===p.party)))continue;
+   ally.guardUntil=now+4500;
+   protectedCount++;
+   this.broadcast({type:'skillEffect',kind:'guardian-shield',zone:p.zone,
+    x:Math.round(ally.x),y:Math.round(ally.y),targetId:ally.id,duration:4500},
+    q=>q.zone===p.zone&&dist(q,ally)<780);
+   this.tell(ally,'✦ Proteção do Guardião: defesa aumentada por 4,5 s.');
+  }
+  return protectedCount;
+ }
+ restorePilgrim(p){
+  const restored=Math.max(0,Math.min(12+p.save.level*2,hpMax(p.save)-p.save.hp));
+  if(restored){
+   p.save.hp+=restored;
+   this.send(p.socket,this.ownStatus(p));
+   this.dirty=true;
+  }
+  this.broadcast({type:'skillEffect',kind:'pilgrim-renewal',zone:p.zone,
+   x:Math.round(p.x),y:Math.round(p.y),targetId:p.id,duration:950},
+   q=>q.zone===p.zone&&dist(q,p)<780);
+  return restored;
+ }
  attack(p,tid,skill){const now=Date.now(),role=CLASSES[p.save.role];const cooldown=skill?4000:600;
   if(now-(skill?p.lastSpell:p.lastAttack)<cooldown)return;
-  // Curandeiro pode usar K mesmo sem criatura marcada. Quando um inimigo
-  // válido estiver selecionado, mantém a habilidade combinada de luz e cura.
+  const m=(this.monsters.get(p.zone)||[]).find(x=>x.id===tid&&x.hp>0);
+  const canHit=!!(m&&dist(m,p)<=(skill?role.range*1.4:role.range));
+  // Suporte K não exige monstro. Se há alvo dentro do alcance, o golpe
+  // fortalecido acontece junto da habilidade. J ainda exige inimigo.
   if(skill&&p.save.role==='curandeiro'){
-   const monster=(this.monsters.get(p.zone)||[]).find(x=>x.id===tid&&x.hp>0);
-   const canHit=monster&&dist(monster,p)<=role.range*1.4;
    const healed=this.healParty(p);
    if(!canHit){
     if(healed){p.lastSpell=now;this.tell(p,'✦ Luz Restauradora: '+healed+
@@ -434,7 +460,21 @@ class World {
     return;
    }
   }
-  let m=(this.monsters.get(p.zone)||[]).find(x=>x.id===tid&&x.hp>0);if(!m||dist(m,p)>(skill?role.range*1.4:role.range))return;
+  if(skill&&p.save.role==='guardiao'){
+   this.protectParty(p,now);
+   if(!canHit){p.lastSpell=now;return}
+  }
+  if(skill&&p.save.role==='peregrino'){
+   const restored=this.restorePilgrim(p);
+   if(!canHit){
+    if(restored){p.lastSpell=now;this.tell(p,'✦ Recuperação Heroica: +'+restored+' de vida.')}
+    else if(now-(p.lastRecoverNotice||0)>1500){
+     p.lastRecoverNotice=now;this.tell(p,'✦ Sua vida já está cheia. Selecione um inimigo para usar o golpe fortalecido.')
+    }
+    return;
+   }
+  }
+  if(!canHit)return;
   if(skill)p.lastSpell=now;else p.lastAttack=now;
   const level=p.save.level;
   const bestRelic=RELICS[RELIC_WEAPON[p.save.role]];
@@ -448,17 +488,10 @@ class World {
   }
   if(skill&&p.save.role==='arqueiro'){
    m.markUntil=now+5500;m.markOwner=p.id;
+   this.broadcast({type:'skillEffect',kind:'archer-mark',zone:p.zone,
+    x:Math.round(m.x),y:Math.round(m.y),monsterId:m.id,duration:5500},
+    q=>q.zone===p.zone&&dist(q,m)<780);
    this.tell(p,'✦ Flecha de precisão: aliados da equipe causam dano adicional por 5,5 s.');
-  }
-  if(skill&&p.save.role==='guardiao'){
-   for(const ally of this.players.values())if(ally.zone===p.zone&&dist(p,ally)<230&&(ally.id===p.id||(p.party&&ally.party===p.party))){
-    ally.guardUntil=now+4500;
-    this.tell(ally,'✦ Proteção do Guardião: defesa aumentada por 4,5 s.');
-   }
-  }
-  if(skill&&p.save.role==='peregrino'){
-   p.save.hp=Math.min(hpMax(p.save),p.save.hp+12+level*2);
-   this.send(p.socket,this.ownStatus(p));
   }
   m.hp=Math.max(0,m.hp-damage);m.damageFrom.set(p.id,(m.damageFrom.get(p.id)||0)+damage);
   // Sem agressividade por proximidade: o monstro só enfrenta quem o atacou.
