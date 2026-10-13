@@ -535,7 +535,7 @@ function create({ctx,W,H}){
   g.font='bold 11px monospace';g.fillStyle='#ead4a2';g.textAlign='left';g.fillText(zone>=16?'SUBSOLO '+(1+(zone-16)%6)+' · MASMORRA '+(1+Math.floor((zone-16)/6)):'REGIÃO '+(zone+1)+'/40',mx+7,my+mh+15);
  }
  function render(opt){
-  const {zone,zones,x,y,dir,monsters,players,projectiles=[],npcs=[],portals=[],storyStage=0,cameraX,cameraY,name,role,target,now,fx,lastAction,moving,monsterActions=new Map(),playerActions=new Map(),fallen=[],heroPose=null}=opt;
+  const {zone,zones,x,y,dir,monsters,players,projectiles=[],npcs=[],portals=[],storyStage=0,cameraX,cameraY,name,role,target,now,fx,lastAction,lastActionWasSkill=false,skillEffects=[],drawSkillEffects=null,moving,monsterActions=new Map(),playerActions=new Map(),fallen=[],heroPose=null}=opt;
   ctx.imageSmoothingEnabled=false;
   const biome=biomeThemes[zones[zone]?.biome]||'meadow';
   if(!artReady){ctx.fillStyle='#193629';ctx.fillRect(0,0,W,H);ctx.textAlign='center';ctx.fillStyle='#efd39d';ctx.font='bold 20px Georgia,serif';ctx.fillText('✦ Preparando o mundo 16-bit…',W/2,H/2);return}
@@ -561,7 +561,10 @@ function create({ctx,W,H}){
   actors.sort((a,b)=>a.depth-b.depth);
   for(const a of actors)a.paint();
   for(const shot of projectiles)drawProjectile(ctx,shot);
-  if(now-lastAction<260&&role!=='arqueiro'){const dx=[0,1,0,-1][dir|0],dy=[-1,0,1,0][dir|0];
+  // Camada mágica exclusivamente PC: pixels inteiros sobre o mundo,
+  // depois dos atores e antes dos indicadores de dano/vida.
+  if(typeof drawSkillEffects==='function')drawSkillEffects(ctx,skillEffects);
+  if(now-lastAction<260&&!lastActionWasSkill&&(role==='peregrino'||role==='guardiao')){const dx=[0,1,0,-1][dir|0],dy=[-1,0,1,0][dir|0];
     ctx.save();ctx.strokeStyle='#fff2bd';ctx.lineWidth=5;ctx.shadowColor='#e9d28c';ctx.shadowBlur=9;
     ctx.beginPath();ctx.arc(x+dx*19,y-30+dy*14,31,-Math.PI*.7,Math.PI*.18);ctx.stroke();ctx.restore();}
   for(const f of fx){const t=(now-f.t)/1100;ctx.save();ctx.font='bold 18px monospace';ctx.fillStyle=f.color;ctx.textAlign='center';ctx.shadowColor='#000';ctx.shadowBlur=5;ctx.fillText(f.text,f.x,f.y-45-30*t);ctx.restore()}
