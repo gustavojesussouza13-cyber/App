@@ -11,7 +11,7 @@ const mk=()=>{
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'peregrinos-historia-'));
  const events=[];const send=(socket,msg)=>events.push(msg);
  const world=new World({send,getOnline:()=>0,hasClassicName:()=>false,dataFile:path.join(dir,'world.json')});
- const token=crypto.randomBytes(32).toString('hex'),c={socket:{},worldPlayer:null};world.join(c,{name:'Historiador',token});
+ const token=crypto.randomBytes(32).toString('hex'),c={socket:{},worldPlayer:null,authUser:{uid:'account:Historiador',username:'Historiador'}};world.join(c,{name:'Historiador',token});
  const p=c.worldPlayer;
  const cleanup=()=>{world.stop();fs.rmSync(dir,{recursive:true,force:true})};
  const go=n=>{p.zone=n.zone;p.save.zone=n.zone;p.x=n.x-10;p.y=n.y-10;p.save.x=p.x;p.save.y=p.y};
@@ -95,7 +95,7 @@ test('decisão e capítulo sobrevivem a desconexão e novo personagem em mesmo n
  w.world.receive(w.c,{type:'talk',npc:n.id});w.world.receive(w.c,{type:'storyChoice',npc:n.id,choice:'coragem'});
  w.world.leave(w.c);w.world.persist();
  const newWorld=new World({send:()=>{},getOnline:()=>0,hasClassicName:()=>false,dataFile:path.join(w.dir,'world.json')});
- t.after(()=>newWorld.stop());const c={socket:{},worldPlayer:null};newWorld.join(c,{name:'Historiador',token:w.token});
+ t.after(()=>newWorld.stop());const c={socket:{},worldPlayer:null,authUser:{uid:'account:Historiador',username:'Historiador'}};newWorld.join(c,{name:'Historiador',token:w.token});
  assert.equal(c.worldPlayer.save.story.stage,1);assert.equal(c.worldPlayer.save.story.decisions[0].id,'coragem');
 });
 test('interfaces possuem botão Conversar, controle E, diário e personagens 16-bit',()=>{
