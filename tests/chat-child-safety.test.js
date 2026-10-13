@@ -161,7 +161,7 @@ test('interface contém denúncia, frases prontas e aviso acessível, com contro
  assert.match(js,/send\('chat',\{text:phrase,channel:/);
  assert.match(html,/id="touchPad"/);
  assert.match(html,/id="touchAttackBtn"/);
- assert.match(html,/mmo\.js\?v=portais-restaurados-v1/);
+ assert.match(html,/mmo\.js\?v=reinos-continentais-v1/);
  assert.doesNotThrow(()=>new vm.Script(js,{filename:'mmo.js'}));
 });
 test('Campanha Clássica e Mundo Aberto compartilham a mesma moderação no servidor',()=>{
