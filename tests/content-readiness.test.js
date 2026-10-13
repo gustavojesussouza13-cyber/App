@@ -32,7 +32,7 @@ test('conteúdo narrativo e guias correspondem aos recursos do projeto',()=>{
  const history=read('historia.html'), guide=read('guia.html'),about=read('sobre.html');
  for(const name of ['Lia, a Acendedora','Cálen','Sino da Aurora'])assert.ok(history.includes(name));
  for(const k of ['Peregrino','Guardião','Arqueiro','Curandeiro','WASD','Mundo Aberto'])assert.ok(guide.includes(k));
- assert.match(about,/até 10 pessoas por sala/);
+ assert.match(about,/até 60 pessoas por sala/);
  assert.match(guide,/salas.*senha|senha.*salas/i);
  assert.match(about,/banco externo|armazenamento local/);
 });
