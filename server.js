@@ -344,10 +344,10 @@ async function worldHello(c,data){
    if(accountStore?.ready&&await accountStore.nameReserved(name))return send(c.socket,{type:'error',code:'name_reserved',message:'Esse nome pertence a uma conta. Use o login ou escolha outro apelido.'});
   }
   if(c.terminated)return;
-  let room;
-  try{room=rooms.check(typeof data.roomId==='string'?data.roomId:MAIN_ID,data.roomPassword)}
-  catch(error){return send(c.socket,{type:'error',code:error.code||'room_error',message:error.message})}
   const uid=c.authUser?.uid||(typeof data.token==='string'?crypto.createHash('sha256').update(data.token).digest('hex'):null);
+  let room;
+  try{room=rooms.check(typeof data.roomId==='string'?data.roomId:MAIN_ID,data.roomPassword,{uid})}
+  catch(error){return send(c.socket,{type:'error',code:error.code||'room_error',message:error.message})}
   for(const other of [...sockets])if(other!==c&&other.mode==='world'&&other.worldPlayer?.uid===uid)terminate(other);
   c.worldRoom=room;
   room.world.receive(c,data);
