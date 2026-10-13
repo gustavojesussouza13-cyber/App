@@ -10,6 +10,7 @@ const {MobileCoop} = require('./mobile-coop');
 const {ChatGuard,inspectNickname}=require('./chat-safety');
 const {AccountStore,AuthError,authCookie,clearCookie,cleanEmail,validEmail}=require('./account-store');
 const {MailService}=require('./email-service');
+const {MaintenanceNotices}=require('./maintenance-notices');
 
 const PORT = Number(process.env.PORT || 3000);
 const HOST = process.env.HOST || '0.0.0.0';
@@ -45,7 +46,12 @@ function originForRequest(req){
   return SITE_ORIGIN;
 }
 function renderPublicText(source,req){
-  return source.replaceAll(DEFAULT_SITE_ORIGIN,originForRequest(req)).replaceAll('<!-- PRIVATE_SUPPORT_EMAIL -->',contactHtml());
+  const content=source.replaceAll(DEFAULT_SITE_ORIGIN,originForRequest(req))
+   .replaceAll('<!-- PRIVATE_SUPPORT_EMAIL -->',contactHtml());
+  // Todos os documentos HTML recebem o aviso global, inclusive homepage,
+  // política, guia e mundo aberto. Não interferir nas rotas de arquivos.
+  const script='<script defer src="/site-maintenance.js?v=maintenance-v1"></script>';
+  return content.includes('</head>')?content.replace('</head>',script+'</head>'):content;
 }
 
 const players = new Map();
@@ -53,6 +59,7 @@ const classicChatGuard=new ChatGuard({cooldownMs:1600});
 // Salas do APK V7, sem alterar os personagens do MMORPG online.
 const mobileCoop=new MobileCoop({send:(c,msg)=>send(c.socket,msg),maxRooms:5,canJoin:()=>players.size+world.count+mobileCoop.countPlayers()<MAX_PLAYERS});
 const sockets = new Set();
+const maintenanceNotices=new MaintenanceNotices();
 const MIME = {'.xml':'application/xml; charset=utf-8','.txt':'text/plain; charset=utf-8','.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'application/javascript; charset=utf-8','.png':'image/png','.webp':'image/webp','.jpg':'image/jpeg','.jpeg':'image/jpeg','.svg':'image/svg+xml','.ico':'image/x-icon'};
 const decoder = new TextDecoder('utf-8', {fatal:true});
 const accountStore=process.env.DATABASE_URL?new AccountStore({databaseUrl:process.env.DATABASE_URL}):null;
@@ -190,6 +197,12 @@ const httpServer = http.createServer((req,res)=>{
   const u = new URL(req.url||'/', 'http://localhost');
   if(u.pathname.startsWith('/api/auth/')){void handleAuth(req,res,u.pathname);return}
   if(req.method !== 'GET') return reply(res,405,'Método não permitido');
+  if(u.pathname==='/api/maintenance/events'){
+    maintenanceNotices.subscribe(req,res);return;
+  }
+  if(u.pathname==='/api/maintenance/status'){
+    return jsonResponse(res,200,maintenanceNotices.payload());
+  }
   if(u.pathname==='/api/status') return reply(res,200,JSON.stringify({online:players.size+world.count,maxPlayers:MAX_PLAYERS,availableSlots:Math.max(0,MAX_PLAYERS-players.size-world.count),regions:[...new Set([...players.values()].map(p=>p.zone))].length,world:world.status(),registeredAccounts:!!accountStore?.ready,persistentStorage:!!accountStore?.ready,version:'2.0-5.1-auth'}),'application/json; charset=utf-8');
   if(u.pathname==='/health') return reply(res,200,'ok');
   if(u.pathname==='/health/ready'){
@@ -225,7 +238,7 @@ const httpServer = http.createServer((req,res)=>{
       return fs.readFile(filename,(readErr,raw)=>{
         if(readErr)return reply(res,500,'Falha ao abrir a campanha');
         const html=raw.toString('utf8');
-        const htmlWithNav=html.replace('</head>','<script defer src="/classic-return.js"></script></head>');
+        const htmlWithNav=html.replace('</head>','<script defer src="/classic-return.js"></script><script defer src="/site-maintenance.js?v=maintenance-v1"></script></head>');
         if(htmlWithNav===html)return reply(res,500,'Documento da campanha inválido');
         const body=Buffer.from(htmlWithNav,'utf8');
         res.writeHead(200,{'Content-Type':MIME['.html'],'Content-Length':body.length,'Cache-Control':'no-cache','X-Content-Type-Options':'nosniff','Referrer-Policy':'strict-origin-when-cross-origin','X-Frame-Options':'SAMEORIGIN'});
@@ -354,6 +367,7 @@ function handleFrame(c,buf){
   }
 }
 httpServer.on('upgrade',(req,socket,head)=>{
+  if(shuttingDown){socket.destroy();return}
   const u=new URL(req.url||'/', 'http://localhost');
   const origin=req.headers.origin;
   try {if(origin&&!(u.pathname==='/mobile-coop-ws'&&origin==='https://appassets.androidplatform.net')&&new URL(origin).host!==req.headers.host){socket.destroy();return}}catch{socket.destroy();return}
@@ -392,13 +406,25 @@ void start();
 let shuttingDown=false;
 for(const sig of ['SIGTERM','SIGINT'])process.on(sig,()=>{
  if(shuttingDown)return;shuttingDown=true;
- for(const c of [...sockets])terminate(c);
- world.stop();
- const kill=setTimeout(()=>process.exit(1),14000);kill.unref();
- Promise.resolve(accountStore?.close()).then(()=>{
-  httpServer.close(()=>{clearTimeout(kill);process.exit(0)});
- }).catch(e=>{
-  console.error('[contas] flush final falhou:',e.message);
-  httpServer.close(()=>{clearTimeout(kill);process.exit(1)});
- });
+ // Avisar TODOS os visitantes (SSE) e jogadores conectados (WebSocket)
+ // ANTES de encerrar conexões e salvar personagens. O Render normalmente
+ // aguarda o encerramento gracioso da instância anterior.
+ const notice=maintenanceNotices.announce(
+  'Uma atualização começará em instantes. Sua conexão pode cair. Contas cadastradas preservam o progresso; visitantes podem precisar iniciar outra jornada.');
+ for(const c of sockets)send(c.socket,notice);
+ console.info('[manutenção] aviso enviado a '+sockets.size+' WebSockets e '+maintenanceNotices.clients.size+' visitantes do site');
+ const shutdown=()=>{
+  for(const c of [...sockets])terminate(c);
+  maintenanceNotices.close();
+  world.stop();
+  const kill=setTimeout(()=>process.exit(1),14000);kill.unref();
+  Promise.resolve(accountStore?.close()).then(()=>{
+   httpServer.close(()=>{clearTimeout(kill);process.exit(0)});
+  }).catch(e=>{
+   console.error('[contas] flush final falhou:',e.message);
+   httpServer.close(()=>{clearTimeout(kill);process.exit(1)});
+  });
+ };
+ // Tempo real para que o navegador receba e exiba a mensagem.
+ setTimeout(shutdown,3000).unref();
 });
