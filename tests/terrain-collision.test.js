@@ -17,7 +17,7 @@ function fixture(t){
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'peregrinos-terrain-')),events=[];
  const world=new World({send:(s,m)=>events.push(m),getOnline:()=>0,hasClassicName:()=>false,dataFile:path.join(dir,'world.json')});
  t.after(()=>{world.stop();fs.rmSync(dir,{recursive:true,force:true})});
- const token=crypto.randomBytes(32).toString('hex'),c={socket:{},worldPlayer:null};
+ const token=crypto.randomBytes(32).toString('hex'),c={socket:{},worldPlayer:null,authUser:{uid:'account:TerrenoTeste',username:'TerrenoTeste'}};
  world.join(c,{name:'TerrenoTeste',token});
  return {world,c,p:c.worldPlayer,events,token};
 }
@@ -52,10 +52,10 @@ test('posições legadas em água são recuperadas sem perder inventário ou ní
  for(let y=50;y<ZONE_H-50&&!water;y+=16)for(let x=50;x<ZONE_W-50;x+=16)
   if(!terrain.canStand(8,x,y,ZONES)){water={x,y};break}
  assert.ok(water);
- const uid=crypto.createHash('sha256').update(token).digest('hex');
+ const uid='account:TerrenoTeste';
  const save=world.saved.characters[uid];
  save.zone=8;save.x=water.x;save.y=water.y;save.level=11;save.inventory.pocao=9;
- const client={socket:{},worldPlayer:null};
+ const client={socket:{},worldPlayer:null,authUser:{uid:'account:TerrenoTeste',username:'TerrenoTeste'}};
  world.join(client,{name:'TerrenoTeste',token});
  assert.ok(client.worldPlayer);
  assert.equal(client.worldPlayer.save.level,11);
