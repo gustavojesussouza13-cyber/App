@@ -16,7 +16,7 @@ const {grantOwnerBenefits}=require('./owner-benefits');
 
 const PORT = Number(process.env.PORT || 3000);
 const HOST = process.env.HOST || '0.0.0.0';
-const MAX_PLAYERS = 10; // capacidade de cada sala e da campanha clássica
+const MAX_PLAYERS = 60; // capacidade de cada sala e da campanha clássica
 const PUBLIC = path.join(__dirname, 'public');
 
 // Configure PUBLIC_SITE_URL depois de verificar um domínio próprio no Render.
