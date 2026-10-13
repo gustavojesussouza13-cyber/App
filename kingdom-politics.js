@@ -15,6 +15,36 @@ const MARCH_DURATION=45*1000;
 const MAX_TROOPS=300;
 const CITY_BUILDINGS=Object.freeze({house:120,farm:160,barracks:280,tower:360,market:240});
 const CITY_LIMIT=60;
+const CITY_CYCLE_MS=15*60*1000;
+const CITY_MAX_CYCLES=24; // Até 6h de produção acumulada; evita inflação sem limite.
+const CITY_YIELDS=Object.freeze({
+ house:{food:0,timber:0,stone:0,coins:2},
+ farm:{food:8,timber:0,stone:0,coins:0},
+ barracks:{food:0,timber:0,stone:0,coins:0},
+ tower:{food:0,timber:0,stone:0,coins:0},
+ market:{food:0,timber:2,stone:1,coins:5}
+});
+const CITY_CAP=50000;
+const stockCopy=v=>Object.fromEntries(['food','timber','stone','coins'].map(id=>
+ [id,Math.min(CITY_CAP,Math.max(0,Number.isSafeInteger(v?.[id])?v[id]:0))]));
+function collectCity(g,now){
+ if(!g.city||!Array.isArray(g.city.buildings))return null;
+ const city=g.city;
+ if(!Number.isSafeInteger(city.lastCollectedAt)||city.lastCollectedAt<=0){city.lastCollectedAt=now;return null}
+ const elapsed=now-city.lastCollectedAt;
+ if(!Number.isSafeInteger(now)||elapsed<CITY_CYCLE_MS)return null;
+ const cycles=Math.min(CITY_MAX_CYCLES,Math.floor(elapsed/CITY_CYCLE_MS));
+ const stocks=stockCopy(city.stock),yielded=stockCopy({});
+ for(const b of city.buildings.slice(0,CITY_LIMIT)){
+  if(!Object.hasOwn(CITY_YIELDS,b?.type))continue;
+  const multiplier=Math.min(5,Math.max(1,Number.isSafeInteger(b.level)?b.level:1));
+  for(const resource of Object.keys(stocks))
+   yielded[resource]+=CITY_YIELDS[b.type][resource]*multiplier*cycles;
+ }
+ for(const resource of Object.keys(stocks))stocks[resource]=Math.min(CITY_CAP,stocks[resource]+yielded[resource]);
+ city.stock=stocks;city.lastCollectedAt=now;
+ return {cycles,yielded};
+}
 const UNITS=Object.freeze({
  militia:{name:'Milícia',cost:22,power:2,defense:2},
  archer:{name:'Arqueiros',cost:48,power:6,defense:3},
@@ -117,8 +147,8 @@ function publicState(world,p){
   yourGuild:your?{name:your.guild.name,leader:your.guild.leader===p.uid,
    base:your.guild.base||null,army:armyCopy(your.guild.army),
    march:your.guild.march||null,nextRaidAt:your.guild.nextRaidAt||0,
-   influence:your.guild.influence||{}}:null,
-  cities:[...world.guilds.values()].filter(g=>g.base).map(g=>({name:g.name,buildings:(Array.isArray(g.city?.buildings)?g.city.buildings:[]).filter(b=>b&&CITY_BUILDINGS[b.type]&&Number.isInteger(b.x)&&Number.isInteger(b.y)).slice(0,CITY_LIMIT).map(b=>({type:b.type,x:b.x,y:b.y}))})),
+   influence:your.guild.influence||{},stock:stockCopy(your.guild.city?.stock),lastCollectedAt:your.guild.city?.lastCollectedAt||0}:null,
+  cities:[...world.guilds.values()].filter(g=>g.base).map(g=>({name:g.name,buildings:(Array.isArray(g.city?.buildings)?g.city.buildings:[]).filter(b=>b&&CITY_BUILDINGS[b.type]&&Number.isInteger(b.x)&&Number.isInteger(b.y)).slice(0,CITY_LIMIT).map(b=>({type:b.type,x:b.x,y:b.y,level:Math.min(5,Math.max(1,Number.isSafeInteger(b.level)?b.level:1))}))})),
   marches:[...world.guilds.values()].filter(g=>g.march&&g.base).map(g=>({name:g.name,targetName:world.guilds.get(g.march.target)?.name||'',from:g.march.from,to:g.march.to,kind:g.march.kind||'attack',startedAt:g.march.startedAt,arrivesAt:g.march.arrivesAt,route:g.march.route||null,units:troopCount(g.march.units)})),
   unitTypes:UNITS,baseCost:BASE_COST,relocateCost:RELOCATE_COST,maxTroops:MAX_TROOPS};
 }
@@ -180,9 +210,37 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
   }
   if(p.save.coins<cost){response(world,p,'Moedas insuficientes para construir ('+cost+').');return false}
   p.save.coins-=cost;
-  g.city={buildings:[...buildings,{type,x,y}]};
+  const city=g.city||{buildings:[],stock:stockCopy({}),lastCollectedAt:now};
+  city.buildings=[...buildings,{type,x,y,level:1}];
+  if(!Number.isSafeInteger(city.lastCollectedAt)||city.lastCollectedAt<=0)city.lastCollectedAt=now;
+  g.city=city;
   world.dirty=true;response(world,p,'Construção concluída na cidadela de '+g.name+'.');
   world.send(p.socket,world.ownStatus(p));return true;
+ }
+ if(op==='collect'){
+  if(!g.base||!g.city){response(world,p,'Seu reino ainda não possui edifícios produtivos.');return false}
+  if(!g.city.lastCollectedAt){g.city.lastCollectedAt=now;world.dirty=true;response(world,p,'Produção iniciada. Volte após 15 minutos.');return true}
+  const collected=collectCity(g,now);
+  if(!collected){response(world,p,'A produção fica pronta a cada 15 minutos.');return false}
+  world.dirty=true;
+  response(world,p,'Produção coletada: '+Object.entries(collected.yielded).map(([id,v])=>id+' '+v).join(' · '));
+  return true;
+ }
+ if(op==='buildingUpgrade'){
+  if(g.leader!==p.uid||!g.base||!g.city){response(world,p,'Somente o líder pode ampliar edifícios da sua cidade.');return false}
+  const {x,y}=d;
+  if(!integer(x)||!integer(y)){response(world,p,'Edifício inválido.');return false}
+  const b=g.city.buildings.find(v=>v.x===x&&v.y===y);
+  if(!b||!Object.hasOwn(CITY_BUILDINGS,b.type)){response(world,p,'Edifício inexistente.');return false}
+  const level=Math.min(5,Math.max(1,Number.isSafeInteger(b.level)?b.level:1));
+  if(level>=5){response(world,p,'Este edifício já está no nível máximo.');return false}
+  const stock=stockCopy(g.city.stock),fee={food:level*8,timber:level*6,stone:level*3};
+  if(Object.entries(fee).some(([id,cost])=>stock[id]<cost)){
+   response(world,p,'Materiais insuficientes para ampliar este edifício.');return false
+  }
+  for(const [id,cost] of Object.entries(fee))stock[id]-=cost;
+  g.city.stock=stock;b.level=level+1;world.dirty=true;
+  response(world,p,'Edifício aprimorado para nível '+b.level+'.');return true;
  }
  if(op==='upgrade'){
   if(g.leader!==p.uid||!g.base){response(world,p,'Somente o líder pode ampliar as muralhas de sua capital.');return false}
@@ -309,4 +367,4 @@ function resolve(world,now=Date.now()){
  return finished;
 }
 module.exports={CONTINENT_REGIONS,BUILDABLE_REGIONS,BASE_COST,RELOCATE_COST,MAX_TROOPS,UNITS,
- armyCopy,troopCount,power,publicState,politicalMap,rank,marchRoute,marchPosition,action,resolve};
+ armyCopy,troopCount,power,publicState,politicalMap,rank,marchRoute,marchPosition,collectCity,action,resolve};
