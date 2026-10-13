@@ -15,6 +15,7 @@ const MARCH_DURATION=45*1000;
 const MAX_TROOPS=300;
 const CITY_BUILDINGS=Object.freeze({house:120,farm:160,barracks:280,tower:360,market:240});
 const CITY_LIMIT=60;
+const cityLayout=require('./public/city-layout');
 const CITY_CYCLE_MS=15*60*1000;
 const CITY_MAX_CYCLES=24; // Até 6h de produção acumulada; evita inflação sem limite.
 const CITY_YIELDS=Object.freeze({
@@ -149,7 +150,7 @@ function publicState(world,p){
    base:your.guild.base||null,army:armyCopy(your.guild.army),
    march:your.guild.march||null,nextRaidAt:your.guild.nextRaidAt||0,
    influence:your.guild.influence||{},stock:stockCopy(your.guild.city?.stock),lastCollectedAt:your.guild.city?.lastCollectedAt||0}:null,
-  cities:[...world.guilds.values()].filter(g=>g.base).map(g=>({name:g.name,buildings:(Array.isArray(g.city?.buildings)?g.city.buildings:[]).filter(b=>b&&CITY_BUILDINGS[b.type]&&Number.isInteger(b.x)&&Number.isInteger(b.y)).slice(0,CITY_LIMIT).map(b=>({type:b.type,x:b.x,y:b.y,level:Math.min(5,Math.max(1,Number.isSafeInteger(b.level)?b.level:1))}))})),
+  cities:[...world.guilds.values()].filter(g=>g.base).map(g=>({name:g.name,buildings:(Array.isArray(g.city?.buildings)?g.city.buildings:[]).filter(b=>b&&CITY_BUILDINGS[b.type]&&Number.isInteger(b.x)&&Number.isInteger(b.y)).slice(0,CITY_LIMIT).map(b=>({type:b.type,x:b.x,y:b.y,w:cityLayout.size(b)[0],h:cityLayout.size(b)[1],level:Math.min(5,Math.max(1,Number.isSafeInteger(b.level)?b.level:1))}))})),
   marches:[...world.guilds.values()].filter(g=>g.march&&g.base).map(g=>({name:g.name,targetName:world.guilds.get(g.march.target)?.name||'',from:g.march.from,to:g.march.to,kind:g.march.kind||'attack',startedAt:g.march.startedAt,arrivesAt:g.march.arrivesAt,route:g.march.route||null,units:troopCount(g.march.units)})),
   unitTypes:UNITS,trainingCosts:MILITARY_SUPPLIES,baseCost:BASE_COST,relocateCost:RELOCATE_COST,maxTroops:MAX_TROOPS};
 }
@@ -202,17 +203,17 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
  if(op==='construct'){
   if(g.leader!==p.uid||!g.base){response(world,p,'Somente o líder de uma guilda com fortaleza pode construir.');return false}
   const {type,x,y}=d,cost=Object.hasOwn(CITY_BUILDINGS,type)?CITY_BUILDINGS[type]:null;
-  if(!cost||!integer(x)||!integer(y)||x<0||x>=11||y<0||y>=11||x===5||y===5){
+  if(!cost||!integer(x)||!integer(y)||!cityLayout.canPlace(Array.isArray(g.city?.buildings)?g.city.buildings:[],type,x,y)){
    response(world,p,'Terreno ou edifício inválido.');return false
   }
   const buildings=Array.isArray(g.city?.buildings)?g.city.buildings:[];
-  if(buildings.length>=CITY_LIMIT||buildings.some(b=>b.x===x&&b.y===y)){
+  if(buildings.length>=CITY_LIMIT){
    response(world,p,'Este terreno já está ocupado ou a cidade atingiu seu limite.');return false
   }
   if(p.save.coins<cost){response(world,p,'Moedas insuficientes para construir ('+cost+').');return false}
   p.save.coins-=cost;
   const city=g.city||{buildings:[],stock:stockCopy({}),lastCollectedAt:now};
-  city.buildings=[...buildings,{type,x,y,level:1}];
+  city.buildings=[...buildings,{...cityLayout.plan(type,x,y),level:1}];
   if(!Number.isSafeInteger(city.lastCollectedAt)||city.lastCollectedAt<=0)city.lastCollectedAt=now;
   g.city=city;
   world.dirty=true;response(world,p,'Construção concluída na cidadela de '+g.name+'.');
@@ -231,7 +232,7 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
   if(g.leader!==p.uid||!g.base||!g.city){response(world,p,'Somente o líder pode ampliar edifícios da sua cidade.');return false}
   const {x,y}=d;
   if(!integer(x)||!integer(y)){response(world,p,'Edifício inválido.');return false}
-  const b=g.city.buildings.find(v=>v.x===x&&v.y===y);
+  const b=cityLayout.at(g.city.buildings,x,y);
   if(!b||!Object.hasOwn(CITY_BUILDINGS,b.type)){response(world,p,'Edifício inexistente.');return false}
   const level=Math.min(5,Math.max(1,Number.isSafeInteger(b.level)?b.level:1));
   if(level>=5){response(world,p,'Este edifício já está no nível máximo.');return false}
