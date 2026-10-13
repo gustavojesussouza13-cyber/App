@@ -119,7 +119,7 @@ function publicState(world,p){
    march:your.guild.march||null,nextRaidAt:your.guild.nextRaidAt||0,
    influence:your.guild.influence||{}}:null,
   cities:[...world.guilds.values()].filter(g=>g.base).map(g=>({name:g.name,buildings:(Array.isArray(g.city?.buildings)?g.city.buildings:[]).filter(b=>b&&CITY_BUILDINGS[b.type]&&Number.isInteger(b.x)&&Number.isInteger(b.y)).slice(0,CITY_LIMIT).map(b=>({type:b.type,x:b.x,y:b.y}))})),
-  marches:[...world.guilds.values()].filter(g=>g.march&&g.base).map(g=>({name:g.name,targetName:world.guilds.get(g.march.target)?.name||'',from:g.march.from,to:g.march.to,startedAt:g.march.startedAt,arrivesAt:g.march.arrivesAt,route:g.march.route||null,units:troopCount(g.march.units)})),
+  marches:[...world.guilds.values()].filter(g=>g.march&&g.base).map(g=>({name:g.name,targetName:world.guilds.get(g.march.target)?.name||'',from:g.march.from,to:g.march.to,kind:g.march.kind||'attack',startedAt:g.march.startedAt,arrivesAt:g.march.arrivesAt,route:g.march.route||null,units:troopCount(g.march.units)})),
   unitTypes:UNITS,baseCost:BASE_COST,relocateCost:RELOCATE_COST,maxTroops:MAX_TROOPS};
 }
 function response(world,p,text,notify=true){
@@ -215,6 +215,23 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
   world.send(p.socket,world.ownStatus(p));
   return true;
  }
+ if(op==='patrol'){
+  if(g.leader!==p.uid||!g.base){response(world,p,'Apenas o líder de um reino pode mobilizar patrulhas.');return false}
+  if(g.march){response(world,p,'Já existe um exército mobilizado.');return false}
+  const destination=d.zone;
+  if(!integer(destination)||destination<0||destination>=BUILDABLE_REGIONS){
+   response(world,p,'Patrulhas só podem visitar as 12 regiões de superfície.');return false
+  }
+  const units=armyCopy(g.army);
+  if(troopCount(units)<1){response(world,p,'Recrute tropas antes de enviar uma patrulha.');return false}
+  const route=marchRoute(world,g.base,{zone:destination,x:768,y:512});
+  if(!route){response(world,p,'Não existe rota terrestre até essa região.');return false}
+  g.army=armyCopy({});
+  g.march={kind:'patrol',target:null,from:g.base.zone,to:destination,route,units,
+   startedAt:now,arrivesAt:now+MARCH_DURATION};
+  world.dirty=true;response(world,p,'Patrulha enviada! As tropas caminharão pelos portais do continente e depois retornarão.');
+  return true;
+ }
  if(op==='attack'){
   if(g.leader!==p.uid){response(world,p,'Somente o líder pode declarar uma campanha militar.');return false}
   if(!g.base||p.zone!==g.base.zone||Math.hypot(p.x-g.base.x,p.y-g.base.y)>180){
@@ -244,6 +261,21 @@ function resolve(world,now=Date.now()){
  for(const [key,g] of [...world.guilds]){
   if(!g.march||g.march.arrivesAt>now)continue;
   const march=g.march;delete g.march;
+  if(march.kind==='patrol'){
+   if(!march.returning){
+    const reverse=Array.isArray(march.route)?[...march.route].reverse():null;
+    g.march={...march,route:reverse,from:march.to,to:march.from,returning:true,
+     startedAt:now,arrivesAt:now+MARCH_DURATION};
+    world.dirty=true;
+    finished.push({guild:g.name,text:'Sua patrulha concluiu o reconhecimento e está retornando.'});
+    continue;
+   }
+   const restored=armyCopy(g.army);
+   for(const type of Object.keys(UNITS))restored[type]=Math.min(MAX_TROOPS,restored[type]+armyCopy(march.units)[type]);
+   g.army=restored;world.dirty=true;
+   finished.push({guild:g.name,text:'Sua patrulha retornou à fortaleza com todas as tropas.'});
+   continue;
+  }
   const enemy=world.guilds.get(march.target);
   let text;
   if(!enemy?.base||g.members?.length===0){
