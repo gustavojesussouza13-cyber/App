@@ -656,7 +656,7 @@ class World {
     else continue;
    }
    let target=m.aggroTarget?this.players.get(m.aggroTarget):null;
-   let hostile=!!(target&&target.live&&target.zone===zone&&now<m.aggroUntil&&dist(target,m.home)<400&&dist(m,m.home)<440);
+   let hostile=!!(target&&target.live!==false&&target.zone===zone&&now<m.aggroUntil&&dist(target,m.home)<400&&dist(m,m.home)<440);
    // Terceiro subsolo em diante: somente criaturas COMUNS iniciam combate
    // ao perceber jogadores a até 205px. Bosses permanecem neutros até
    // receber o primeiro golpe. Perseguição tem limite para não arrastar
@@ -664,7 +664,7 @@ class World {
    if(!hostile&&autoAggroZone(zone)&&!m.boss&&dist(m,m.home)<440){
     let nearest=null,nearestDist=205;
     for(const candidate of this.players.values()){
-     if(!candidate.live||candidate.zone!==zone||dist(candidate,m.home)>=400)continue;
+     if(candidate.live===false||candidate.zone!==zone||dist(candidate,m.home)>=400)continue;
      const distance=dist(candidate,m);
      if(distance<nearestDist){nearestDist=distance;nearest=candidate}
     }
