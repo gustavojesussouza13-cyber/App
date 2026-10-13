@@ -135,6 +135,7 @@ test('retorno do servidor informa se construiu ou recusou e revela saldo pessoal
  world.guild(p,{action:'create',name:'Guilda das Muralhas'});
  const act=(data)=>politics.action(world,p,data,{walkable:()=>true,portals:[],npcs:[],now:1000});
  assert.equal(act({action:'place',x:768,y:512}),true);
+ const walletBefore=p.save.coins;
  notices.length=0;
  assert.equal(act({action:'construct',type:'house',x:5,y:5,requestId:101}),true);
  const first=notices.find(x=>x.type==='kingdomActionResult'&&x.id===101);
@@ -142,14 +143,14 @@ test('retorno do servidor informa se construiu ou recusou e revela saldo pessoal
  assert.equal(first.ok,true);
  assert.match(first.message,/Construção concluída/);
  const state=politics.publicState(world,p);
- assert.equal(state.walletCoins,1880);
+ assert.equal(state.walletCoins,walletBefore-120);
  assert.equal(state.yourGuild.stock.coins,0,'tesouro da guilda não é a carteira do personagem');
  notices.length=0;
  assert.equal(act({action:'construct',type:'house',x:5,y:5,requestId:102}),false);
  const invalid=notices.find(x=>x.type==='kingdomActionResult'&&x.id===102);
  assert.equal(invalid.ok,false);
  assert.match(invalid.message,/Terreno ou edifício inválido/);
- assert.equal(notices.find(x=>x.type==='kingdomState').data.walletCoins,1880);
+ assert.equal(notices.find(x=>x.type==='kingdomState').data.walletCoins,walletBefore-120);
  p.save.coins=0;notices.length=0;
  assert.equal(act({action:'construct',type:'tower',x:1,y:1,requestId:103}),false);
  const poor=notices.find(x=>x.type==='kingdomActionResult'&&x.id===103);
