@@ -13,11 +13,11 @@ try{
  await page.locator('#openDemo').click();
  await page.waitForSelector('.guild3d-canvas',{timeout:35000});
  try{
-  await page.waitForFunction(()=>document.querySelector('.guild3d-dialog[open] #cityFeedback')?.textContent?.includes('Cidade 3D pronta'),null,{timeout:18000});
+  await page.waitForFunction(()=>document.querySelector('.guild3d-dialog[open] #guild3dFeedback')?.textContent?.includes('Cidade 3D pronta'),null,{timeout:18000});
  }catch(error){
   const snapshot=await page.evaluate(()=>({
    dialogs:[...document.querySelectorAll('dialog')].map(x=>({open:x.open,classes:x.className})),
-   feedback:[...document.querySelectorAll('#cityFeedback')].map(x=>x.textContent),
+   feedback:[...document.querySelectorAll('#guild3dFeedback, #cityFeedback')].map(x=>x.textContent),
    canvas:document.querySelector('.guild3d-canvas')?.outerHTML?.slice(0,250),
    text:document.body.innerText.slice(-650)
   }));
