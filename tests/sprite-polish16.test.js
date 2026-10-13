@@ -66,8 +66,8 @@ test('mundo aberto carrega polimento antes do Studio e não tampa os quadros fin
  assert.match(studio,/POLISH\?\.hero\(/);
  assert.match(studio,/POLISH\?\.creature\(/);
  assert.match(studio,/POLISH\?\.npc\(/);
- assert.match(art,/const finalRole=illustratedV3\?desktopCharactersV3\.normalizeRole/);
- assert.match(art,/detailed\?desktopSprites\.normalizeRole/);
+ assert.match(art,/const finalRole=pngSprite\?desktopSprites\.normalizeRole/);
+ assert.match(art,/illustratedV3\?desktopCharactersV3\.normalizeRole/);
  assert.match(art,/animated\?spriteStudio\.normalizeRole/);
  assert.match(art,/drawClassIdentity\(g,p,dir,now,moved\)/);
 });
