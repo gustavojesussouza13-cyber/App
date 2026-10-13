@@ -3,6 +3,7 @@
 const crypto=require('node:crypto');
 const {promisify}=require('node:util');
 const scrypt=promisify(crypto.scrypt);
+const {isOwnerAccount}=require('./owner-benefits');
 const COOKIE='peregrinos_session';
 const WEEK=7*24*3600*1000;
 const RESET_TTL=20*60*1000;
@@ -15,7 +16,7 @@ const validPassword=password=>typeof password==='string'&&password.length>=10&&p
 const keyFor=name=>name.toLocaleLowerCase('pt-BR');
 const sha=s=>crypto.createHash('sha256').update(s).digest('hex');
 const identity=id=>'account:'+id;
-function publicAccount(a){return {id:a.id,username:a.username,uid:identity(a.id),emailVerified:!!a.email_verified_at,email:a.email_verified_at?a.email:null}}
+function publicAccount(a){return {id:a.id,username:a.username,uid:identity(a.id),emailVerified:!!a.email_verified_at,email:a.email_verified_at?a.email:null,administrator:isOwnerAccount(a,process.env.OWNER_ACCOUNT_EMAIL)}}
 function parseCookie(value){
  const entry=String(value||'').split(';').map(x=>x.trim()).find(x=>x.startsWith(COOKIE+'='));
  const token=entry?entry.slice(COOKIE.length+1):'';
@@ -152,7 +153,7 @@ class AccountStore{
  }
  async session(cookieHeader){
   const token=parseCookie(cookieHeader);if(!token)return null;
-  const r=await this.pool.query(`SELECT a.id,a.username,a.email,a.email_verified_at FROM game_sessions s JOIN game_accounts a ON a.id=s.account_id
+  const r=await this.pool.query(`SELECT a.id,a.username,a.email,a.email_key,a.email_verified_at FROM game_sessions s JOIN game_accounts a ON a.id=s.account_id
    WHERE s.token_hash=$1 AND s.expires_at>CURRENT_TIMESTAMP`,[sha(token)]);
   return r.rows.length?publicAccount(r.rows[0]):null;
  }
