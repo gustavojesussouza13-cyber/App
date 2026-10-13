@@ -61,6 +61,53 @@ function rank(world){
     title:regions>=7?'Coroa Continental':regions>=4?'Alta Realeza':regions>=2?'Reino Soberano':regions>=1?'Senhorio Regional':'Guilda sem Território'};
   }).sort((a,b)=>b.score-a.score||a.name.localeCompare(b.name,'pt-BR'));
 }
+// Planejamento de rota baseado nas mesmas passagens permitidas aos jogadores.
+// Nunca passa pelas masmorras e não aceita destinos fornecidos pelo navegador.
+function marchRoute(world,from,to){
+ if(!from||!to||!Number.isInteger(from.zone)||!Number.isInteger(to.zone)||
+    from.zone<0||from.zone>=BUILDABLE_REGIONS||to.zone<0||to.zone>=BUILDABLE_REGIONS)return null;
+ const previous=new Map([[from.zone,null]]),queue=[from.zone];
+ for(let index=0;index<queue.length&&!previous.has(to.zone);index++){
+  const zone=queue[index];
+  for(const gate of world.zonePortals(zone)){
+   if(!Number.isInteger(gate.zone)||gate.zone<0||gate.zone>=BUILDABLE_REGIONS||previous.has(gate.zone))continue;
+   previous.set(gate.zone,zone);queue.push(gate.zone);
+  }
+ }
+ if(!previous.has(to.zone))return null;
+ const zones=[to.zone];while(previous.get(zones[0])!==null)zones.unshift(previous.get(zones[0]));
+ const route=[{zone:from.zone,x:from.x,y:from.y}];
+ for(let i=0;i<zones.length-1;i++){
+  const outgoing=world.zonePortals(zones[i]).find(g=>g.zone===zones[i+1]);
+  if(!outgoing)return null;
+  route.push({zone:zones[i],x:outgoing.x,y:outgoing.y});
+  // Ao usar o portal, o jogador reaparece no centro seguro da próxima região.
+  route.push({zone:zones[i+1],x:768,y:512});
+ }
+ route.push({zone:to.zone,x:to.x,y:to.y});
+ return route;
+}
+function marchPosition(march,now=Date.now()){
+ const route=march?.route;
+ if(!Array.isArray(route)||route.length<2)return null;
+ const progress=Math.max(0,Math.min(1,(now-march.startedAt)/Math.max(1,march.arrivesAt-march.startedAt)));
+ const weights=[];
+ for(let i=1;i<route.length;i++){
+  const a=route[i-1],b=route[i];
+  // Transferências por portais também consomem tempo, mas não são exibidas
+  // como unidades deslizando entre mapas diferentes.
+  weights.push(a.zone===b.zone?Math.max(1,Math.hypot(b.x-a.x,b.y-a.y)):180);
+ }
+ const total=weights.reduce((a,b)=>a+b,0);
+ let distance=progress*total;
+ for(let i=0;i<weights.length;i++){
+  if(distance>weights[i]&&i<weights.length-1){distance-=weights[i];continue}
+  const a=route[i],b=route[i+1],t=Math.min(1,distance/weights[i]);
+  if(a.zone!==b.zone)return t<.5?{...a}:{...b};
+  return {zone:a.zone,x:Math.round(a.x+(b.x-a.x)*t),y:Math.round(a.y+(b.y-a.y)*t)};
+ }
+ return {...route.at(-1)};
+}
 function publicState(world,p){
  const your=guildFor(world,p);
  return {continent:CONTINENT_REGIONS,buildable:BUILDABLE_REGIONS,
@@ -72,7 +119,7 @@ function publicState(world,p){
    march:your.guild.march||null,nextRaidAt:your.guild.nextRaidAt||0,
    influence:your.guild.influence||{}}:null,
   cities:[...world.guilds.values()].filter(g=>g.base).map(g=>({name:g.name,buildings:(Array.isArray(g.city?.buildings)?g.city.buildings:[]).filter(b=>b&&CITY_BUILDINGS[b.type]&&Number.isInteger(b.x)&&Number.isInteger(b.y)).slice(0,CITY_LIMIT).map(b=>({type:b.type,x:b.x,y:b.y}))})),
-  marches:[...world.guilds.values()].filter(g=>g.march&&g.base).map(g=>({name:g.name,targetName:world.guilds.get(g.march.target)?.name||'',from:g.march.from,to:g.march.to,startedAt:g.march.startedAt,arrivesAt:g.march.arrivesAt})),
+  marches:[...world.guilds.values()].filter(g=>g.march&&g.base).map(g=>({name:g.name,targetName:world.guilds.get(g.march.target)?.name||'',from:g.march.from,to:g.march.to,startedAt:g.march.startedAt,arrivesAt:g.march.arrivesAt,route:g.march.route||null,units:troopCount(g.march.units)})),
   unitTypes:UNITS,baseCost:BASE_COST,relocateCost:RELOCATE_COST,maxTroops:MAX_TROOPS};
 }
 function response(world,p,text,notify=true){
@@ -178,10 +225,12 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
   if(!defender||defender.key===key){response(world,p,'Selecione a fortaleza de uma guilda rival.');return false}
   const attacking=armyCopy(g.army);
   if(troopCount(attacking)<5){response(world,p,'Recrute pelo menos 5 soldados antes da campanha.');return false}
+  const route=marchRoute(world,g.base,defender);
+  if(!route){response(world,p,'Não existe uma passagem terrestre válida até esse reino.');return false}
   // Reservar tropas na partida impede lançar vários ataques com o mesmo exército.
   g.army=armyCopy({});
   g.march={target:defender.key,from:g.base.zone,to:defender.zone,units:attacking,
-   startedAt:now,arrivesAt:now+MARCH_DURATION};
+   startedAt:now,arrivesAt:now+MARCH_DURATION,route};
   g.nextRaidAt=now+RAID_COOLDOWN;
   world.dirty=true;
   response(world,p,'Exército em marcha para '+defender.name+'! O confronto ocorrerá em 45 segundos.');
@@ -228,4 +277,4 @@ function resolve(world,now=Date.now()){
  return finished;
 }
 module.exports={CONTINENT_REGIONS,BUILDABLE_REGIONS,BASE_COST,RELOCATE_COST,MAX_TROOPS,UNITS,
- armyCopy,troopCount,power,publicState,politicalMap,rank,action,resolve};
+ armyCopy,troopCount,power,publicState,politicalMap,rank,marchRoute,marchPosition,action,resolve};
