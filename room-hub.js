@@ -60,14 +60,14 @@ class RoomHub{
   this.rooms.set(room.id,room);
   return this.publicInfo(room);
  }
- check(id,password,{uid=null,owner=null}={}){
+ check(id,password,{uid=null,owner=null,guestOwner=null}={}){
   this.clean();
   const room=this.rooms.get(id);
   if(!room)throw new RoomError('Esta sala não existe mais. Escolha outra.','room_missing',404);
   // Antes da primeira entrada, a sala é um convite exclusivo do criador.
   // Impede salas fantasma de aparecerem e outros usuários de ativá-las
   // antes de o dono conseguir entrar.
-  if(room.pending&&owner!==room.ownerId)
+  if(room.pending&&owner!==room.ownerId&&guestOwner!==room.ownerId)
    throw new RoomError('A sala está aguardando seu criador.','room_pending',403);
   if(room.locked){
    if(typeof password!=='string'||password.length>64)
