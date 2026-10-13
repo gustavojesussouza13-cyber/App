@@ -76,7 +76,7 @@ test('produção da cidade acumula em ciclos limitados e edifícios evoluem usan
  const at=(time,data)=>politics.action(world,p,data,{walkable:()=>true,portals:[],npcs:[],now:time});
  assert.equal(at(1000,{action:'place',x:768,y:512}),true);
  assert.equal(at(1000,{action:'construct',type:'farm',x:1,y:2}),true);
- assert.equal(at(1000,{action:'construct',type:'market',x:2,y:2}),true);
+ assert.equal(at(1000,{action:'construct',type:'market',x:3,y:2}),true);
  const guild=world.guilds.get('reino verde');
  assert.equal(at(1000,{action:'collect'}),false);
  assert.equal(at(1000+15*60*1000,{action:'collect'}),true);
