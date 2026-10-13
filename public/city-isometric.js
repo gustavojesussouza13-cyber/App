@@ -12,7 +12,7 @@ window.PeregrinosCity=Object.freeze({create({send}){
  .city-view{width:100%;height:auto;image-rendering:pixelated;cursor:crosshair;background:#283b2c;border:2px solid #a18a54;display:block;min-width:0;box-shadow:inset 0 0 40px #0008}
  .city-controls{display:flex;flex-direction:column;gap:10px;max-height:min(78vh,740px);overflow-y:auto;overflow-x:hidden;padding:4px 6px 8px 2px}.city-controls select,.city-controls input{width:100%;max-width:100%;min-width:0;background:#152d23;color:#f0d99f;border:1px solid #8e7649;padding:7px;margin:3px 0}.city-controls button{width:100%;white-space:normal;text-align:left}.city-controls #cityChoices{min-width:0}.city-controls #cityChoices>div{display:grid;grid-template-columns:1fr 72px;gap:5px}.city-controls #cityChoices>div button{grid-column:1/-1}.city-controls #cityChoices>div input{width:100%!important}.city-controls button{text-align:left}
  .city-controls button[aria-pressed=true]{background:#756039;color:#fff0c6;border-color:#f6d48b}
- .city-controls button:disabled{opacity:.45;cursor:not-allowed}.city-controls p{font-size:12px;line-height:1.5;margin:3px 0;color:#c4ceb9}
+ .city-controls #cityChoices{display:flex;flex-direction:column;gap:8px}.city-controls #cityChoices>button{min-height:36px}.city-controls button:disabled{opacity:.45;cursor:not-allowed}.city-controls p{font-size:12px;line-height:1.5;margin:3px 0;color:#c4ceb9}
  @media(max-width:700px){.city-main{grid-template-columns:1fr;padding:6px;gap:8px}.city-dialog{max-height:98vh}.city-head{padding:9px}.city-head strong{font-size:16px}.city-controls{max-height:40vh;padding:5px}.city-controls p{font-size:12px}}
  `;document.head.append(css);
  const dlg=document.createElement('dialog');dlg.className='city-dialog';dlg.setAttribute('aria-label','Cidade da guilda');
@@ -23,6 +23,7 @@ window.PeregrinosCity=Object.freeze({create({send}){
  dlg.querySelector('.city-close').onclick=()=>dlg.close();
  let base=null,state=null,selected=null;
  const art=window.PeregrinosCityArt16.create();
+ const layout=window.PeregrinosCityLayout;
  const N=art.N,TW=art.TW,TH=art.TH,ox=art.OX,oy=art.OY;
  const project=art.project;
 
@@ -64,7 +65,7 @@ window.PeregrinosCity=Object.freeze({create({send}){
     group.append(soldier,count,train);choices.append(group);
    }
    const instruction=document.createElement('p');instruction.textContent='Cada edifício produz recursos. Clique em um prédio construído para evoluí-lo com alimentos, madeira e pedra (até nível 5).';choices.append(instruction);
-   for(const [id,t] of Object.entries(types)){const b=document.createElement('button');b.disabled=!canBuild();b.type='button';b.style.display='block';b.style.width='100%';b.style.marginBottom='6px';b.textContent=t.label+' · '+t.cost+' moedas';b.setAttribute('aria-pressed',String(selected===id));b.onclick=()=>{selected=id;feedback.textContent='Clique em um terreno disponível para construir '+t.label.toLowerCase()+'.';refresh()};choices.append(b)}
+   for(const [id,t] of Object.entries(types)){const b=document.createElement('button');b.disabled=!canBuild();b.type='button';b.style.display='block';b.style.width='100%';b.style.marginBottom='6px';b.textContent=t.label+' ('+layout.footprints[id].join('×')+') · '+t.cost+' moedas';b.setAttribute('aria-pressed',String(selected===id));b.onclick=()=>{selected=id;feedback.textContent='Clique em um terreno disponível para construir '+t.label.toLowerCase()+'.';refresh()};choices.append(b)}
   }else{const p=document.createElement('p');p.textContent='Você está visitando a capital de outra guilda. Somente a liderança do reino pode construir aqui.';choices.append(p)}
   draw();
  }
@@ -72,10 +73,10 @@ window.PeregrinosCity=Object.freeze({create({send}){
   if(!canBuild())return;
   const rect=canvas.getBoundingClientRect(),px=(e.clientX-rect.left)*canvas.width/rect.width,py=(e.clientY-rect.top)*canvas.height/rect.height;
   const dx=(px-ox)/(TW/2),dy=(py-oy-TH/2)/(TH/2),x=Math.round((dx+dy)/2),y=Math.round((dy-dx)/2);
-  const existing=structures().find(b=>b.x===x&&b.y===y);
+  const existing=layout.at(structures(),x,y);
   if(existing){feedback.textContent='Solicitando melhoria do edifício…';send('kingdom',{action:'buildingUpgrade',x,y});return}
   if(!selected){feedback.textContent='Selecione um edifício na lista para construir.';return}
-  if(x<0||x>=N||y<0||y>=N||x===5||y===5){feedback.textContent='Escolha um terreno livre, fora das estradas.';return}
+  if(!layout.canPlace(structures(),selected,x,y)){feedback.textContent='É necessário um lote livre de '+layout.footprints[selected].join(' × ')+' terrenos, sem ruas nem construções.';return}
   feedback.textContent='Enviando construção para validação do servidor…';
   send('kingdom',{action:'construct',type:selected,x,y,target:base.name});
  });
