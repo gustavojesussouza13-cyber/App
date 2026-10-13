@@ -536,8 +536,33 @@ function create({ctx,W,H}){
   g.fillText('✦ '+nearest.name,x+68,y+49,width-82);
   g.restore();
  }
+ // Castelo 16-bit: muralhas, torres, estandarte e nome do reino.
+ // Não altera colisão nem hitbox dos personagens e portais.
+ function kingdomBase(g,b,now){
+  const pulse=Math.sin(now/530)*2;
+  g.save();g.translate(Math.round(b.x),Math.round(b.y));
+  g.fillStyle='#04130fd9';g.beginPath();g.ellipse(0,8,47,14,0,0,Math.PI*2);g.fill();
+  g.fillStyle='#a48d5e';g.fillRect(-37,-32,74,35);
+  g.fillStyle='#344b45';g.fillRect(-34,-29,68,30);
+  g.fillStyle='#d7be7d';g.fillRect(-26,-21,52,16);
+  for(const dx of [-37,24]){
+   g.fillStyle='#2c443f';g.fillRect(dx,-51,15,55);
+   g.fillStyle='#d9c18a';g.fillRect(dx-3,-57,21,10);
+   for(let i=0;i<3;i++){g.fillStyle='#e3cf9e';g.fillRect(dx-3+i*8,-63,6,6)}
+   g.fillStyle='#e5b76c';g.fillRect(dx+5,-39,5,8);
+  }
+  g.fillStyle='#b98e58';g.fillRect(-13,-7,26,10);
+  g.fillStyle='#0c211e';g.fillRect(-10,-5,20,9);
+  g.fillStyle='#ead2a0';g.fillRect(-2,-94,4,40);
+  const banner=['#6ac0a8','#e7ba65','#c39add','#ec937a'][(b.name.length||0)%4];
+  g.fillStyle=banner;g.fillRect(1,-92,24,16+Math.round(pulse));
+  g.fillStyle='#e8d196';g.font='bold 11px monospace';g.textAlign='center';
+  g.shadowColor='#071613';g.shadowBlur=6;
+  g.fillText('♜ '+b.name.slice(0,19),0,-103);
+  g.restore();
+ }
  function displayMap(g,opt){
-  const {players,monsters,npcs=[],portals=[],zone,x,y}=opt;
+  const {players,monsters,npcs=[],portals=[],kingdomBases=[],zone,x,y}=opt;
   const mx=W-179,my=16,mw=160,mh=104;
   g.fillStyle='#092019e3';g.fillRect(mx,my,mw,mh);g.strokeStyle='#d8b981';g.lineWidth=2;g.strokeRect(mx,my,mw,mh);
   g.save();g.beginPath();g.rect(mx+5,my+5,mw-10,mh-10);g.clip();
@@ -546,13 +571,14 @@ function create({ctx,W,H}){
   for(const p of portals){g.fillStyle=p.gateway?'#ffd58d':p.stair?'#c7a9fb':'#a3e3dd';
    g.fillRect(mx+5+p.x/ZW*(mw-10),my+5+p.y/ZH*(mh-10),p.gateway?6:4,p.gateway?7:5)
   }
+  g.fillStyle='#d7b66f';for(const b of kingdomBases){g.fillRect(mx+5+b.x/ZW*(mw-10)-2,my+5+b.y/ZH*(mh-10)-2,7,7)}
   g.fillStyle='#f8c574';for(const n of npcs)g.fillRect(mx+5+n.x/ZW*(mw-10),my+5+n.y/ZH*(mh-10),4,4);
   g.fillStyle='#c9ebeb';for(const p of players)g.fillRect(mx+5+p.x/ZW*(mw-10),my+5+p.y/ZH*(mh-10),4,4);
   g.fillStyle='#ffe0a3';g.fillRect(mx+5+x/ZW*(mw-10)-2,my+5+y/ZH*(mh-10)-2,6,6);g.restore();
   g.font='bold 11px monospace';g.fillStyle='#ead4a2';g.textAlign='left';g.fillText(zone>=16?'SUBSOLO '+(1+(zone-16)%6)+' · MASMORRA '+(1+Math.floor((zone-16)/6)):'REGIÃO '+(zone+1)+'/40',mx+7,my+mh+15);
  }
  function render(opt){
-  const {zone,zones,x,y,dir,monsters,players,projectiles=[],npcs=[],portals=[],storyStage=0,cameraX,cameraY,name,role,target,now,fx,lastAction,lastActionWasSkill=false,skillEffects=[],drawSkillEffects=null,moving,monsterActions=new Map(),playerActions=new Map(),fallen=[],heroPose=null}=opt;
+  const {zone,zones,x,y,dir,monsters,players,projectiles=[],npcs=[],portals=[],kingdomBases=[],storyStage=0,cameraX,cameraY,name,role,target,now,fx,lastAction,lastActionWasSkill=false,skillEffects=[],drawSkillEffects=null,moving,monsterActions=new Map(),playerActions=new Map(),fallen=[],heroPose=null}=opt;
   ctx.imageSmoothingEnabled=false;
   const biome=biomeThemes[zones[zone]?.biome]||'meadow';
   if(!artReady){ctx.fillStyle='#193629';ctx.fillRect(0,0,W,H);ctx.textAlign='center';ctx.fillStyle='#efd39d';ctx.font='bold 20px Georgia,serif';ctx.fillText('✦ Preparando o mundo 16-bit…',W/2,H/2);return}
@@ -567,6 +593,9 @@ function create({ctx,W,H}){
   for(const o of objects){if(o.x<cameraX-115||o.x>cameraX+W+115||o.y<cameraY-132||o.y>cameraY+H+135)continue;actors.push({depth:o.y,paint:()=>prop(ctx,o)})}
   for(const p of portals){if(p.x<cameraX-140||p.x>cameraX+W+140||p.y<cameraY-125||p.y>cameraY+H+125)continue;
    actors.push({depth:p.y-1,paint:()=>portal(ctx,p,now,{x,y})});
+  }
+  for(const b of kingdomBases){if(b.x<cameraX-100||b.x>cameraX+W+100||b.y<cameraY-140||b.y>cameraY+H+140)continue;
+   actors.push({depth:b.y-2,paint:()=>kingdomBase(ctx,b,now)});
   }
   for(const n of npcs){if(n.x<cameraX-100||n.x>cameraX+W+100||n.y<cameraY-105||n.y>cameraY+H+105)continue;
    actors.push({depth:n.y,paint:()=>npcActor(ctx,n,n.index===storyStage,n.index!==null&&n.index<storyStage,now)});
