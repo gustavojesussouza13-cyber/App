@@ -6,7 +6,7 @@ const GRANT_KEY_PREFIX='owner-benefits-v1:';
 function normalizeEmail(value){return typeof value==='string'?value.trim().toLowerCase():''}
 function isOwnerAccount(account,ownerEmail){
  const e=normalizeEmail(ownerEmail);
- return Boolean(e&&account?.email_verified_at&&normalizeEmail(account.email_key)===e);
+ return Boolean(e&&account?.email_verified_at&&normalizeEmail(account.email_key||account.email)===e);
 }
 function boostedSave(raw){
  const save=raw&&typeof raw==='object'&&!Array.isArray(raw)?{...raw}:{};
