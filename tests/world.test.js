@@ -21,13 +21,27 @@ test('mundo 16-bit mantém 16 regiões clássicas e adiciona 24 subsolos',t=>{
  for(let i=12;i<16;i++)assert.equal(w.server.monsters.get(i).length,18);
  for(let i=0;i<16;i++)assert.ok(w.server.monsters.get(i).some(m=>m.boss));
 });
-test('sem conta: token local carrega progresso salvo; tokens diferentes não herdam progresso',t=>{
+test('Visitante começa do zero numa nova visita, sem gravar dados no banco',t=>{
  const w=mk();t.after(w.cleanup);const p=w.add('AuroraTeste');
- p.p.save.level=9;p.p.save.coins=888;p.p.save.inventory.pocao=27;w.server.leave(p.c);
- w.server.persist();const newServer=new World({send:()=>{},getOnline:()=>0,hasClassicName:()=>false,dataFile:path.join(w.dir,'world.json')});
- const c={socket:{},worldPlayer:null};newServer.join(c,{name:'AuroraTeste',token:p.token});
- assert.equal(c.worldPlayer.save.level,9);assert.equal(c.worldPlayer.save.coins,888);assert.equal(c.worldPlayer.save.inventory.pocao,27);
- const clone={socket:{},worldPlayer:null};newServer.join(clone,{name:'OutroTeste',token:crypto.randomBytes(32).toString('hex')});assert.equal(clone.worldPlayer.save.level,1);newServer.stop();
+ p.p.save.level=9;p.p.save.xp=88;p.p.save.coins=888;p.p.save.inventory.pocao=27;
+ w.server.leave(p.c);
+ assert.equal(w.server.saved.characters[p.p.uid],undefined,'Visitante não deve ser persistido');
+ const reconnect=w.add('AuroraTeste','peregrino',p.token);
+ assert.equal(reconnect.p.save.level,9,'queda de rede na mesma visita não deve reiniciar');
+ assert.equal(reconnect.p.save.coins,888);
+ w.server.leave(reconnect.c);
+ const renewed=w.add('AuroraTeste','guardiao');
+ assert.equal(renewed.p.save.level,1);
+ assert.equal(renewed.p.save.xp,0);
+ assert.equal(renewed.p.save.coins,60);
+ assert.equal(renewed.p.save.kills,0);
+ assert.equal(renewed.p.save.role,'guardiao');
+ w.server.leave(renewed.c);w.server.persist();
+ const restarted=new World({send:()=>{},getOnline:()=>0,hasClassicName:()=>false,dataFile:path.join(w.dir,'world.json')});
+ const client={socket:{},worldPlayer:null};restarted.join(client,{name:'AuroraTeste',token:p.token,role:'arqueiro'});
+ assert.equal(client.worldPlayer.save.level,1,'jornada temporária não sobrevive à reinicialização');
+ assert.equal(client.worldPlayer.save.coins,60);
+ restarted.stop();
 });
 test('regra de limite de 10 rejeita o 11º e libera a vaga ao desconectar',t=>{
  const w=mk();t.after(w.cleanup);const players=Array.from({length:10},(_,i)=>w.add('PeregrinoTeste'+i));assert.equal(w.server.count,10);
