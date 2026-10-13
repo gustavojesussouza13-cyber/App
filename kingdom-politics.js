@@ -75,7 +75,7 @@ function response(world,p,text,notify=true){
  if(notify)world.tell(p,text);
  world.send(p.socket,{type:'kingdomState',data:publicState(world,p)});
 }
-function action(world,p,d,{walkable,portals=[],now=Date.now()}={}){
+function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
  const op=typeof d.action==='string'?d.action:'';
  if(op==='inspect'){response(world,p,'',false);return false}
  const owner=guildFor(world,p);
@@ -94,6 +94,9 @@ function action(world,p,d,{walkable,portals=[],now=Date.now()}={}){
   }
   if(portals.some(t=>Math.hypot(t.x-x,t.y-y)<155)){
    response(world,p,'Sua fortaleza precisa ficar distante dos portais de passagem.');return false
+  }
+  if(npcs.some(n=>Math.hypot(n.x-x,n.y-y)<110)){
+   response(world,p,'Construa longe de personagens e missões para não bloquear a passagem.');return false
   }
   if(forts(world).some(b=>b.key!==key&&b.zone===p.zone&&Math.hypot(b.x-x,b.y-y)<180)){
    response(world,p,'Outra guilda já controla as proximidades. Construa a pelo menos 180 passos.');return false
