@@ -43,10 +43,10 @@ test('Visitante começa do zero numa nova visita, sem gravar dados no banco',t=>
  assert.equal(client.worldPlayer.save.coins,60);
  restarted.stop();
 });
-test('regra de limite de 10 rejeita o 11º e libera a vaga ao desconectar',t=>{
- const w=mk();t.after(w.cleanup);const players=Array.from({length:10},(_,i)=>w.add('PeregrinoTeste'+i));assert.equal(w.server.count,10);
+test('regra de limite de 60 rejeita o 61º e libera a vaga ao desconectar',t=>{
+ const w=mk();t.after(w.cleanup);const players=Array.from({length:60},(_,i)=>w.add('PeregrinoTeste'+i));assert.equal(w.server.count,60);
  const overflow=w.add('ExtraTeste');assert.equal(overflow.p,null);assert.ok(overflow.events().some(m=>m.code==='full'));
- w.server.leave(players[2].c);assert.equal(w.server.count,9);assert.ok(w.add('PeregrinoNovo').p);
+ w.server.leave(players[2].c);assert.equal(w.server.count,59);assert.ok(w.add('PeregrinoNovo').p);
 });
 test('combate cooperativo recompensa dois jogadores, monstros revivem após respawn',t=>{
  const w=mk();t.after(w.cleanup);
