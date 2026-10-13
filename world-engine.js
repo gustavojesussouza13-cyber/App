@@ -6,6 +6,7 @@ const crypto=require('node:crypto');
 const {NPCS,chapters,byId,publicNpc,freshStory,normalizeStory,journal}=require('./story-data');
 const {MAX_GOLD}=require('./owner-benefits');
 const terrain=require('./world-terrain');
+const kingdoms=require('./kingdom-politics');
 const {ChatGuard,inspectNickname}=require('./chat-safety');
 
 const ZONES=[
@@ -276,6 +277,7 @@ class World {
   this.send(c.socket,{type:'welcome',room:c.worldRoom?{id:c.worldRoom.id,name:c.worldRoom.name}:null,self:this.ownStatus(p),zones:this.zoneInfo(),shop:GOODS,relics:RELICS,quests:QUESTS,achievements:ACHIEVEMENTS,portals:this.zonePortals(p.zone),npcs:NPCS.map(publicNpc),maxPlayers:60,online:this.players.size+this.getOnline(),monsterTotal:this.totalMonsters()});
   this.broadcast({type:'system',text:p.name+' chegou ao mundo.'},q=>q.id!==p.id);
   this.dirty=true;this.snapshotTo(p);
+  this.send(p.socket,{type:'kingdomState',data:kingdoms.publicState(this,p)});
  }
  leave(c){const p=c.worldPlayer;if(!p||!p.live)return;p.live=false;
   if(p.isAccount){this.saved.characters[p.uid]=safeSave(p.save);this.dirty=true}
@@ -294,7 +296,12 @@ class World {
  snapshotTo(p){const near=[...this.players.values()].filter(o=>o.id!==p.id&&o.zone===p.zone&&dist(o,p)<680).map(o=>this.publicPlayer(o));
   // Margem de visibilidade evita monstros aparecendo/desaparecendo na borda da tela.
   const mons=(this.monsters.get(p.zone)||[]).filter(m=>m.hp>0&&dist(m,p)<850).map(m=>this.publicMonster(m));
-  this.send(p.socket,{type:'snapshot',online:this.players.size+this.getOnline(),zone:p.zone,players:near,monsters:mons,day:this.day});
+  this.send(p.socket,{type:'snapshot',online:this.players.size+this.getOnline(),zone:p.zone,players:near,monsters:mons,day:this.day,
+   kingdoms:kingdoms.publicState(this,p).bases.filter(b=>b.zone===p.zone)});
+  if(Date.now()-(p.lastKingdomState||0)>8000){
+   p.lastKingdomState=Date.now();
+   this.send(p.socket,{type:'kingdomState',data:kingdoms.publicState(this,p)});
+  }
  }
  receive(c,d){if(!d||typeof d!=='object'||Array.isArray(d))return;if(!c.worldPlayer){if(d.type==='hello')this.join(c,d);return}
   const p=c.worldPlayer;const now=Date.now();
@@ -328,6 +335,7 @@ class World {
    case 'ignore':this.ignore(p,d);break;
    case 'party':this.party(p,d);break;
    case 'guild':this.guild(p,d);break;
+   case 'kingdom':kingdoms.action(this,p,d,{walkable:(zone,x,y)=>terrain.canStand(zone,x,y,ZONES),portals:this.zonePortals(p.zone)});break;
    case 'trade':this.trade(p,d);break;
    case 'talk':this.talk(p,d.npc);break;
    case 'storyChoice':this.storyChoice(p,d.npc,d.choice);break;
@@ -427,6 +435,7 @@ class World {
   this.dirty=true;
   this.send(p.socket,{type:'travel',zone:b,name:ZONES[b][0],x:p.x,y:p.y,portals:this.zonePortals(b)});
   if(autoAggroZone(b))this.tell(p,'⚠ Subsolo '+dungeonDepth(b)+': criaturas comuns atacam por aproximação. Os chefes só revidam quando forem atacados.');
+  this.send(p.socket,{type:'kingdomState',data:kingdoms.publicState(this,p)});
   this.send(p.socket,this.ownStatus(p));this.snapshotTo(p);
  }
  healParty(p){
@@ -649,6 +658,7 @@ class World {
   } else if(mode==='accept'){const g=this.guilds.get(key);if(!g||!g.invitations.includes(p.uid)||p.save.guild)return;g.invitations=g.invitations.filter(x=>x!==p.uid);g.members.push(p.uid);p.save.guild=g.name;this.dirty=true;
   } else if(mode==='leave'){const g=this.guilds.get(p.save.guild?.toLowerCase());if(g){g.members=g.members.filter(x=>x!==p.uid);if(g.leader===p.uid)g.leader=g.members[0]||null;if(!g.members.length)this.guilds.delete(p.save.guild.toLowerCase())}p.save.guild=null;this.dirty=true}
   this.send(p.socket,this.ownStatus(p));
+  this.send(p.socket,{type:'kingdomState',data:kingdoms.publicState(this,p)});
  }
  trade(p,d){const mode=cap(d.action,15),other=[...this.players.values()].find(o=>o.name.toLowerCase()===cap(d.target,20).toLowerCase());
   if(!other||other.id===p.id||other.zone!==p.zone||dist(p,other)>200)return this.tell(p,'O outro jogador precisa estar perto de você.');
@@ -668,6 +678,11 @@ class World {
   } else if(mode==='reject'){this.pendingTrades.delete(key);this.tell(other,'Troca recusada.')}
  }
  tick(){const now=Date.now(),dt=clamp((now-this.lastTick)/1000,.01,.5);this.lastTick=now;
+  if(this.kingdomTickLeader!==false){
+   for(const result of kingdoms.resolve(this,now)){
+    for(const member of this.players.values())if(member.save.guild===result.guild)this.tell(member,result.text);
+   }
+  }
   // Apenas regiões ocupadas têm IA ativa. O servidor controla quem provocou cada monstro.
   const activeZones=new Set([...this.players.values()].map(p=>p.zone));
   for(const zone of activeZones){for(const m of this.monsters.get(zone)||[]){
@@ -753,7 +768,7 @@ class World {
   }}
   for(const p of this.players.values())this.snapshotTo(p);
  }
- status(){return {connected:this.count,monsters:this.totalMonsters(),regions:ZONES.length,guilds:this.guilds.size,version:'mmo-aurora-historia-alpha'}}
+ status(){return {connected:this.count,monsters:this.totalMonsters(),regions:ZONES.length,guilds:this.guilds.size,kingdoms:kingdoms.publicState(this,{save:{guild:null}}).bases.length,version:'mmo-aurora-reinos-v1'}}
  stop(){clearInterval(this.saveTimer);for(const p of this.players.values())if(p.isAccount)this.saved.characters[p.uid]=safeSave(p.save);this.guestReconnect.clear();this.dirty=true;this.persist();try{this.db?.close()}catch{}}
 }
 module.exports={World,ZONES,ZONE_W,ZONE_H,GOODS,RELICS,BOSS_RELICS,QUESTS,questProgress,SPECIES,CLASSES,ACHIEVEMENTS,xpNeed,zoneDifficulty,autoAggroZone,dungeonDepth};
