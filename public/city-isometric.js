@@ -66,7 +66,7 @@ window.PeregrinosCity=Object.freeze({create({send}){
   feedback.textContent='Enviando construção para validação do servidor…';
   send('kingdom',{action:'construct',type:selected,x,y,target:base.name});
  });
- function open(b,kingdom){base=b;state=kingdom;selected=null;feedback.textContent='';if(!dlg.open)dlg.showModal();refresh()}
+ function open(b,kingdom){base=b;state=kingdom;selected=null;feedback.textContent='';if(!dlg.open)dlg.showModal();refresh();send('kingdom',{action:'inspect'})}
  function update(kingdom){state=kingdom;if(dlg.open){const next=(state?.bases||[]).find(b=>b.name===base?.name);if(next)base=next;refresh()}}
  function drawMarches(mainCtx,{zone,cameraX,cameraY,now}){
   for(const m of state?.marches||[]){
