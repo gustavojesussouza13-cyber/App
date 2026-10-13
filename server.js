@@ -375,15 +375,68 @@ async function worldHello(c,data){
   for(const other of [...sockets])if(other!==c&&other.mode==='world'&&other.worldPlayer?.uid===uid)terminate(other);
   c.worldRoom=room;
   room.world.receive(c,data);
-  if(c.worldPlayer)rooms.entered(room);
-  else c.worldRoom=null;
+  if(c.worldPlayer){
+   rooms.entered(room);
+   c.roomToken=accountMode?null:data.token;
+  }else c.worldRoom=null;
  }catch(err){console.error('[contas] falha ao validar sessão:',err.message);send(c.socket,{type:'error',code:'auth_unavailable',message:'Não foi possível verificar a conta.'});}
  finally{c.joinPending=false}
+}
+// Mudar de sala sem abrir outra aba ou encerrar o WebSocket. Somente depois
+// de validar a sala e a senha liberamos a vaga anterior. Nenhuma falha de
+// senha ou de lotação altera a partida em andamento.
+function switchWorldRoom(c,data){
+ const player=c.worldPlayer,from=c.worldRoom;
+ if(!player||!from||!data||typeof data!=='object')return;
+ const id=typeof data.roomId==='string'?data.roomId:'';
+ if(id===from.id){
+  return send(c.socket,{type:'roomSwitchError',code:'same_room',message:'Você já está jogando nesta sala.'});
+ }
+ const key=roomAttemptKey(c.socket,id);
+ if(roomAttemptState(key).count>=8)
+  return send(c.socket,{type:'roomSwitchError',code:'room_password_locked',message:'Muitas tentativas de senha. Aguarde dois minutos.'});
+ let target;
+ try{target=rooms.check(id,data.password,{uid:player.uid})}
+ catch(err){
+  if(err.code==='wrong_room_password'){
+   const state=roomAttemptState(key);state.count++;roomPasswordFails.set(key,state);
+  }
+  return send(c.socket,{type:'roomSwitchError',code:err.code||'room_error',message:err.message});
+ }
+ // Checar nomes antes de soltar a sessão antiga. A entrada em cada sala é
+ // síncrona: não há janela para uma corrida de lotação após esta validação.
+ if([...target.world.players.values()].some(p=>p.name.toLocaleLowerCase('pt-BR')===player.name.toLocaleLowerCase('pt-BR')&&p.uid!==player.uid))
+  return send(c.socket,{type:'roomSwitchError',code:'name_taken',message:'Já existe um personagem com seu nome nessa sala.'});
+ roomPasswordFails.delete(key);
+ const save=structuredClone(player.save),uid=player.uid;
+ const login={name:player.name,role:save.role,token:c.roomToken};
+ c.roomTransferSave=save;
+ c.roomTransferUid=uid;
+ from.world.leave(c);
+ rooms.left(from);
+ c.worldRoom=target;
+ try{
+  target.world.join(c,login);
+  if(!c.worldPlayer)throw new Error('Não foi possível entrar na nova sala.');
+  rooms.entered(target);
+  console.info('[salas] transferência concluída entre salas.');
+ }catch(err){
+  // Restaura a mesma sessão e o mesmo personagem se algo inesperado impedir
+  // a entrada. Senhas e tokens jamais vão para logs ou eventos públicos.
+  c.worldRoom=from;
+  if(!c.worldPlayer)from.world.join(c,login);
+  if(c.worldPlayer)rooms.entered(from);
+  send(c.socket,{type:'roomSwitchError',code:'switch_failed',message:'Falha ao trocar de servidor. Você permaneceu na sala anterior.'});
+  console.error('[salas] troca interrompida:',err.message);
+ }finally{
+  delete c.roomTransferSave;delete c.roomTransferUid;
+ }
 }
 function receive(c,data){
   if(c.mode==='mobile'){mobileCoop.receive(c,data);return}
   if(c.mode==='world'){
    if(!c.worldPlayer){if(data&&data.type==='hello')void worldHello(c,data);return}
+   if(data&&data.type==='switchRoom'){switchWorldRoom(c,data);return}
    c.worldRoom?.world.receive(c,data);return
   }
   if(!data||typeof data!=='object'||Array.isArray(data))return;
