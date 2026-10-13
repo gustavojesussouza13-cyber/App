@@ -109,6 +109,16 @@ test('salas criadas pelos jogadores: senha, lotação, isolamento e contagem glo
   clients.push(recovered.socket);
   assert.equal(recovered.result.type,'welcome');
   assert.equal(recovered.result.online,10);
+  // Desconectando todos, nenhum servidor de 0/10 deve continuar listado.
+  for(const c of clients)try{c.close()}catch{}
+  await delay(380);
+  listing=await(await fetch(BASE+'/api/rooms')).json();
+  assert.deepEqual(listing.rooms.map(room=>room.id),['auren-publica']);
+  assert.equal(listing.totalOnline,0);
+  const rebuilt=await createRoom('Arvore de Auren','',owner);
+  assert.equal(rebuilt.status,201,'a sala vazia precisa liberar seu nome imediatamente');
+  assert.equal((await(await fetch(BASE+'/api/rooms')).json()).rooms.length,1,
+   'a reserva recém-criada continua oculta até o criador entrar');
  }finally{
   for(const c of clients)try{c.close()}catch{}
   worker.kill('SIGTERM');
