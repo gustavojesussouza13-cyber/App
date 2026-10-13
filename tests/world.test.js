@@ -91,10 +91,10 @@ test('personagem e guilda são preservados no banco SQLite, quando disponível',
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'peregrinos-sqlite-'));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));
  const file=path.join(dir,'world.sqlite'),send=()=>{};
  const a=new World({send,getOnline:()=>0,hasClassicName:()=>false,dataFile:file});
- const token=crypto.randomBytes(32).toString('hex');const c={socket:{},worldPlayer:null};a.join(c,{name:'PersistenteTeste',token});
+ const token=crypto.randomBytes(32).toString('hex');const c={socket:{},worldPlayer:null,authUser:{uid:'account:PersistenteTeste',username:'PersistenteTeste'}};a.join(c,{name:'PersistenteTeste',token});
  c.worldPlayer.save.level=17;c.worldPlayer.save.coins=1234;a.guild(c.worldPlayer,{action:'create',name:'Luz Eterna'});a.stop();
  const b=new World({send,getOnline:()=>0,hasClassicName:()=>false,dataFile:file});
- const d={socket:{},worldPlayer:null};b.join(d,{name:'PersistenteTeste',token});assert.equal(d.worldPlayer.save.level,17);assert.equal(d.worldPlayer.save.coins,984);assert.equal(d.worldPlayer.save.guild,'Luz Eterna');b.stop();
+ const d={socket:{},worldPlayer:null,authUser:{uid:'account:PersistenteTeste',username:'PersistenteTeste'}};b.join(d,{name:'PersistenteTeste',token});assert.equal(d.worldPlayer.save.level,17);assert.equal(d.worldPlayer.save.coins,984);assert.equal(d.worldPlayer.save.guild,'Luz Eterna');b.stop();
 });
 
 test('monstros não perseguem nem atacam jogadores que apenas se aproximam',t=>{
