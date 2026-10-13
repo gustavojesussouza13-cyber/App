@@ -37,6 +37,7 @@ const touchUI=$('touchControls');
 const joystick=window.OsPeregrinosTouchControls.create({pad:$('touchPad'),knob:$('touchKnob')});
 let socket=null,reconnectMs=1000,reconnectTimer=null,movingAt=0,lastDraw=0,fx=[],toastTimer=0,lastAction=0,lastActionWasSkill=false,tab='inventory',authed=false;
 let progressToken=null,accountMode=false,accountReady=false,emailRecoveryAvailable=false;
+let selectedRoomId='auren-publica',selectedRoomPassword='',roomCatalog=[],roomName='Praça Pública';
 // Cada abertura do site cria uma nova jornada Visitante. O token existe
 // somente nesta execução da página; queda da conexão reutiliza o token.
 // Dados de contas cadastradas continuam no servidor, sob login/senha.
@@ -91,7 +92,7 @@ function character(c){session.characters=c;session.zone=c.zone;session.role=c.ro
  $('xpText').textContent=c.xp+' / '+c.nextXp;$('hpBar').style.width=clamp(c.hp/c.maxHp*100,0,100)+'%';$('xpBar').style.width=clamp(c.xp/c.nextXp*100,0,100)+'%';
  session.story=c.story||null;$('kills').textContent=c.kills;$('visited').textContent=c.visited.length+'/'+(session.zones.length||40);$('zoneTitle').textContent=session.zones[c.zone]?.name||('Região '+c.zone);drawTravel();drawTab();
 }
-function displayOnline(n){session.online=n;$('playerCount').textContent=n+'/10';setOnline(true,'✦ '+n+'/10 peregrinos online')}
+function displayOnline(n){session.online=n;$('playerCount').textContent=n+'/10';setOnline(true,'✦ '+roomName+' · '+n+'/10 jogadores')}
 function dispatch(msg){
  if(msg.type==='maintenance'){
   // Segunda via de aviso caso o canal global SSE seja bloqueado no navegador.
@@ -100,7 +101,9 @@ function dispatch(msg){
  if(msg.type==='pong'){if(latency.receive(msg,performance.now()))updatePingIndicator();return}
  if(msg.type==='welcome'){
  session.id=msg.self.id;session.name=msg.self.name;session.zones=msg.zones;session.portals=msg.portals||[];session.shop=msg.shop;session.relics=msg.relics||{};session.quests=msg.quests;session.achievements=msg.achievements||{};session.npcs=Array.isArray(msg.npcs)?msg.npcs:[];
- $('welcomeOverlay').hidden=true;setOnline(true,'Conectado');displayOnline(msg.online);character(msg.self);
+ $('welcomeOverlay').hidden=true;
+ if(msg.room){selectedRoomId=msg.room.id;roomName=msg.room.name}
+ setOnline(true,'Conectado');displayOnline(msg.online);character(msg.self);
  if(!authed){
   authed=true;
   const freshSwitch=accountMode&&msg.self.level===1&&msg.self.kills===0&&msg.self.role==='peregrino'&&session.formClass!=='peregrino';
@@ -172,7 +175,7 @@ function dispatch(msg){
  }else if(msg.type==='dialogue'){openDialogue(msg);
  }else if(msg.type==='storyResolved'){if(typeof desktopAudio!=='undefined')desktopAudio.play('victory');closeDialogue();say('',msg.message,'sys');alert(msg.complete?'✦ O SINO DA AURORA VOLTOU A TOCAR!':msg.reward?'✦ Novo capítulo! +'+msg.reward.xp+' EXP · +'+msg.reward.coins+' moedas':msg.message);if(msg.epilogue)showEpilogue(msg);
  }else if(msg.type==='error'){say('','Servidor: '+msg.message,'sys');$('connectionError').textContent=msg.message||'Erro de conexão';
-  if(['full','name_taken','invalid_name','login_required','name_reserved','auth_unavailable'].includes(msg.code)){authed=false;$('welcomeOverlay').hidden=false;clearTimeout(reconnectTimer);socket?.close();if(msg.code==='login_required')setAuthTab('login');}
+  if(['full','name_taken','invalid_name','login_required','name_reserved','auth_unavailable','room_missing','room_full','wrong_room_password','rate_limited'].includes(msg.code)){authed=false;$('welcomeOverlay').hidden=false;clearTimeout(reconnectTimer);socket?.close();if(msg.code==='login_required')setAuthTab('login');}
  }}
 function connect(){
  if(!progressToken){alert('Não foi possível iniciar a jornada. Atualize a página.');return}
@@ -184,7 +187,7 @@ function connect(){
   sock.onopen=()=>{
    if(socket!==sock)return;
    reconnectMs=1000;
-   sock.send(JSON.stringify({type:'hello',name:session.name,role:session.formClass,token:progressToken,mode:accountMode?'account':'guest'}));
+   sock.send(JSON.stringify({type:'hello',name:session.name,role:session.formClass,token:progressToken,mode:accountMode?'account':'guest',roomId:selectedRoomId,roomPassword:selectedRoomPassword}));
   };
   sock.onmessage=e=>{
    if(socket!==sock)return;
@@ -203,6 +206,63 @@ function connect(){
   if(authed){clearTimeout(reconnectTimer);reconnectTimer=setTimeout(connect,reconnectMs);reconnectMs=Math.min(14000,reconnectMs*1.7)}
  }
 }
+
+function updateRoomSelection(){
+ const select=$('roomSelect'),room=roomCatalog.find(r=>r.id===selectedRoomId);
+ const found=room||roomCatalog.find(r=>r.id==='auren-publica')||roomCatalog[0];
+ if(!found)return;
+ if(!room){selectedRoomId=found.id;selectedRoomPassword=''}
+ select.replaceChildren();
+ for(const r of roomCatalog){
+  const option=document.createElement('option');option.value=r.id;
+  option.textContent=(r.locked?'🔒 ':'✦ ')+r.name+' ('+r.online+'/'+r.capacity+')';
+  option.disabled=r.online>=r.capacity;select.append(option);
+ }
+ select.value=selectedRoomId;
+ const chosen=roomCatalog.find(r=>r.id===selectedRoomId)||found;
+ const locked=chosen.locked===true;
+ $('roomJoinPassword').hidden=!locked;
+ $('roomJoinPasswordLabel').hidden=!locked;
+ if(!locked){$('roomJoinPassword').value='';selectedRoomPassword=''}
+ $('roomSummary').textContent=chosen.online+'/'+chosen.capacity+' jogadores · '+(locked?'Sala privada: informe a senha.':'Sala pública: entrada livre.');
+}
+async function loadRooms(){
+ try{
+  const res=await fetch('/api/rooms',{cache:'no-store'});
+  if(!res.ok)throw Error('Indisponível');
+  const data=await res.json();
+  if(!Array.isArray(data.rooms))throw Error('Resposta inválida');
+  roomCatalog=data.rooms;updateRoomSelection();
+ }catch{$('roomSummary').textContent='Não foi possível atualizar a lista de salas.'}
+}
+$('roomSelect').addEventListener('change',()=>{
+ selectedRoomId=$('roomSelect').value;selectedRoomPassword='';$('roomJoinPassword').value='';updateRoomSelection();
+});
+$('roomJoinPassword').addEventListener('input',()=>{selectedRoomPassword=$('roomJoinPassword').value});
+$('createRoomForm').addEventListener('submit',async e=>{
+ e.preventDefault();const submit=e.currentTarget.querySelector('[type=submit]');
+ submit.disabled=true;$('roomError').textContent='';
+ try{
+  const response=await fetch('/api/rooms',{
+   method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},
+   body:JSON.stringify({name:$('newRoomName').value.trim(),password:$('newRoomPassword').value,guestToken:progressToken})
+  });
+  const data=await response.json();
+  if(!response.ok)throw Error(data.error||'Não foi possível criar a sala.');
+  roomCatalog.push(data.room);selectedRoomId=data.room.id;
+  selectedRoomPassword=$('newRoomPassword').value;updateRoomSelection();
+  if(data.room.locked)$('roomJoinPassword').value=selectedRoomPassword;
+  $('newRoomName').value='';$('newRoomPassword').value='';
+  $('createRoomForm').parentElement.open=false;
+  $('roomSummary').textContent='Sala criada! Entre como Visitante ou com sua conta.';
+ }catch(err){$('roomError').textContent=err.message||'Não foi possível criar a sala.'}
+ finally{submit.disabled=false}
+});
+const requestedRoom=new URLSearchParams(location.search).get('room');
+if(requestedRoom&&/^[a-f0-9]{18}$/.test(requestedRoom))selectedRoomId=requestedRoom;
+loadRooms();
+setInterval(()=>{if(!$('welcomeOverlay').hidden)return;void loadRooms()},15000);
+
 $('nameForm').addEventListener('submit',e=>{e.preventDefault();accountMode=false;$('logoutBtn').hidden=true;$('emailSettingsBtn').hidden=true;const name=$('name').value.trim().normalize('NFC');if(!/^[\p{L}\p{N}][\p{L}\p{N} _-]{2,17}$/u.test(name)){alert('Escolha um nome válido de 3–18 caracteres');return}
  session.name=name;session.formClass=$('role').value;connect();});
 // Autenticação opcional. Sessão via cookie HttpOnly, nunca salvamos senha no navegador.
