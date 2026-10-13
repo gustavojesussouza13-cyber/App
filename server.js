@@ -340,7 +340,7 @@ function join(c,data){
   const name=typeof data.name==='string'?data.name.trim().normalize('NFC'):'';
   if(!validName(name)){return refuse(c,{type:'error',code:'invalid_name',message:'Use de 3 a 18 caracteres: letras, números, espaço ou hífen.'})}
   if(!inspectNickname(name).ok)return refuse(c,{type:'error',code:'invalid_name',message:'Esse apelido não é permitido no chat protegido.'});
-  if(players.size>=MAX_PLAYERS){return refuse(c,{type:'error',code:'full',message:'Campanha clássica cheia (10/10). Aguarde uma vaga.'})}
+  if(players.size>=MAX_PLAYERS){return refuse(c,{type:'error',code:'full',message:'Campanha clássica cheia (60/60). Aguarde uma vaga.'})}
   const token=typeof data.token==='string'&&/^[a-f0-9-]{20,60}$/i.test(data.token)?data.token:'';
   for(const other of sockets)if(other!==c&&other.profile&&other.profile.name.toLocaleLowerCase('pt-BR')===name.toLocaleLowerCase('pt-BR')){
     if(token && token===other.profile.token){terminate(other);break;}
