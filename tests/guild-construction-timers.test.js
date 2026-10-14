@@ -87,3 +87,19 @@ test('quartel não recruta nem torre reforça defesa enquanto obra não terminou
  assert.equal(a.act({action:'train',unit:'militia',count:1},a.now+90001),false);
  assert.equal(a.g.city.buildings[0].status,'complete');
 });
+
+
+test('tick avisa fim da obra sem alert bloqueante e envia reino atualizado imediatamente',t=>{
+ const a=setup();t.after(()=>a.world.stop());
+ assert.equal(a.act({action:'construct',type:'house',x:1,y:1}),true);
+ a.notices.length=0;
+ const work=a.g.city.buildings[0];
+ work.endsAt=Date.now()-5;
+ a.world.tick();
+ assert.equal(work.status,'complete');
+ assert.ok(a.notices.some(m=>m.type==='system'&&/Obra concluída/.test(m.text)),'aviso discreto na tela');
+ assert.equal(a.notices.some(m=>m.type==='notice'&&/Obra concluída/.test(m.text)),false,'sem alert() bloqueante');
+ const state=a.notices.find(m=>m.type==='kingdomState');
+ assert.ok(state,'enviar o estado atualizado imediatamente');
+ assert.equal(state.data.cities[0].buildings[0].status,'complete');
+});
