@@ -94,29 +94,44 @@ test('rei pode erguer muralhas até nível cinco; a defesa aumenta sem gerar our
  assert.equal(h.action(p,{action:'upgrade'}),true,'fortaleza agora evolui além do nível cinco');
  assert.equal(g.base.level,6);
 });
-test('recrutamento cobra moedas, exige capital próxima e limita exércitos a 300',t=>{
+// Preparação para testes militares: unidade só pode nascer de um quartel
+// finalizado, mediante consumo real do armazém da guilda.
+function supplyBarracks(g){
+ g.city={buildings:[{type:'barracks',x:8,y:8,w:4,h:3,level:1,status:'complete'}],
+  stock:{food:1500,timber:1500,stone:1500,coins:0},lastCollectedAt:1000};
+}
+test('compra de exércitos com moedas é bloqueada; quartel usa estoque e limite de 300',t=>{
  const h=setup(t),a=h.player('Comandante'),g=h.guild(a,'Forca das Torres');
  assert.equal(h.action(a,{action:'recruit',unit:'knight',count:3}),false);
  assert.equal(h.action(a,{action:'place',x:768,y:512}),true);
- const gold=a.save.coins;
- assert.equal(h.action(a,{action:'recruit',unit:'knight',count:5}),true);
- assert.equal(a.save.coins,gold-5*policy.UNITS.knight.cost);
+ const wallet=a.save.coins;
+ assert.equal(h.action(a,{action:'recruit',unit:'knight',count:5}),false);
+ assert.equal(a.save.coins,wallet,'cliente antigo não pode cobrar moedas');
+ assert.equal(policy.troopCount(g.army),0);
+ assert.equal(h.action(a,{action:'train',unit:'knight',count:1}),false,'quartel obrigatório');
+ supplyBarracks(g);
+ assert.equal(h.action(a,{action:'train',unit:'knight',count:5}),true);
+ assert.equal(a.save.coins,wallet,'recrutar não usa a carteira pessoal');
  assert.equal(g.army.knight,5);
- assert.equal(h.action(a,{action:'recruit',unit:'siege',count:500}),false);
- assert.equal(h.action(a,{action:'recruit',unit:'siege',count:3.5}),false);
- assert.equal(h.action(a,{action:'recruit',unit:'gold',count:2}),false);
- a.x=1400;assert.equal(h.action(a,{action:'recruit',unit:'archer',count:2}),false);
+ assert.equal(g.city.stock.food,1500-5*8);
+ assert.equal(g.city.stock.timber,1500-5*3);
+ assert.equal(g.city.stock.stone,1500-5*3);
+ for(const request of [
+  {unit:'siege',count:500},{unit:'siege',count:3.5},{unit:'gold',count:2}
+ ])assert.equal(h.action(a,{action:'train',...request}),false);
+ a.x=1400;assert.equal(h.action(a,{action:'train',unit:'archer',count:2}),false);
  a.x=768;a.save.coins=0;
- assert.equal(h.action(a,{action:'recruit',unit:'archer',count:1}),false);
- g.army={militia:280,archer:0,knight:5,siege:0};a.save.coins=9000;
- assert.equal(h.action(a,{action:'recruit',unit:'militia',count:20}),false);
+ assert.equal(h.action(a,{action:'train',unit:'archer',count:1}),true,'moedas pessoais não são usadas');
+ g.army={militia:280,archer:1,knight:5,siege:0};
+ assert.equal(h.action(a,{action:'train',unit:'militia',count:20}),false);
 });
 test('campanha militar entre reinos atravessa regiões sem teleportar jogadores e eleva influência',t=>{
  const h=setup(t),attacker=h.player('LordeNorte',0),defender=h.player('LadySul',1);
  const a=h.guild(attacker,'Reino do Norte'),b=h.guild(defender,'Reino do Sul');
  assert.equal(h.action(attacker,{action:'place',x:768,y:512}),true);
  assert.equal(h.action(defender,{action:'place',x:768,y:512}),true);
- assert.equal(h.action(attacker,{action:'recruit',unit:'knight',count:10}),true);
+ supplyBarracks(a);
+ assert.equal(h.action(attacker,{action:'train',unit:'knight',count:10}),true);
  assert.equal(h.action(attacker,{action:'attack',target:'reino do sul'},2000),true);
  assert.equal(attacker.zone,0,'jogador não deve teleportar para atacar outro reino');
  assert.equal(policy.troopCount(a.army),0,'tropas comprometidas não podem duplicar');
@@ -132,7 +147,7 @@ test('campanha militar entre reinos atravessa regiões sem teleportar jogadores 
  assert.equal(h.action(attacker,{action:'attack',target:'reino do sul'},2000+45100),false,'respeitar cooldown de dez minutos');
  assert.ok(b.base);
 });
-test('exército defensivo reduz danos e segurança impede ataque sem liderança',t=>{
+test('exército defensivo reduz danos e membro sem tropa não consegue atacar',t=>{
  const h=setup(t),a=h.player('Alfa'),b=h.player('Beta'),member=h.player('Membro');
  const ga=h.guild(a,'Reino Alfa'),gb=h.guild(b,'Reino Beta');
  h.action(a,{action:'place',x:768,y:512});b.zone=1;b.save.zone=1;
@@ -140,8 +155,8 @@ test('exército defensivo reduz danos e segurança impede ataque sem liderança'
  ga.members.push(member.uid);member.save.guild=ga.name;
  assert.equal(h.action(member,{action:'attack',target:'reino beta'}),false);
  assert.equal(h.action(a,{action:'attack',target:'reino beta'}),false,'exército com menos de 5 soldados');
- a.save.coins=5000;h.action(a,{action:'recruit',unit:'militia',count:5});
- b.save.coins=10000;h.action(b,{action:'recruit',unit:'siege',count:5});
+ supplyBarracks(ga);h.action(a,{action:'train',unit:'militia',count:5});
+ supplyBarracks(gb);h.action(b,{action:'train',unit:'siege',count:5});
  assert.equal(h.action(a,{action:'attack',target:'reino beta'},10000),true);
  const results=policy.resolve(h.world,10000+45001);
  assert.match(results[0].text,/Derrota/);
