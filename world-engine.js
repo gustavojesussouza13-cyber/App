@@ -108,10 +108,10 @@ const ACHIEVEMENTS=Object.freeze({
  'aurora-restaurada':{name:'Guardião do Sétimo Verso',coins:300},
  'vigilia-completa':{name:'Guardião dos Quatro Testemunhos',coins:750}
 });
-const defaultSave=()=>({crownKeyIssuedAt:0,level:1,xp:0,hp:135,coins:60,zone:0,x:ZONE_W/2,y:ZONE_H/2,role:'peregrino',inventory:{pocao:3},kills:0,quests:[],visited:[0],guild:null,achievements:[],bossRelics:[],blocked:[],story:freshStory()});
+const defaultSave=()=>({crownKeyIssuedAt:0,level:1,xp:0,hp:135,coins:60,zone:0,x:ZONE_W/2,y:ZONE_H/2,role:'peregrino',inventory:{pocao:3},kills:0,quests:[],visited:[0],guild:null,guildFounded:false,achievements:[],bossRelics:[],blocked:[],story:freshStory()});
 function hpMax(s){return CLASSES[s.role].hp+(s.level-1)*12}
 function xpNeed(level){return 70+level*level*35}
-function safeSave(s){return {crownKeyIssuedAt:s.crownKeyIssuedAt||0,level:s.level,xp:s.xp,hp:s.hp,coins:s.coins,zone:s.zone,x:s.x,y:s.y,role:s.role,inventory:s.inventory,kills:s.kills,quests:s.quests,visited:s.visited,guild:s.guild,achievements:s.achievements,bossRelics:s.bossRelics,blocked:s.blocked,story:s.story}}
+function safeSave(s){return {crownKeyIssuedAt:s.crownKeyIssuedAt||0,level:s.level,xp:s.xp,hp:s.hp,coins:s.coins,zone:s.zone,x:s.x,y:s.y,role:s.role,inventory:s.inventory,kills:s.kills,quests:s.quests,visited:s.visited,guild:s.guild,guildFounded:s.guildFounded===true,achievements:s.achievements,bossRelics:s.bossRelics,blocked:s.blocked,story:s.story}}
 function hash32(n){n|=0;n=Math.imul(n^(n>>>16),0x7feb352d);n=Math.imul(n^(n>>>15),0x846ca68b);return (n^(n>>>16))>>>0}
 class World {
  constructor({send,getOnline,hasClassicName,dataFile,autosave=false,persistentStore=null}){
@@ -269,6 +269,14 @@ class World {
    raw=pending&&pending.expires>now?pending.save:defaultSave();
   }
   const s={...defaultSave(),...raw};
+   // Quem fundou uma guilda mantém esta marca mesmo ao sair ou transferir a liderança.
+   // Para guildas legadas, vinculamos o fundador conhecido antes de ele sair.
+   if(owner){
+    for(const guild of this.guilds.values()){
+     if(guild?.leader===uid&&!guild.founderUid){guild.founderUid=uid;this.dirty=true}
+     if(guild?.founderUid===uid)s.guildFounded=true;
+    }
+   }
   if(!CLASSES[s.role])s.role='peregrino';if(!Number.isInteger(s.zone)||s.zone<0||s.zone>=ZONES.length)s.zone=0;
   s.level=clamp(Math.floor(Number(s.level)||1),1,100);s.coins=clamp(Math.floor(Number(s.coins)||0),0,MAX_GOLD);s.hp=clamp(Math.floor(Number(s.hp)||hpMax(s)),1,hpMax(s));s.x=clamp(Number(s.x)||ZONE_W/2,28,ZONE_W-28);s.y=clamp(Number(s.y)||ZONE_H/2,28,ZONE_H-28);
   const safeLocation=terrain.nearestWalkable(s.zone,s.x,s.y,ZONES);
@@ -444,7 +452,7 @@ class World {
  claimCrownKey(p){
    const sovereign=kingdoms.continentalSovereign(this);
    if(!p.isAccount||!sovereign||sovereign.leaderUid!==p.uid){
-    this.tell(p,'Somente o líder da Coroa Continental, que controla pelo menos 7 regiões, pode receber a Chave da Câmara da Aurora.');return false
+    this.tell(p,'A chave é exclusiva do líder da guilda soberana: se houver só um reino com capital, ele já detém a Coroa; se houver rivais, precisa dominar a maioria dos territórios controlados.');return false
    }
    if((p.save.inventory[CROWN_DUNGEON_KEY]||0)>0){this.tell(p,'Você já carrega a chave exclusiva da Câmara da Aurora.');return false}
    const now=Date.now();
@@ -465,7 +473,7 @@ class World {
   const enteringCrownDungeon=requiresCrownKey(a,b);
   const enteringOrdinaryDungeon=a<12&&b>=12&&b<CROWN_DUNGEON_ROOT;
   if(enteringCrownDungeon&&(p.save.inventory[CROWN_DUNGEON_KEY]||0)<1){
-   this.tell(p,'A Câmara da Aurora exige a Chave da Coroa Continental. Só o líder do reino que domina 7 regiões pode conquistá-la.');return
+   this.tell(p,'A Câmara da Aurora exige a Chave da Coroa Continental, reivindicada pelo líder do reino politicamente soberano.');return
   }
   if(enteringOrdinaryDungeon&&(p.save.inventory.chave||0)<1){
    this.tell(p,'Você precisa de uma Chave da masmorra comum (obtida na história ou na loja).');return
@@ -708,8 +716,16 @@ class World {
  partyLeave(p,notify){const id=p.party,pt=this.parties.get(id);p.party=null;if(!pt)return;pt.members=pt.members.filter(x=>x!==p.id);if(pt.leader===p.id)pt.leader=pt.members[0];if(!pt.members.length)this.parties.delete(id);else this.partyUpdate(id);if(notify)this.send(p.socket,this.ownStatus(p))}
  partyUpdate(id){const pt=this.parties.get(id);if(!pt)return;const names=pt.members.map(pid=>this.players.get(pid)?.name).filter(Boolean);for(const pid of pt.members){const p=this.players.get(pid);if(p){this.send(p.socket,{type:'partyInfo',leader:this.players.get(pt.leader)?.name,members:names,id});this.send(p.socket,this.ownStatus(p));}}}
  guild(p,d){const mode=cap(d.action,15),name=cap(d.name,30).trim(),key=name.toLocaleLowerCase('pt-BR');
-  if(mode==='create'){if(p.save.guild||p.save.coins<250||!/^[\p{L}\p{N}][\p{L}\p{N} -]{2,23}$/u.test(name)||!inspectNickname(name).ok||this.guilds.has(key))return this.tell(p,'Guilda indisponível. Use um nome apropriado e exclusivo; são necessárias 250 moedas.');
-   p.save.coins-=250;p.save.guild=name;this.guilds.set(key,{name,leader:p.uid,members:[p.uid],invitations:[]});this.tell(p,'Guilda criada: '+name);this.dirty=true;
+  if(mode==='create'){
+    if(!p.isAccount)return this.tell(p,'Para fundar uma guilda permanente é obrigatório entrar com uma conta cadastrada.');
+    const foundedBefore=p.save.guildFounded===true||[...this.guilds.values()].some(g=>g?.founderUid===p.uid||g?.leader===p.uid);
+    if(foundedBefore)return this.tell(p,'Cada conta pode fundar apenas uma guilda. Mesmo ao sair dela, você não pode criar uma segunda; poderá entrar em outra guilda por convite.');
+    if(p.save.guild||p.save.coins<250||!/^[\p{L}\p{N}][\p{L}\p{N} -]{2,23}$/u.test(name)||!inspectNickname(name).ok||this.guilds.has(key))
+     return this.tell(p,'Guilda indisponível. Use um nome apropriado e exclusivo; são necessárias 250 moedas e você não pode pertencer a outra guilda.');
+    p.save.coins-=250;p.save.guild=name;p.save.guildFounded=true;
+    this.guilds.set(key,{name,leader:p.uid,founderUid:p.uid,members:[p.uid],invitations:[]});
+    this.tell(p,'Guilda criada: '+name+'. Sua conta não poderá fundar outra guilda.');this.dirty=true;
+    this.persist();
   } else if(mode==='invite'){const g=this.guilds.get(p.save.guild?.toLowerCase());if(!g||g.leader!==p.uid)return;const other=[...this.players.values()].find(o=>o.name.toLowerCase()===cap(d.target,20).toLowerCase());if(!other||other.save.guild)return;g.invitations.push(other.uid);this.send(other.socket,{type:'guildInvite',name:g.name,by:p.name});this.dirty=true;
   } else if(mode==='accept'){const g=this.guilds.get(key);if(!g||!g.invitations.includes(p.uid)||p.save.guild)return;g.invitations=g.invitations.filter(x=>x!==p.uid);g.members.push(p.uid);p.save.guild=g.name;this.dirty=true;
   } else if(mode==='leave'){const g=this.guilds.get(p.save.guild?.toLowerCase());if(g){const escort=kingdoms.escortOf(g,p.uid);if(kingdoms.troopCount(escort)){g.army=kingdoms.armyCopy(g.army);for(const unit of Object.keys(escort))g.army[unit]+=escort[unit];g.escorts={...(g.escorts||{})};delete g.escorts[p.uid]}g.members=g.members.filter(x=>x!==p.uid);if(g.leader===p.uid)g.leader=g.members[0]||null;if(!g.members.length)this.guilds.delete(p.save.guild.toLowerCase())}p.save.guild=null;this.dirty=true}
