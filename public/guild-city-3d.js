@@ -378,7 +378,7 @@
    const durationMs=Number(state?.buildTimes?.[selected])||0;
    const building={...layout.plan(selected,x,y),level:1,status:'building',
     ...(durationMs>0?{startedAt,endsAt:startedAt+durationMs,durationMs}:{})};
-   sendOperation('construct',{type:selected,x,y,target:base.name},{building,price});
+   sendOperation('construct',{buildingType:selected,x,y,target:base.name},{building,price});
   }
   function onHover(cell){
    q('guild3dCoords').textContent=cell?'Lote '+(cell.x+1)+' / '+(cell.y+1)+' · '+layout.N+'×'+layout.N:'Terreno '+layout.N+'×'+layout.N;
