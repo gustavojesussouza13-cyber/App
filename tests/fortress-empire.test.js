@@ -27,6 +27,10 @@ function fixture(t){
  };
  return {world,join,act,build,snapshots,messages};
 }
+function supplyQuartel(g){
+ g.city={buildings:[{type:'barracks',x:8,y:8,w:4,h:3,status:'complete',level:1}],
+  stock:{food:2000,timber:2000,stone:2000,coins:0},lastCollectedAt:Date.now()};
+}
 test('níveis 1 a 5 desbloqueiam áreas progressivas e respeitam o castelo',()=>{
  assert.deepEqual([1,2,3,4,5].map(l=>layout.bounds(l).width),[14,18,22,24,26]);
  assert.equal(layout.canPlace([],'house',0,0,1),false);
@@ -52,7 +56,8 @@ test('fortaleza sobe de nível, libera terrenos antes bloqueados e aumenta o lim
 });
 test('a guarnição transfere instantaneamente tropas ao membro e volta sem duplicar',t=>{
  const f=fixture(t),p=f.join('Comandante'),g=f.build(p,'Guarda Verde');
- assert.equal(f.act(p,{action:'recruit',unit:'archer',count:15}),true);
+ supplyQuartel(g);
+ assert.equal(f.act(p,{action:'train',unit:'archer',count:15}),true);
  assert.equal(f.act(p,{action:'escort',unit:'archer',count:10}),true);
  assert.equal(g.army.archer,5);assert.equal(g.escorts[p.uid].archer,10);
  assert.equal(f.world.publicPlayer(p).escort.archer,10);
@@ -77,7 +82,8 @@ test('torres e muralhas reforçam a defesa e são persistidas',t=>{
 test('cerco remoto é recusado; cerco no local é imediato e consome tropas de verdade',t=>{
  const f=fixture(t),p=f.join('Invasor'),r=f.join('Defensor',1);
  const attacker=f.build(p,'Reino Atacante'),defender=f.build(r,'Reino Defensor');
- assert.equal(f.act(p,{action:'recruit',unit:'knight',count:30}),true);
+ supplyQuartel(attacker);
+ assert.equal(f.act(p,{action:'train',unit:'knight',count:30}),true);
  assert.equal(f.act(p,{action:'escort',unit:'knight',count:25}),true);
  assert.equal(f.act(p,{action:'siege',target:'reino defensor'}),false,'sem viagem instantânea de jogadores');
  p.zone=1;p.x=768;p.y=512;
