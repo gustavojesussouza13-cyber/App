@@ -45,7 +45,7 @@ async function join(name,roomId,password,token=guestToken()){
  });
  return{socket,result,token};
 }
-test('clique no cabeçalho permite troca real de sala, falha de senha não expulsa o jogador',{timeout:23000},async()=>{
+test('troca real entre salas públicas ignora senhas antigas e preserva o personagem',{timeout:23000},async()=>{
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'peregrinos-switch-'));
  const worker=spawn(process.execPath,['server.js'],{cwd:path.resolve(__dirname,'..'),
   env:{...process.env,PORT:String(port),DATABASE_URL:'',DATA_FILE:path.join(dir,'world.sqlite')},
@@ -73,15 +73,12 @@ test('clique no cabeçalho permite troca real de sala, falha de senha não expul
   const spent=await awaitMessage(pilgrim.socket,m=>m.type==='character'&&m.inventory.pocao===potions-1,
    ()=>pilgrim.socket.send(JSON.stringify({type:'use',item:'pocao'})));
   assert.equal(spent.level,1);assert.equal(spent.inventory.pocao,potions-1);
-  const wrong=await awaitMessage(pilgrim.socket,m=>m.type==='roomSwitchError',
-   ()=>pilgrim.socket.send(JSON.stringify({type:'switchRoom',roomId:second.room.id,password:'errada'})));
-  assert.equal(wrong.code,'wrong_room_password');
-  assert.equal(pilgrim.socket.readyState,WebSocket.OPEN);
   const stillChat=await awaitMessage(peer.socket,m=>m.type==='chat'&&m.text==='Continuo nesta sala',
    ()=>pilgrim.socket.send(JSON.stringify({type:'chat',channel:'global',text:'Continuo nesta sala'})));
   assert.equal(stillChat.name,'ViajaEntreSalas');
+  // Um cliente antigo com senha errada continua entrando: o servidor só oferece salas públicas.
   const targetWelcome=await awaitMessage(pilgrim.socket,m=>m.type==='welcome',
-   ()=>pilgrim.socket.send(JSON.stringify({type:'switchRoom',roomId:second.room.id,password:'segredo-forte'})));
+   ()=>pilgrim.socket.send(JSON.stringify({type:'switchRoom',roomId:second.room.id,password:'senha-invalida'})));
   assert.equal(targetWelcome.room.id,second.room.id);
   assert.equal(targetWelcome.self.role,'arqueiro');
   assert.equal(targetWelcome.self.inventory.pocao,potions-1);
