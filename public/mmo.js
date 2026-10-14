@@ -4,7 +4,7 @@
 const $=id=>document.getElementById(id);
 const cvs=$('game'),ctx=cvs.getContext('2d',{alpha:false});ctx.imageSmoothingEnabled=false;
 const W=cvs.width,H=cvs.height,ZONE_W=1536,ZONE_H=1024;
-const session={id:'',name:'',connected:false,characters:null,online:0,zones:[],portals:[],shop:{},relics:{},quests:[],npcs:[],story:null,achievements:{},monsters:new Map(),players:new Map(),zone:0,x:768,y:512,dir:2,target:null,partyInvite:null,guildInvite:null,tradeOffer:null,role:'peregrino',cameraX:0,cameraY:0,formClass:'peregrino'};
+const session={id:'',name:'',connected:false,characters:null,online:0,zones:[],portals:[],shop:{},relics:{},quests:[],npcs:[],merchants:[],story:null,achievements:{},monsters:new Map(),players:new Map(),zone:0,x:768,y:512,dir:2,target:null,partyInvite:null,guildInvite:null,tradeOffer:null,role:'peregrino',cameraX:0,cameraY:0,formClass:'peregrino'};
 const keys=new Set(),moves={up:['KeyW','ArrowUp'],down:['KeyS','ArrowDown'],left:['KeyA','ArrowLeft'],right:['KeyD','ArrowRight']};
 const monsterMotion=window.OsPeregrinosMonsterMotion.create();
 const playerMotion=window.OsPeregrinosPlayerMotion.create();
@@ -136,7 +136,7 @@ function dispatch(msg){
  }
  if(msg.type==='pong'){if(latency.receive(msg,performance.now()))updatePingIndicator();return}
  if(msg.type==='welcome'){
- session.id=msg.self.id;session.name=msg.self.name;session.zones=msg.zones;session.shop=msg.shop;session.relics=msg.relics||{};session.quests=msg.quests;session.achievements=msg.achievements||{};session.npcs=Array.isArray(msg.npcs)?msg.npcs:[];
+ session.id=msg.self.id;session.name=msg.self.name;session.zones=msg.zones;session.shop=msg.shop;session.relics=msg.relics||{};session.quests=msg.quests;session.achievements=msg.achievements||{};session.npcs=Array.isArray(msg.npcs)?msg.npcs:[];session.merchants=Array.isArray(msg.merchants)?msg.merchants:[];
  const roomChanged=Boolean(roomSwitchPending&&msg.room?.id===roomSwitchTarget&&selectedRoomId!==msg.room.id);
  if(roomChanged){
   // Não deixar sprites, efeitos e diálogos da sala anterior no novo mundo.
@@ -710,22 +710,31 @@ function drawTab(force=false){const parent=$('tabContent');
 
   parent.append(button('Conversar com NPC próximo', 'talk', {npc:nearNpc()?.id||''}));
  }else if(tab==='shop'){
-  appendText(parent,'h3','Mercado de Auren');for(const [id,item] of Object.entries(session.shop)){const d=group(parent);appendText(d,'b',item.name);appendText(d,'small',item.price+' moedas');d.append(button('Comprar', 'buy',{item:id}))}
+  appendText(parent,'h3','Comerciantes de Auren');
+   appendText(parent,'small','A compra é presencial, não há loja global. Encontre comerciantes no mapa, aproxime-se e converse para adquirir poções e equipamentos. Chaves das masmorras são obtidas pela história ou pela Coroa Continental.');
+   for(const merchant of session.merchants){
+    const block=group(parent);appendText(block,'b','🛒 '+merchant.name+' · '+merchant.region);
+    const npc=session.npcs.find(n=>n.id===merchant.id);
+    const near=Boolean(npc&&npc.zone===session.zone&&distance(npc,session)<=165);
+    appendText(block,'small',near?'Comerciante próximo: pode negociar.':
+     npc?.zone===session.zone?'Aproxime-se deste morador para negociar.':'Viaje até '+merchant.region+' para encontrar o vendedor.');
+    const talk=document.createElement('button');talk.type='button';talk.textContent=near?'Conversar e negociar':'Negociação presencial';
+    talk.disabled=!near;talk.onclick=()=>send('talk',{npc:merchant.id});block.append(talk);
+   }
  }else if(tab==='social'){
-  appendText(parent,'h3','Amigos e guildas');appendText(parent,'small','Grupo: até cinco peregrinos · Fundar uma guilda por conta (250 moedas) · Comércio de itens entre jogadores próximos').className='muted';
+  appendText(parent,'h3','Amigos e guildas');appendText(parent,'small','Grupo: até cinco peregrinos · Fundar guilda custa 250 moedas · Você pode criar outra depois de sair da anterior · Comércio entre jogadores próximos').className='muted';
   const p=group(parent);appendText(p,'b','Equipe');const n=field(p,'inviteName','Nome do convidado',18);const actions=document.createElement('div');actions.className='entry-actions';
   const create=button('Criar equipe','party',{action:'create'});const inv=document.createElement('button');inv.textContent='Convidar';inv.onclick=()=>send('party',{action:'invite',target:n.value.trim()});actions.append(create,inv,button('Sair','party',{action:'leave'}));p.append(actions);
   if(session.partyInvite)p.append(button('Aceitar equipe de '+session.partyInvite.by,'party',{action:'accept',party:session.partyInvite.party}));
   const g=group(parent);appendText(g,'b','Guildas');appendText(g,'small',s.guild?'Guilda atual: '+s.guild:'Nenhuma guilda');const gn=field(g,'guildName','Nome da guilda / convite',24);const target=field(g,'guildTarget','Convidar jogador',18);const gactions=document.createElement('div');gactions.className='entry-actions';
   const createGuild=document.createElement('button');
-   createGuild.textContent=s.guildFounded?'Guilda já fundada nesta conta':'Fundar minha única guilda (250 moedas)';
-   createGuild.disabled=Boolean(s.guildFounded)||Boolean(s.guild)||kingdomState?.persistentAccount===false;
-   createGuild.title=s.guildFounded?'Esta conta já fundou sua guilda; você pode entrar em outras por convite, mas não criar uma segunda.':
-    'Uma conta registrada pode fundar uma única guilda, mesmo que saia dela depois.';
+   createGuild.textContent='Fundar guilda (250 moedas)';
+   createGuild.disabled=Boolean(s.guild)||kingdomState?.persistentAccount===false;
+   createGuild.title=s.guild?'Saia da guilda atual antes de fundar outra.':
+    'Uma conta cadastrada pode fundar outra guilda depois de sair da anterior.';
    createGuild.onclick=()=>send('guild',{action:'create',name:gn.value.trim()});
   const inviteGuild=document.createElement('button');inviteGuild.textContent='Convidar';inviteGuild.onclick=()=>send('guild',{action:'invite',target:target.value.trim()});gactions.append(createGuild,inviteGuild,button('Sair','guild',{action:'leave'}));g.append(gactions);
-   appendText(g,'small',s.guildFounded?'Direito de fundação utilizado: esta conta não poderá fundar outra guilda.':
-    'Cada conta cadastrada pode fundar apenas uma guilda. Depois disso, continua podendo participar de outras por convite.');
+   appendText(g,'small','Você pode fundar outra guilda depois de sair da atual, pagando novamente 250 moedas. Não pode participar de duas guildas ao mesmo tempo.');
   if(session.guildInvite)g.append(button('Aceitar guilda '+session.guildInvite.name,'guild',{action:'accept',name:session.guildInvite.name}));
   const kingdom=group(parent);kingdom.classList.add('kingdom-panel');
   appendText(kingdom,'h3','✦ Reinos e política continental');
@@ -922,8 +931,19 @@ function renderDialogue(){if(!dialogue)return;
  const last=dialoguePage>=dialogue.pages.length-1,box=$('npcChoices');box.replaceChildren();
  $('npcNext').hidden=last&&dialogue.choices?.length>0;
  $('npcNext').textContent=last?'Encerrar conversa ✓':'Continuar →';
- if(last){for(const option of dialogue.choices||[]){const btn=document.createElement('button');btn.type='button';btn.textContent=option.label;
-  btn.onclick=()=>{if(option.id==='later'){closeDialogue();return}send('storyChoice',{npc:dialogue.id,choice:option.id});closeDialogue()};box.append(btn)}
+ if(last){
+  for(const option of dialogue.choices||[]){const btn=document.createElement('button');btn.type='button';btn.textContent=option.label;
+   btn.onclick=()=>{if(option.id==='later'){closeDialogue();return}send('storyChoice',{npc:dialogue.id,choice:option.id});closeDialogue()};box.append(btn)}
+  for(const item of dialogue.merchant||[]){
+   const buy=document.createElement('button');buy.type='button';
+   buy.textContent='🪙 Comprar '+item.name+' · '+item.price+' moedas';
+   buy.onclick=()=>{
+    const npc=session.npcs.find(n=>n.id===dialogue.id);
+    if(!npc||npc.zone!==session.zone||distance(npc,session)>165){closeDialogue();return}
+    send('buy',{npc:dialogue.id,item:item.id});
+   };
+   box.append(buy);
+  }
  }
 }
 function advanceDialogue(){if(!dialogue)return;if(dialoguePage<dialogue.pages.length-1){dialoguePage++;renderDialogue()}else if(!dialogue.choices?.length)closeDialogue()}
