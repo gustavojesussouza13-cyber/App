@@ -314,6 +314,8 @@ class World {
      if(guild?.founderUid===uid)s.guildFounded=true;
     }
    }
+  if(s.guild){const g=this.guilds.get(s.guild.toLocaleLowerCase('pt-BR'));
+   if(!g?.members?.includes(uid)){s.guild=null;this.dirty=true}}
   if(!CLASSES[s.role])s.role='peregrino';if(!Number.isInteger(s.zone)||s.zone<0||s.zone>=ZONES.length)s.zone=0;
   s.level=clamp(Math.floor(Number(s.level)||1),1,100);
    s.attributes=rpg.normalizeAllocations(s.attributes,s.level);
@@ -880,7 +882,11 @@ class World {
   let changed=false;
   for(const [key,g]of [...this.guilds]){
    if(!g||!Array.isArray(g.members)||g.members.length===0){this.guilds.delete(key);changed=true;continue}
-   const unique=[...new Set(g.members.filter(uid=>typeof uid==='string'&&uid))];
+   const unique=[...new Set(g.members.filter(uid=>typeof uid==='string'&&uid&&
+    // Um registro de personagem confirmadamente desligado não pode manter
+    // uma guilda fantasma após reinícios. Ausência de registro preserva legado.
+    (!this.saved.characters?.[uid]||this.saved.characters[uid].guild===undefined||
+     this.saved.characters[uid].guild?.toLocaleLowerCase('pt-BR')===key)))];
    if(unique.length!==g.members.length){g.members=unique;changed=true}
    if(!g.leader||!unique.includes(g.leader)){g.leader=unique[0];changed=true}
    const mods=[...new Set((g.moderators||[]).filter(uid=>unique.includes(uid)&&uid!==g.leader))];
