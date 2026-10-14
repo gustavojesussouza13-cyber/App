@@ -281,7 +281,7 @@ function publicState(world,p){
    level:b.level,defenseLevel:world.guilds.get(b.key)?.base?.defenseLevel||0,realm:b.name})),
   ranking:rank(world).slice(0,30),
   yourGuild:your?{name:your.guild.name,leader:your.guild.leader===p.uid,
-    canManage:Boolean(p.isAccount&&your.guild.base),
+    canManage:Boolean(p.isAccount&&your.guild.base),membersCount:your.guild.members?.length||1,
    base:your.guild.base||null,army:armyCopy(your.guild.army),
    escort:escortOf(your.guild,p.uid),escortsTotal:escortTotal(your.guild),
    fortressDefense:fortressDefense(your.guild),
@@ -289,7 +289,9 @@ function publicState(world,p){
     armyCapacity:militaryCapacity(your.guild.base?.level),currentTroops:fullArmyCount(your.guild),
     upkeepAt:your.guild.upkeepAt||0,allies:(your.guild.allies||[]).map(k=>world.guilds.get(k)?.name||k),
     allianceOffers:(your.guild.allianceOffers||[]).filter(k=>world.guilds.get(k)).map(k=>({key:k,name:world.guilds.get(k).name})),
-    crisis:your.guild.siegeCrisis?{...your.guild.siegeCrisis,canSurrender:your.guild.siegeCrisis.pressure>=SURRENDER_THRESHOLD}:null,
+    crisis:your.guild.siegeCrisis?{...your.guild.siegeCrisis,
+     yourVote:Boolean(your.guild.siegeCrisis.votes?.[p.uid]),
+     canSurrender:your.guild.siegeCrisis.pressure>=SURRENDER_THRESHOLD}:null,
     truce:your.guild.truce||null,surrenderHistory:(your.guild.surrenderHistory||[]).slice(-5),
    influence:your.guild.influence||{},stock:stockCopy(your.guild.city?.stock),lastCollectedAt:your.guild.city?.lastCollectedAt||0}:null,
   serverNow:Date.now(),
@@ -595,6 +597,8 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
   }
   other.allianceOffers=[...(other.allianceOffers||[]).filter(k=>k!==key),key].slice(-10);
   world.dirty=true;accept('Proposta de aliança enviada a '+other.name+'. O líder rival precisa aprovar.');
+  for(const member of world.players.values())if(other.members?.includes(member.uid))
+   world.send(member.socket,{type:'kingdomState',data:publicState(world,member)});
   for(const member of world.players.values())if(member.uid===other.leader)
    world.tell(member,'☮ Proposta de aliança recebida de '+g.name+'. Abra Social para responder.');
   return true;
@@ -615,6 +619,8 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
   other.allies=[...new Set([...(other.allies||[]),key])];
   g.allianceOffers=(g.allianceOffers||[]).filter(k=>k!==otherKey);
   world.dirty=true;accept('Aliança diplomática firmada com '+other.name+'! Escoltas aliadas podem participar de cercos conjuntos.');
+  for(const member of world.players.values())if(other.members?.includes(member.uid))
+   world.send(member.socket,{type:'kingdomState',data:publicState(world,member)});
   for(const member of world.players.values())if(other.members?.includes(member.uid))
    world.tell(member,'☮ Aliança firmada entre '+g.name+' e '+other.name+'.');
   return true;
