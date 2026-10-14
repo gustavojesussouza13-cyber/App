@@ -353,7 +353,7 @@ export function createGuildScene({mount,layout,onCell,onHover}){
   }
  function updateBuildings(next=[],nextArmy={},serverNow=null,level=1){
   if(Number.isSafeInteger(serverNow))serverOffset=serverNow-Date.now();
-  const nextBuildings=Array.isArray(next)?next.filter(b=>b&&layout.footprints[b.type]&&Number.isSafeInteger(b.x)&&Number.isSafeInteger(b.y)).slice(0,60):[];
+  const nextBuildings=Array.isArray(next)?next.filter(b=>b&&layout.footprints[b.type]&&Number.isSafeInteger(b.x)&&Number.isSafeInteger(b.y)).slice(0,120):[];
   const nextArmyState=nextArmy||{};
   const nextLevel=Math.max(1,Math.min(5,Math.floor(Number(level)||1)));
   const fingerprint=JSON.stringify([nextBuildings,nextArmyState,nextLevel]);
