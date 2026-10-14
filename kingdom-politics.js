@@ -116,6 +116,70 @@ function fortressDefense(g,now=Date.now()){
  const towers=Math.round(24*Math.sqrt(towerLevels));
  return {level:lv,walls,towers,defense:25*lv+12*walls+towers+power(g?.army,'defense')};
 }
+// O abastecimento pertence ao reino: não usa a carteira dos personagens.
+// Processa até três ciclos atrasados, evitando perdas ilimitadas após downtime.
+function applyArmyUpkeep(g,now){
+ if(!g?.base||!g?.city||!Number.isSafeInteger(now))return null;
+ const previous=Number.isSafeInteger(g.upkeepAt)?g.upkeepAt:0;
+ if(!previous||previous>now){g.upkeepAt=now;return null}
+ const passed=Math.floor((now-previous)/UPKEEP_CYCLE_MS);
+ if(passed<1)return null;
+ const cycles=Math.min(MAX_UPKEEP_CYCLES,passed);
+ g.upkeepAt=now-(now-previous)%UPKEEP_CYCLE_MS;
+ const total=fullArmyCount(g);
+ if(!total)return null;
+ const foodNeeded=Math.max(1,Math.ceil(total/25))*cycles;
+ const stock=stockCopy(g.city.stock);
+ const available=Math.min(foodNeeded,stock.food);
+ stock.food-=available;g.city.stock=stock;
+ let losses=0;
+ if(available<foodNeeded){
+  const deficit=(foodNeeded-available)/foodNeeded;
+  const rate=Math.min(.12,.03*cycles*deficit);
+  const attrit=army=>{
+   const result=armyCopy(army);
+   for(const unit of Object.keys(UNITS)){
+    const lost=Math.floor(result[unit]*rate);
+    result[unit]-=lost;losses+=lost;
+   }
+   return result;
+  };
+  g.army=attrit(g.army);
+  if(g.escorts)for(const uid of Object.keys(g.escorts))
+   g.escorts[uid]=attrit(g.escorts[uid]);
+ }
+ return {foodUsed:available,foodNeeded,losses,cycles};
+}
+const isAlly=(a,bKey)=>Array.isArray(a?.allies)&&a.allies.includes(bKey);
+const activeTruce=(g,now)=>Number(g?.truce?.until)>now;
+function completeSurrender(world,loserKey,now){
+ const loser=world.guilds.get(loserKey),crisis=loser?.siegeCrisis;
+ if(!loser?.base||!crisis||crisis.pressure<SURRENDER_THRESHOLD||
+    now-Number(crisis.updatedAt||0)>24*60*60*1000)return null;
+ const winner=world.guilds.get(crisis.attacker);
+ if(!winner?.base||winner===loser)return null;
+ const region=loser.base.zone;
+ loser.influence=loser.influence||{};winner.influence=winner.influence||{};
+ loser.influence[region]=Math.max(0,(Number(loser.influence[region])||0)-30);
+ winner.influence[region]=Math.min(1000,(Number(winner.influence[region])||0)+45);
+ // Tributo voluntário somente do tesouro compartilhado, nunca de dinheiro pessoal.
+ let tribute=0;
+ if(loser.city&&winner.city){
+  const losingStock=stockCopy(loser.city.stock),winningStock=stockCopy(winner.city.stock);
+  const room=Math.max(0,stockCapacity(winner.base.level)-winningStock.coins);
+  tribute=Math.min(Math.floor(losingStock.coins*SURRENDER_TRIBUTE_RATE),room,2000);
+  losingStock.coins-=tribute;winningStock.coins+=tribute;
+  loser.city.stock=losingStock;winner.city.stock=winningStock;
+ }
+ const truce={with:crisis.attacker,until:now+SURRENDER_TRUCE_MS,region};
+ loser.truce={...truce};
+ winner.truce={with:loserKey,until:truce.until,region};
+ loser.surrenderHistory=[...(loser.surrenderHistory||[]),{to:winner.name,at:now,tribute,region}].slice(-10);
+ winner.diplomaticWins=(Number(winner.diplomaticWins)||0)+1;
+ delete loser.siegeCrisis;
+ world.dirty=true;
+ return {winner:winner.name,loser:loser.name,region,tribute,until:truce.until};
+}
 function escortStrike(g,uid){
  const escort=escortOf(g,uid);
  return {units:escort,damage:troopCount(escort)?Math.min(50,Math.max(1,Math.round(power(escort)*.18))):0};
