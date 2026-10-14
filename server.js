@@ -106,19 +106,6 @@ world.onKingdomResults=finished=>{
  }
 };
 const authRate=new Map();
-const roomPasswordFails=new Map();
-// Proteção de senhas de sala: 8 tentativas em 2 min por origem e sala,
-// sem gravar IPs, senha ou tentativas em logs do servidor.
-function roomAttemptKey(socket,id){
- return crypto.createHash('sha256').update(String(socket.remoteAddress||'anon')+':'+id).digest('hex');
-}
-function roomAttemptState(key){
- const now=Date.now();
- if(roomPasswordFails.size>2000)for(const [k,v] of roomPasswordFails)if(v.until<now)roomPasswordFails.delete(k);
- const old=roomPasswordFails.get(key);
- if(!old||old.until<now)return{count:0,until:now+120000};
- return old;
-}
 const mailService=new MailService();
 console.info('[e-mail] recuperação de senha: '+(mailService.ready?'pronta':'indisponível; conferir variáveis privadas do Render'));
 
@@ -164,7 +151,7 @@ async function handleCreateRoom(req,res){
   const creator=ownerId({uid:account?.uid,token:body.guestToken});
   if(!creator)throw new RoomError('Informe seu personagem ou entre com uma conta.','owner_required',401);
   if(!inspectNickname(body.name).ok)throw new RoomError('Nome de sala inadequado.','invalid_room',400);
-  const room=rooms.create({name:body.name,password:body.password||'',owner:creator});
+  const room=rooms.create({name:body.name,owner:creator});
   return jsonResponse(res,201,{room});
  }catch(err){
   if(!(err instanceof RoomError||err instanceof AuthError))console.warn('[salas] falha ao criar:',err.message);
@@ -409,18 +396,10 @@ async function worldHello(c,data){
   const uid=c.authUser?.uid||(typeof data.token==='string'?crypto.createHash('sha256').update(data.token).digest('hex'):null);
   let room;
   const requestedId=typeof data.roomId==='string'?data.roomId:MAIN_ID;
-  const accessKey=roomAttemptKey(c.socket,requestedId);
-  if(roomAttemptState(accessKey).count>=8)
-   return send(c.socket,{type:'error',code:'room_password_locked',message:'Muitas tentativas de senha. Aguarde dois minutos.'});
-  try{room=rooms.check(requestedId,data.roomPassword,{uid,owner:ownerId({uid:c.authUser?.uid,token:data.token}),guestOwner:ownerId({token:data.token})})}
-  catch(error){
-   if(error.code==='wrong_room_password'){
-    const current=roomAttemptState(accessKey);current.count++;
-    roomPasswordFails.set(accessKey,current);
-   }
-   return send(c.socket,{type:'error',code:error.code||'room_error',message:error.message});
-  }
-  roomPasswordFails.delete(accessKey);
+  // Seleção pública sem campos de senha. Regras de lotação e existência
+  // continuam sob controle do servidor.
+  try{room=rooms.check(requestedId,null,{uid})}
+  catch(error){return send(c.socket,{type:'error',code:error.code||'room_error',message:error.message})}
   const duplicates=[...sockets].filter(other=>other!==c&&other.mode==='world'&&other.worldPlayer?.uid===uid);
   // Para outra sala, salvar primeiro a conta. Na mesma sala, deixar a
   // instância ativa até o novo WebSocket ocupar a vaga anterior.
@@ -436,8 +415,7 @@ async function worldHello(c,data){
  finally{c.joinPending=false}
 }
 // Mudar de sala sem abrir outra aba ou encerrar o WebSocket. Somente depois
-// de validar a sala e a senha liberamos a vaga anterior. Nenhuma falha de
-// senha ou de lotação altera a partida em andamento.
+// de validar a sala pública e sua lotação liberamos a vaga anterior.
 function switchWorldRoom(c,data){
  const player=c.worldPlayer,from=c.worldRoom;
  if(!player||!from||!data||typeof data!=='object')return;
@@ -445,22 +423,13 @@ function switchWorldRoom(c,data){
  if(id===from.id){
   return send(c.socket,{type:'roomSwitchError',code:'same_room',message:'Você já está jogando nesta sala.'});
  }
- const key=roomAttemptKey(c.socket,id);
- if(roomAttemptState(key).count>=8)
-  return send(c.socket,{type:'roomSwitchError',code:'room_password_locked',message:'Muitas tentativas de senha. Aguarde dois minutos.'});
  let target;
- try{target=rooms.check(id,data.password,{uid:player.uid,owner:ownerId({uid:c.authUser?.uid,token:c.roomToken}),guestOwner:ownerId({token:c.roomToken})})}
- catch(err){
-  if(err.code==='wrong_room_password'){
-   const state=roomAttemptState(key);state.count++;roomPasswordFails.set(key,state);
-  }
-  return send(c.socket,{type:'roomSwitchError',code:err.code||'room_error',message:err.message});
- }
+ try{target=rooms.check(id,null,{uid:player.uid})}
+ catch(err){return send(c.socket,{type:'roomSwitchError',code:err.code||'room_error',message:err.message})}
  // Checar nomes antes de soltar a sessão antiga. A entrada em cada sala é
  // síncrona: não há janela para uma corrida de lotação após esta validação.
  if([...target.world.players.values()].some(p=>p.name.toLocaleLowerCase('pt-BR')===player.name.toLocaleLowerCase('pt-BR')&&p.uid!==player.uid))
   return send(c.socket,{type:'roomSwitchError',code:'name_taken',message:'Já existe um personagem com seu nome nessa sala.'});
- roomPasswordFails.delete(key);
  const save=structuredClone(player.save),uid=player.uid;
  const login={name:player.name,role:save.role,token:c.roomToken};
  c.roomTransferSave=save;
@@ -476,7 +445,7 @@ function switchWorldRoom(c,data){
   console.info('[salas] transferência concluída entre salas.');
  }catch(err){
   // Restaura a mesma sessão e o mesmo personagem se algo inesperado impedir
-  // a entrada. Senhas e tokens jamais vão para logs ou eventos públicos.
+  // a entrada. Tokens pessoais jamais vão para logs ou eventos públicos.
   c.worldRoom=from;
   if(!c.worldPlayer)from.world.join(c,login);
   if(c.worldPlayer)rooms.entered(from);
