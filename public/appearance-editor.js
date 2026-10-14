@@ -11,12 +11,13 @@
   const current=art.normalize(initial);
   const wrap=document.createElement('div');wrap.className='atelier-custom';
   const left=document.createElement('div');left.className='atelier-custom-preview';
-  const title=document.createElement('strong');title.textContent='SEU HERÓI · PIXEL ART 16-BIT';
-  const canvas=document.createElement('canvas');canvas.width=120;canvas.height=156;
+  const title=document.createElement('strong');title.textContent='SEU HERÓI · PIXEL ART RETRÔ';
+  const canvas=document.createElement('canvas');canvas.width=128;canvas.height=160;
   canvas.className='atelier-preview-canvas';
   canvas.setAttribute('aria-label','Prévia do personagem personalizado');
   const note=document.createElement('small');note.textContent='Pixel art nítida · silhueta da classe preservada';
   left.append(title,canvas,note);
+  const previewStudio=studio?.create?.({documentRef:document,limit:128});
   const options=document.createElement('div');options.className='atelier-custom-fields';
   const selects={};
   for(const [key,values]of Object.entries(art.OPTIONS)){
@@ -40,8 +41,8 @@
    const ctx=canvas.getContext('2d');ctx.imageSmoothingEnabled=false;
    ctx.clearRect(0,0,canvas.width,canvas.height);
    const type=role();
-   const sprite=studio?.create?.({documentRef:document,limit:100}).obtain('hero',type,2,'idle',0,false,0,0,null,read());
-   if(sprite){ctx.imageSmoothingEnabled=false;ctx.drawImage(sprite,0,0,120,156)}
+   const sprite=previewStudio?.obtain('hero',type,2,'idle',0,false,0,0,null,read());
+   if(sprite){ctx.imageSmoothingEnabled=false;ctx.drawImage(sprite,0,0,128,160)}
   }
   render();
   return {read,set,render};
