@@ -78,7 +78,7 @@ window.PeregrinosCity=Object.freeze({create({send}){
   if(!selected){feedback.textContent='Selecione um edifício na lista para construir.';return}
   if(!layout.canPlace(structures(),selected,x,y)){feedback.textContent='É necessário um lote livre de '+layout.footprints[selected].join(' × ')+' terrenos, sem ruas nem construções.';return}
   feedback.textContent='Enviando construção para validação do servidor…';
-  send('kingdom',{action:'construct',type:selected,x,y,target:base.name});
+  send('kingdom',{action:'construct',buildingType:selected,x,y,target:base.name});
  });
  function open(b,kingdom){base=b;state=kingdom;selected=null;feedback.textContent='';if(!dlg.open)dlg.showModal();refresh();send('kingdom',{action:'inspect'})}
  function update(kingdom){state=kingdom;if(dlg.open){const next=(state?.bases||[]).find(b=>b.name===base?.name);if(next)base=next;refresh()}}
