@@ -8,7 +8,7 @@
  root.PeregrinosCity=Object.freeze({create({send}){
   // Mantém a visualização de exércitos no continente principal SEM alterar o motor 2D.
   const oldUI=old.create({send});
-  let state=null,base=null,selected=null,scene=null,token=0,loading=false,clockOffset=0,queueTicker=null,lastCompletionInspect=0;
+  let state=null,base=null,selected=null,scene=null,token=0,loading=false,clockOffset=0,queueTicker=null,lastCompletionInspect=0,lastProductionPaint=0;
   let requestSeq=0;
   const requests=new Map(),provisionals=new Map(),awaitingDurable=new Map();
   const MAX_UNCONFIRMED=60;
@@ -19,7 +19,8 @@
    '<div class="guild3d-main"><div class="guild3d-stage"><div id="guild3dViewport" class="guild3d-viewport"><p id="guild3dLoading">Preparando sua capital tridimensional…</p></div>'+
    '<div class="guild3d-hud"><span>Arraste para girar · Roda para aproximar · Shift + arraste para mover</span><span id="guild3dCoords">Terreno 26×26 · 3D</span></div></div>'+
    '<aside class="guild3d-sidebar"><div class="guild3d-label">TESOURO E RECURSOS</div><div id="guild3dStock" class="guild3d-stocks"></div>'+
-   '<button type="button" id="guild3dCollect" class="guild3d-action">✦ Coletar produção</button>'+
+   '<button type="button" id="guild3dCollect" class="guild3d-action">✦ Coletar recursos prontos</button>'+ 
+    '<div class="guild3d-label">PRODUÇÃO DOS EDIFÍCIOS</div><div id="guild3dProduction" class="guild3d-build-queue" aria-label="Tempo de recursos por edifício"></div>'+
     '<div class="guild3d-label">EXPANSÃO DO REINO</div><p id="guild3dProgress" class="guild3d-note"></p>'+
     '<button type="button" id="guild3dUpgrade" class="guild3d-action">♜ Evoluir fortaleza</button>'+
     '<button type="button" id="guild3dFortify" class="guild3d-action">🛡 Reforçar muralhas</button>'+
@@ -59,6 +60,7 @@
   const labels={house:'Casario',farm:'Fazenda',barracks:'Quartel',market:'Mercado',tower:'Torre'};
   function updateQueue(){
    if(!dlg.open)return;
+    if(Date.now()-lastProductionPaint>900){lastProductionPaint=Date.now();updateProduction()}
    const works=buildWorks();
    // A cada prazo vencido (ou recuperação da conexão), consultar o servidor
    // sem bloquear a interface. Servidor finaliza idempotentemente e devolve
@@ -101,7 +103,44 @@
     queue.replaceChildren(message);
    }else queue.querySelector('.guild3d-no-works')?.remove();
   }
-  const say=(text,status='info')=>{
+  function updateProduction(){
+    const area=q('guild3dProduction'),now=nowServer(),active=new Set();
+    let available=0;
+    for(const b of structures()){
+     if(b.status==='building'||!b.production?.cycleMs)continue;
+     const key=b.type+':'+b.x+':'+b.y;active.add(key);
+     let row=[...area.children].find(e=>e.dataset.productionKey===key);
+     if(!row){
+      row=document.createElement('div');row.className='guild3d-queue-item';row.dataset.productionKey=key;
+      const head=document.createElement('div');head.className='guild3d-queue-head';
+      const title=document.createElement('strong');title.className='guild3d-prod-title';
+      const time=document.createElement('span');time.className='guild3d-queue-time';
+      head.append(title,time);
+      const track=document.createElement('div');track.className='guild3d-queue-track';track.append(document.createElement('span'));
+      const yieldLabel=document.createElement('small');yieldLabel.className='guild3d-prod-yield';
+      row.append(head,track,yieldLabel);area.append(row);
+     }
+     const prod=b.production,cycle=prod.cycleMs,nextAt=prod.nextAt;
+     const ready=Math.min(24,Math.max(0,Math.floor((now-nextAt)/cycle)+1));
+     if(ready)available++;
+     const left=Math.max(0,nextAt-now),pct=Math.min(100,Math.max(0,Math.round((ready?cycle:cycle-left)/cycle*100)));
+     row.querySelector('.guild3d-prod-title').textContent=(labels[b.type]||b.type)+' Lv.'+b.level+' · '+(b.x+1)+','+(b.y+1);
+     row.querySelector('.guild3d-queue-time').textContent=ready?'Pronto ✓ · '+ready+' ciclo(s)':prettyTime(left);
+     row.querySelector('.guild3d-queue-track span').style.width=pct+'%';
+     row.querySelector('.guild3d-prod-yield').textContent=
+      Object.entries(prod.yields||{}).filter(([,n])=>n>0).map(([id,n])=>n+' '+({food:'alimentos',coins:'moedas',timber:'madeiras',stone:'pedras'}[id]||id)).join(' + ')+
+      ' · ciclo '+prettyTime(cycle)+' · clique no prédio para melhorar';
+    }
+    for(const el of [...area.children])if(!active.has(el.dataset.productionKey))el.remove();
+    if(!active.size){
+     const note=document.createElement('p');note.className='guild3d-note';
+     note.textContent='Conclua os edifícios para acompanhar os ciclos de produção.';
+     area.replaceChildren(note);
+    }
+    collect.disabled=!owns()||state?.persistentAccount!==true||available===0;
+    collect.textContent=available?'✦ Coletar '+available+' produção(ões) prontas':'✦ Aguardando produção';
+   }
+   const say=(text,status='info')=>{
    info.textContent=text;
    info.dataset.status=status;
   };
