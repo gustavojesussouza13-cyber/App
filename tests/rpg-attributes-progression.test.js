@@ -31,7 +31,7 @@ test('todas as classes evoluem progressivamente nos níveis 1, 20, 60 e 100',()=
    const state=rpg.calculateAttributes({role,level,attributes:{}});
    const st=state.stats;
    assert.equal(state.level,level);
-   assert.equal(state.availablePoints,level-1);
+   assert.equal(state.availablePoints,(level-1)*2);
    assert.ok(Object.values(state.attributes).every(n=>Number.isFinite(n)&&n>=6));
    assert.ok(st.maxHp>=CLASSES[role].hp);
    assert.ok(st.maxEnergy>90);
@@ -61,14 +61,14 @@ test('nível inicial mantém a vida clássica; crescimento respeita diferenças 
  assert.ok(healer.stats.energyRegen>guardian.stats.energyRegen);
  assert.ok(pilgrim.attributes.forca>healer.attributes.forca);
 });
-test('pontos extras têm teto de 50 por atributo e nenhum dado adulterado produz pontos infinitos',()=>{
+test('pontos extras têm teto de 70 por atributo e nenhum dado adulterado produz pontos infinitos',()=>{
  const invalid={forca:99999,vitalidade:9000,agilidade:55,intelecto:-8,espirito:'123',sorte:1.2};
  const normalized=rpg.normalizeAllocations(invalid,60);
- assert.ok(Object.values(normalized).every(n=>Number.isInteger(n)&&n>=0&&n<=50));
- assert.ok(rpg.totalAllocated(normalized)<=59);
- const invested=rpg.calculateAttributes({role:'guardiao',level:100,attributes:{vitalidade:50,fortitude:49}});
+ assert.ok(Object.values(normalized).every(n=>Number.isInteger(n)&&n>=0&&n<=70));
+ assert.ok(rpg.totalAllocated(normalized)<=118);
+ const invested=rpg.calculateAttributes({role:'guardiao',level:100,attributes:{vitalidade:70,fortitude:70,forca:58}});
  assert.equal(invested.availablePoints,0);
- assert.equal(invested.allocations.vitalidade,50);
+ assert.equal(invested.allocations.vitalidade,70);
  assert.ok(invested.stats.maxHp>rpg.calculateAttributes({role:'guardiao',level:100}).stats.maxHp);
  assert.ok(invested.stats.armor>rpg.calculateAttributes({role:'guardiao',level:100}).stats.armor);
  assert.deepEqual(rpg.normalizeAllocations({'__proto__':99,hack:100},10),rpg.normalizeAllocations({},10));
@@ -80,7 +80,7 @@ test('servidor valida gastos de pontos, mantém progressão salva e atualiza PV/
  assert.equal(f.world.allocateStat(p,'hack'),false);
  assert.equal(f.world.allocateStat(p,'vitalidade'),true);
  let after=rpg.calculateAttributes(p.save);
- assert.equal(after.availablePoints,58);
+ assert.equal(after.availablePoints,117);
  assert.equal(p.save.hp,250+after.stats.maxHp-before.stats.maxHp);
  assert.equal(f.world.allocateStat(p,'intelecto'),true);
  after=rpg.calculateAttributes(p.save);
@@ -90,12 +90,22 @@ test('servidor valida gastos de pontos, mantém progressão salva e atualiza PV/
  assert.ok(f.snapshot.some(s=>s.characters[p.uid]?.attributes?.vitalidade===1));
  assert.ok(f.world.ownStatus(p).rpg.stats.maxHp>=CLASSES.peregrino.hp);
 });
-test('visitantes não gastam pontos permanentes nem recebem poder por dados do cliente',t=>{
+test('visitantes podem investir durante a jornada e reconectar sem criar progresso permanente',t=>{
  const f=fixture(t);
  const client={socket:{},worldPlayer:null};f.world.join(client,{name:'VisitAtributos',token:'a'.repeat(64)});
- const p=client.worldPlayer;p.save.level=100;
- assert.equal(f.world.allocateStat(p,'forca'),false);
- assert.equal(rpg.calculateAttributes(p.save).allocations.forca,0);
+ const p=client.worldPlayer;p.save.level=3;
+ assert.equal(f.world.allocateStat(p,'forca'),true,'os botões do Visitante devem funcionar');
+ assert.equal(rpg.calculateAttributes(p.save).allocations.forca,1);
+ assert.equal(f.world.saved.characters[p.uid],undefined,'a visita não cria personagem permanente');
+ f.world.leave(client);
+ const reconnect={socket:{},worldPlayer:null};
+ f.world.join(reconnect,{name:'VisitAtributos',token:'a'.repeat(64)});
+ assert.equal(reconnect.worldPlayer.save.attributes.forca,1,'token recupera pontos da visita em RAM');
+ f.world.leave(reconnect);
+ const fresh={socket:{},worldPlayer:null};
+ f.world.join(fresh,{name:'VisitNovo',token:'b'.repeat(64)});
+ assert.equal(rpg.calculateAttributes(fresh.worldPlayer.save).allocations.forca,0);
+ assert.equal(fresh.worldPlayer.save.level,1);
  const attacker=f.player('guardiao').p;attacker.save.level=1;
  assert.equal(f.world.allocateStat(attacker,'forca'),false,'nível 1 não tem pontos');
 });
@@ -146,6 +156,35 @@ test('habilidade gasta energia; sem energia é bloqueada; regeneração acontece
  f.world.tick();
  assert.ok(p.hpRegenPool>0||p.save.hp>start);
 });
+test('dois pontos investidos já alteram concretamente a força das classes em nível baixo',t=>{
+ for(const [role,key,stat,min]of [
+  ['guardiao','forca','physicalPower',7],
+  ['arqueiro','agilidade','physicalPower',6],
+  ['curandeiro','espirito','healingPower',7],
+  ['peregrino','vitalidade','maxHp',30]
+ ]){
+  const initial=rpg.calculateAttributes({role,level:3});
+  const specialized=rpg.calculateAttributes({role,level:3,attributes:{[key]:2}});
+  assert.ok(specialized.stats[stat]-initial.stats[stat]>=min,
+   role+' deveria melhorar '+stat+' com apenas 2 pontos');
+  assert.equal(specialized.availablePoints,2);
+  assert.ok(rpg.allocationPreview({role,level:3},key));
+ }
+ const f=fixture(t),{p}=f.player('arqueiro');
+ p.save.level=3;const m=f.world.monsters.get(0)[0];m.hp=m.maxHp=900;
+ p.x=m.x+90;p.y=m.y;
+ f.world.attack(p,m.id,false);
+ const base=900-m.hp;
+ p.lastAttack=0;p.attackCounter=0;m.hp=900;
+ assert.equal(f.world.allocateStat(p,'agilidade'),true);
+ assert.equal(f.world.allocateStat(p,'agilidade'),true);
+ f.world.attack(p,m.id,false);
+ const improved=900-m.hp;
+ assert.ok(improved>=base+3,'Agilidade investida deve melhorar o dano real do Arqueiro');
+ const state=f.world.ownStatus(p);
+ assert.equal(state.rpg.availablePoints,2);
+ assert.match(state.rpg.impacts.agilidade,/poder físico/i);
+});
 test('atributos e estados das classes aparecem na interface, na ficha e no guia',()=>{
  const html=fs.readFileSync(path.join(__dirname,'../public/mundo.html'),'utf8');
  const ui=fs.readFileSync(path.join(__dirname,'../public/mmo.js'),'utf8');
@@ -156,7 +195,8 @@ test('atributos e estados das classes aparecem na interface, na ficha e no guia'
  assert.match(ui,/send\('allocateStat',\{attribute:key\}\)/);
  assert.match(ui,/critical/);
  assert.match(style,/rpg-derived-rows/);
- assert.match(guide,/99 pontos no nível 100/);
+ assert.match(guide,/198 pontos no nível 100/);
+ assert.doesNotMatch(ui,/plus\.disabled=[^;]*!accountMode/);
  for(const stat of rpg.ATTRIBUTE_KEYS)
   assert.ok(ui.includes(stat),'Ficha precisa exibir '+stat);
 });
