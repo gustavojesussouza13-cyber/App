@@ -333,7 +333,14 @@ function frame(payload, opcode=1){
   else {out[1]=127;out.writeBigUInt64BE(BigInt(b.length),2)}
   b.copy(out,hdr);return out;
 }
-function send(sock,obj){if(!sock.destroyed && sock.writable){const msg=JSON.stringify(obj);if(sock.writableLength<256*1024)sock.write(frame(msg))}}
+function send(sock,obj){
+ if(!sock||sock.destroyed||!sock.writable)return;
+ const msg=JSON.stringify(obj);
+ // ACKs pequenos das operações idempotentes não podem ser descartados pelo
+ // mesmo limite de backpressure usado por snapshots grandes do mundo.
+ const critical=obj?.type==='kingdomActionResult';
+ if(sock.writableLength<(critical?1024*1024:256*1024))sock.write(frame(msg));
+}
 function emitAll(obj,except){for(const c of sockets)if(c!==except&&c.profile)send(c.socket,obj)}
 function refuse(c,obj){send(c.socket,obj);setTimeout(()=>terminate(c),250).unref()}
 function terminate(c){
@@ -513,7 +520,16 @@ function handleFrame(c,buf){
     if(opcode===9){if(!c.socket.destroyed)c.socket.write(frame(data,10));continue}
     if(opcode===10){c.lastPong=Date.now();continue}
     if(opcode!==1)return terminate(c);
-    try{receive(c,JSON.parse(decoder.decode(data)))}catch{ /* mensagem inválida: ignorar */ }
+    try{
+      const incoming=JSON.parse(decoder.decode(data));
+      try{receive(c,incoming)}
+      catch(err){
+       // Não declarar falha: uma exceção pode ocorrer após o débito. O cliente
+       // reconcilia pela opKey e estado autoritativo antes de decidir.
+       if(c.mode==='world'&&incoming?.type==='kingdom')
+        console.error('[reinos] ação falhou antes da confirmação:',String(err?.message||err).slice(0,160));
+      }
+    }catch{ /* payload inválido: ignorar */ }
   }
 }
 httpServer.on('upgrade',(req,socket,head)=>{

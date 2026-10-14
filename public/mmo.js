@@ -156,6 +156,7 @@ function dispatch(msg){
   $('roomSwitchConfirm').disabled=false;
  }
  setOnline(true,'Conectado');displayOnline(msg.online);character(msg.self);
+ cityUI.onConnectionRestored?.();
  if(roomChanged)alert('✦ Você entrou na sala '+roomName+'!');
  if(!authed){
   authed=true;

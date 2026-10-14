@@ -167,3 +167,58 @@ test('retorno do servidor informa se construiu ou recusou e revela saldo pessoal
  assert.equal(act({action:'construct',type:'invalid',x:3,y:3,requestId:'106'}),false);
  assert.equal(notices.some(x=>x.type==='kingdomActionResult'),false,'identificador inválido não gera resposta rastreada');
 });
+
+
+test('retransmissão confiável: mesma operação não cobra duas vezes nem duplica edifícios, inclusive após restaurar guilda',t=>{
+ const notices=[];
+ const world=new World({persistentStore:{enqueue:()=>{}},send:(_socket,message)=>notices.push(message),getOnline:()=>0,hasClassicName:()=>false});
+ t.after(()=>world.stop());
+ const client={socket:{},authUser:{uid:'account:retry',username:'Retry'},worldPlayer:null};
+ world.join(client,{name:'Retry',role:'peregrino'});
+ const p=client.worldPlayer;p.x=768;p.y=512;p.save.coins=5000;
+ world.guild(p,{action:'create',name:'Guilda Segura'});
+ const act=(data)=>politics.action(world,p,data,{walkable:()=>true,portals:[],npcs:[],now:1000});
+ assert.equal(act({action:'place',x:768,y:512}),true);
+ const startingCoins=p.save.coins;
+ const opKey='f1a0b123-32aa-4123-8abc-abcdef123456';
+ const build={action:'construct',type:'farm',x:1,y:4,requestId:301,opKey};
+ notices.length=0;
+ assert.equal(act(build),true);
+ assert.equal(p.save.coins,startingCoins-160);
+ assert.equal(world.guilds.get('guilda segura').city.buildings.length,1);
+ assert.equal(world.guilds.get('guilda segura').recentCityActions.length,1);
+ assert.equal(notices.filter(msg=>msg.type==='notice').length,0,'ações 3D não abrem alertas bloqueantes');
+ assert.equal(notices.find(msg=>msg.type==='kingdomActionResult')?.opKey,opKey);
+ notices.length=0;
+ // ACK perdido: WebSocket reenvia exatamente a mesma operação/id.
+ assert.equal(act(build),true);
+ assert.equal(p.save.coins,startingCoins-160,'retry não cobra novamente');
+ assert.equal(world.guilds.get('guilda segura').city.buildings.length,1,'retry não duplica o edifício');
+ assert.equal(notices.find(msg=>msg.type==='kingdomActionResult')?.ok,true);
+ // Mesmo opKey com outra posição ou preço jamais deve cobrar de novo.
+ notices.length=0;
+ assert.equal(act({...build,x:7,y:4,requestId:302}),false);
+ assert.match(notices.find(msg=>msg.type==='kingdomActionResult'&&msg.id===302)?.message||'',/parâmetros diferentes/);
+ assert.equal(world.guilds.get('guilda segura').city.buildings.length,1);
+ assert.equal(p.save.coins,startingCoins-160);
+ // A chave também está dentro da entidade persistível da guilda.
+ const saved=JSON.parse(JSON.stringify(world.guilds.get('guilda segura')));
+ world.guilds.set('guilda segura',saved);
+ notices.length=0;
+ assert.equal(act({...build,requestId:303}),true);
+ assert.equal(saved.city.buildings.length,1);
+ assert.equal(p.save.coins,startingCoins-160);
+ assert.equal(notices[0].id,303);
+ // Inspeção pelo identificador informa sucesso sem novo efeito financeiro.
+ notices.length=0;
+ assert.equal(act({action:'inspect',opKey,requestId:304}),false);
+ const ack=notices.find(msg=>msg.type==='kingdomActionResult');
+ assert.equal(ack?.id,304);
+ assert.equal(ack?.action,'construct');
+ assert.equal(ack?.ok,true);
+ assert.equal(p.save.coins,startingCoins-160);
+ // Um usuário não consegue reutilizar recibo alheio.
+ const other={...p,uid:'account:impostor'};
+ const canSend=politics.action(world,other,{...build,requestId:305},{walkable:()=>true,now:1000});
+ assert.equal(canSend,false);
+});

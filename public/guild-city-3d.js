@@ -9,7 +9,7 @@
   // Mantém a visualização de exércitos no continente principal SEM alterar o motor 2D.
   const oldUI=old.create({send});
   let state=null,base=null,selected=null,scene=null,token=0,loading=false;
-  let pending=null,pendingTimer=null,requestSeq=0,provisional=null;
+  let pending=null,pendingTimer=null,syncTimer=null,requestSeq=0,provisional=null;
   const dlg=document.createElement('dialog');dlg.className='guild3d-dialog';dlg.setAttribute('aria-label','Capital tridimensional da guilda');
   dlg.innerHTML='<div class="guild3d-shell">'+
    '<header class="guild3d-header"><div class="guild3d-brand"><span class="guild3d-kicker">OS PEREGRINOS · REINOS DE AUREN</span><strong id="guild3dTitle">Capital da guilda</strong><small id="guild3dSubtitle">Gestão do reino</small></div>'+
@@ -48,57 +48,107 @@
    b.type===building.type&&b.x===building.x&&b.y===building.y);
   function clearProvisional(){
    provisional=null;
+   if(syncTimer!==null)clearTimeout(syncTimer);
+   syncTimer=null;
    scene?.clearPendingBuilding?.();
   }
   function showProvisional(building){
    provisional=building;
    scene?.showPendingBuilding?.(building);
   }
+  function syncProvisional(){
+   if(!dlg.open||!provisional||pending||syncTimer!==null)return;
+   const check=()=>{
+    syncTimer=null;
+    if(!dlg.open||!provisional||pending)return;
+    if(isPersisted(provisional)){clearProvisional();return}
+    // Inspeção é somente leitura; jamais duplica gasto.
+    const sent=send('kingdom',{action:'inspect'});
+    if(sent===false){
+     say('Reconectando para sincronizar a sua construção…','pending');
+    }
+    syncTimer=setTimeout(check,3500);
+   };
+   syncTimer=setTimeout(check,1600);
+  }
+  function attemptPending(){
+   if(!pending||!dlg.open)return;
+   const operation=pending;
+   if(pendingTimer!==null)clearTimeout(pendingTimer);
+   pendingTimer=null;
+   operation.attempts++;
+   // Todas as tentativas compartilham a MESMA opKey, deduplicada pelo servidor
+   // até depois de reconexão. Nunca cobra ou constrói uma segunda vez.
+   const delivered=send('kingdom',{action:operation.action,...operation.details,
+    requestId:operation.id,opKey:operation.opKey});
+   if(delivered===false){
+    // A construção continua visível enquanto o cliente reconecta. O servidor
+    // irá decidir se a operação foi aplicada; não inventar uma recusa por tempo.
+    if(operation.attempts===1){
+     clearPending();
+     if(operation.action==='construct')clearProvisional();
+     say('Não há conexão com o servidor. Reconecte para começar a construção.','error');
+    }else say('Conexão interrompida; a cidade será sincronizada ao reconectar.','pending');
+    return false;
+   }
+   if(pending!==operation)return true; // A demo pode responder sincronicamente.
+   pendingTimer=setTimeout(()=>{
+    if(pending!==operation)return;
+    if(operation.action==='construct'&&provisional&&isPersisted(provisional)){
+     clearPending();clearProvisional();
+     say('Construção concluída e sincronizada com o servidor.','success');
+     return;
+    }
+    // Reconciliar e reenviar o mesmo pedido. O servidor ignora duplicatas
+    // processadas: latência ou perda do ACK não desfaz edifícios reais.
+    if(operation.attempts%3===0)send('kingdom',{action:'inspect',requestId:operation.id,opKey:operation.opKey});
+    if(operation.attempts>=3)say('Construção posicionada. Sincronizando o salvamento com segurança…','pending');
+    attemptPending();
+   },Math.min(6000,1600+operation.attempts*650));
+   return true;
+  }
   function sendOperation(action,details,progress){
+   // onCell() já verifica prévias anteriores ANTES de posicionar a nova.
+   // Nunca bloquear a própria prévia colocada neste mesmo clique.
    if(pending){
-    say('Aguarde a resposta sobre a operação anterior antes de tentar novamente.','warning');
+    say('A construção anterior está sendo sincronizada. Aguarde para posicionar outra.','pending');
     return false;
    }
    const id=++requestSeq;
-   pending={id,action};
+   const opKey=typeof crypto!=='undefined'&&typeof crypto.randomUUID==='function'?crypto.randomUUID():null;
+   pending={id,action,details,opKey,attempts:0};
    say(progress,'pending');
-   // Timeout começa antes do envio: a demonstração responde sincronicamente.
-   pendingTimer=setTimeout(()=>{
-    if(pending?.id!==id)return;
-    const action=pending.action;
-    clearPending();
-    if(action==='construct')clearProvisional();
-    say('O servidor não confirmou a operação. A prévia foi retirada; confira o saldo e os edifícios antes de tentar novamente.','warning');
-   },12000);
-   const delivered=send('kingdom',{action,...details,requestId:id});
-   if(delivered===false){
-    clearPending();
-    if(action==='construct')clearProvisional();
-    say('Não há conexão com o servidor. Verifique a internet e aguarde reconectar antes de construir.','error');
-    return false;
-   }
-   return true;
+   return attemptPending();
   }
   function onConnectionLost(){
    if(!dlg.open||!pending)return;
-   clearPending();
-   clearProvisional();
-   say('Conexão perdida: a construção provisória foi retirada para evitar gasto duplicado. Reconecte antes de tentar novamente.','error');
+   if(pendingTimer!==null)clearTimeout(pendingTimer);
+   pendingTimer=null;
+   say('Conexão interrompida. A construção continua visível enquanto reconectamos e verificamos o salvamento.','pending');
+  }
+  function onConnectionRestored(){
+   if(!dlg.open)return;
+   if(pending){attemptPending();return}
+   if(provisional)syncProvisional();
   }
   function onActionResult(result){
    if(!dlg.open||!pending)return;
    if(result?.id!==pending.id||result?.action!==pending.action)return;
+   if(result.opKey&&pending.opKey&&result.opKey!==pending.opKey)return;
    const action=pending.action;
    clearPending();
    if(!result.ok){
+    // Recusa explícita do servidor é diferente de timeout incerto.
     if(action==='construct')clearProvisional();
     say(result.message||'O servidor não autorizou a operação.','error');
     return;
    }
-   // A construção já existe no WebGL; trocar pela definitiva quando o estado chegar.
    if(action==='construct'&&provisional&&isPersisted(provisional))clearProvisional();
    say(result.message||'Operação confirmada pelo servidor.','success');
-   if(action==='construct'&&provisional)send('kingdom',{action:'inspect'});
+   if(action==='construct'&&provisional){
+    send('kingdom',{action:'inspect'});
+    syncProvisional();
+   }
   }
   function paint(){
    if(!dlg.open||!base)return;
@@ -157,8 +207,8 @@
     say('Moedas pessoais insuficientes: você possui '+wallet.toLocaleString('pt-BR')+' e a construção custa '+price+'. Consiga moedas no continente para construir.','error');
     return;
    }
-   if(pending){
-    say('Aguarde a operação anterior antes de construir novamente.','warning');
+   if(pending||provisional){
+    say('Aguarde a sincronização da construção anterior.','pending');
     return;
    }
    // Atualização visual local, síncrona: o próximo frame já mostra o edifício.
@@ -215,10 +265,12 @@
       say('Construção concluída e confirmada pelo servidor.','success');
      }
     }
-    scene?.updateBuildings(structures(),owns()?kingdom?.yourGuild?.army||{}:{});
+    // Recursos e saldo são prioritários; redesenhar modelos Three.js é caro
+    // e não pode impedir a atualização financeira quando ocorrer erro de WebGL.
     paint();
+    scene?.updateBuildings(structures(),owns()?kingdom?.yourGuild?.army||{}:{});
    }
   }
-  return {open,update,onActionResult,onConnectionLost,drawMarches:oldUI.drawMarches};
+  return {open,update,onActionResult,onConnectionLost,onConnectionRestored,drawMarches:oldUI.drawMarches};
  }});
 })(window);

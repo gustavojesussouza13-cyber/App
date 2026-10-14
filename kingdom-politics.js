@@ -15,6 +15,7 @@ const MARCH_DURATION=45*1000;
 const MAX_TROOPS=300;
 const CITY_BUILDINGS=Object.freeze({house:120,farm:160,barracks:280,tower:360,market:240});
 const CITY_LIMIT=60;
+const CITY_RECEIPTS_LIMIT=80; // Replays seguros: nunca cobrar a mesma construção duas vezes.
 const cityLayout=require('./public/city-layout');
 const CITY_CYCLE_MS=15*60*1000;
 const CITY_MAX_CYCLES=24; // Até 6h de produção acumulada; evita inflação sem limite.
@@ -164,20 +165,53 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
  // O pedido possui um identificador somente quando veio da interface da capital 3D.
  // Resultados são enviados individualmente ao jogador; nunca são difundidos para outras guildas.
  const requestId=Number.isSafeInteger(d.requestId)&&d.requestId>=1&&d.requestId<=2147483647?d.requestId:null;
+ // Uma chave aleatória por ação persiste nas tentativas de retransmissão da mesma operação.
+ // A guilda guarda recibos de sucesso (incluídos no snapshot persistido da conta).
+ const opKey=typeof d.opKey==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(d.opKey)?d.opKey:null;
+ const replayable=op==='construct'||op==='buildingUpgrade'||op==='collect'||op==='train';
+ const operationParams=op==='construct'?JSON.stringify([d.type,d.x,d.y]):
+  op==='buildingUpgrade'?JSON.stringify([d.x,d.y]):
+  op==='train'?JSON.stringify([d.unit,d.count]):'[]';
+ const owner=guildFor(world,p);
+ const {guild:g,key} = owner||{};
+ const receipt=()=>opKey&&g&&Array.isArray(g.recentCityActions)?
+  g.recentCityActions.find(entry=>entry?.key===opKey):null;
  const report=(message,ok)=>{
-  // Priorizar a confirmação curta antes do estado completo da guilda:
-  // o transporte descarta frames ao atingir 256 KiB na fila de saída.
-  // Assim a confirmação não fica atrás de snapshots grandes do continente.
-  if(requestId!==null)world.send(p.socket,{type:'kingdomActionResult',id:requestId,action:op,ok,message});
-  response(world,p,message);
+  // Registra operações confirmadas antes do ACK. É persistido com a guilda
+  // e protege também contra cobrança duplicada após reconexão/redeploy.
+  if(ok&&opKey&&replayable&&g){
+   const receipts=Array.isArray(g.recentCityActions)?g.recentCityActions:[];
+   receipts.push({key:opKey,uid:p.uid,action:op,params:operationParams,ok:true,message});
+   g.recentCityActions=receipts.slice(-CITY_RECEIPTS_LIMIT);
+   world.dirty=true;
+  }
+  if(requestId!==null)world.send(p.socket,{type:'kingdomActionResult',id:requestId,action:op,opKey,ok,message});
+  // A capital mostra a mensagem no próprio diário: não abrir alert() bloqueante
+  // do mundo 2D, que pode congelar a tela e simular timeout de construção.
+  response(world,p,message,requestId===null);
  };
  const reject=message=>report(message,false);
  const accept=message=>report(message,true);
- if(op==='inspect'){response(world,p,'',false);return false}
- const owner=guildFor(world,p);
+ if(op==='inspect'){
+  if(requestId!==null&&opKey){
+   const existing=receipt();
+   if(existing&&existing.uid===p.uid)
+    world.send(p.socket,{type:'kingdomActionResult',id:requestId,action:existing.action,opKey,ok:existing.ok,message:existing.message});
+  }
+  response(world,p,'',false);return false
+ }
  if(!owner){reject('Entre em uma guilda para fundar ou defender um reino.');return false}
- const {guild:g,key}=owner;
  if(!p.isAccount){reject('Reinos e exércitos exigem uma conta cadastrada para proteger o progresso.');return false}
+ if(replayable&&opKey){
+  const prev=receipt();
+  if(prev){
+   if(prev.uid!==p.uid||prev.action!==op||prev.params!==operationParams){reject('Operação duplicada com parâmetros diferentes.');return false}
+   // Replay já processado: devolve recibo sem repetir gasto nem criar edifício.
+   world.send(p.socket,{type:'kingdomActionResult',id:requestId,action:op,opKey,ok:true,message:prev.message});
+   response(world,p,'',false);
+   return true;
+  }
+ }
  if(op==='place'){
   if(g.leader!==p.uid){response(world,p,'Somente o líder da guilda pode escolher o local da base.');return false}
   if(!Number.isInteger(p.zone)||p.zone<0||p.zone>=BUILDABLE_REGIONS){
