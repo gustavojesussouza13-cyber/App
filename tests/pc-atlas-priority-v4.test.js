@@ -8,7 +8,7 @@ const source=p=>fs.readFileSync(path.join(root,p),'utf8');
 
 test('PC retorna ao Atelier detalhado antes dos recortes PNG e dos bonecos V3',()=>{
  const art=source('art16.js');
- const hero=art.indexOf('const studioHero=premiumPc&&Boolean(spriteStudio?.drawHero');
+ const hero=art.indexOf('const studioHero=(premiumPc||Boolean(p.appearance))&&Boolean(spriteStudio?.drawHero');
  const png=art.indexOf('const pngSprite=!studioHero&&Boolean(desktopSprites?.drawHero');
  const v3=art.indexOf('const illustratedV3=!studioHero&&!pngSprite&&Boolean(desktopCharactersV3?.drawHero');
  const npc=art.indexOf('const studioNpc=premiumPc&&Boolean(spriteStudio?.drawNpc');
@@ -35,7 +35,7 @@ test('classe do servidor, nome e posicionamento obedecem a arte desenhada em PC'
 });
 test('versões atualizadas invalidam cache do Chrome sem mudar mobile',()=>{
  const html=source('mundo.html'),studio=source('sprite-studio.js');
- assert.match(html,/sprite-studio\.js\?v=pc-studio-v5/);
+ assert.match(html,/sprite-studio\.js\?v=atelier-custom-v1/);
  assert.match(html,/art16\.js\?v=pixel-art-v1&pc=reinos-v1/);
  assert.match(studio,/state\.desktopPremium===true/);
  assert.ok(html.indexOf('/sprite-studio.js')<html.indexOf('/art16.js'));
