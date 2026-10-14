@@ -43,7 +43,7 @@ test('somente a quarta das quatro masmorras exige a chave da Coroa',()=>{
  assert.equal(RELICS[CROWN_DUNGEON_KEY],undefined,'chave real não pode ser negociada como relíquia');
 });
 
-test('dominar 7 regiões outorga a soberania ao líder, jamais ao membro ou estranho',t=>{
+test('a guilda solitária já é soberana; disputa entre reinos exige maioria relativa',t=>{
  const f=game(t),{w,king,vassal,stranger,g}=f;
  assert.equal(kingdoms.continentalSovereign(w)?.leaderUid,king.uid);
  assert.equal(kingdoms.publicState(w,king).continentalCrown.holder,true);
@@ -55,12 +55,18 @@ test('dominar 7 regiões outorga a soberania ao líder, jamais ao membro ou estr
  assert.equal(w.claimCrownKey(king),false,'não permite duplicar');
  assert.ok(f.snapshots.some(s=>s.characters[king.uid]?.inventory?.[CROWN_DUNGEON_KEY]===1));
  assert.ok(king.save.crownKeyIssuedAt>0,'horário da concessão é persistido');
- g.influence[6]=0;
- assert.equal(kingdoms.continentalSovereign(w),null,'6 regiões não são domínio continental');
+ // A primeira guilda deve reinar mesmo que só tenha uma capital e zero expansão.
+ g.influence={}; 
+ assert.equal(kingdoms.continentalSovereign(w)?.leaderUid,king.uid,'único reino não precisa de sete regiões');
+ const rival={name:'Ordem Rival',leader:stranger.uid,members:[stranger.uid],
+  base:{zone:1,x:700,y:500,level:1},influence:{}};
+ stranger.save.guild=rival.name;w.guilds.set('ordem rival',rival);
+ assert.equal(kingdoms.continentalSovereign(w),null,'uma região para cada reino: Coroa em disputa');
  king.save.inventory[CROWN_DUNGEON_KEY]=0;
  king.save.crownKeyIssuedAt=0;
- assert.equal(w.claimCrownKey(king),false);
- g.influence[6]=100;
+ assert.equal(w.claimCrownKey(king),false,'sem soberania, sem nova chave');
+ g.influence[2]=3; // Duas regiões para a Casa Continental, uma para o rival.
+ assert.equal(kingdoms.continentalSovereign(w)?.leaderUid,king.uid);
  assert.equal(w.claimCrownKey(king),true);
  king.save.inventory[CROWN_DUNGEON_KEY]=0;
  assert.equal(w.claimCrownKey(king),false,'não farmar novas chaves antes de 24h');
