@@ -224,6 +224,16 @@ function rank(world){
     title:regions>=7?'Coroa Continental':regions>=4?'Alta Realeza':regions>=2?'Reino Soberano':regions>=1?'Senhorio Regional':'Guilda sem Território'};
   }).sort((a,b)=>b.score-a.score||a.name.localeCompare(b.name,'pt-BR'));
 }
+// A chave exclusiva da última masmorra pertence apenas ao soberano
+// legitimamente eleito pelas 12 regiões de superfície. Alianças e moedas
+// não substituem sete territórios de domínio efetivo.
+function continentalSovereign(world){
+ const king=rank(world).find(item=>item.territories>=7&&item.title==='Coroa Continental');
+ if(!king)return null;
+ const guild=world.guilds.get(king.key);
+ if(!guild?.base||!guild.leader||!guild.members?.includes(guild.leader))return null;
+ return {guildKey:king.key,guildName:king.name,leaderUid:guild.leader,territories:king.territories};
+}
 // Planejamento de rota baseado nas mesmas passagens permitidas aos jogadores.
 // Nunca passa pelas masmorras e não aceita destinos fornecidos pelo navegador.
 function marchRoute(world,from,to){
@@ -284,6 +294,7 @@ function publicState(world,p){
   zones:politicalMap(world),bases:forts(world).map(b=>({name:b.name,zone:b.zone,x:b.x,y:b.y,
    level:b.level,defenseLevel:world.guilds.get(b.key)?.base?.defenseLevel||0,realm:b.name})),
   ranking:rank(world).slice(0,30),
+   continentalCrown:(()=>{const ruler=continentalSovereign(world);return ruler?{guild:ruler.guildName,territories:ruler.territories,holder:ruler.leaderUid===p?.uid}:null})(),
   yourGuild:your?{name:your.guild.name,leader:your.guild.leader===p.uid,
     canManage:Boolean(p.isAccount&&your.guild.base),membersCount:your.guild.members?.length||1,
    base:your.guild.base||null,army:armyCopy(your.guild.army),
@@ -908,5 +919,5 @@ function resolve(world,now=Date.now()){
 module.exports={CONTINENT_REGIONS,BUILDABLE_REGIONS,BASE_COST,RELOCATE_COST,MAX_TROOPS,UNITS,
  armyCopy,troopCount,power,publicState,politicalMap,rank,marchRoute,marchPosition,collectCity,
  FORTRESS_MAX_LEVEL,BUILDING_MAX_LEVEL,CITY_PRODUCTION_MS,productionCycleMs,productionState,buildingSlots,MILITARY_SUPPLIES,CITY_BUILD_MS,stockCapacity,fortressDefense,escortOf,escortTotal,escortStrike,ESCORT_LIMIT,SIEGE_COOLDOWN,
- militaryCapacity,fullArmyCount,applyArmyUpkeep,completeSurrender,SURRENDER_THRESHOLD,SURRENDER_TRUCE_MS,UPKEEP_CYCLE_MS,
+ militaryCapacity,fullArmyCount,applyArmyUpkeep,completeSurrender,SURRENDER_THRESHOLD,SURRENDER_TRUCE_MS,UPKEEP_CYCLE_MS,continentalSovereign,
  isComplete,resolveCityConstructions,action,resolve};
