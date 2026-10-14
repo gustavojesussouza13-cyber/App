@@ -355,7 +355,7 @@ function send(sock,obj){
  const msg=JSON.stringify(obj);
  // ACKs pequenos das operações idempotentes não podem ser descartados pelo
  // mesmo limite de backpressure usado por snapshots grandes do mundo.
- const critical=obj?.type==='kingdomActionResult';
+ const critical=obj?.type==='kingdomActionResult'||obj?.type==='kingdomDurable';
  if(sock.writableLength<(critical?1024*1024:256*1024))sock.write(frame(msg));
 }
 function emitAll(obj,except){for(const c of sockets)if(c!==except&&c.profile)send(c.socket,obj)}
