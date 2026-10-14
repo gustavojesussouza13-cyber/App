@@ -832,6 +832,16 @@ function resolve(world,now=Date.now()){
   finished.push({guild:c.guild,kind:'construction',text:'Obra concluída: '+c.type+' ('+(c.x+1)+','+(c.y+1)+').'});
 
  for(const [key,g] of [...world.guilds]){
+  const oldUpkeep=g.upkeepAt;
+  const upkeep=applyArmyUpkeep(g,now);
+  if(g.upkeepAt!==oldUpkeep)world.dirty=true;
+  if(upkeep?.losses)finished.push({guild:g.name,kind:'upkeep',
+   text:'Provisões insuficientes: '+upkeep.foodUsed+'/'+upkeep.foodNeeded+
+    ' alimentos. '+upkeep.losses+' soldados desertaram. Abasteça a capital.'});
+  if(g.truce?.until<=now){delete g.truce;world.dirty=true;}
+  if(g.siegeCrisis&&now-g.siegeCrisis.updatedAt>24*60*60*1000){
+   delete g.siegeCrisis;world.dirty=true;
+  }
   if(!g.march||g.march.arrivesAt>now)continue;
   const march=g.march;delete g.march;
   if(march.kind==='patrol'){
@@ -851,16 +861,13 @@ function resolve(world,now=Date.now()){
   }
   const enemy=world.guilds.get(march.target);
   let text;
-  if(!enemy?.base||g.members?.length===0){
+  if(!enemy?.base||g.members?.length===0||activeTruce(enemy,now)||isAlly(g,march.target)){
    const troops=armyCopy(g.army),returning=armyCopy(march.units);
    for(const unit of Object.keys(UNITS))troops[unit]=Math.min(MAX_TROOPS,troops[unit]+returning[unit]);
    g.army=troops;text='A campanha terminou sem confronto: a fortaleza rival não está mais disponível.';
   }else{
-   const towerDefense=(Array.isArray(enemy.city?.buildings)?enemy.city.buildings:[])
-    .filter(b=>b?.type==='tower'&&isComplete(b,now)).slice(0,CITY_LIMIT)
-    .reduce((sum,b)=>sum+8*Math.min(5,Math.max(1,Number.isSafeInteger(b.level)?b.level:1)),0);
-   const attackers=power(march.units),defenders=power(enemy.army,'defense')+
-    Math.max(35,(enemy.base.level||1)*35)+towerDefense;
+   const attackers=power(march.units)+march.units.siege*SIEGE_BONUS_PER_ENGINE;
+   const defenders=fortressDefense(enemy,now).defense;
    const won=attackers>defenders;
    const lossRatio=won?.35:.7,remaining=armyCopy(g.army);
    for(const type of Object.keys(UNITS))
@@ -886,4 +893,6 @@ function resolve(world,now=Date.now()){
 }
 module.exports={CONTINENT_REGIONS,BUILDABLE_REGIONS,BASE_COST,RELOCATE_COST,MAX_TROOPS,UNITS,
  armyCopy,troopCount,power,publicState,politicalMap,rank,marchRoute,marchPosition,collectCity,
- FORTRESS_MAX_LEVEL,BUILDING_MAX_LEVEL,CITY_PRODUCTION_MS,productionCycleMs,productionState,buildingSlots,MILITARY_SUPPLIES,CITY_BUILD_MS,stockCapacity,fortressDefense,escortOf,escortTotal,escortStrike,ESCORT_LIMIT,SIEGE_COOLDOWN,isComplete,resolveCityConstructions,action,resolve};
+ FORTRESS_MAX_LEVEL,BUILDING_MAX_LEVEL,CITY_PRODUCTION_MS,productionCycleMs,productionState,buildingSlots,MILITARY_SUPPLIES,CITY_BUILD_MS,stockCapacity,fortressDefense,escortOf,escortTotal,escortStrike,ESCORT_LIMIT,SIEGE_COOLDOWN,
+ militaryCapacity,fullArmyCount,applyArmyUpkeep,completeSurrender,SURRENDER_THRESHOLD,SURRENDER_TRUCE_MS,UPKEEP_CYCLE_MS,
+ isComplete,resolveCityConstructions,action,resolve};
