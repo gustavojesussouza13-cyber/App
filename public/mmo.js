@@ -777,13 +777,70 @@ function drawTab(force=false){const parent=$('tabContent');
       const fortify=button('🛡 Melhorar defesa '+(k.fortressDefense?.walls||0)+'/'+(k.base.level||1)+' · força '+(k.fortressDefense?.defense||0),'kingdom',{action:'fortify'});
       fortify.disabled=(k.fortressDefense?.walls||0)>=(k.base.level||1);kingdom.append(fortify);
      }
-     appendText(kingdom,'small','Construção: '+(kingdomState.buildBounds?.width||14)+'×'+(kingdomState.buildBounds?.width||14)+' lotes · armazenamento '+(kingdomState.stockCapacity||600)+' por recurso. Cada prédio tem relógio próprio: melhore-o para aumentar o rendimento e acelerar o ciclo. Casas geram moedas, fazendas alimentos, mercados materiais; quartéis e torres fornecem recursos e defesas.');
-     const nearby=(kingdomState.bases||[]).filter(b=>b.name!==k.name&&b.zone===session.zone&&Math.hypot(b.x-session.x,b.y-session.y)<=170);
+          // Política é decidida pela guilda, não por nível de personagem isolado.
+     appendText(kingdom,'small','⚔ Exército '+(k.currentTroops||0)+' / '+(k.armyCapacity||kingdomState.maxTroops||300)+
+      ' soldados · guarnição + escoltas. Manutenção: '+Math.ceil((k.currentTroops||0)/25)+
+      ' alimentos a cada 30 minutos. Próximo abastecimento: '+
+      (k.upkeepAt?Math.max(0,Math.ceil((k.upkeepAt+(kingdomState.upkeepCycleMs||1800000)-Date.now())/60000))+' min':'primeiro ciclo ao entrar')+'.');
+     if(k.truce?.until>Date.now()){
+      appendText(kingdom,'small','☮ CESSAR-FOGO ATIVO até '+new Date(k.truce.until).toLocaleTimeString('pt-BR')+
+       '. A fortaleza está protegida; nenhuma construção foi perdida.');
+     }
+     if(k.crisis){
+      const crisis=group(kingdom);
+      appendText(crisis,'b','⚠ Defesa em risco · pressão de conquista '+k.crisis.pressure+'%');
+      appendText(crisis,'small','Invasores: '+(k.crisis.attackerName||'guilda rival')+
+       ' · rendição possível a partir de '+(kingdomState.surrenderThreshold||60)+'%.');
+      if(k.crisis.canSurrender&&!k.truce?.until){
+       const votes=Object.keys(k.crisis.votes||{}).length;
+       appendText(crisis,'small','Votos pela rendição: '+votes+' / '+(Math.floor((k.membersCount||1)/2)+1)+'.');
+       const vote=document.createElement('button');vote.type='button';vote.textContent='☮ Votar pela rendição negociada';
+       vote.disabled=Boolean(k.crisis.votes?.[session.uid]);
+       vote.onclick=()=>send('kingdom',{action:'surrenderVote'});
+       crisis.append(vote);
+       if(k.leader){
+        const concede=document.createElement('button');concede.type='button';
+        concede.textContent='☮ Aceitar rendição e cessar-fogo de 30 min';
+        concede.onclick=()=>{if(confirm('Render-se transfere influência e até 10% do tesouro compartilhado, preserva os edifícios e garante 30 minutos de cessar-fogo. Confirmar?'))
+         send('kingdom',{action:'surrender'})};
+        crisis.append(concede);
+       }
+      }
+     }
+     const diplomacy=group(kingdom);
+     appendText(diplomacy,'b','☮ Diplomacia e alianças');
+     appendText(diplomacy,'small','Aliados: '+(k.allies?.join(' · ')||'nenhum')+' · até 3 alianças por guilda. Soldados de aliados próximos ajudam em cercos.');
+     if(k.leader){
+      const selection=document.createElement('select');selection.setAttribute('aria-label','Reino para proposta diplomática');
+      for(const b of kingdomState.bases||[]){
+       if(b.name===k.name)continue;
+       const opt=document.createElement('option');opt.value=b.name.toLocaleLowerCase('pt-BR');opt.textContent=b.name;selection.append(opt);
+      }
+      if(selection.options.length){
+       const offer=document.createElement('button');offer.type='button';offer.textContent='✉ Propor aliança';
+       offer.onclick=()=>send('kingdom',{action:'allyOffer',target:selection.value});
+       diplomacy.append(selection,offer);
+      }
+      for(const request of k.allianceOffers||[]){
+       const accept=document.createElement('button');accept.type='button';
+       accept.textContent='✓ Aceitar aliança com '+request.name;
+       accept.onclick=()=>send('kingdom',{action:'allyAccept',target:request.key});
+       diplomacy.append(accept);
+      }
+      for(const name of k.allies||[]){
+       const leave=document.createElement('button');leave.type='button';
+       leave.textContent='Encerrar aliança: '+name;
+       leave.onclick=()=>{if(confirm('Encerrar aliança com '+name+'?'))send('kingdom',{action:'allyBreak',target:name.toLocaleLowerCase('pt-BR')})};
+       diplomacy.append(leave);
+      }
+     }else if(k.allianceOffers?.length)appendText(diplomacy,'small','Propostas pendentes: '+k.allianceOffers.map(x=>x.name).join(', ')+'. O líder pode aceitá-las.');
+appendText(kingdom,'small','Construção: '+(kingdomState.buildBounds?.width||14)+'×'+(kingdomState.buildBounds?.width||14)+' lotes · armazenamento '+(kingdomState.stockCapacity||600)+' por recurso. Cada prédio tem relógio próprio: melhore-o para aumentar o rendimento e acelerar o ciclo. Casas geram moedas, fazendas alimentos, mercados materiais; quartéis e torres fornecem recursos e defesas.');
+     const nearby=(kingdomState.bases||[]).filter(b=>b.name!==k.name&&!k.allies?.includes(b.name)&&b.zone===session.zone&&Math.hypot(b.x-session.x,b.y-session.y)<=170);
      if(nearby.length){
       const targets=document.createElement('select');targets.setAttribute('aria-label','Fortaleza rival próxima');
       for(const b of nearby){const option=document.createElement('option');option.value=b.name.toLocaleLowerCase('pt-BR');option.textContent=b.name;targets.append(option)}
       const siege=document.createElement('button');siege.type='button';siege.textContent='⚔ Atacar fortaleza rival agora';
-      siege.disabled=Object.values(k.escort||{}).reduce((n,v)=>n+(Number(v)||0),0)<5||Date.now()<(k.nextRaidAt||0);
+      siege.disabled=!Object.values(k.escort||{}).some(v=>v>0)||Date.now()<(k.nextRaidAt||0)||k.truce?.until>Date.now();
       siege.onclick=()=>send('kingdom',{action:'siege',target:targets.value});
       kingdom.append(targets,siege);
      }else appendText(kingdom,'small','Para atacar outra guilda, reúna ao menos cinco soldados e caminhe até a fortaleza inimiga. O cerco é resolvido imediatamente no local.');
