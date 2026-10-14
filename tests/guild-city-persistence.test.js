@@ -103,7 +103,7 @@ test('visitantes não podem fundar ou simular construções permanentes',t=>{
  assert.equal(act({action:'place',x:768,y:512}),false);
  assert.equal(politics.publicState(world,p).persistentAccount,false);
  assert.equal(act({action:'construct',type:'house',x:1,y:1}),false);
- assert.equal(world.guilds.get('visitantes do norte').city,undefined);
+ assert.equal(world.guilds.has('visitantes do norte'),false,'visitantes não fundam guildas permanentes');
 });
 
 test('construções em servidores privados são gravadas na mesma guilda global e reaparecem na praça pública',t=>{
