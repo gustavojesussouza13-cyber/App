@@ -3,6 +3,9 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const {World}=require('../world-engine');
 const politics=require('../kingdom-politics');
+const fs=require('node:fs');
+const os=require('node:os');
+const path=require('node:path');
 
 const mockStore=()=>{
  const snapshots=[];
@@ -137,4 +140,33 @@ test('construções em servidores privados são gravadas na mesma guilda global 
  assert.equal(state.yourGuild.name,'Cidade das Salas');
  assert.deepEqual(state.cities.find(c=>c.name==='Cidade das Salas').buildings.map(b=>b.type),['house']);
  assert.equal(state.walletCoins,5000-250-800-120);
+});
+
+test('SQLite mantém prédios entre processos antes mesmo do jogador sair',t=>{
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'peregrinos-guild-durability-'));
+ const file=path.join(dir,'world.sqlite');
+ const sent=[];
+ const args={dataFile:file,autosave:false,send:(_s,m)=>sent.push(m),getOnline:()=>0,hasClassicName:()=>false};
+ const first=new World(args);
+ let second=null;
+ t.after(()=>{try{second?.stop()}finally{first.stop();fs.rmSync(dir,{recursive:true,force:true})}});
+ const c={socket:{},authUser:{uid:'account:sqlite-guild',username:'ReiDuravel'},worldPlayer:null};
+ first.join(c,{name:'ReiDuravel'});
+ const p=c.worldPlayer;p.save.coins=10000;p.x=768;p.y=512;
+ first.guild(p,{action:'create',name:'Muralhas da Aurora'});
+ const opts={walkable:()=>true,portals:[],npcs:[],now:Date.now()};
+ const act=d=>politics.action(first,p,d,opts);
+ assert.equal(act({action:'place',x:768,y:512}),true);
+ assert.equal(act({action:'construct',type:'farm',x:2,y:2,requestId:31,
+  opKey:'f1a0b123-32aa-4123-8abc-abcdef123471'}),true);
+ assert.equal(act({action:'construct',type:'market',x:8,y:2,requestId:32,
+  opKey:'f1a0b123-32aa-4123-8abc-abcdef123472'}),true);
+ // Lê disco enquanto o jogador AINDA está conectado: nenhum autosave ocorreu.
+ second=new World(args);
+ const d={socket:{},authUser:{uid:'account:sqlite-guild',username:'ReiDuravel'},worldPlayer:null};
+ second.join(d,{name:'ReiDuravel'});
+ const city=politics.publicState(second,d.worldPlayer).cities.find(c=>c.name==='Muralhas da Aurora');
+ assert.ok(city);
+ assert.deepEqual(city.buildings.map(b=>b.type),['farm','market']);
+ assert.equal(second.guilds.get('muralhas da aurora').city.buildings.length,2);
 });
