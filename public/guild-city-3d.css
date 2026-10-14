@@ -85,3 +85,67 @@
 .guild3d-queue-track{height:7px;overflow:hidden;border-radius:10px;background:#10271e}
 .guild3d-queue-track span{display:block;height:100%;background:linear-gradient(90deg,#69b589,#f0c474);transition:width .2s}
 @media(max-width:850px){.guild3d-site-label{min-width:76px;padding:4px 5px;font-size:9px;gap:2px}.guild3d-site-timer{font-size:11px}.guild3d-site-label strong{font-size:10px}}
+
+/* Painéis da capital estratégica: molduras de bronze, topo de recursos, mapa
+   dominante e áreas de administração independentes, sem reproduzir assets externos. */
+.guild3d-dialog{background:#171e19;border-color:#b1986a}
+.guild3d-header{gap:15px;min-height:91px;padding:9px 19px;background:linear-gradient(180deg,#493926,#342a1e 46%,#283026);border-bottom:3px ridge #b99a60}
+.guild3d-kicker{color:#f5d79b}
+.guild3d-brand{flex:0 1 260px}
+.guild3d-brand strong{color:#f8e5bc}
+.guild3d-main{grid-template-columns:minmax(0,1fr)285px}
+.guild3d-stage{background:#78996b;isolation:isolate}
+.guild3d-topresources{flex:1;min-width:220px;max-width:660px;overflow:hidden}
+.guild3d-topresources>.guild3d-label{margin:0 0 5px;font-size:9px;color:#f0d7a6}
+.guild3d-topresources .guild3d-stocks{display:flex;gap:5px;overflow-x:auto;scrollbar-width:thin;scrollbar-color:#b69860 transparent}
+.guild3d-topresources .guild3d-stock{flex:1 0 80px;min-width:80px;padding:5px 9px;gap:2px;border-color:#9e8251;border-radius:3px;background:linear-gradient(#3e4a31,#232f26)}
+.guild3d-topresources .guild3d-stock strong{font-size:14px;color:#ffdf99;line-height:1.2}
+.guild3d-topresources .guild3d-stock small{font-size:9px;color:#dcd5b8}
+.guild3d-topresources .guild3d-wallet{grid-column:auto;background:linear-gradient(#6b532d,#43331f)}
+.guild3d-sidebar{gap:9px;padding:14px;background:linear-gradient(160deg,#393222,#202d25 33%,#161e1a);border-left:3px ridge #98764b}
+.guild3d-sidebar>.guild3d-label{padding:7px 5px;border-bottom:1px solid #806e4f;color:#eed6a0}
+.guild3d-build-panel,.guild3d-lot-panel{position:absolute;left:12px;width:250px;max-width:calc(100% - 25px);z-index:7;border:2px ridge #a58b59;border-radius:8px;background:linear-gradient(180deg,#332d23f5,#172720f4);color:#f2e7cd;box-shadow:0 8px 24px #0c190dbf;backdrop-filter:blur(3px)}
+.guild3d-build-panel{top:13px;max-height:53%;display:flex;flex-direction:column;overflow:hidden}
+.guild3d-panel-heading{display:flex;flex-direction:column;gap:3px;padding:9px 12px;background:linear-gradient(90deg,#685233,#3e3b2e);border-bottom:1px solid #af9465}
+.guild3d-panel-heading strong{font:700 13px Georgia,serif;letter-spacing:1px;color:#f6db9b}
+.guild3d-panel-heading small{color:#e1d4b9;font-size:10px}
+.guild3d-build-panel .guild3d-choices{overflow-y:auto;scrollbar-width:thin;display:grid;grid-template-columns:1fr 1fr;gap:7px;padding:9px}
+.guild3d-dialog .guild3d-build-panel .guild3d-building{min-height:74px;padding:9px;line-height:1.35;text-align:center;background:linear-gradient(#45513c,#263b30);border:1px solid #9e8d61;border-radius:6px;box-shadow:inset 0 1px #e9e0c733;font-size:11px;white-space:normal}
+.guild3d-dialog .guild3d-build-panel .guild3d-building[aria-pressed=true]{background:linear-gradient(#927642,#6d532e);border-color:#efc875;color:#fff1c7;box-shadow:0 0 0 2px #c1a06344}
+.guild3d-lot-panel{bottom:55px;padding-bottom:9px;max-height:39%;overflow:auto}
+.guild3d-lot-panel .guild3d-note{padding:11px;line-height:1.48}
+.guild3d-lot-actions{padding:0 9px;display:flex;flex-direction:column;gap:5px}
+.guild3d-dialog .guild3d-lot-actions .guild3d-action{background:linear-gradient(#92733f,#6f5028);border-color:#efc47f;padding:10px 8px}
+.guild3d-lot-panel [hidden]{display:none!important}
+.guild3d-hud{z-index:5;font-size:11px}
+.guild3d-hud span{background:#332c21df;border:1px solid #bd9b61aa}
+.guild3d-viewport{background:#92ac84}
+@media(max-width:1100px){
+ .guild3d-header{min-height:83px}
+ .guild3d-main{grid-template-columns:minmax(0,1fr)250px}
+ .guild3d-build-panel,.guild3d-lot-panel{width:205px}
+ .guild3d-dialog .guild3d-build-panel .guild3d-building{min-height:69px;padding:6px;font-size:10px}
+ .guild3d-brand{flex-basis:190px}
+}
+@media(max-width:850px){
+ .guild3d-header{flex-wrap:wrap;gap:5px;padding:6px 9px;min-height:0}
+ .guild3d-brand{flex:1 0 45%}
+ .guild3d-header-actions{flex:0 0 auto}
+ .guild3d-topresources{order:3;max-width:100%;flex:1 0 100%}
+ .guild3d-topresources>.guild3d-label{display:none}
+ .guild3d-topresources .guild3d-stock{flex:1 0 72px;padding:3px 6px}
+ .guild3d-topresources .guild3d-stock strong{font-size:12px}
+ .guild3d-main{display:flex}
+ .guild3d-stage{min-height:48vh}
+ .guild3d-sidebar{min-height:120px;max-height:25vh;border-left:0;border-top:2px ridge #98764b;padding:8px}
+ .guild3d-build-panel{top:7px;left:6px;width:158px;max-height:47%}
+ .guild3d-lot-panel{left:6px;bottom:37px;width:183px;max-height:42%}
+ .guild3d-panel-heading{padding:5px 7px}
+ .guild3d-panel-heading strong{font-size:10px}
+ .guild3d-panel-heading small{font-size:9px}
+ .guild3d-build-panel .guild3d-choices{padding:5px;gap:4px}
+ .guild3d-dialog .guild3d-build-panel .guild3d-building{min-height:54px;padding:4px;font-size:9px}
+ .guild3d-lot-panel .guild3d-note{padding:6px;font-size:10px}
+ .guild3d-dialog .guild3d-lot-actions .guild3d-action{font-size:10px;padding:6px}
+ .guild3d-hud{bottom:4px;left:5px;right:5px;font-size:9px}
+}
