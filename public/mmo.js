@@ -664,10 +664,10 @@ function drawTab(force=false){const parent=$('tabContent');
    appendText(starter,'small','Arma inicial da classe: flechas ilimitadas. O Arco dos ventos do mercado aumenta o dano.');
   }
   for(const [id,count] of Object.entries(s.inventory||{}).filter(([,n])=>n>0)){
-   const item=session.shop[id]||session.relics[id];if(!item)continue;
+   const item=id==='chave_coroa_aurora'?{name:'♛ Chave da Câmara da Aurora',rarity:'soberano'}:session.shop[id]||session.relics[id];if(!item)continue;
    const d=group(parent);appendText(d,'b',item.name+' · '+count+(id==='arco'&&s.role==='arqueiro'?' · Equipado':''));appendText(d,'small',
     item.rarity?'✦ '+item.rarity.toUpperCase()+' · Relíquia de chefe · '+(item.role&&item.role!==s.role?'Exclusiva de '+item.role+' (não equipada)':'Bônus passivo equipado ao possuir'):
-    id==='pocao'||id==='superpocao'?'Restaura vida':'Equipamento / recurso');
+    id==='pocao'||id==='superpocao'?'Restaura vida':id==='chave_coroa_aurora'?'Chave pessoal e não negociável. Abre apenas a quarta masmorra; obtida pelo soberano da Coroa Continental.':'Equipamento / recurso');
    if(item.heal)d.append(button('Usar', 'use',{item:id}));
   }appendText(parent,'p','Itens, moedas e nível são calculados pelo servidor. A persistência depende de armazenamento confiável no servidor.').className='muted';
  }else if(tab==='quests'){
@@ -727,6 +727,22 @@ function drawTab(force=false){const parent=$('tabContent');
   else{
    const k=kingdomState.yourGuild;
    appendText(kingdom,'small','Política: '+kingdomState.ranking.length+' guildas · máximo de '+kingdomState.maxTroops+' soldados por reino');
+    const crown=kingdomState.continentalCrown;
+    const crownBox=group(kingdom);
+    appendText(crownBox,'b','♛ Câmara da Aurora — Masmorra da Coroa Continental');
+    appendText(crownBox,'small',crown?
+     'Soberania atual: '+crown.guild+' · '+crown.territories+'/12 regiões. Somente o líder soberano recebe a chave pessoal da quarta masmorra.':
+     'A chave da quarta masmorra só será concedida ao líder da guilda que dominar 7 das 12 regiões de superfície.');
+    if(crown?.holder){
+     const owns=(s.inventory?.chave_coroa_aurora||0)>0;
+     const remaining=Math.max(0,24*3600000-(Date.now()-(s.crownKeyIssuedAt||0)));
+     const canClaim=!owns&&remaining===0;
+     const claim=document.createElement('button');claim.type='button';
+     claim.textContent=owns?'♛ Chave da Câmara da Aurora no inventário':
+      canClaim?'♛ Reivindicar Chave da Câmara da Aurora':'♛ Selo recarrega em '+Math.ceil(remaining/3600000)+' h';
+     claim.disabled=!canClaim;claim.onclick=()=>send('claimCrownKey');
+     crownBox.append(claim);
+    }
    if(k){
     appendText(kingdom,'b','Seu reino: '+k.name+(k.leader?' · COROA':' · Membro'));
     appendText(kingdom,'small',k.base?'Capital em '+(session.zones[k.base.zone]?.name||'Região')+' · ('+k.base.x+', '+k.base.y+')':'Sua guilda ainda não tem capital.');
@@ -912,8 +928,8 @@ function drawTravel(){const box=$('travelButtons');box.replaceChildren();let z=s
   const b=document.createElement('button');
   b.textContent=gate.gateway?(gate.zone===10?'↥ Voltar para Auren':'✦ Próxima masmorra · '+gate.name):
    gate.stair?(gate.stair==='down'?'↧ Descer · ':'↥ Subir · ')+gate.name:
-    (gate.dungeon&&z<12?'⌘ '+gate.name+' (chave)':gate.name);
-  b.title=gate.gateway?'Passagem real após o sexto subsolo: continue a exploração':
+    (gate.zone===15&&z<12?'♛ '+gate.name+' (chave da Coroa Continental)':gate.dungeon&&z<12?'⌘ '+gate.name+' (chave comum)':gate.name);
+  b.title=gate.zone===15&&z!==15?'A última masmorra exige uma chave pessoal conquistada pela Coroa Continental':gate.gateway?'Passagem real após o sexto subsolo: continue a exploração':
    gate.stair?'Use a escadaria no cenário (E) ou este botão':'Destino conectado';
   if(gate.gateway)b.classList.add('next-dungeon');
   b.onclick=()=>send('travel',{zone:gate.zone});
