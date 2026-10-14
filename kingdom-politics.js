@@ -169,6 +169,9 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
  // A guilda guarda recibos de sucesso (incluídos no snapshot persistido da conta).
  const opKey=typeof d.opKey==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(d.opKey)?d.opKey:null;
  const replayable=op==='construct'||op==='buildingUpgrade'||op==='collect'||op==='train';
+ const operationParams=op==='construct'?JSON.stringify([d.type,d.x,d.y]):
+  op==='buildingUpgrade'?JSON.stringify([d.x,d.y]):
+  op==='train'?JSON.stringify([d.unit,d.count]):'[]';
  const owner=guildFor(world,p);
  const {guild:g,key} = owner||{};
  const receipt=()=>opKey&&g&&Array.isArray(g.recentCityActions)?
@@ -178,7 +181,7 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
   // e protege também contra cobrança duplicada após reconexão/redeploy.
   if(ok&&opKey&&replayable&&g){
    const receipts=Array.isArray(g.recentCityActions)?g.recentCityActions:[];
-   receipts.push({key:opKey,uid:p.uid,action:op,ok:true,message});
+   receipts.push({key:opKey,uid:p.uid,action:op,params:operationParams,ok:true,message});
    g.recentCityActions=receipts.slice(-CITY_RECEIPTS_LIMIT);
    world.dirty=true;
   }
@@ -202,7 +205,7 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
  if(replayable&&opKey){
   const prev=receipt();
   if(prev){
-   if(prev.uid!==p.uid||prev.action!==op){reject('Identificador de construção inválido.');return false}
+   if(prev.uid!==p.uid||prev.action!==op||prev.params!==operationParams){reject('Operação duplicada com parâmetros diferentes.');return false}
    // Replay já processado: devolve recibo sem repetir gasto nem criar edifício.
    world.send(p.socket,{type:'kingdomActionResult',id:requestId,action:op,opKey,ok:true,message:prev.message});
    response(world,p,'',false);
