@@ -16,13 +16,9 @@
  <label for="roomSwitchSelect">SALAS DISPONÍVEIS</label>
  <select id="roomSwitchSelect" aria-describedby="roomSwitchInfo"></select>
  <small id="roomSwitchInfo" role="status">Consultando servidores…</small>
- <label for="roomSwitchPassword" id="roomSwitchPasswordLabel" hidden>SENHA DA SALA PRIVADA</label>
- <input type="password" id="roomSwitchPassword" maxlength="64" autocomplete="off" placeholder="Digite a senha desta sala" hidden>
  <details class="room-create room-switch-create"><summary>+ Criar uma nova sala</summary>
   <form id="roomSwitchCreateForm"><label for="roomSwitchNewName">NOME DA SALA</label>
    <input type="text" id="roomSwitchNewName" minlength="3" maxlength="32" placeholder="Ex.: Caminho dos Heróis" required>
-   <label for="roomSwitchNewPassword">SENHA (OPCIONAL)</label>
-   <input type="password" id="roomSwitchNewPassword" minlength="4" maxlength="64" autocomplete="new-password" placeholder="Vazio para sala pública">
    <button type="submit">✦ Criar e selecionar sala</button>
   </form>
  </details>
@@ -66,17 +62,14 @@
 </div>
 <div class="game-overlay" id="welcomeOverlay"><div class="intro-panel"><div class="ornament">✦ ✧ ✦</div><h2>Uma nova jornada se abre.</h2><p>Como <strong>Visitante</strong>, você escolhe a classe e começa do nível 1 a cada nova visita. Ao fechar ou reabrir o site, moedas, experiência e progresso são reiniciados. Para salvar seu personagem, crie uma conta.</p>
 <section class="room-lobby" aria-labelledby="roomLobbyTitle">
- <h3 id="roomLobbyTitle">✦ Escolha uma sala do reino</h3>
- <p>Cada sala recebe até 60 jogadores. Salas com cadeado exigem senha. Contas cadastradas preservam o progresso em qualquer sala. Salas personalizadas deixam de existir assim que o último jogador sai. Uma sala recém-criada fica reservada por até 60 segundos para seu criador entrar.</p>
+ <h3 id="roomLobbyTitle">✦ Escolha uma sala pública do reino</h3>
+ <p>Todas as salas são públicas e não possuem senha. Cada sala recebe até 60 jogadores. Contas cadastradas preservam o progresso em qualquer sala. Salas personalizadas desaparecem assim que o último jogador sai. Salas recém-criadas aparecem na lista quando recebem seu primeiro jogador.</p>
  <div class="room-selection"><label for="roomSelect">SERVIDORES DISPONÍVEIS</label>
  <select id="roomSelect" aria-describedby="roomSummary"><option value="auren-publica">Auren — Praça Pública (0/60)</option></select>
  <small id="roomSummary" role="status" aria-live="polite">Buscando salas...</small>
- <label for="roomJoinPassword" id="roomJoinPasswordLabel" hidden>SENHA DESTA SALA</label>
- <input id="roomJoinPassword" type="password" placeholder="Senha fornecida pelo criador" autocomplete="off" maxlength="64" hidden>
  </div>
  <details class="room-create"><summary>+ Criar minha sala</summary>
  <form id="createRoomForm"><label for="newRoomName">NOME DA NOVA SALA</label><input id="newRoomName" type="text" minlength="3" maxlength="32" placeholder="Ex.: Guilda dos Viajantes" required>
- <label for="newRoomPassword">SENHA (OPCIONAL)</label><input id="newRoomPassword" type="password" minlength="4" maxlength="64" autocomplete="new-password" placeholder="Deixe vazio para sala pública">
  <button type="submit">✦ CRIAR SALA · 60 VAGAS</button></form></details>
  <p id="roomError" class="tiny" role="alert" aria-live="assertive"></p>
 </section>
@@ -116,4 +109,4 @@
 </aside>
 </main>
 <footer><span>OS PEREGRINOS · MMORPG 16-BIT EXPERIMENTAL</span><span>Conta opcional com progresso salvo · Visitante reinicia a cada visita · 60 jogadores por servidor</span><span class="game-info-links"><button type="button" class="privacy-pref-button" data-privacy-preferences>Preferências de privacidade</button><a href="/guia.html">Guia</a><a href="/sobre.html">Sobre</a><a href="/contato.html">Contato</a><a href="/privacidade.html">Privacidade</a><a href="/termos.html">Regras</a></span></footer>
-<script src="/shading16.js?v=shading-v6" defer></script><script src="/pixel-detail.js?v=holy-v1" defer></script><script src="/character-atelier16.js?v=vigilia-56-v1" defer></script><script src="/sprite-polish16.js?v=pixel-art-v1" defer></script><script src="/sprite-studio.js?v=pc-studio-v5" defer></script><script src="/landscape16.js?v=shading-v6" defer></script><script src="/desktop-characters-v3.js?v=desktop-characters-v3" defer></script><script src="/desktop-sprites16.js?v=desktop-illustrated-v2" defer></script><script src="/desktop-bestiary16.js?v=desktop-bestiary-v2" defer></script><script src="/class-skill-fx16.js?v=class-skill-fx-v1" defer></script><script src="/art16.js?v=pixel-art-v1&pc=reinos-v1" defer></script><script src="/monster-motion.js?v=sprites-v4" defer></script><script src="/player-motion.js?v=ping-rede-v1" defer></script><script src="/latency.js?v=ping-rede-v1" defer></script><script src="/combat-effects.js?v=holy-v1" defer></script><script src="/touch-controls.js?v=touch-v1" defer></script><script src="/sounds-desktop.js?v=holy-v1" defer></script><script src="/city-layout.js?v=guild3d-v1" defer></script><script src="/city-art16.js?v=auren-city-art-v9" defer></script><script src="/city-isometric.js?v=monstros-evoluem-v1" defer></script><script src="/guild-city-3d.js?v=monstros-evoluem-v1" defer></script><script src="/army-pixel16.js?v=monstros-evoluem-v1" defer></script><script src="/mmo.js?v=monstros-evoluem-v1" defer></script><script src="/privacy-controls.js" defer></script></body></html>
+<script src="/shading16.js?v=shading-v6" defer></script><script src="/pixel-detail.js?v=holy-v1" defer></script><script src="/character-atelier16.js?v=vigilia-56-v1" defer></script><script src="/sprite-polish16.js?v=pixel-art-v1" defer></script><script src="/sprite-studio.js?v=pc-studio-v5" defer></script><script src="/landscape16.js?v=shading-v6" defer></script><script src="/desktop-characters-v3.js?v=desktop-characters-v3" defer></script><script src="/desktop-sprites16.js?v=desktop-illustrated-v2" defer></script><script src="/desktop-bestiary16.js?v=desktop-bestiary-v2" defer></script><script src="/class-skill-fx16.js?v=class-skill-fx-v1" defer></script><script src="/art16.js?v=pixel-art-v1&pc=reinos-v1" defer></script><script src="/monster-motion.js?v=sprites-v4" defer></script><script src="/player-motion.js?v=ping-rede-v1" defer></script><script src="/latency.js?v=ping-rede-v1" defer></script><script src="/combat-effects.js?v=holy-v1" defer></script><script src="/touch-controls.js?v=touch-v1" defer></script><script src="/sounds-desktop.js?v=holy-v1" defer></script><script src="/city-layout.js?v=guild3d-v1" defer></script><script src="/city-art16.js?v=auren-city-art-v9" defer></script><script src="/city-isometric.js?v=monstros-evoluem-v1" defer></script><script src="/guild-city-3d.js?v=monstros-evoluem-v1" defer></script><script src="/army-pixel16.js?v=monstros-evoluem-v1" defer></script><script src="/mmo.js?v=salas-publicas-v1" defer></script><script src="/privacy-controls.js" defer></script></body></html>
