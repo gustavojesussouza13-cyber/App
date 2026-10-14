@@ -121,10 +121,11 @@ const ACHIEVEMENTS=Object.freeze({
  'aurora-restaurada':{name:'Guardião do Sétimo Verso',coins:300},
  'vigilia-completa':{name:'Guardião dos Quatro Testemunhos',coins:750}
 });
-const defaultSave=()=>({attributes:{},energy:null,crownKeyIssuedAt:0,level:1,xp:0,hp:135,coins:60,zone:0,x:ZONE_W/2,y:ZONE_H/2,role:'peregrino',inventory:{pocao:3},kills:0,quests:[],visited:[0],guild:null,guildFounded:false,achievements:[],bossRelics:[],blocked:[],story:freshStory()});
+const appearance16=require('./public/appearance16');
+const defaultSave=()=>({attributes:{},energy:null,crownKeyIssuedAt:0,level:1,xp:0,hp:135,coins:60,zone:0,x:ZONE_W/2,y:ZONE_H/2,role:'peregrino',appearance:null,inventory:{pocao:3},kills:0,quests:[],visited:[0],guild:null,guildFounded:false,achievements:[],bossRelics:[],blocked:[],story:freshStory()});
 function hpMax(s){return rpg.calculateAttributes(s).stats.maxHp}
 function xpNeed(level){return 70+level*level*35}
-function safeSave(s){return {attributes:s.attributes,energy:s.energy,crownKeyIssuedAt:s.crownKeyIssuedAt||0,level:s.level,xp:s.xp,hp:s.hp,coins:s.coins,zone:s.zone,x:s.x,y:s.y,role:s.role,inventory:s.inventory,kills:s.kills,quests:s.quests,visited:s.visited,guild:s.guild,guildFounded:s.guildFounded===true,achievements:s.achievements,bossRelics:s.bossRelics,blocked:s.blocked,story:s.story}}
+function safeSave(s){return {attributes:s.attributes,energy:s.energy,crownKeyIssuedAt:s.crownKeyIssuedAt||0,level:s.level,xp:s.xp,hp:s.hp,coins:s.coins,zone:s.zone,x:s.x,y:s.y,role:s.role,appearance:appearance16.normalize(s.appearance),inventory:s.inventory,kills:s.kills,quests:s.quests,visited:s.visited,guild:s.guild,guildFounded:s.guildFounded===true,achievements:s.achievements,bossRelics:s.bossRelics,blocked:s.blocked,story:s.story}}
 function hash32(n){n|=0;n=Math.imul(n^(n>>>16),0x7feb352d);n=Math.imul(n^(n>>>15),0x846ca68b);return (n^(n>>>16))>>>0}
 class World {
  constructor({send,getOnline,hasClassicName,dataFile,autosave=false,persistentStore=null}){
@@ -231,7 +232,7 @@ class World {
  publicPlayer(p){
    const guild=this.guilds.get(p.save.guild?.toLocaleLowerCase('pt-BR'));
    const escort=guild?.members?.includes(p.uid)?kingdoms.escortOf(guild,p.uid):null;
-   return {id:p.id,name:p.name,administrator:!!p.isAdministrator,zone:p.zone,x:Math.round(p.x),y:Math.round(p.y),dir:p.dir,level:p.save.level,role:p.save.role,hp:p.save.hp,maxHp:hpMax(p.save),guild:p.save.guild,party:p.party||null,
+   return {id:p.id,name:p.name,administrator:!!p.isAdministrator,zone:p.zone,x:Math.round(p.x),y:Math.round(p.y),dir:p.dir,level:p.save.level,role:p.save.role,appearance:appearance16.normalize(p.save.appearance),hp:p.save.hp,maxHp:hpMax(p.save),guild:p.save.guild,party:p.party||null,
     escort:escort&&kingdoms.troopCount(escort)>0?escort:null};
   }
  publicMonster(m){return {id:m.id,name:m.name,species:m.species,zone:m.zone,x:Math.round(m.x),y:Math.round(m.y),hp:m.hp,maxHp:m.maxHp,boss:m.boss,level:m.level,rank:m.rank,victories:m.progress?.victories||0}}
@@ -267,7 +268,7 @@ class World {
   if(!gate||dist(p,gate)>96){this.tell(p,'Aproxime-se da passagem para atravessar.');return}
   this.travel(p,z);
  }
- ownStatus(p){const s=p.save,build=rpg.calculateAttributes(s);build.impacts=Object.fromEntries(rpg.ATTRIBUTE_KEYS.map(key=>[key,rpg.allocationPreview(s,key)]));return {type:'character',rpg:build,energy:Math.floor(s.energy??build.stats.maxEnergy),maxEnergy:build.stats.maxEnergy,id:p.id,name:p.name,administrator:!!p.isAdministrator,level:s.level,xp:s.xp,nextXp:xpNeed(s.level),hp:s.hp,maxHp:hpMax(s),coins:s.coins,role:s.role,inventory:s.inventory,crownKeyIssuedAt:s.crownKeyIssuedAt||0,kills:s.kills,quests:s.quests,visited:s.visited,guild:s.guild,guildFounded:s.guildFounded===true,party:p.party||null,story:journal(s.story),achievements:s.achievements,bossRelics:s.bossRelics,blocked:s.blocked,zone:p.zone,x:p.x,y:p.y}}
+ ownStatus(p){const s=p.save,build=rpg.calculateAttributes(s);build.impacts=Object.fromEntries(rpg.ATTRIBUTE_KEYS.map(key=>[key,rpg.allocationPreview(s,key)]));return {type:'character',rpg:build,energy:Math.floor(s.energy??build.stats.maxEnergy),maxEnergy:build.stats.maxEnergy,id:p.id,name:p.name,administrator:!!p.isAdministrator,level:s.level,xp:s.xp,nextXp:xpNeed(s.level),hp:s.hp,maxHp:hpMax(s),coins:s.coins,role:s.role,appearance:appearance16.normalize(s.appearance),inventory:s.inventory,crownKeyIssuedAt:s.crownKeyIssuedAt||0,kills:s.kills,quests:s.quests,visited:s.visited,guild:s.guild,guildFounded:s.guildFounded===true,party:p.party||null,story:journal(s.story),achievements:s.achievements,bossRelics:s.bossRelics,blocked:s.blocked,zone:p.zone,x:p.x,y:p.y}}
  tell(p,msg,type='notice'){this.send(p.socket,{type,text:msg})}
  unlockAchievement(p,id){
   const award=ACHIEVEMENTS[id],s=p.save;
@@ -316,6 +317,9 @@ class World {
    }
   if(s.guild){const g=this.guilds.get(s.guild.toLocaleLowerCase('pt-BR'));
    if(!g?.members?.includes(uid)){s.guild=null;this.dirty=true}}
+  // A primeira escolha vale para contas novas, legadas sem visual e visitantes novos.
+  // Reconexões e trocas de sala jamais substituem o visual salvo inadvertidamente.
+  s.appearance=appearance16.normalize(s.appearance||d.appearance);
   if(!CLASSES[s.role])s.role='peregrino';if(!Number.isInteger(s.zone)||s.zone<0||s.zone>=ZONES.length)s.zone=0;
   s.level=clamp(Math.floor(Number(s.level)||1),1,100);
    s.attributes=rpg.normalizeAllocations(s.attributes,s.level);
@@ -399,6 +403,7 @@ class World {
    case 'attack':this.attack(p,d.target,false);break;
    case 'skill':this.attack(p,d.target,true);break;
    case 'class':this.chooseClass(p,d.role);break;
+   case 'appearance':this.changeAppearance(p,d.appearance);break;
     case 'allocateStat':this.allocateStat(p,cap(d.attribute,20));break;
    case 'use':this.use(p,cap(d.item,30));break;
    case 'buy':this.buy(p,cap(d.item,30),cap(d.npc,64));break;
@@ -495,6 +500,19 @@ class World {
   this.send(p.socket,this.ownStatus(p));
   if(s.stage===16)this.tell(p,'✦ As sete Centelhas foram reunidas. O Sino voltou a tocar! A Vigília Depois do Sino começa nos subsolos da Raiz.');
   if(completion)this.tell(p,'✦ Quatro testemunhos reunidos. A Aurora pertence a todos!');
+ }
+ changeAppearance(p,selection){
+  const now=Date.now();
+  if(now-(p.lastAppearanceChange||0)<1500){this.tell(p,'Aguarde um instante antes de personalizar novamente.');return false}
+  if(!selection||typeof selection!=='object'||Array.isArray(selection)){this.tell(p,'Aparência inválida.');return false}
+  p.lastAppearanceChange=now;
+  p.save.appearance=appearance16.normalize(selection);
+  if(p.isAccount)this.saved.characters[p.uid]=safeSave(p.save);
+  this.dirty=true;
+  this.send(p.socket,this.ownStatus(p));
+  this.broadcast({type:'appearanceChanged',id:p.id,appearance:p.save.appearance},q=>q.id!==p.id);
+  this.persist();
+  return true;
  }
  chooseClass(p,role){
   if(!CLASSES[role])return;
