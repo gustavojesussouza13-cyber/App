@@ -46,7 +46,7 @@
   const soldier=q('guild3dSoldier'),count=q('guild3dCount');
   const trained=q('guild3dArmy'),collect=q('guild3dCollect'),queue=q('guild3dBuildQueue');
   const owns=()=>state?.yourGuild?.name===base?.name;
-  const canBuild=()=>owns()&&state?.persistentAccount===true&&state?.yourGuild?.leader===true;
+  const canBuild=()=>owns()&&state?.persistentAccount===true&&state?.yourGuild?.canManage===true;
   const structures=()=>(state?.cities||[]).find(c=>c.name===base?.name)?.buildings||[];
   const nowServer=()=>Date.now()+clockOffset;
   // O prazo vencido não torna a obra concluída sozinho. O status real
@@ -363,8 +363,8 @@
    visitorNote.hidden=canBuild();
    visitorNote.textContent=!state?.persistentAccount?
     'Construções permanentes exigem uma conta cadastrada. Saia do modo visitante e faça login antes de construir: o modo de entrada só com nome não salva cidades.':
-    owns()?'Somente o líder pode construir e melhorar edifícios.':
-     'Cidade de outra guilda: somente seu líder pode administrar a capital.';
+    owns()?'Todos os membros cadastrados da guilda podem construir e melhorar os edifícios.':
+     'Cidade de outra guilda: somente seus integrantes podem administrar a capital.';
    const buildingCount=buildWorks().length;
    q('guild3dCityState').textContent=structures().length+' / '+(state?.maxBuildings||60)+' edifício(s) registrados no reino · '+
     completedCount()+' concluído(s) · '+buildingCount+' em construção · '+
@@ -400,7 +400,7 @@
    if(!canBuild()){
     say(!state?.persistentAccount?
      'Entre com uma conta cadastrada para construir e salvar edifícios permanentemente.':
-     'Somente o líder da guilda pode construir ou melhorar edifícios.','error');
+     'Somente integrantes da guilda podem construir ou melhorar seus edifícios.','error');
     return;
    }
    const occupied=layout.at(structures(),x,y);
