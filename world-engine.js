@@ -911,7 +911,7 @@ class World {
   }
   if(mode==='create'){
    if(!p.isAccount)return inform('Para criar uma guilda, entre com uma conta cadastrada.');
-   if(p.save.guild||p.save.coins<250||!/^[\\p{L}\\p{N}][\\p{L}\\p{N} -]{2,23}$/u.test(name)||
+   if(p.save.guild||p.save.coins<250||!/^[\p{L}\p{N}][\p{L}\p{N} -]{2,23}$/u.test(name)||
     !inspectNickname(name).ok||this.guilds.has(key))
     return inform('Nome de guilda indisponível. Custo: 250 moedas; não é possível pertencer a duas guildas.');
    p.save.coins-=250;p.save.guild=name;p.save.guildFounded=true;
