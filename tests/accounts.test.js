@@ -5,7 +5,7 @@ const crypto=require('node:crypto');
 const {AccountStore,AuthError,authCookie,parseCookie,clearCookie,validName,validPassword}=require('../account-store');
 
 class MemoryPg{
- constructor(){this.accounts=new Map();this.names=new Map();this.sessions=new Map();this.characters=new Map();this.guilds=new Map();this.meta=new Map();}
+ constructor(){this.accounts=new Map();this.names=new Map();this.sessions=new Map();this.characters=new Map();this.guilds=new Map();this.monsters=new Map();this.meta=new Map();}
  async connect(){return {query:(s,p)=>this.query(s,p),release(){}}}
  async end(){}
  async query(sql,params=[]){
@@ -13,6 +13,7 @@ class MemoryPg{
   if(q.startsWith('CREATE')||q.startsWith('ALTER')||q==='BEGIN'||q==='COMMIT'||q==='ROLLBACK')return {rows:[]};
   if(q==='SELECT uid,data FROM characters')return {rows:[...this.characters].map(([uid,data])=>({uid,data}))};
   if(q==='SELECT key,data FROM guilds')return {rows:[...this.guilds].map(([key,data])=>({key,data}))};
+   if(q==='SELECT key,data FROM monster_progress')return {rows:[...this.monsters].map(([key,data])=>({key,data}))};
   if(q==="SELECT value FROM meta WHERE key='day'")return {rows:this.meta.has('day')?[{value:this.meta.get('day')}]:[]};
   if(q.startsWith('SELECT id FROM game_accounts WHERE username_key='))return {rows:this.names.has(params[0])?[{id:this.names.get(params[0])}]:[]};
   if(q.startsWith('INSERT INTO game_accounts')){if(this.names.has(params[2])){const e=Error('duplicado');e.code='23505';throw e}this.accounts.set(params[0],{id:params[0],username:params[1],username_key:params[2],salt:params[3],password_hash:params[4]});this.names.set(params[2],params[0]);return {rows:[]}}
@@ -24,6 +25,7 @@ class MemoryPg{
   if(q.startsWith('DELETE FROM game_sessions')){this.sessions.delete(params[0]);return {rows:[]}}
   if(q.startsWith('INSERT INTO characters(uid,data) VALUES(')){this.characters.set(params[0],JSON.parse(params[1]));return {rows:[]}}
   if(q.startsWith('INSERT INTO guilds(')){this.guilds.set(params[0],JSON.parse(params[1]));return {rows:[]}}
+   if(q.startsWith('INSERT INTO monster_progress(')){this.monsters.set(params[0],JSON.parse(params[1]));return {rows:[]}}
   if(q.startsWith('INSERT INTO meta(')){this.meta.set('day',params[0]);return {rows:[]}}
   throw Error('SQL inesperado: '+q);
  }
