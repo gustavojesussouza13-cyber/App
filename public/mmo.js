@@ -4,7 +4,7 @@
 const $=id=>document.getElementById(id);
 const cvs=$('game'),ctx=cvs.getContext('2d',{alpha:false});ctx.imageSmoothingEnabled=false;
 const W=cvs.width,H=cvs.height,ZONE_W=1536,ZONE_H=1024;
-const session={id:'',name:'',connected:false,characters:null,online:0,zones:[],portals:[],shop:{},relics:{},quests:[],npcs:[],merchants:[],story:null,achievements:{},monsters:new Map(),players:new Map(),zone:0,x:768,y:512,dir:2,target:null,partyInvite:null,guildInvite:null,tradeOffer:null,role:'peregrino',cameraX:0,cameraY:0,formClass:'peregrino'};
+const session={id:'',name:'',connected:false,characters:null,online:0,zones:[],portals:[],shop:{},relics:{},quests:[],npcs:[],merchants:[],story:null,achievements:{},monsters:new Map(),players:new Map(),zone:0,x:768,y:512,dir:2,target:null,partyInvite:null,guildInvite:null,tradeOffer:null,role:'peregrino',cameraX:0,cameraY:0,formClass:'peregrino',appearance:null,formAppearance:null};
 const keys=new Set(),moves={up:['KeyW','ArrowUp'],down:['KeyS','ArrowDown'],left:['KeyA','ArrowLeft'],right:['KeyD','ArrowRight']};
 let selectedMonsterSheet=null;
 const monsterAttributeLabels={vitalidade:'Vitalidade',fortitude:'Fortitude',forca:'Força',agilidade:'Agilidade',intelecto:'Intelecto',espirito:'Espírito',sorte:'Sorte'};
@@ -101,6 +101,31 @@ try{
  try{localStorage.removeItem('os-peregrinos-world-token');localStorage.removeItem('os-peregrinos-last-name')}catch{}
  $('name').value='';$('role').value='peregrino';
 }catch{$('connectionError').textContent='Não foi possível iniciar uma nova jornada segura. Atualize o navegador.';}
+// O criador compartilha sprite studio e regras com o servidor; não usa blur.
+const appearanceArt=window.PeregrinosAppearance16;
+const appearanceCreator=window.PeregrinosAppearanceEditor.create($('appearanceCreator'),{
+ role:()=>document.querySelector('#registerForm:not([hidden])')?$('registerRole').value:$('role').value,
+ onChange:value=>{session.formAppearance=value}
+});
+session.formAppearance=appearanceCreator.read();
+$('role').addEventListener('change',()=>appearanceCreator.render());
+$('registerRole').addEventListener('change',()=>appearanceCreator.render());
+const appearanceDialog=$('appearanceEditDialog');
+const appearanceEditor=window.PeregrinosAppearanceEditor.create($('appearanceEditorBody'),{
+ role:()=>session.role,
+ initial:session.formAppearance
+});
+$('appearanceChangeBtn').addEventListener('click',()=>{
+ if(!session.connected)return;
+ appearanceEditor.set(session.appearance||session.characters?.appearance);
+ if(!appearanceDialog.open)appearanceDialog.showModal();
+});
+$('appearanceEditCancel').addEventListener('click',()=>appearanceDialog.close());
+$('appearanceEditSave').addEventListener('click',()=>{
+ if(!session.connected)return;
+ send('appearance',{appearance:appearanceEditor.read()});
+ appearanceDialog.close();
+});
 const tint=['#6d9a68','#345947','#44818a','#d4b578','#8f938e','#5f6b59','#97b673','#4a735c','#4b8ba3','#477b58','#9c8a6c','#655970','#536453','#8b6b54','#647a92','#c4a975'];
 const shade=['#427444','#25573d','#37737b','#b38f4e','#697a76','#445d55','#698d55','#365b50','#35738d','#306b47','#7d6d58','#554b68','#425146','#65503e','#566b81','#a58f59'];
 const alert=msg=>{const el=$('toast');el.textContent=msg;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),3100)};
@@ -138,7 +163,7 @@ function setOnline(state,msg){
  session.connected=state;$('statusDot').classList.toggle('on',state);$('status').textContent=msg;
  $('roomSwitchBtn').disabled=!state||roomSwitchPending;
  touchUI.hidden=!state||!touchDevice;
- if(!state){cityUI.onConnectionLost?.();joystick.release();latency.reset();updatePingIndicator();spriteActions.monsters.clear();spriteActions.players.clear();spriteActions.fallen.length=0;classSkillFx.clear()}
+ if(!state){$('appearanceChangeBtn').hidden=true;if(appearanceDialog.open)appearanceDialog.close();cityUI.onConnectionLost?.();joystick.release();latency.reset();updatePingIndicator();spriteActions.monsters.clear();spriteActions.players.clear();spriteActions.fallen.length=0;classSkillFx.clear()}
 }
 const rpgAttributeNames={vitalidade:'Vitalidade',fortitude:'Fortitude',forca:'Força',agilidade:'Agilidade',
  intelecto:'Intelecto',espirito:'Espírito',sorte:'Sorte'};
@@ -198,6 +223,8 @@ function renderRpgPanel(c){
  }
 }
 function character(c){session.characters=c;session.zone=c.zone;session.role=c.role;session.x=c.x;session.y=c.y;
+ session.appearance=appearanceArt.normalize(c.appearance);
+ $('appearanceChangeBtn').hidden=false;
  $('charName').textContent=(c.administrator?'✦ ':'')+(c.name||session.name);$('playerClass').textContent=({peregrino:'Peregrino',guardiao:'Guardião',arqueiro:'Arqueiro',curandeiro:'Curandeiro'}[c.role]||c.role)+(c.administrator?' · ADMIN':'');
  // Explicar a função da habilidade K sem mudar o layout do controle mobile.
  $('skillBtn').lastChild.textContent=c.role==='curandeiro'?' Curar':' Habilidade';
@@ -294,6 +321,9 @@ function dispatch(msg){
   if(session.story?.stage===0)alert('✦ Fale com Lia, a Acendedora! Aproxime-se e pressione E.');
  }
  $('game').focus();
+ }else if(msg.type==='appearanceChanged'){
+  const person=session.players.get(msg.id);
+  if(person)person.appearance=appearanceArt.normalize(msg.appearance);
  }else if(msg.type==='character'){character(msg);
  }else if(msg.type==='snapshot'){
   session.zone=msg.zone;displayOnline(msg.online);
@@ -381,7 +411,7 @@ function connect(){
   sock.onopen=()=>{
    if(socket!==sock)return;
    reconnectMs=1000;
-   sock.send(JSON.stringify({type:'hello',name:session.name,role:session.formClass,token:progressToken,mode:accountMode?'account':'guest',roomId:selectedRoomId}));
+   sock.send(JSON.stringify({type:'hello',name:session.name,role:session.formClass,appearance:session.formAppearance,token:progressToken,mode:accountMode?'account':'guest',roomId:selectedRoomId}));
   };
   sock.onmessage=e=>{
    if(socket!==sock)return;
@@ -406,7 +436,7 @@ function connect(){
  }
 }
 $('nameForm').addEventListener('submit',e=>{e.preventDefault();accountMode=false;$('logoutBtn').hidden=true;$('emailSettingsBtn').hidden=true;const name=$('name').value.trim().normalize('NFC');if(!/^[\p{L}\p{N}][\p{L}\p{N} _-]{2,17}$/u.test(name)){alert('Escolha um nome válido de 3–18 caracteres');return}
- session.name=name;session.formClass=$('role').value;connect();});
+ session.name=name;session.formClass=$('role').value;session.formAppearance=appearanceCreator.read();connect();});
 
 function updateRoomSelection(){
  const select=$('roomSelect'),room=roomCatalog.find(r=>r.id===selectedRoomId);
@@ -566,6 +596,7 @@ async function authPost(route,data){
 }
 function playAccount(account,role='peregrino'){
  accountMode=true;session.name=account.username;session.formClass=role;
+ session.formAppearance=appearanceCreator.read();
  $('logoutBtn').hidden=false;$('emailSettingsBtn').hidden=false;try{localStorage.setItem('os-peregrinos-last-name',account.username)}catch{}
  authed=false;connect();
 }
@@ -1157,7 +1188,7 @@ function canvasDraw(now,dt){
   for(const [id,v] of spriteActions.monsters)if(now-v.at>750)spriteActions.monsters.delete(id);
   for(const [id,v] of spriteActions.players)if(now-v.at>580)spriteActions.players.delete(id);
   classicRenderer.render({zone:session.zone,zones:session.zones,x:session.x,y:session.y,kingdomBases:visibleKingdomBases,
-    name:session.name||'PEREGRINO',role:session.role,dir:session.dir,
+    name:session.name||'PEREGRINO',role:session.role,appearance:session.appearance,dir:session.dir,
     monsters:monsterMotion.draw([...session.monsters.values()],dt),players:playerMotion.draw([...session.players.values()],now),projectiles,
     monsterActions:spriteActions.monsters,playerActions:spriteActions.players,fallen:spriteActions.fallen,
     heroPose:now-spriteActions.localHurtAt<310?{action:'hurt',at:spriteActions.localHurtAt}:{action:'attack',at:lastAction},
