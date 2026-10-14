@@ -321,10 +321,10 @@ function dispatch(msg){
   if(session.story?.stage===0)alert('✦ Fale com Lia, a Acendedora! Aproxime-se e pressione E.');
  }
  $('game').focus();
+ }else if(msg.type==='character'){character(msg);
  }else if(msg.type==='appearanceChanged'){
   const person=session.players.get(msg.id);
   if(person)person.appearance=appearanceArt.normalize(msg.appearance);
- }else if(msg.type==='character'){character(msg);
  }else if(msg.type==='snapshot'){
   session.zone=msg.zone;displayOnline(msg.online);
   if(Array.isArray(msg.kingdoms))visibleKingdomBases=msg.kingdoms;
