@@ -479,7 +479,9 @@ class World {
   if(p.save.visited.length>=16)this.unlockAchievement(p,'explorar-16');
   this.dirty=true;
   this.send(p.socket,{type:'travel',zone:b,name:ZONES[b][0],x:p.x,y:p.y,portals:this.zonePortals(b)});
-  if(autoAggroZone(b))this.tell(p,'⚠ Subsolo '+dungeonDepth(b)+': criaturas comuns atacam por aproximação. Os chefes só revidam quando forem atacados.');
+  if(autoAggroZone(b))this.tell(p,crownDungeonZone(b)?
+    '⚠ Câmara da Aurora: criaturas excepcionalmente perigosas atacam por aproximação. Esquive dos golpes anunciados e mantenha sua equipe preparada.':
+    '⚠ Subsolo '+dungeonDepth(b)+': criaturas comuns atacam por aproximação. Os chefes só revidam quando forem atacados.');
   this.send(p.socket,{type:'kingdomState',data:kingdoms.publicState(this,p)});
   this.send(p.socket,this.ownStatus(p));this.snapshotTo(p);
  }
