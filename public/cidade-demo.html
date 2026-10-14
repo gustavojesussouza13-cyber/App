@@ -85,7 +85,7 @@ const city=window.PeregrinosCity.create({send(type,request){
  }
  if(request.action==='construct'&&window.__guildDemoRejectNextBuild){window.__guildDemoRejectNextBuild=false;return result(request,false,'O servidor de demonstração recusou a construção.');}
  if(request.action==='construct'){
-  const {x,y,type}=request;
+  const {x,y}=request,type=request.buildingType||request.type;
   if(!Object.hasOwn(costs,type)||!layout.canPlace(buildings,type,x,y))
    return result(request,false,'Terreno indisponível na demonstração.');
   if(localCoins<costs[type])
