@@ -171,7 +171,10 @@ function publicState(world,p){
      type:b.type,x:b.x,y:b.y,w:cityLayout.size(b)[0],h:cityLayout.size(b)[1],
      level:Math.min(5,Math.max(1,Number.isSafeInteger(b.level)?b.level:1)),
      // Campos de tempo persistidos: o contador é recuperado em qualquer sala.
-     status:isComplete(b)?'complete':'building',
+     // A conclusão definitiva é registrada pelo tick do servidor, não
+     // inferida apenas do relógio do navegador. Ao expirar, o cliente
+     // pede reconciliação até o status persistido virar 'complete'.
+     status:b.status==='building'?'building':'complete',
      startedAt:Number.isSafeInteger(b.startedAt)?b.startedAt:null,
      endsAt:Number.isSafeInteger(b.endsAt)?b.endsAt:null,
      durationMs:Number.isSafeInteger(b.durationMs)?b.durationMs:null
@@ -200,6 +203,12 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
  const {guild:g,key} = owner||{};
  const receipt=()=>opKey&&g&&Array.isArray(g.recentCityActions)?
   g.recentCityActions.find(entry=>entry?.key===opKey):null;
+ const confirmSaved=(promise,id=requestId)=>{
+  if(id===null||!opKey||!promise||typeof promise.then!=='function')return;
+  void Promise.resolve(promise).then(saved=>{
+   if(saved===true)world.send(p.socket,{type:'kingdomDurable',id,opKey,ok:true});
+  }).catch(err=>console.error('[reinos] confirmação de persistência adiada:',err.message));
+ };
  const report=(message,ok)=>{
   // Registra operações confirmadas antes do ACK. É persistido com a guilda
   // e protege também contra cobrança duplicada após reconexão/redeploy.
@@ -209,21 +218,29 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
    g.recentCityActions=receipts.slice(-CITY_RECEIPTS_LIMIT);
    world.dirty=true;
   }
+  // Persistir ANTES de avisar ao navegador que a operação foi aceita.
+  // A fila assíncrona PostgreSQL continua gravando mesmo que a aba feche.
+  // A confirmação de durabilidade é enviada separadamente após flush().
+  let durable=null;
+  if(ok&&replayable)durable=world.persist();
   if(requestId!==null)world.send(p.socket,{type:'kingdomActionResult',id:requestId,action:op,opKey,ok,message});
-  // Construir na capital registra o snapshot de guildas e carteira na fila
-  // durável imediatamente, sem esperar o autosave de 30 segundos. Nas salas
-  // personalizadas, world.persist() propaga o snapshot ao mundo principal.
-  if(ok&&replayable)world.persist();
+  if(ok&&replayable)confirmSaved(durable);
   // A capital mostra a mensagem no próprio diário; nenhum alert bloqueante.
   response(world,p,message,requestId===null);
  };
  const reject=message=>report(message,false);
  const accept=message=>report(message,true);
  if(op==='inspect'){
+  // Garantia adicional caso a notificação de fim de obra se perca ou o
+  // jogador tenha entrado numa sala secundária depois do prazo.
+  // A operação é idempotente e salva qualquer conclusão atrasada.
+  resolveCityConstructions(world,now);
   if(requestId!==null&&opKey){
    const existing=receipt();
-   if(existing&&existing.uid===p.uid)
+   if(existing&&existing.uid===p.uid){
     world.send(p.socket,{type:'kingdomActionResult',id:requestId,action:existing.action,opKey,ok:existing.ok,message:existing.message});
+    if(existing.ok)confirmSaved(world.persist());
+   }
   }
   response(world,p,'',false);return false
  }
@@ -235,6 +252,7 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
    if(prev.uid!==p.uid||prev.action!==op||prev.params!==operationParams){reject('Operação duplicada com parâmetros diferentes.');return false}
    // Replay já processado: devolve recibo sem repetir gasto nem criar edifício.
    world.send(p.socket,{type:'kingdomActionResult',id:requestId,action:op,opKey,ok:true,message:prev.message});
+   confirmSaved(world.persist());
    response(world,p,'',false);
    return true;
   }

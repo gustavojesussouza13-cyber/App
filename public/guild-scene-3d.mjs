@@ -320,7 +320,9 @@ export function createGuildScene({mount,layout,onCell,onHover}){
  function syncSites(buildings){
   const valid=new Set();
   for(const b of buildings){
-   if(!Number.isSafeInteger(b.endsAt)||b.endsAt<=Date.now()+serverOffset)continue;
+   // O fim do cronômetro NÃO é a confirmação do backend. Manter o canteiro
+   // visível até receber status='complete' num kingdomState autoritativo.
+   if(b.status!=='building'||!Number.isSafeInteger(b.endsAt))continue;
    const key=keyFor(b);valid.add(key);
    if(activeSites.has(key)){activeSites.get(key).building=b;continue}
    activeSites.set(key,makeSite(b,key));
@@ -344,7 +346,7 @@ export function createGuildScene({mount,layout,onCell,onHover}){
   disposeGroup(structures);
   syncSites(buildings);
   for(const b of buildings)
-   if(!Number.isSafeInteger(b.endsAt)||b.endsAt<=Date.now()+serverOffset)
+   if(b.status!=='building'||!Number.isSafeInteger(b.endsAt))
     drawBuilding(b,structures);
   freshDecor();rebuildWalkers();
  }
@@ -488,10 +490,15 @@ export function createGuildScene({mount,layout,onCell,onHover}){
    site.scaffold.visible=pct<.96;
    site.scaffold.position.y=Math.sin(now*.0016+site.p.x)*.04;
    if(refresh){
-    const text=site.local?(Number.isSafeInteger(b.endsAt)?timerText(b.endsAt-current)+'*':'Confirmando…'):timerText(b.endsAt-current);
+    const overdue=!site.local&&Number.isSafeInteger(b.endsAt)&&current>=b.endsAt;
+    const text=site.local?(Number.isSafeInteger(b.endsAt)?timerText(b.endsAt-current)+'*':'Confirmando…'):
+     overdue?'Concluindo…':timerText(b.endsAt-current);
     if(text!==site.lastText){site.timer.textContent=text;site.lastText=text}
     site.fill.style.width=Math.round(pct*100)+'%';
-    site.stage.textContent=site.local?'Tempo estimado · validando':pct<.25?'Fundações':pct<.50?'Erguendo paredes':pct<.75?'Montando estrutura':pct<1?'Colocando telhado':'Finalizando';
+    site.stage.textContent=site.local?'Tempo estimado · validando':
+     overdue?'Aguardando conclusão do servidor':
+     pct<.25?'Fundações':pct<.50?'Erguendo paredes':
+     pct<.75?'Montando estrutura':'Colocando telhado';
     site.label.dataset.progress=String(Math.round(pct*100));
    }
    const pt=site.p.clone().project(camera);

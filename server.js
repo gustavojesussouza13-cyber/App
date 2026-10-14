@@ -83,10 +83,27 @@ const rooms=new RoomHub({mainWorld:world,createWorld:()=>{
    guild:p.save.guild
   };
   if(this.dirty){world.dirty=true;this.dirty=false}
-  world.persist();
+  return world.persist();
  };
  return instance;
 }});
+// As guildas/cidades são compartilhadas, mas as conexões estão divididas
+// em salas. Quando uma construção termina, avisar a TODAS as salas, inclusive
+// quando a Praça Pública estiver vazia.
+world.onKingdomResults=finished=>{
+ const affected=new Set(finished.map(result=>result.guild));
+ for(const room of rooms.rooms.values()){
+  if(room.world===world)continue;
+  for(const member of room.world.players.values()){
+   if(!affected.has(member.save.guild))continue;
+   for(const result of finished.filter(r=>r.guild===member.save.guild))
+    room.world.send(member.socket,{type:'system',text:result.text});
+   room.world.send(member.socket,{
+    type:'kingdomState',data:require('./kingdom-politics').publicState(room.world,member)
+   });
+  }
+ }
+};
 const authRate=new Map();
 const roomPasswordFails=new Map();
 // Proteção de senhas de sala: 8 tentativas em 2 min por origem e sala,
@@ -338,7 +355,7 @@ function send(sock,obj){
  const msg=JSON.stringify(obj);
  // ACKs pequenos das operações idempotentes não podem ser descartados pelo
  // mesmo limite de backpressure usado por snapshots grandes do mundo.
- const critical=obj?.type==='kingdomActionResult';
+ const critical=obj?.type==='kingdomActionResult'||obj?.type==='kingdomDurable';
  if(sock.writableLength<(critical?1024*1024:256*1024))sock.write(frame(msg));
 }
 function emitAll(obj,except){for(const c of sockets)if(c!==except&&c.profile)send(c.socket,obj)}

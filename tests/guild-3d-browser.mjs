@@ -200,15 +200,48 @@ try{
  });
  assert.equal(visitorState.enabled,0,'visitantes não podem iniciar construções permanentes');
  assert.match(visitorState.notice,/conta cadastrada/i);
- assert.match(visitorState.saved,/edifício\(s\) salvos/);
+ assert.match(visitorState.saved,/edifício\(s\) registrados/);
  const ownerState=await page.evaluate(()=>{
   city.update(current());
   return [...document.querySelectorAll('.guild3d-building')].filter(b=>!b.disabled).length;
  });
  assert.equal(ownerState,5,'conta cadastrada pode continuar construindo');
 
+ // Reproduz o defeito real: relógio terminou, mas o servidor ainda
+ // não enviou a notificação. A UI deve consultar e NÃO ficar em "00:00".
+ await page.evaluate(()=>{
+  window.__guildDemoHoldCompletion=true;
+  window.__guildDemoInspectCount=0;
+  const work=buildings.find(b=>b.type==='house'&&b.x===8&&b.y===15);
+  work.status='building';
+  work.startedAt=Date.now()-21000;
+  work.endsAt=Date.now()-1000;
+  city.update(current());
+ });
+ const expiryLabel=page.locator('.guild3d-site-label[data-site-key="house:8:15"]');
+ await expiryLabel.waitFor({timeout:6000});
+ await page.waitForFunction(()=>
+  document.querySelector('.guild3d-site-label[data-site-key="house:8:15"] .guild3d-site-timer')
+   ?.textContent?.includes('Concluindo'),null,{timeout:4000});
+ assert.doesNotMatch(await expiryLabel.innerText(),/00:00/,'obra expirada não fica presa em 00:00');
+ await page.waitForFunction(()=>window.__guildDemoInspectCount>=1,null,{timeout:6500});
+ assert.match(await page.locator('#guild3dBuildQueue').innerText(),/Concluindo/);
+ await page.evaluate(()=>{window.__guildDemoHoldCompletion=false});
+ await page.waitForFunction(()=>{
+  const site=document.querySelector('.guild3d-site-label[data-site-key="house:8:15"]');
+  return buildings.find(b=>b.x===8&&b.y===15)?.status==='complete'&&!site;
+ },null,{timeout:7000});
+ assert.doesNotMatch(await page.locator('#guild3dBuildQueue').innerText(),/Concluindo/,'a obra concluída sai da fila');
+ const durableMessage=await page.locator('#guild3dFeedback').innerText();
+ assert.ok(durableMessage.length>0);
+
  await page.screenshot({path:'/tmp/guild-3d-preview.png',fullPage:true,animations:'disabled'});
- const storedBefore=await page.evaluate(()=>buildings.find(b=>b.x===8&&b.y===15)?.endsAt);
+ const storedBefore=await page.evaluate(()=>{
+  const work=buildings.find(b=>b.x===8&&b.y===15);
+  work.status='building';work.startedAt=Date.now();work.endsAt=work.startedAt+60000;
+  city.update(current());
+  return work.endsAt;
+ });
  await page.locator('#guild3dClose').click();
  assert.equal(await page.locator('.guild3d-dialog').evaluate(d=>d.open),false,'fechamento limpa a cena');
  // Entrar novamente NÃO reinicia o tempo nem substitui a obra por prédio pronto.
@@ -217,7 +250,15 @@ try{
  await page.waitForSelector('.guild3d-site-label[data-site-key="house:8:15"]',{timeout:12000});
  const storedAfter=await page.evaluate(()=>buildings.find(b=>b.x===8&&b.y===15)?.endsAt);
  assert.equal(storedAfter,storedBefore,'prazo da obra persiste após sair e entrar');
- assert.match(await page.locator('.guild3d-site-label[data-site-key="house:8:15"] .guild3d-site-timer').innerText(),/^00:\d\d$/);
+ assert.match(await page.locator('.guild3d-site-label[data-site-key="house:8:15"] .guild3d-site-timer').innerText(),/^\d\d:\d\d$/);
+ await page.locator('#guild3dClose').click();
+ // O botão de voltar seguido de reentrada imediata não pode apagar
+ // edifícios nem destruir a nova cena por um evento close antigo.
+ await page.locator('#openDemo').click();
+ await page.waitForSelector('.guild3d-canvas',{timeout:13000});
+ await page.waitForFunction(()=>document.querySelector('.guild3d-site-label[data-site-key="house:8:15"]')!==null,null,{timeout:6000});
+ assert.ok(await page.locator('.guild3d-canvas').isVisible());
+ assert.equal(await page.evaluate(()=>buildings.find(b=>b.x===8&&b.y===15)?.endsAt),storedBefore);
  await page.locator('#guild3dClose').click();
  assert.deepEqual(pageErrors,[],'sem erros JS na cena 3D');
  console.log('BROWSER_3D_OK WebGL, cena visível, câmera, UI, terreno 26x26 e teardown.');

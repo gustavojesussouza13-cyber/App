@@ -141,14 +141,16 @@ class World {
   // Reenvia instantâneos pendentes mesmo sem novas ações do jogador.
   // Uma falha transitória do Postgres não pode esperar por outra movimentação.
   if(!this.dirty){
-   if(this.persistentStore?.pending)void this.persistentStore.flush().catch(err=>console.error('[world] repetição do salvamento falhou:',err.message));
-   return;
+   if(this.persistentStore?.pending)
+    return this.persistentStore.flush().catch(err=>{console.error('[world] repetição do salvamento falhou:',err.message);return false});
+   if(this.persistentStore?.saving)return this.persistentStore.saving;
+   return Promise.resolve(true);
   }
   // Sessões visitantes não são gravadas no Postgres/SQLite. Somente contas
   // registradas preservam personagens entre visitas ao site.
   for(const p of this.players.values())if(p.isAccount)this.saved.characters[p.uid]=safeSave(p.save);
   this.saved.guilds=Object.fromEntries(this.guilds);this.saved.day=this.day;
-  if(this.persistentStore){this.dirty=false;this.persistentStore.enqueue(this.saved);return;}
+  if(this.persistentStore){this.dirty=false;return this.persistentStore.enqueue(this.saved);}
   try{
    if(this.db){
     this.db.exec('BEGIN IMMEDIATE');
@@ -163,8 +165,8 @@ class World {
    }else{
     fs.mkdirSync(path.dirname(this.dataFile),{recursive:true});const temp=this.dataFile+'.'+process.pid+'.tmp';fs.writeFileSync(temp,JSON.stringify(this.saved));fs.renameSync(temp,this.dataFile);
    }
-   this.dirty=false
-  }catch(e){console.error('[world] falha ao salvar:',e.message)}
+   this.dirty=false;return Promise.resolve(true)
+  }catch(e){console.error('[world] falha ao salvar:',e.message);return Promise.resolve(false)}
  }
  initMonsters(){for(let zone=0;zone<ZONES.length;zone++){
    const mons=[];const dungeon=zone>=12;
@@ -696,6 +698,9 @@ class World {
     for(const member of this.players.values())
      if(affected.has(member.save.guild))
       this.send(member.socket,{type:'kingdomState',data:kingdoms.publicState(this,member)});
+    // As guildas são compartilhadas entre todas as salas. Avisar também
+    // os membros que estejam conectados num mundo secundário.
+    this.onKingdomResults?.(finished);
    }
   }
   // Apenas regiões ocupadas têm IA ativa. O servidor controla quem provocou cada monstro.

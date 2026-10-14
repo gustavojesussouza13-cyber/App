@@ -51,7 +51,7 @@ function current(){return {
  cities:[{name,buildings:buildings.map(b=>({...b}))}],
  serverNow:Date.now(),buildTimes:durations,
  walletCoins:localCoins,
- persistentAccount:true, // apenas a demonstração representa uma conta fictícia ativa
+ persistentAccount:true,demo:true, // conta fictícia: nenhuma gravação permanente na demonstração
  yourGuild:{name,leader:true,stock:{...stock},army:{...army}},
  trainingCosts:units,marches:[]
 }}
@@ -66,6 +66,7 @@ function result(request,ok,message){
  const respond=()=>{
   city.update(current());
   city.onActionResult?.({id:request.requestId,action:request.action,opKey:request.opKey,ok,message});
+  if(ok&&request.action==='construct')city.onDurableResult?.({id:request.requestId,opKey:request.opKey,ok:true});
  };
  const delay=Number(window.__guildDemoReplyDelayMs)||0;
  if(delay>0)setTimeout(respond,Math.min(5000,delay));
@@ -73,7 +74,10 @@ function result(request,ok,message){
  return true;
 }
 const city=window.PeregrinosCity.create({send(type,request){
- if(type!=='kingdom'||request.action==='inspect'){city.update(current());return true}
+ if(type!=='kingdom'||request.action==='inspect'){
+  if(request.action==='inspect')window.__guildDemoInspectCount=(window.__guildDemoInspectCount||0)+1;
+  city.update(current());return true
+ }
  if(window.__guildDemoOffline)return false;
  if(request.opKey&&successfulRequests.has(request.opKey)){
   const receipt=successfulRequests.get(request.opKey);
@@ -116,6 +120,7 @@ const city=window.PeregrinosCity.create({send(type,request){
 // Simula a conclusão autoritativa: o servidor enviaria o estado e gravaria
 // o resultado; não troca o prédio apenas porque o contador do navegador chegou a zero.
 setInterval(()=>{
+ if(window.__guildDemoHoldCompletion)return;
  const now=Date.now();
  if(buildings.some(b=>b.status==='building'&&b.endsAt<=now)){
   for(const b of buildings)if(b.status==='building'&&b.endsAt<=now)b.status='complete';
