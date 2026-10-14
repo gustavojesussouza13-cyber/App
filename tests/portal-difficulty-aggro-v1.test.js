@@ -54,13 +54,14 @@ test('Vida, dano, XP e ouro dos inimigos acompanham escala de cada mapa',t=>{
   }
  }
 });
-test('Agressividade automática começa exatamente no Subsolo 3 de cada masmorra',()=>{
+test('Agressividade começa no Subsolo 3, mas na Câmara da Aurora já se inicia na entrada',()=>{
  for(let z=0;z<ZONES.length;z++)
-  assert.equal(autoAggroZone(z),z>=16&&dungeonDepth(z)>=3,'zona '+z);
+  assert.equal(autoAggroZone(z),z===15||z>=34||(z>=16&&dungeonDepth(z)>=3),'zona '+z);
  for(const z of [18,19,20,21,24,25,26,27,30,31,32,33,36,37,38,39])
   assert.equal(autoAggroZone(z),true);
- for(const z of [12,13,14,15,16,17,22,23,28,29,34,35])
+ for(const z of [12,13,14,16,17,22,23,28,29])
   assert.equal(autoAggroZone(z),false);
+ for(const z of [15,34,35])assert.equal(autoAggroZone(z),true);
 });
 test('Subsolo 3: criatura comum inicia perseguição e anuncia ataque antes de causar dano',t=>{
  const h=setup(t),m=h.monster(18),a=h.player(18);
@@ -82,8 +83,8 @@ test('Criaturas comuns das quatro masmorras reconhecem jogadores por proximidade
   assert.equal(m.aggroTarget,a.p.id,'monstro da zona '+zone+' deve perseguir');
  }
 });
-test('Subsolos 1-2, masmorras-base e superfície permanecem pacíficos',t=>{
- for(const zone of [0,11,12,15,16,17,22,23,28,29,34,35]){
+test('As três masmorras comuns mantêm seus primeiros pisos pacíficos',t=>{
+ for(const zone of [0,11,12,13,14,16,17,22,23,28,29]){
   const h=setup(t),m=h.monster(zone),a=h.player(zone);
   a.p.x=m.x+20;a.p.y=m.y+6;const hp=a.p.save.hp;
   h.w.tick();
