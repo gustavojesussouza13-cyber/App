@@ -199,7 +199,10 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
  // A guilda guarda recibos de sucesso (incluídos no snapshot persistido da conta).
  const opKey=typeof d.opKey==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(d.opKey)?d.opKey:null;
  const replayable=op==='construct'||op==='buildingUpgrade'||op==='collect'||op==='train';
- const operationParams=op==='construct'?JSON.stringify([d.type,d.x,d.y]):
+ // "type" identifica o pacote WebSocket (kingdom); buildingType é o edifício.
+ // Aceitar d.type legado permite que testes/chamadas diretas continuem válidos.
+ const buildingType=typeof d.buildingType==='string'?d.buildingType:d.type;
+ const operationParams=op==='construct'?JSON.stringify([buildingType,d.x,d.y]):
   op==='buildingUpgrade'?JSON.stringify([d.x,d.y]):
   op==='train'?JSON.stringify([d.unit,d.count]):'[]';
  const owner=guildFor(world,p);
@@ -304,7 +307,7 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
  }
  if(op==='construct'){
   if(g.leader!==p.uid||!g.base){reject('Somente o líder de uma guilda com fortaleza pode construir.');return false}
-  const {type,x,y}=d,cost=Object.hasOwn(CITY_BUILDINGS,type)?CITY_BUILDINGS[type]:null;
+  const {x,y}=d,type=buildingType,cost=Object.hasOwn(CITY_BUILDINGS,type)?CITY_BUILDINGS[type]:null;
   if(!cost||!integer(x)||!integer(y)||!cityLayout.canPlace(Array.isArray(g.city?.buildings)?g.city.buildings:[],type,x,y)){
    reject('Terreno ou edifício inválido.');return false
   }
