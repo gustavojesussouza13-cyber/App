@@ -71,6 +71,7 @@ const rooms=new RoomHub({mainWorld:world,createWorld:()=>{
  // Uma única fonte para contas, níveis e guildas; criaturas, equipes e
  // colisões permanecem isoladas em cada sala.
  instance.saved=world.saved;
+ instance.monsterPersistenceEnabled=false; // salas temporárias evoluem criaturas localmente e não sobrescrevem o mundo permanente.
  instance.guilds=world.guilds;
  instance.day=world.day;
  instance.kingdomTickLeader=false; // Uma campanha se resolve uma vez, mesmo com várias salas.
