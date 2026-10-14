@@ -16,7 +16,7 @@ window.PeregrinosCity=Object.freeze({create({send}){
  @media(max-width:700px){.city-main{grid-template-columns:1fr;padding:6px;gap:8px}.city-dialog{max-height:98vh}.city-head{padding:9px}.city-head strong{font-size:16px}.city-controls{max-height:40vh;padding:5px}.city-controls p{font-size:12px}}
  `;document.head.append(css);
  const dlg=document.createElement('dialog');dlg.className='city-dialog';dlg.setAttribute('aria-label','Cidade da guilda');
- dlg.innerHTML='<div class="city-head"><div><strong id="cityTitle">Cidadela</strong><small id="citySubtitle"></small></div><button type="button" class="city-close" aria-label="Voltar ao mundo">✕ Voltar ao continente</button></div><div class="city-main"><canvas class="city-view" width="768" height="520" aria-label="Terreno isométrico para construir edifícios"></canvas><div class="city-controls"><p id="cityHelp">Selecione um edifício e depois um terreno livre.</p><div id="cityChoices"></div><p id="cityFeedback" role="status"></p></div></div>';
+ dlg.innerHTML='<div class="city-head"><div><strong id="cityTitle">Cidadela</strong><small id="citySubtitle"></small></div><button type="button" class="city-close" aria-label="Voltar ao mundo">✕ Voltar ao continente</button></div><div class="city-main"><canvas class="city-view" width="768" height="520" aria-label="Terreno isométrico para construir edifícios"></canvas><div class="city-controls"><p id="cityHelp">Selecione uma construção e um lote pré-definido do bairro correspondente.</p><div id="cityChoices"></div><p id="cityFeedback" role="status"></p></div></div>';
  document.body.append(dlg);
  const canvas=dlg.querySelector('canvas'),ctx=canvas.getContext('2d');ctx.imageSmoothingEnabled=false;
  const choices=dlg.querySelector('#cityChoices'),feedback=dlg.querySelector('#cityFeedback');
@@ -77,8 +77,21 @@ window.PeregrinosCity=Object.freeze({create({send}){
       ' · '+Object.entries(prod.yields||{}).filter(([,n])=>n>0).map(([k,n])=>n+' '+k).join(', ');
     choices.append(clock);
    }
-   const instruction=document.createElement('p');instruction.textContent='Cada edifício produz recursos. Clique em um prédio construído para evoluí-lo com alimentos, madeira e pedra (até nível 60).';choices.append(instruction);
-   for(const [id,t] of Object.entries(types)){const b=document.createElement('button');b.disabled=!canBuild();b.type='button';b.style.display='block';b.style.width='100%';b.style.marginBottom='6px';b.textContent=t.label+' ('+layout.footprints[id].join('×')+') · '+t.cost+' moedas';b.setAttribute('aria-pressed',String(selected===id));b.onclick=()=>{selected=id;feedback.textContent='Clique em um terreno disponível para construir '+t.label.toLowerCase()+'.';refresh()};choices.append(b)}
+   const instruction=document.createElement('p');instruction.textContent='Cada edifício produz recursos. Clique em um prédio construído para evoluí-lo com alimentos, madeira e pedra (até nível 60). Construções novas só nos lotes oficiais.';choices.append(instruction);
+   for(const [id,t] of Object.entries(types)){const b=document.createElement('button');b.disabled=!canBuild();b.type='button';b.style.display='block';b.style.width='100%';b.style.marginBottom='6px';b.textContent=t.label+' ('+layout.footprints[id].join('×')+') · '+t.cost+' moedas';b.setAttribute('aria-pressed',String(selected===id));b.onclick=()=>{selected=id;feedback.textContent='Escolha um lote do tipo '+t.label+' na lista de terrenos oficiais.';refresh()};choices.append(b)}
+   const header=document.createElement('p');header.textContent='LOTES PLANEJADOS · ESCOLHA UM TERRENO';choices.append(header);
+   for(const lot of layout.availableLots(base.level||1)){
+    const occupied=layout.lotStatus(lot,structures(),base.level||1)==='occupied';
+    const button=document.createElement('button');
+    button.type='button';button.disabled=!canBuild()||occupied;
+    const type=types[lot.type];
+    button.textContent=(occupied?'⌂ OCUPADO · ':'▣ LOTE LIVRE · ')+lot.id+' · '+lot.section+' · '+type.label+' · '+type.cost+' moedas';
+    button.onclick=()=>{
+     if(!layout.canPlaceInLot(structures(),lot.type,lot.x,lot.y,base.level||1))return;
+     feedback.textContent='Solicitando '+type.label+' no lote '+lot.id+'…';
+     send('kingdom',{action:'construct',buildingType:lot.type,x:lot.x,y:lot.y,slotId:lot.id,target:base.name});
+    };choices.append(button);
+   }
   }else{const p=document.createElement('p');p.textContent='Você está visitando a capital de outra guilda. Somente integrantes cadastrados deste reino podem administrar a fortaleza.';choices.append(p)}
   draw();
  }
@@ -89,9 +102,10 @@ window.PeregrinosCity=Object.freeze({create({send}){
   const existing=layout.at(structures(),x,y);
   if(existing){feedback.textContent='Solicitando melhoria do edifício…';send('kingdom',{action:'buildingUpgrade',x,y});return}
   if(!selected){feedback.textContent='Selecione um edifício na lista para construir.';return}
-  if(!layout.canPlace(structures(),selected,x,y,base?.level||1)){feedback.textContent='É necessário um lote livre de '+layout.footprints[selected].join(' × ')+' terrenos, sem ruas nem construções.';return}
+  const lot=layout.lotFor(selected,x,y);
+  if(!lot||!layout.canPlaceInLot(structures(),selected,x,y,base?.level||1)){feedback.textContent='Selecione um lote oficial desbloqueado para essa construção no menu lateral.';return}
   feedback.textContent='Enviando construção para validação do servidor…';
-  send('kingdom',{action:'construct',buildingType:selected,x,y,target:base.name});
+  send('kingdom',{action:'construct',buildingType:selected,x,y,slotId:lot.id,target:base.name});
  });
  function open(b,kingdom){base=b;state=kingdom;selected=null;feedback.textContent='';if(!dlg.open)dlg.showModal();refresh();send('kingdom',{action:'inspect'})}
  function update(kingdom){state=kingdom;if(dlg.open){const next=(state?.bases||[]).find(b=>b.name===base?.name);if(next)base=next;refresh()}}
