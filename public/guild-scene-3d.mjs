@@ -104,11 +104,11 @@ export function createGuildScene({mount,layout,onCell,onHover}){
  const hash=(x,y,s=0)=>{let n=Math.imul(x+17,73856093)^Math.imul(y+23,19349663)^Math.imul(s+41,83492791);return ((n^(n>>>13))>>>0)/4294967295};
  function cone(parent,r,height,sides,c,x=0,y=0,z=0){
   const m=new THREE.Mesh(new THREE.ConeGeometry(r,height,sides),material(c));
-  m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;parent.add(m);return m;
+  m.userData.ownGeometry=true;m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;parent.add(m);return m;
  }
  function cylinder(parent,r,h,c,x=0,y=0,z=0,sides=10){
   const m=new THREE.Mesh(new THREE.CylinderGeometry(r,r*1.08,h,sides),material(c));
-  m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;parent.add(m);return m;
+  m.userData.ownGeometry=true;m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;parent.add(m);return m;
  }
  function gable(parent,w,d,eaves,rise,c){
   const shape=new THREE.BufferGeometry();
@@ -445,13 +445,13 @@ export function createGuildScene({mount,layout,onCell,onHover}){
   }else{
    const green=seed>.19?'#547f52':'#6c9156';
    const canopy=new THREE.Mesh(new THREE.IcosahedronGeometry(1.05+seed,.65?1:0),material(green));
-   canopy.position.y=2.35;canopy.castShadow=true;t.add(canopy);
+   canopy.position.y=2.35;canopy.castShadow=true;canopy.userData.ownGeometry=true;t.add(canopy);
   }
  }
  function lamp(parent,x,z){
   cylinder(parent,.065,1.8,'#6b5c47',x,.9,z,8);
   const globe=new THREE.Mesh(new THREE.SphereGeometry(.22,8,7),new THREE.MeshStandardMaterial({color:'#fff0b1',emissive:'#ffd18a',emissiveIntensity:.55}));
-  globe.position.set(x,1.91,z);parent.add(globe);
+  globe.position.set(x,1.91,z);globe.userData.ownGeometry=true;globe.userData.ownMaterial=true;parent.add(globe);
  }
  const coreGroup=new THREE.Group();coreGroup.position.copy(pos(layout.CORE.x,layout.CORE.y,layout.CORE.w,layout.CORE.h));root.add(coreGroup);castle(coreGroup,1);
  // A antiga malha de pedra foi substituída pela rede de caminhos de terra.
@@ -511,8 +511,8 @@ export function createGuildScene({mount,layout,onCell,onHover}){
   }
   // Bosques densos circundam a cidade, fora da malha 26×26 de construções.
   // A mata externa cria profundidade sem jamais cobrir um lote.
-  for(let ring=0;ring<3;ring++)for(let i=0;i<88;i++){
-   const edge=i%4,along=(Math.floor(i/4)+landscape.hash(i,ring,4)*.7)/22*2*HALF-HALF;
+  for(let ring=0;ring<3;ring++)for(let i=0;i<44;i++){
+   const edge=i%4,along=(Math.floor(i/4)+landscape.hash(i,ring,4)*.7)/11*2*HALF-HALF;
    const outward=HALF+2+ring*3.35+landscape.hash(i,ring,6)*2.3;
    const x=edge===0?-outward:edge===1?outward:along;
    const z=edge===2?-outward:edge===3?outward:along;
