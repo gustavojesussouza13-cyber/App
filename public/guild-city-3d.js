@@ -24,6 +24,9 @@
     '<div class="guild3d-label">EXPANSÃO DO REINO</div><p id="guild3dProgress" class="guild3d-note"></p>'+
     '<button type="button" id="guild3dUpgrade" class="guild3d-action">♜ Evoluir fortaleza</button>'+
     '<button type="button" id="guild3dFortify" class="guild3d-action">🛡 Reforçar muralhas</button>'+
+    '<div id="guild3dPolitics" class="guild3d-note" aria-live="polite"></div>'+
+    '<button type="button" id="guild3dSurrenderVote" class="guild3d-action" hidden>☮ Votar pela rendição</button>'+
+    '<button type="button" id="guild3dSurrender" class="guild3d-action" hidden>☮ Assinar rendição e cessar-fogo</button>'+
     '<button type="button" id="guild3dSiege" class="guild3d-action" hidden>⚔ Cercar fortaleza rival</button>'+
    '<div class="guild3d-label">URBANISMO</div><div class="guild3d-note">A área clara é edificável. Melhore a fortaleza para liberar mais terrenos e aumentar os estoques.</div>'+
    '<div id="guild3dCityState" class="guild3d-note" role="status">Carregando construções...</div>'+
@@ -343,9 +346,23 @@
     const defense=state?.yourGuild?.fortressDefense;
     fortify.hidden=!owns();fortify.disabled=!canBuild()||(defense?.walls||0)>=(base.level||1);
     fortify.textContent='🛡 Muralhas '+(defense?.walls||0)+'/'+(base.level||1)+' · defesa '+(defense?.defense||0);
+    const ownGuild=state?.yourGuild;
+    const warStatus=q('guild3dPolitics'),vote=q('guild3dSurrenderVote'),concede=q('guild3dSurrender');
+    const threat=owns()?ownGuild?.crisis:null;
+    const truce=owns()?ownGuild?.truce:null;
+    warStatus.textContent=truce?.until>nowServer()?
+     '☮ Cessar-fogo até '+new Date(truce.until).toLocaleTimeString('pt-BR')+' · território protegido.':
+     threat?'⚔ Cerco de '+(threat.attackerName||'outra guilda')+' · pressão '+threat.pressure+
+      '% · a rendição fica disponível a partir de '+(state?.surrenderThreshold||60)+'%.':
+      (owns()?'Guarnição '+(ownGuild?.currentTroops||0)+' / '+(ownGuild?.armyCapacity||state?.maxTroops||300)+
+       ' · manutenção: '+Math.ceil((ownGuild?.currentTroops||0)/25)+' alimentos a cada 30 minutos.':'');
+    vote.hidden=!owns()||!threat?.canSurrender||Boolean(truce?.until>nowServer());
+    vote.disabled=Boolean(threat?.yourVote);
+    concede.hidden=!owns()||!ownGuild?.leader||!threat?.canSurrender||Boolean(truce?.until>nowServer());
     siege.hidden=owns()||!state?.yourGuild?.base;
-    siege.disabled=!state?.persistentAccount||Object.values(state?.yourGuild?.escort||{}).reduce((n,v)=>n+(Number(v)||0),0)<5||
-     Date.now()<(state?.yourGuild?.nextRaidAt||0);
+    siege.disabled=!state?.persistentAccount||!Object.values(state?.yourGuild?.escort||{}).some(n=>n>0)||
+     Date.now()<(state?.yourGuild?.nextRaidAt||0)||Boolean(state?.yourGuild?.truce?.until>nowServer())||
+     Boolean(state?.yourGuild?.allies?.includes(base.name));
    const resources=owns()?state?.yourGuild?.stock||{}:{};
    stock.replaceChildren();
    const wallet=document.createElement('div');wallet.className='guild3d-stock guild3d-wallet';
@@ -489,6 +506,11 @@
   };
   q('guild3dUpgrade').onclick=()=>sendOperation('upgrade',{});
    q('guild3dFortify').onclick=()=>sendOperation('fortify',{});
+   q('guild3dSurrenderVote').onclick=()=>sendOperation('surrenderVote',{});
+   q('guild3dSurrender').onclick=()=>{
+    if(window.confirm('A rendição transfere influência, até 10% do tesouro e garante 30 minutos de cessar-fogo. Preservar todos os edifícios e aceitar?'))
+     sendOperation('surrender',{});
+   };
    q('guild3dDeploy').onclick=()=>sendOperation('escort',{unit:soldier.value,count:Number(count.value)});
    q('guild3dRecall').onclick=()=>sendOperation('recall',{});
    q('guild3dSiege').onclick=()=>sendOperation('siege',{target:base.name.toLocaleLowerCase('pt-BR')});
