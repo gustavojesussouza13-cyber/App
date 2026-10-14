@@ -6,7 +6,7 @@ const js=read('guild-city-3d.js'),css=read('guild-city-3d.css');
 
 function markup(){
  const start=js.indexOf('  dlg.innerHTML=');
- const end=js.indexOf('  document.body.append(dlg);',start);
+ const end=js.indexOf('  dlg.insertAdjacentHTML(',start);
  assert.ok(start>=0&&end>start);
  const dlg={innerHTML:''};
  new Function('dlg',js.slice(start,end))(dlg);
