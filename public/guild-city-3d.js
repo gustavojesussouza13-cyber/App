@@ -80,7 +80,7 @@
     const remaining=local?null:Math.max(0,b.endsAt-nowServer());
     const pct=Number.isSafeInteger(b.startedAt)&&Number.isSafeInteger(b.endsAt)?Math.min(100,Math.max(0,100*(nowServer()-b.startedAt)/Math.max(1,b.endsAt-b.startedAt))):0;
     row.querySelector('.guild3d-queue-time').textContent=
-     local?(Number.isSafeInteger(b.endsAt)?prettyTime(Math.max(0,b.endsAt-nowServer()))+'*':'Confirmando…'):
+     local?(Number.isSafeInteger(b.endsAt)&&b.endsAt>nowServer()?prettyTime(b.endsAt-nowServer())+'*':'Validando…'):
      remaining===0?'Concluindo…':prettyTime(remaining);
     row.querySelector('.guild3d-queue-track span').style.width=Math.round(pct)+'%';
     row.dataset.progress=String(Math.round(pct));
@@ -137,7 +137,9 @@
     provisionals.delete(key);
     scene?.clearPendingBuilding?.(key);
     const request=requests.get(preview.id);
-    if(request)stopRequest(request);
+    if(request&&!awaitingDurable.has(key))stopRequest(request);
+    // A construção chegou ao estado do servidor, mas só desistimos do
+    // recibo depois de confirmar que o banco persistiu a compra.
     changed=true;
    }
    if(changed&&dlg.open){
@@ -151,6 +153,13 @@
    if(request.timer!==null)clearTimeout(request.timer);
    request.timer=null;
    request.attempts++;
+   // Se já consta no servidor, consultar o recibo em vez de repetir compra.
+   if(request.building&&isPersisted(request.building)){
+    settleFromState();
+    const sent=send('kingdom',{action:'inspect',requestId:request.id,opKey:request.opKey});
+    request.timer=setTimeout(()=>retry(request),4000);
+    return sent!==false;
+   }
    const sent=send('kingdom',{
     action:request.action,...request.details,requestId:request.id,opKey:request.opKey
    });
@@ -167,7 +176,7 @@
    request.timer=setTimeout(()=>{
     if(requests.get(request.id)!==request)return;
     if(request.building&&isPersisted(request.building)){
-     settleFromState();return;
+     retry(request);return;
     }
     if(request.confirmed){
      // O ACK chegou, mas a foto atualizada do reino ainda não: consultar
@@ -254,19 +263,22 @@
    }
   }
   function onDurableResult(result){
-   if(!dlg.open||!result?.opKey)return;
+   if(!result?.opKey)return;
    if(awaitingDurable.get(result.opKey)!==result.id)return;
    if(!result.ok){
     // Não anunciar uma gravação fictícia. O banco pode voltar a funcionar
     // e o recibo idempotente permite confirmar sem cobrar outra vez.
-    say(result.message||'Salvamento pendente. O servidor tentará novamente.','error');
+    if(dlg.open)say(result.message||'Salvamento pendente. O servidor tentará novamente.','error');
     setTimeout(()=>{
      if(dlg.open&&awaitingDurable.get(result.opKey)===result.id)
       send('kingdom',{action:'inspect',requestId:result.id,opKey:result.opKey});
     },2500);
-    paint();return;
+    if(dlg.open)paint();return;
    }
    awaitingDurable.delete(result.opKey);
+   const confirmedRequest=requests.get(result.id);
+   if(confirmedRequest?.opKey===result.opKey)stopRequest(confirmedRequest);
+   if(!dlg.open)return;
    say(state?.demo?
     'Obra registrada na demonstração (dados fictícios, sem salvamento permanente).':
     'Obra registrada e salva permanentemente no banco do reino.','success');
@@ -395,7 +407,13 @@
    }
   }
   function cleanupCity(){
-   token++;resetOperations();
+   token++;
+   // Fechar a cidade não cancela um pedido entregue ao servidor.
+   // Preservar chaves idempotentes e prévias para retomar ao reabrir.
+   for(const request of requests.values()){
+    if(request.timer!==null)clearTimeout(request.timer);
+    request.timer=null;
+   }
    if(queueTicker!==null)clearInterval(queueTicker);queueTicker=null;
    scene?.destroy();scene=null;selected=null;
    viewport.querySelector('canvas')?.remove();
@@ -416,7 +434,10 @@
    // A cidade aberta troca de reino sem fechar e recriar o modal.
    // Ao reabrir, limpa os objetos antigos sincronicamente antes da cena nova.
    if(!dlg.open&&scene)cleanupCity();
-   base=b;state=kingdom;selected=null;resetOperations();
+   const sameGuild=base?.name===b?.name&&state?.persistentAccount===kingdom?.persistentAccount;
+   // Nunca levar pendências de uma guilda ou sessão visitante a outra.
+   if(!sameGuild)resetOperations();
+   base=b;state=kingdom;selected=null;
    if(Number.isSafeInteger(kingdom?.serverNow))clockOffset=kingdom.serverNow-Date.now();
    say('Selecione um edifício ou explore o terreno com a câmera.');
    if(!dlg.open)dlg.showModal();
@@ -430,6 +451,7 @@
     scene.setSelection(selected);
    }
    void load();
+   for(const request of [...requests.values()])retry(request);
    send('kingdom',{action:'inspect'});
   }
   function update(kingdom){
