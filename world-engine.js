@@ -1035,6 +1035,8 @@ class World {
     }else inform('Você saiu da guilda '+guild.name+'.');
    }
   }else return;
+  // O vínculo atualizado precisa prevalecer sobre o snapshot salvo antigo.
+  if(p.isAccount)this.saved.characters[p.uid]=safeSave(p.save);
   this.reconcileGuilds();
   persist();
  }
