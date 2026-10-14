@@ -300,7 +300,12 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
   world.send(p.socket,world.ownStatus(p));return true;
  }
  if(op==='collect'){
-  if(!g.base||!g.city||!Array.isArray(g.city.buildings)||!g.city.buildings.length){reject('Nenhuma construção foi confirmada e salva neste reino. Construa com uma conta cadastrada e aguarde a confirmação.');return false}
+  if(!g.base||!g.city||!Array.isArray(g.city.buildings)||!g.city.buildings.length){
+   reject('Seu reino ainda não tem edifícios. Inicie uma obra para começar.');return false
+  }
+  if(!g.city.buildings.some(b=>Object.values(CITY_YIELDS[b.type]||{}).some(y=>y>0)&&isComplete(b,now))){
+   reject('As obras produtivas ainda estão em andamento. Veja o tempo restante no terreno.');return false
+  }
   if(!g.city.lastCollectedAt){g.city.lastCollectedAt=now;world.dirty=true;accept('Produção iniciada. Volte após 15 minutos.');return true}
   const collected=collectCity(g,now);
   if(!collected){reject('A produção fica pronta a cada 15 minutos.');return false}
