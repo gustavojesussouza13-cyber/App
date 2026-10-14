@@ -105,7 +105,7 @@ test('estilos responsivos e URLs novas do cliente são publicados',()=>{
  assert.match(styles,/@media\(max-width:850px\)/);
  assert.match(styles,/\.canvas-shell:has\(#welcomeOverlay:not\(\[hidden\]\)\)/);
  assert.match(html,/href="\/mmo\.css\?v=rooms-switch-v1"/);
- assert.match(html,/src="\/mmo\.js\?v=atributos-rpg-v1"/);
+ assert.match(html,/src="\/mmo\.js\?v=atributos-pontos-v2"/);
  assert.ok(html.indexOf('/sprite-studio.js')<html.indexOf('/art16.js'));
  assert.ok(html.indexOf('/character-atelier16.js')<html.indexOf('/sprite-studio.js'));
  assert.ok(html.indexOf('/landscape16.js')<html.indexOf('/art16.js'));
