@@ -219,6 +219,7 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
   }
  }
  if(op==='place'){
+  if(!p.isAccount){response(world,p,'Para fundar uma fortaleza permanente, faça login em uma conta cadastrada.');return false}
   if(g.leader!==p.uid){response(world,p,'Somente o líder da guilda pode escolher o local da base.');return false}
   if(!Number.isInteger(p.zone)||p.zone<0||p.zone>=BUILDABLE_REGIONS){
    response(world,p,'Não é possível construir reinos em masmorras ou subsolos.');return false
@@ -249,6 +250,7 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
   g.influence[p.zone]=Math.max(1,Number(g.influence[p.zone])||1);
   g.lastRelocateAt=now;
   world.dirty=true;
+  world.persist(); // Localização de capital é permanente: gravar sem esperar autosave.
   response(world,p,old?'Capital da guilda transferida para esta região.':'Fortaleza fundada! Seu reino já aparece no mapa.');
   world.send(p.socket,world.ownStatus(p));
   return true;
@@ -273,7 +275,7 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
   world.send(p.socket,world.ownStatus(p));return true;
  }
  if(op==='collect'){
-  if(!g.base||!g.city){reject('Seu reino ainda não possui edifícios produtivos.');return false}
+  if(!g.base||!g.city||!Array.isArray(g.city.buildings)||!g.city.buildings.length){reject('Nenhuma construção foi confirmada e salva neste reino. Construa com uma conta cadastrada e aguarde a confirmação.');return false}
   if(!g.city.lastCollectedAt){g.city.lastCollectedAt=now;world.dirty=true;accept('Produção iniciada. Volte após 15 minutos.');return true}
   const collected=collectCity(g,now);
   if(!collected){reject('A produção fica pronta a cada 15 minutos.');return false}
