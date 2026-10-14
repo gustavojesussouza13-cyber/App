@@ -274,7 +274,11 @@ class World {
   const safeLocation=terrain.nearestWalkable(s.zone,s.x,s.y,ZONES);
   if(s.x!==safeLocation.x||s.y!==safeLocation.y){s.x=safeLocation.x;s.y=safeLocation.y;this.dirty=true;}
   s.inventory={...defaultSave().inventory,...(s.inventory||{})};
-   s.inventory[CROWN_DUNGEON_KEY]=Math.max(0,Math.min(1,Math.floor(Number(s.inventory[CROWN_DUNGEON_KEY])||0)));
+   if(Object.hasOwn(s.inventory,CROWN_DUNGEON_KEY)){
+    const amount=Math.max(0,Math.min(1,Math.floor(Number(s.inventory[CROWN_DUNGEON_KEY])||0)));
+    if(amount)s.inventory[CROWN_DUNGEON_KEY]=amount;
+    else delete s.inventory[CROWN_DUNGEON_KEY];
+   }
    s.crownKeyIssuedAt=Number.isSafeInteger(s.crownKeyIssuedAt)&&s.crownKeyIssuedAt>0?s.crownKeyIssuedAt:0;
    if(!Array.isArray(s.quests))s.quests=[];if(!Array.isArray(s.visited))s.visited=[0];if(!Array.isArray(s.achievements))s.achievements=[];if(!Array.isArray(s.bossRelics))s.bossRelics=[];s.bossRelics=s.bossRelics.filter(z=>Number.isInteger(z)&&z>=0&&z<ZONES.length);
   s.blocked=Array.isArray(s.blocked)?[...new Set(s.blocked.filter(n=>typeof n==='string'&&assertName(n)).map(n=>n.toLocaleLowerCase('pt-BR')))].slice(0,30):[];
