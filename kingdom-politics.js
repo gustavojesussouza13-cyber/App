@@ -203,6 +203,12 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
  const {guild:g,key} = owner||{};
  const receipt=()=>opKey&&g&&Array.isArray(g.recentCityActions)?
   g.recentCityActions.find(entry=>entry?.key===opKey):null;
+ const confirmSaved=(promise,id=requestId)=>{
+  if(id===null||!opKey||!promise||typeof promise.then!=='function')return;
+  void Promise.resolve(promise).then(saved=>{
+   if(saved===true)world.send(p.socket,{type:'kingdomDurable',id,opKey,ok:true});
+  }).catch(err=>console.error('[reinos] confirmação de persistência adiada:',err.message));
+ };
  const report=(message,ok)=>{
   // Registra operações confirmadas antes do ACK. É persistido com a guilda
   // e protege também contra cobrança duplicada após reconexão/redeploy.
@@ -218,12 +224,7 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
   let durable=null;
   if(ok&&replayable)durable=world.persist();
   if(requestId!==null)world.send(p.socket,{type:'kingdomActionResult',id:requestId,action:op,opKey,ok,message});
-  if(ok&&replayable&&requestId!==null&&durable&&typeof durable.then==='function'){
-   void Promise.resolve(durable).then(saved=>{
-    if(saved!==true)return;
-    world.send(p.socket,{type:'kingdomDurable',id:requestId,opKey,ok:true});
-   }).catch(err=>console.error('[reinos] confirmação de persistência adiada:',err.message));
-  }
+  if(ok&&replayable)confirmSaved(durable);
   // A capital mostra a mensagem no próprio diário; nenhum alert bloqueante.
   response(world,p,message,requestId===null);
  };
@@ -236,8 +237,10 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
   resolveCityConstructions(world,now);
   if(requestId!==null&&opKey){
    const existing=receipt();
-   if(existing&&existing.uid===p.uid)
+   if(existing&&existing.uid===p.uid){
     world.send(p.socket,{type:'kingdomActionResult',id:requestId,action:existing.action,opKey,ok:existing.ok,message:existing.message});
+    if(existing.ok)confirmSaved(world.persist());
+   }
   }
   response(world,p,'',false);return false
  }
@@ -249,6 +252,7 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
    if(prev.uid!==p.uid||prev.action!==op||prev.params!==operationParams){reject('Operação duplicada com parâmetros diferentes.');return false}
    // Replay já processado: devolve recibo sem repetir gasto nem criar edifício.
    world.send(p.socket,{type:'kingdomActionResult',id:requestId,action:op,opKey,ok:true,message:prev.message});
+   confirmSaved(world.persist());
    response(world,p,'',false);
    return true;
   }
