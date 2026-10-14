@@ -24,7 +24,7 @@ test('lobby de salas públicas não oferece senhas e mantém seleção, criaçã
   assert.match(html,new RegExp('id="'+id+'"'));
  assert.match(html,/até 60 jogadores/);
  assert.match(html,/último jogador sai/);
- assert.match(html,/mmo\.js\?v=guild-applications-v1/);
+ assert.match(html,/mmo\.js\?v=atelier-custom-v1/);
  assert.match(client,/fetch\('\/api\/rooms'/);
  assert.match(client,/roomId:selectedRoomId/);
  assert.doesNotMatch(client,/roomPassword:selectedRoomPassword|wrong_room_password|roomSwitchNewPassword|newRoomPassword/);
