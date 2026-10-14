@@ -125,7 +125,7 @@ const main=[
    'Você chegou longe. Sou Tomás. Cálen me ensinou a fazer espadas, mas o que mais me ensinou foi a consertar ferramentas dos outros.',
    'No fim, ele já não lembrava do meu rosto. Pediu que eu fosse embora. Fiquei do outro lado da porta, escutando-o repetir os nomes que ainda sabia.',
    'A Câmara da Aurora fica além destas terras. O Véu a guarda com sombras que tomam forma dos nossos piores receios.',
-   'Afaste duas criaturas próximas da antiga vigília. Eu guardo um testemunho, mas a chave da Câmara só pertence a quem conquistou a Coroa Continental, governando sete regiões de Auren.',
+   'Afaste duas criaturas próximas da antiga vigília. Eu guardo um testemunho, mas a chave da Câmara só pertence a quem conquistou a Coroa Continental, governando o continente pela legitimidade de sua Coroa.',
    'Quando encontrar Cálen, leve também esta frase: “Seu nome foi lembrado, mesmo quando você não conseguiu lembrar o nosso.”' ],
   ending:['Tomás dobra o joelho diante do marco de pedra. A luz reaparece no último sino.', 'Ele lhe confia a verdade sobre o Véu e explica: somente a Coroa Continental entrega a chave que abre a Câmara da Aurora.'],
   choices:[['compaixao','Diga a Cálen que ele não está sozinho.','Tomás segura sua mão com gratidão.'],['coragem','Buscarei o direito de entrar na câmara e voltarei com a verdade.','“Eu o esperarei”, diz Tomás, “sem abandonar esta porta.”']]},
