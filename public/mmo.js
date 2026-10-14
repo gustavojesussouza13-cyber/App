@@ -638,13 +638,25 @@ cvs.addEventListener('click',e=>{if(!session.connected)return;const rect=cvs.get
  const npc=session.npcs.filter(n=>n.zone===session.zone).find(n=>Math.hypot(n.x-wx,n.y-wy)<npcRadius);
  if(npc){tryTalk(npc);return}
  if(candidate){session.target=candidate.id;alert('Alvo: '+candidate.name+(touchDevice?' · Toque em Atacar':' · J para atacar'))}});
-function selectTab(next){tab=next;document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));drawTab()}
+function selectTab(next){tab=next;document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));drawTab(true)}
 document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>selectTab(b.dataset.tab));
+$('tabContent').addEventListener('focusout',()=>{
+ setTimeout(()=>{
+  const container=$('tabContent');
+  if(container.dataset.redrawPending==='1'&&!container.contains(document.activeElement))drawTab();
+ },180);
+});
 function button(label,action,details={}){const el=document.createElement('button');el.type='button';el.textContent=label;el.onclick=()=>send(action,details);return el}
 function field(parent,id,label,max=40){const l=document.createElement('label');l.textContent=label;l.style.display='block';l.style.margin='7px 0 3px';l.style.color='#e7cd98';const input=document.createElement('input');input.id=id;input.maxLength=max;input.placeholder=label;parent.append(l,input);return input}
 function group(parent){const d=document.createElement('div');d.className='entry';parent.append(d);return d}
 function appendText(parent,tag,text){const e=document.createElement(tag);e.textContent=text;parent.append(e);return e}
-function drawTab(){const parent=$('tabContent');parent.replaceChildren();const s=session.characters;if(!s){appendText(parent,'p','Entre no mundo para ver seu inventário.');return}
+function drawTab(force=false){const parent=$('tabContent');
+ // Estados e mensagens chegam várias vezes por segundo. Não destruir um
+ // <input> ou <select> com foco: isso apagava o texto e fechava o teclado mobile.
+ const editing=parent.contains(document.activeElement)&&
+  document.activeElement?.matches?.('input,textarea,select,[contenteditable="true"]');
+ if(editing&&!force){parent.dataset.redrawPending='1';return}
+ parent.dataset.redrawPending='0';parent.replaceChildren();const s=session.characters;if(!s){appendText(parent,'p','Entre no mundo para ver seu inventário.');return}
  if(tab==='inventory'){
   appendText(parent,'h3','Sua bolsa de equipamentos');
   if(s.role==='arqueiro'&&!(s.inventory?.arco>0)){
@@ -877,12 +889,19 @@ function showWorldMap(){
  }
  dialog.append(grid);if(!dialog.open)dialog.showModal();
 }
-$('chatForm').addEventListener('submit',e=>{e.preventDefault();const input=$('chatInput'),text=input.value.trim();if(!text)return;send('chat',{text,channel:$('chatChannel').value});input.value='';$('game').focus()});
+$('chatForm').addEventListener('submit',e=>{
+ e.preventDefault();const input=$('chatInput'),text=input.value.trim();
+ if(!text)return;
+ // Jamais apagar o rascunho se o WebSocket estiver desconectado ou falhar.
+ if(send('chat',{text,channel:$('chatChannel').value})){
+  input.value='';$('game').focus();
+ }else{input.setCustomValidity('Aguardando reconexão. Sua mensagem foi preservada.');
+  input.reportValidity();setTimeout(()=>input.setCustomValidity(''),1200)}
+});
 $('chatPresetSend').addEventListener('click',()=>{
  const phrase=$('chatPreset').value;
  if(!phrase)return;
- send('chat',{text:phrase,channel:$('chatChannel').value});
- $('chatPreset').selectedIndex=0;
+ if(send('chat',{text:phrase,channel:$('chatChannel').value}))$('chatPreset').selectedIndex=0;
 });
 
 // A renderização do mundo aberto reutiliza o atlas 16-bit da campanha original.
