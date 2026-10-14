@@ -73,6 +73,7 @@ const rooms=new RoomHub({mainWorld:world,createWorld:()=>{
  instance.saved=world.saved;
  instance.monsterPersistenceEnabled=false; // salas temporárias evoluem criaturas localmente e não sobrescrevem o mundo permanente.
  instance.guilds=world.guilds;
+ instance.sharedGuildWorlds=()=>rooms.allWorlds();
  instance.day=world.day;
  instance.kingdomTickLeader=false; // Uma campanha se resolve uma vez, mesmo com várias salas.
  // As contas e fortificações pertencem ao continente, não à sala temporária.
