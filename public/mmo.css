@@ -519,3 +519,96 @@ body.world-fullscreen{overflow:hidden!important}
 @media(max-width:640px){.atelier-custom{grid-template-columns:1fr;gap:10px}.atelier-custom-preview{flex-direction:row;flex-wrap:wrap;justify-content:center}
 .atelier-custom-preview strong{flex-basis:100%}.atelier-custom-preview small{max-width:115px}.atelier-custom-fields{grid-template-columns:repeat(2,minmax(0,1fr))}.appearance-edit-dialog{width:calc(100% - 20px)}}
 @media(max-width:370px){.atelier-custom-fields{grid-template-columns:1fr}}
+
+/* ================================================================
+ * RETRO AUREN — direção visual 2D original.
+ * Retrofitting SOMENTE a casca do Mundo Aberto. O modal das fortalezas
+ * e seu canvas Three.js NÃO recebem pixelização, CSS filter ou perspectiva.
+ * ================================================================ */
+:root{
+ --bg:#0c171a;--teal:#192c2e;--bright:#e8e0c6;
+ --gold:#e7c38a;--muted:#aab8a3;--border:#ac895d;
+ --panel:#182b29;--shadow:#070f14c9;
+ --pixel-ink:#18212a;--pixel-mid:#334843;--pixel-parchment:#f4e0b5;
+}
+body{
+ color:#eee3ce;
+ background-color:#0c171a;
+ background-image:repeating-linear-gradient(0deg,#193132 0px,#193132 2px,#13262a 2px,#13262a 6px);
+}
+body>.bar{
+ border:0;border-bottom:4px solid #090e16;
+ box-shadow:0 3px 0 #aa8354,0 7px 0 #283b3b;
+ background:linear-gradient(180deg,#253b3a 0 35%,#172a2b 35% 100%);
+}
+body>.bar .brand,body>.bar .brand strong{
+ font-family:Georgia,serif;color:#f8daa2;text-shadow:2px 2px 0 #402f31;
+}
+.layout .world-title h1{letter-spacing:.025em;color:#f9dba4;text-shadow:3px 3px 0 #17242d,4px 4px 0 #070e12;}
+.layout .world-title .tag{font-family:ui-monospace,monospace;letter-spacing:.18em;color:#c9e0cb}
+.layout .canvas-shell{
+ border:6px solid #785a40;outline:3px solid #ddbb80;
+ box-shadow:0 0 0 6px #1b2a29,7px 10px 0 #0a1418,12px 14px 0 #0c1217;
+ border-radius:0;background:#132c2d;
+}
+.layout .canvas-shell canvas{image-rendering:pixelated;image-rendering:crisp-edges}
+.layout .panel,.layout .travel-panel,.layout .chat-panel{
+ border:3px solid #ad8b5c;border-radius:0;
+ outline:2px solid #17212a;
+ box-shadow:inset 0 0 0 3px #223b37,inset 0 0 0 5px #314b42,5px 6px 0 #091518;
+ background:linear-gradient(180deg,#213d39,#152b29);
+}
+.layout .panel::before,.layout .panel::after,.layout .travel-panel::before,.layout .travel-panel::after{
+ border-radius:0;
+}
+.layout .panel-top,.layout .statline,.layout .tabrow,.layout .hotbar,.layout .character-more{
+ font-family:ui-monospace,monospace;
+}
+.layout .level,.layout .hero-status h2{color:#f4d8a1;text-shadow:2px 2px 0 #0c1e25}
+.layout .progress{height:12px;border:2px solid #101f27;box-shadow:inset 0 1px 0 #485b53;border-radius:0}
+.layout .hp-bar{background:repeating-linear-gradient(90deg,#c36b51 0px,#c36b51 8px,#ab4d48 8px,#ab4d48 10px)}
+.layout .xp-bar{background:repeating-linear-gradient(90deg,#83b89d 0px,#83b89d 8px,#3e8e7a 8px,#3e8e7a 10px)}
+.layout .hotbar button,.layout .tabrow button,.layout .travel-panel button,
+.layout .tabcontent button,.layout .action-rows button{
+ border:2px solid #997a4f;border-radius:0;color:#f4dfb8;
+ box-shadow:inset 2px 2px 0 #5e7663,3px 3px 0 #10201c;
+ background:#2a473e;transition:background .12s,transform .12s;
+ font-family:ui-monospace,monospace;
+}
+.layout .tabrow .tab.active,.layout .hotbar button:active{
+ background:#a0784b;color:#fff4cc;box-shadow:inset 2px 2px 0 #ebd09c,2px 2px 0 #132421;
+}
+.layout .tabcontent .entry,.layout .character-more>div,.guild-entry-card,.guild-found-panel{
+ border:2px solid #556b58;border-radius:0;background:#152922;
+ box-shadow:inset 2px 2px 0 #273e35;
+}
+.layout .tabcontent input,.layout .tabcontent select,.intro-panel input,.intro-panel select{
+ border:2px solid #867451;border-radius:0;background:#0d2423;color:#f7e3bd;
+}
+.layout .chat-panel #chatLog{font-family:ui-monospace,monospace;line-height:1.65}
+.layout .chat-panel #chatForm{border-top:2px solid #7c7857}
+.layout .intro-panel{
+ border:4px double #d8b37c;border-radius:0;
+ background:#172d2b;box-shadow:inset 0 0 0 4px #2e4538,8px 8px 0 #071316;
+}
+.layout .intro-panel h2{color:#f6d7a0;text-shadow:2px 2px 0 #18242e}
+.layout .intro-panel .ornament{font-family:ui-monospace,monospace;color:#e7c88a}
+.appearance-create-panel,.guild-entry-card,.guild-found-panel,.social-section-nav button{
+ border-radius:0!important
+}
+.atelier-preview-canvas{
+ image-rendering:pixelated;image-rendering:crisp-edges;
+ background:repeating-linear-gradient(45deg,#263b36 0 8px,#304640 8px 16px);
+ border-radius:0;box-shadow:5px 5px 0 #12211d;
+}
+#npcDialogue .npc-window,#npcWindow,.npc-window{
+ border-radius:0;box-shadow:inset 0 0 0 4px #254039,6px 6px 0 #091718;
+}
+#canvasShell:fullscreen,#canvasShell.is-expanded{
+ outline:0;box-shadow:none;border:0
+}
+@media(max-width:700px){
+ .layout .canvas-shell{border-width:3px;outline-width:2px;box-shadow:0 0 0 3px #1b2a29,3px 5px 0 #091518}
+ .layout .panel,.layout .travel-panel,.layout .chat-panel{border-width:2px}
+ .layout .hotbar button{box-shadow:inset 1px 1px 0 #5e7663,2px 2px 0 #10201c}
+}
