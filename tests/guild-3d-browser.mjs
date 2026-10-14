@@ -153,6 +153,30 @@ try{
  assert.doesNotMatch(await page.locator('#guild3dFeedback').innerText(),/prévia foi retirada|não confirmou/i);
 
 
+ // Construção simultânea: dois cliques antes de qualquer confirmação não
+ // podem bloquear a interface nem sobrepor lotes ou reservar moedas duas vezes.
+ await page.evaluate(()=>{window.__guildDemoReplyDelayMs=4500});
+ const multiA=await projectPoint(6,14),multiB=await projectPoint(8,15);
+ assert.equal(await page.evaluate(()=>layout.canPlace(buildings,'house',6,14)),true);
+ assert.equal(await page.evaluate(()=>layout.canPlace(buildings,'house',8,15)),true);
+ await page.mouse.click(multiA.x,multiA.y);
+ const firstSameFrame=await page.evaluate(()=>window.__guildInstantEventLog.at(-1));
+ assert.equal(firstSameFrame.pending,'house:6:14');
+ await page.mouse.click(multiB.x,multiB.y);
+ const secondSameFrame=await page.evaluate(()=>window.__guildInstantEventLog.at(-1));
+ assert.equal(secondSameFrame.pending,'house:8:15');
+ assert.equal(await canvas.getAttribute('data-pending-count'),'2','duas construções ficam visíveis simultaneamente sem espera');
+ assert.match(await page.locator('.guild3d-wallet').innerText(),/8.020 moedas/,'ambas as construções reservam seus custos locais');
+ assert.doesNotMatch(await page.locator('#guild3dFeedback').innerText(),/aguarde|sincronizando|anterior/i,'diário não bloqueia construções sucessivas');
+ // Dois cliques no mesmo lote não podem criar edifícios sobrepostos.
+ await page.mouse.click(multiB.x,multiB.y);
+ assert.equal(await canvas.getAttribute('data-pending-count'),'2','não criar terceiro prédio no terreno já reservado');
+ await page.waitForFunction(()=>document.querySelector('.guild3d-canvas')?.dataset.pendingCount==='0',null,{timeout:14000});
+ assert.equal(await page.evaluate(()=>buildings.filter(b=>b.type==='house'&&
+  ((b.x===6&&b.y===14)||(b.x===8&&b.y===15))).length),2);
+ assert.match(await page.locator('.guild3d-wallet').innerText(),/8.020 moedas/,'servidor confirma apenas dois débitos');
+ assert.doesNotMatch(await page.locator('#guild3dFeedback').innerText(),/aguarde a sincronização|sincronizando o salvamento/i);
+
  await page.screenshot({path:'/tmp/guild-3d-preview.png',fullPage:true,animations:'disabled'});
  await page.locator('#guild3dClose').click();
  assert.equal(await page.locator('.guild3d-dialog').evaluate(d=>d.open),false,'fechamento limpa a cena');
