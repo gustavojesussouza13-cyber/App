@@ -3,7 +3,7 @@
    Renderização WebGL/Three.js em origem própria, com estradas de terra e bosques. */
 import * as THREE from '/vendor/three.module.js';
 import {architectureAt} from '/guild-architecture.mjs';
-import {planGuildLandscape} from '/guild-landscape.mjs';
+import {planGuildLandscape,nextRoadCell} from '/guild-landscape.mjs';
 
 export function createGuildScene({mount,layout,onCell,onHover}){
  const N=layout.N,CELL=2.85,HALF=N*CELL/2;
@@ -732,13 +732,24 @@ export function createGuildScene({mount,layout,onCell,onHover}){
  }
  function rebuildWalkers(){
   disposeGroup(walkers);people.length=0;
-  const count=13+Math.min(12,Math.ceil(Object.values(army).reduce((sum,n)=>sum+(Number(n)||0),0)/12));
+  const roadNodes=[...landscape.road].map(key=>{
+   const [x,y]=key.split(':').map(Number);return {x,y};
+  }).sort((a,b)=>a.y-b.y||a.x-b.x);
+  if(!roadNodes.length)return;
+  const count=13+Math.min(12,Math.ceil(Object.values(army).reduce(
+   (sum,n)=>sum+(Number(n)||0),0)/12));
   for(let i=0;i<count;i++){
-   const seed=hash(i,17,3),phase=seed*Math.PI*2;
-   const soldier=i>=13,col=soldier?'#657e91':(i%3?'#aa784f':'#548b74');
-   const g=figure(walkers,col,0,0,soldier);
-   people.push({g,i,phase,speed:.20+(seed*.16),radius:9+(i%5)*2.8});
+   const seed=hash(i,17,3),soldier=i>=13;
+   const col=soldier?'#657e91':(i%3?'#aa784f':'#548b74');
+   const from=roadNodes[Math.floor(seed*roadNodes.length)];
+   const to=nextRoadCell(landscape,from,null,hash(i,27,8));
+   const start=pos(from.x,from.y);
+   const g=figure(walkers,col,start.x,start.z,soldier);
+   // A posição interpolada sempre pertence ao segmento entre duas ruas vizinhas.
+   people.push({g,i,from,to,previous:null,progress:0,
+    speed:soldier?1.03+seed*.35:.72+seed*.27});
   }
+  renderer.domElement.dataset.pedestrianRoadOnly='true';
  }
  function pick(e){
   const rect=renderer.domElement.getBoundingClientRect();
@@ -852,18 +863,34 @@ export function createGuildScene({mount,layout,onCell,onHover}){
    site.label.hidden=pt.z< -1||pt.z>1||x<0||x>renderer.domElement.clientWidth||y<0||y>renderer.domElement.clientHeight-10;
   }
  }
+ let previousFrameAt=null;
  function frame(now){
   if(destroyed)return;
   animateSites(now);
-  const t=now*.0005;
+  // Delta limitado para não teletransportar camponeses após troca de abas.
+  const dt=previousFrameAt===null?0:Math.max(0,Math.min(.065,(now-previousFrameAt)/1000));
+  previousFrameAt=now;
   for(const p of people){
-   const a=p.phase+t*p.speed;
-   p.g.position.set(Math.cos(a)*p.radius,0,Math.sin(a*.91)*p.radius);
-   p.g.rotation.y=-a;
-   p.g.position.y=Math.sin(now*.007+p.i)*.035;
+   const from=p.from,to=p.to;
+   if(!landscape.isRoad(from.x,from.y)||!landscape.isRoad(to.x,to.y))continue;
+   p.progress=Math.min(1,p.progress+dt*p.speed);
+   const a=pos(from.x,from.y),b=pos(to.x,to.y),t=p.progress;
+   p.g.position.set(a.x+(b.x-a.x)*t,Math.abs(Math.sin(t*Math.PI*2))*.025,
+    a.z+(b.z-a.z)*t);
+   if(from.x!==to.x||from.y!==to.y)
+    p.g.rotation.y=Math.atan2(b.x-a.x,b.z-a.z);
+   if(p.progress>=1){
+    const old=from;
+    p.from=to;p.previous=old;
+    p.to=nextRoadCell(landscape,to,old,
+     landscape.hash(to.x+p.i,to.y,Math.floor(now/5200)+p.i));
+    p.progress=0;
+   }
   }
   renderer.render(scene,camera);
   raf=requestAnimationFrame(frame);
+ }
+ raf=requestAnimationFrame(frame);
  }
  raf=requestAnimationFrame(frame);
  function destroy(){
