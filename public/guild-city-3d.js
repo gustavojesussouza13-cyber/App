@@ -427,55 +427,90 @@
    renderLotCard();
    updateQueue();lastProductionPaint=0;updateProduction();
    }
-   function onCell({x,y}){
-   if(!canBuild()){
-    say(!state?.persistentAccount?
-     'Entre com uma conta cadastrada para construir e salvar edifícios permanentemente.':
-     'Somente integrantes da guilda podem construir ou melhorar seus edifícios.','error');
+
+  function renderLotCard(){
+   const title=q('guild3dLotName'),desc=q('guild3dLotInfo'),build=q('guild3dLotAction'),upgrade=q('guild3dLotUpgrade');
+   const lot=selectedLot;
+   if(selectedBuilding)selectedBuilding=layout.at(structures(),selectedBuilding.x,selectedBuilding.y)||selectedBuilding;
+   const building=selectedBuilding;
+   build.hidden=Boolean(building);upgrade.hidden=!building;
+   if(building){
+    const next=Math.min(60,(building.level||1)+1),fee={food:(building.level||1)*8,timber:(building.level||1)*6,stone:(building.level||1)*3};
+    title.textContent=(labels[building.type]||building.type)+' · nível '+(building.level||1);
+    desc.textContent=building.status==='building'?
+     'Obra em andamento. Aguarde a conclusão confirmada pelo servidor.':
+     'Evoluir para o nível '+next+': '+fee.food+' alimento, '+fee.timber+' madeira, '+fee.stone+' pedra. O estilo melhora com cada nível.';
+    upgrade.disabled=!canBuild()||building.status==='building'||(building.level||1)>=60;
+    upgrade.textContent='⬆ Evoluir para nível '+next;
     return;
    }
-   const occupied=layout.at(structures(),x,y);
+   if(!lot){
+    title.textContent='Selecione um lote ou edifício';
+    desc.textContent='Lotes residenciais, agrícolas, comerciais e militares possuem posições planejadas. Clique no terreno emoldurado.';
+    build.disabled=true;build.textContent='Escolha um terreno';return;
+   }
+   const status=layout.lotStatus(lot,structuresWithPreviews(),base?.level||1),type=types[lot.type];
+   title.textContent=lot.section+' · '+lot.id;
+   desc.textContent=type[0]+' · '+lot.w+'×'+lot.h+' · '+
+    (status==='locked'?'Libera na fortaleza nível '+lot.unlockLevel:
+     status==='occupied'?'Terreno ocupado':type[1]+' moedas · ciclo '+prettyTime(state?.productionTimes?.[lot.type]||0));
+   build.disabled=!canBuild()||status!=='empty'||selected!==lot.type||spendableCoins()<type[1];
+   build.textContent='⚒ Construir '+type[0]+' · '+type[1]+' moedas';
+  }
+  function onCell({x,y}){
+   const occupied=layout.at(structuresWithPreviews(),x,y);
    if(occupied){
-    if(occupied.status==='building'){
-     say('Este edifício ainda está sendo construído. Veja o contador embaixo da obra.','info');return;
-    }
-    // Melhorias continuam independentes de outras construções em andamento.
-    if([...requests.values()].some(r=>r.action==='buildingUpgrade'&&
-     layout.at([occupied],r.details.x,r.details.y))){
-     say('Este edifício já recebeu uma melhoria. Selecione outro terreno.','info');return;
-    }
-    sendOperation('buildingUpgrade',{x,y});
-    return;
+    selectedBuilding=occupied;selectedLot=layout.lotAt(x,y);
+    selected=null;scene?.setSelection(null);
+    say((labels[occupied.type]||occupied.type)+' nível '+(occupied.level||1)+' selecionado. Consulte o painel de evolução.');
+    paint();return;
    }
-   if(!selected){say('Selecione um edifício no painel para começar.');return}
-   const occupiedPreview=layout.at([...provisionals.values()].map(v=>v.building),x,y);
-   if(occupiedPreview){
-    say('Este lote já está ocupado. Escolha outro espaço.','info');return;
+   const lot=layout.lotAt(x,y);
+   if(!lot){say('Esta área é uma rua, praça ou jardim. Clique num lote emoldurado.','info');return}
+   selectedBuilding=null;selectedLot=lot;
+   if(lot.unlockLevel>(base?.level||1)){
+    selected=null;scene?.setSelection(null);
+    say('Lote bloqueado: exige fortaleza nível '+lot.unlockLevel+'.','info');
+   }else{
+    selected=lot.type;scene?.setSelection(selected);
+    say((labels[lot.type]||lot.type)+' · '+lot.section+'. Confirme a construção no painel.');
    }
-   if(!layout.canPlace(structuresWithPreviews(),selected,x,y,base?.level||1)){
-    say('Lote indisponível: existem construções ou o castelo neste terreno.','info');return;
+   paint();
+  }
+  function placeLot(){
+   if(!canBuild()){say('Use uma conta cadastrada pertencente à guilda para construir.','error');return}
+   const lot=selectedLot;
+   if(!lot||selected!==lot.type){say('Escolha um lote disponível e a construção apropriada.','info');return}
+   const {x,y}=lot;
+   if(layout.at(structuresWithPreviews(),x,y)){say('Lote já ocupado.','info');return}
+   if(!layout.canPlaceInLot(structuresWithPreviews(),selected,x,y,base?.level||1)){
+    say('Terreno bloqueado ou reservado. Selecione outro lote.','info');return;
    }
    const price=types[selected][1],coins=spendableCoins();
-   if(coins<price){
-    say('Moedas disponíveis insuficientes: '+coins.toLocaleString('pt-BR')+
-     ' de '+price+' necessárias.','error');return;
-   }
-   if(structuresWithPreviews().length>=(state?.maxBuildings||60)){
-    say('O nível atual permite '+(state?.maxBuildings||60)+' edifícios. Evolua a fortaleza.','error');return;
-   }
-   // Não há tempo de espera visual nem fila: cada clique desenha e envia
-   // seu pedido próprio imediatamente, mesmo com outros ACKs pendentes.
-   // Prazo estimado desde o próprio clique, antes mesmo do primeiro ACK.
-   // O horário exato do servidor substituirá esta estimativa no snapshot.
-   const startedAt=nowServer();
-   const durationMs=Number(state?.buildTimes?.[selected])||0;
-   const building={...layout.plan(selected,x,y),level:1,status:'building',
+   if(coins<price){say('Moedas insuficientes: '+coins.toLocaleString('pt-BR')+' de '+price+'.','error');return}
+   if(structuresWithPreviews().length>=(state?.maxBuildings||60)){say('Limite de edifícios alcançado. Evolua a fortaleza.','error');return}
+   const startedAt=nowServer(),durationMs=Number(state?.buildTimes?.[selected])||0;
+   const building={...layout.plan(selected,x,y),slotId:lot.id,level:1,status:'building',
     ...(durationMs>0?{startedAt,endsAt:startedAt+durationMs,durationMs}:{})};
-   sendOperation('construct',{buildingType:selected,x,y,target:base.name},{building,price});
+   sendOperation('construct',{buildingType:selected,x,y,slotId:lot.id,target:base.name},{building,price});
+   selectedLot=null;selected=null;scene?.setSelection(null);paint();
   }
   function onHover(cell){
-   q('guild3dCoords').textContent=cell?'Lote '+(cell.x+1)+' / '+(cell.y+1)+' · '+layout.N+'×'+layout.N:'Terreno '+layout.N+'×'+layout.N;
+   const lot=cell?layout.lotAt(cell.x,cell.y):null;
+   q('guild3dCoords').textContent=lot?
+    lot.section+' · '+lot.id+' · '+(lot.unlockLevel>(base?.level||1)?'Exige nível '+lot.unlockLevel:types[lot.type][0]):
+    'Ruas e praças · Capital '+layout.N+'×'+layout.N;
   }
+  q('guild3dLotAction').onclick=placeLot;
+  q('guild3dLotUpgrade').onclick=()=>{
+   const b=selectedBuilding;
+   if(!b||!canBuild())return;
+   if(b.status==='building'){say('Aguarde a obra concluir.','info');return}
+   if([...requests.values()].some(r=>r.action==='buildingUpgrade'&&layout.at([b],r.details.x,r.details.y))){
+    say('Esta melhoria já está em processamento.','info');return;
+   }
+   sendOperation('buildingUpgrade',{x:b.x,y:b.y});
+  };
   async function load(){
    if(scene||loading||!dlg.open)return;
    loading=true;const seq=++token;
