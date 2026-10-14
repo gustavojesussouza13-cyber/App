@@ -21,7 +21,7 @@
    '<aside class="guild3d-sidebar"><div class="guild3d-label">TESOURO E RECURSOS</div><div id="guild3dStock" class="guild3d-stocks"></div>'+
    '<button type="button" id="guild3dCollect" class="guild3d-action">✦ Coletar produção</button>'+
    '<div class="guild3d-label">URBANISMO</div><div class="guild3d-note">Toda a área verde é edificável. Apenas os terrenos ocupados e o castelo central são reservados.</div>'+
-   '<div id="guild3dChoices" class="guild3d-choices"></div>'+
+   '<div id="guild3dCityState" class="guild3d-note" role="status">Carregando construções...</div><div id="guild3dChoices" class="guild3d-choices"></div>'+
    '<div id="guild3dArmy" class="guild3d-army"><div class="guild3d-label">TREINAMENTO MILITAR</div><select id="guild3dSoldier" aria-label="Tipo de tropa"></select>'+
    '<div class="guild3d-train"><input id="guild3dCount" type="number" min="1" max="40" value="1" aria-label="Quantidade de soldados"><button type="button" id="guild3dTrain">⚔ Treinar tropas</button></div></div>'+
    '<div class="guild3d-label">DIÁRIO DA CAPITAL</div><p id="guild3dFeedback" class="guild3d-feedback" role="status" aria-live="polite">Escolha uma construção e selecione um terreno livre.</p>'+
@@ -36,7 +36,7 @@
   const soldier=q('guild3dSoldier'),count=q('guild3dCount');
   const trained=q('guild3dArmy'),collect=q('guild3dCollect');
   const owns=()=>state?.yourGuild?.name===base?.name;
-  const canBuild=()=>owns()&&state?.yourGuild?.leader===true;
+  const canBuild=()=>owns()&&state?.persistentAccount===true&&state?.yourGuild?.leader===true;
   const structures=()=>(state?.cities||[]).find(c=>c.name===base?.name)?.buildings||[];
   const say=(text,status='info')=>{
    info.textContent=text;
@@ -204,8 +204,15 @@
     const l=document.createElement('small');l.textContent=emoji+' '+label;
     d.append(n,l);stock.append(d);
    }
-   collect.hidden=!owns();collect.disabled=!owns();
-   q('guild3dVisitor').hidden=owns();
+   collect.hidden=!owns();collect.disabled=!owns()||state?.persistentAccount!==true;
+   const visitorNote=q('guild3dVisitor');
+   visitorNote.hidden=canBuild();
+   visitorNote.textContent=!state?.persistentAccount?
+    'Construções permanentes exigem uma conta cadastrada. Saia do modo visitante e faça login antes de construir: o modo de entrada só com nome não salva cidades.':
+    owns()?'Somente o líder pode construir e melhorar edifícios.':
+     'Cidade de outra guilda: somente seu líder pode administrar a capital.';
+   q('guild3dCityState').textContent=structures().length+' edifício(s) salvos no reino · '+
+    provisionals.size+' aguardando confirmação do servidor';
    opts.replaceChildren();
    for(const [id,[label,cost,glyph]]of Object.entries(types)){
     const button=document.createElement('button');button.type='button';
@@ -226,11 +233,14 @@
     soldier.append(option);
    }
    if(costs[prior])soldier.value=prior;
-   trained.hidden=!owns()||!structures().some(b=>b.type==='barracks');
+   trained.hidden=!owns()||state?.persistentAccount!==true||!structures().some(b=>b.type==='barracks');
   }
   function onCell({x,y}){
    if(!canBuild()){
-    say('Somente o líder pode construir ou melhorar edifícios.','error');return;
+    say(!state?.persistentAccount?
+     'Entre com uma conta cadastrada para construir e salvar edifícios permanentemente.':
+     'Somente o líder da guilda pode construir ou melhorar edifícios.','error');
+    return;
    }
    const occupied=layout.at(structures(),x,y);
    if(occupied){
@@ -296,7 +306,9 @@
    if(dlg.open)dlg.close();
    base=b;state=kingdom;selected=null;resetOperations();say('Selecione um edifício ou explore o terreno com a câmera.');
    if(!dlg.open)dlg.showModal();
-   paint();void load();
+   paint();
+   if(!state?.persistentAccount)say('Modo visitante: faça login com sua conta para construir e manter os edifícios após sair.','warning');
+   void load();
    send('kingdom',{action:'inspect'});
   }
   function update(kingdom){

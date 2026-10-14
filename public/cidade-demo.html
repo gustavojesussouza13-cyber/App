@@ -18,7 +18,7 @@ a{color:#d9c184}#openDemo{font-size:18px}
 <small>Esta página utiliza a mesma interface de cidades do MMORPG em desenvolvimento. Nenhuma ação será enviada ao servidor oficial.</small>
 <a href="/mundo.html">← Voltar ao Mundo Aberto</a>
 </main>
-<script src="/city-layout.js?v=guild3d-v1"></script><script src="/city-art16.js?v=auren-city-art-v9"></script><script src="/city-isometric.js?v=auren-city-art-v9"></script><script src="/guild-city-3d.js?v=guild3d-multi-v6"></script>
+<script src="/city-layout.js?v=guild3d-v1"></script><script src="/city-art16.js?v=auren-city-art-v9"></script><script src="/city-isometric.js?v=auren-city-art-v9"></script><script src="/guild-city-3d.js?v=guild-persist-v7"></script>
 <script>
 'use strict';
 const name='Fortaleza da Alvorada',start=Date.now();
@@ -49,6 +49,7 @@ function current(){return {
  bases:[{...base}],
  cities:[{name,buildings:buildings.map(b=>({...b}))}],
  walletCoins:localCoins,
+ persistentAccount:true, // apenas a demonstração representa uma conta fictícia ativa
  yourGuild:{name,leader:true,stock:{...stock},army:{...army}},
  trainingCosts:units,marches:[]
 }}
