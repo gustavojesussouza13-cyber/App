@@ -86,7 +86,7 @@ test('história de 40 capítulos preserva 7 centelhas, quatro testemunhos e deci
   assert.equal(w.p.save.story.stage,n.index+1,`capítulo ${n.index}`);
   if(n.key)keys++;
  }
- assert.equal(keys,4);assert.equal(w.p.save.inventory.chave,4);
+ assert.equal(keys,3);assert.equal(w.p.save.inventory.chave,3); // A quarta chave é política e não vem da história.
  assert.equal(w.p.save.story.shards.length,7);assert.equal(w.p.save.story.decisions.length,40);
  assert.equal(w.p.save.story.testimonies.length,4);
  assert.ok(w.last('storyResolved').epilogue.includes('Compaixão'));
