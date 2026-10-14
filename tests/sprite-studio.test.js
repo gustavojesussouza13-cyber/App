@@ -84,9 +84,9 @@ test('escudo do guardião, cetro do curandeiro e bolsa do peregrino têm silhuet
  const shield=h.studio.obtain('hero','guardiao',2,'idle',0);
  const healer=h.studio.obtain('hero','curandeiro',2,'attack',2);
  const pilgrim=h.studio.obtain('hero','peregrino',2,'idle',0);
- assert.ok(shield.ops.some(o=>o[0]==='rect'&&o[1]==='#879aa7'));
+ assert.ok(shield.ops.some(o=>o[0]==='rect'&&o[1]==='#708d9e'));
  assert.ok(healer.ops.some(o=>o[0]==='rect'&&o[1]==='#65d7c6'));
- assert.ok(pilgrim.ops.some(o=>o[0]==='rect'&&o[1]==='#946f4d'));
+ assert.ok(pilgrim.ops.some(o=>o[0]==='rect'&&o[1]==='#856343'));
 });
 test('famílias de criaturas possuem corpos exclusivos, chefes recebem coroas',()=>{
  const h=stage();
