@@ -24,6 +24,7 @@ test('trocar de sala muda classe mesmo no nível 48 sem apagar progresso, guilda
  c.worldPlayer.save.coins=710;c.worldPlayer.save.kills=32;
  c.worldPlayer.save.inventory.espada=3;
  c.worldPlayer.save.guild='Escudo Prateado';c.worldPlayer.save.visited=[0,1,2,3];
+ a.w.guilds.set('escudo prateado',{name:'Escudo Prateado',leader:c.authUser.uid,members:[c.authUser.uid]});
  const uid=c.worldPlayer.uid;
  a.w.leave(c);
  const next={socket:{inbox:[]},authUser:{uid,username:'UmGuerreiro'},
