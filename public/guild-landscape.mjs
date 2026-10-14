@@ -1,6 +1,22 @@
 /* Os Peregrinos: plano urbano determinístico de Auren.
  * Somente cenário. Não modifica terreno salvo, lotes, níveis nem regras do servidor.
  * Ruas ligam o castelo a todos os lotes, sem atravessar terrenos construíveis. */
+// Movimento estritamente sobre os nós ortogonais da malha de terra.
+export function roadNeighbors(plan,cell){
+ if(!cell)return [];
+ const x=cell.x,y=cell.y;
+ return [[x+1,y],[x-1,y],[x,y+1],[x,y-1]]
+  .filter(([cx,cy])=>plan.isRoad(cx,cy)).map(([cx,cy])=>({x:cx,y:cy}));
+}
+export function nextRoadCell(plan,cell,previous=null,choice=0){
+ const neighbors=roadNeighbors(plan,cell);
+ if(!neighbors.length)return cell;
+ const forward=neighbors.filter(n=>!previous||n.x!==previous.x||n.y!==previous.y);
+ const options=forward.length?forward:neighbors; // ruas sem saída: dar meia-volta
+ return options[Math.max(0,Math.min(options.length-1,Math.floor(
+  Math.max(0,Math.min(.999999,Number(choice)||0))*options.length)))];
+}
+
 export function planGuildLandscape(layout){
  const N=layout.N,slots=layout.slots||[],CORE=layout.CORE;
  const key=(x,y)=>x+':'+y;
