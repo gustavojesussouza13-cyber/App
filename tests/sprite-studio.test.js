@@ -63,7 +63,7 @@ test('quatro direções e espelhamento lateral produzem quadros válidos',()=>{
  const h=stage();
  for(let d=0;d<4;d++){
   const sheet=h.studio.obtain('hero','arqueiro',d,'walk',2);
-  assert.equal(sheet.width,40);assert.equal(sheet.height,52);
+  assert.equal(sheet.width,64);assert.equal(sheet.height,80);
   assert.ok(sheet.ops.filter(o=>o[0]==='rect').length>25);
   if(d===3)assert.ok(sheet.ops.some(o=>o[0]==='scale'&&o[1]===-1));
  }
@@ -76,7 +76,7 @@ test('arqueiro tem aljava com quatro flechas e arco que arma o disparo',()=>{
  const standing=h.studio.obtain('hero','arqueiro',2,'idle',0);
  const shot=h.studio.obtain('hero','arqueiro',2,'attack',2);
  assert.ok(standing.ops.filter(o=>o[0]==='rect'&&o[1]==='#e4d2a7').length>=4);
- assert.ok(shot.ops.some(o=>o[0]==='rect'&&o[1]==='#f0edcc'),'ponta de flecha visível ao armar');
+ assert.ok(shot.ops.some(o=>o[0]==='rect'&&o[1]==='#f9f2d8'),'ponta de flecha visível ao armar');
  assert.notEqual(signature(standing),signature(shot));
 });
 test('escudo do guardião, cetro do curandeiro e bolsa do peregrino têm silhuetas próprias',()=>{
@@ -118,14 +118,14 @@ test('renderização desenha frames 2D sem suavização, com cache e sem dados e
  assert.equal(h.studio.drawHero(h.screen,actor,1100,{moving:true}),true);
  assert.equal(h.screen.imageSmoothingEnabled,false);
  assert.equal(h.calls.length,1);
- assert.equal(h.calls[0][0].width,40);
+ assert.equal(h.calls[0][0].width,64);
  assert.ok(Number.isInteger(h.calls[0][1]));
  assert.ok(Number.isInteger(h.calls[0][2]));
  const c=h.created();
  assert.equal(h.studio.drawHero(h.screen,actor,1100,{moving:true}),true);
  assert.equal(h.created(),c,'reutiliza o mesmo quadro já pronto');
  assert.equal(h.studio.drawMonster(h.screen,{x:300,y:350,type:'golem',zone:14,boss:true},1100,{moving:true,type:'golem'}),true);
- assert.equal(h.calls.at(-1)[3],77);
+ assert.equal(h.calls.at(-1)[3],98);
  h.studio.clear();
  assert.equal(h.studio.stats.cached,0);
  for(const role of Object.keys(ROLES))
