@@ -108,7 +108,9 @@
    return true;
   }
   function sendOperation(action,details,progress){
-   if(pending||provisional&&action==='construct'){
+   // onCell() já verifica prévias anteriores ANTES de posicionar a nova.
+   // Nunca bloquear a própria prévia colocada neste mesmo clique.
+   if(pending){
     say('A construção anterior está sendo sincronizada. Aguarde para posicionar outra.','pending');
     return false;
    }
