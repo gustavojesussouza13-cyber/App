@@ -141,7 +141,9 @@
     changed=true;
    }
    if(changed&&dlg.open){
-    say('Obra registrada no reino. Acompanhe o tempo restante embaixo do edifício.','success');
+    say(awaitingDurable.size?
+     'Edifício posicionado no reino. Aguardando confirmação de salvamento do banco…':
+     'Obra confirmada. Acompanhe o andamento no terreno.',awaitingDurable.size?'pending':'success');
    }
   }
   function retry(request){
@@ -217,7 +219,10 @@
    if(!dlg.open)return;
    for(const request of requests.values())retry(request);
    lastCompletionInspect=0;
-   // Reconcilia também obras aceitas antes da última desconexão.
+   // Reconsultar recibos: o ACK durável pode ter se perdido na desconexão.
+   // O mesmo opKey nunca executa a construção nem o débito outra vez.
+   for(const [opKey,requestId] of awaitingDurable)
+    send('kingdom',{action:'inspect',requestId,opKey});
    send('kingdom',{action:'inspect'});
   }
   function onActionResult(result){
@@ -249,8 +254,18 @@
    }
   }
   function onDurableResult(result){
-   if(!dlg.open||!result?.ok||!result.opKey)return;
+   if(!dlg.open||!result?.opKey)return;
    if(awaitingDurable.get(result.opKey)!==result.id)return;
+   if(!result.ok){
+    // Não anunciar uma gravação fictícia. O banco pode voltar a funcionar
+    // e o recibo idempotente permite confirmar sem cobrar outra vez.
+    say(result.message||'Salvamento pendente. O servidor tentará novamente.','error');
+    setTimeout(()=>{
+     if(dlg.open&&awaitingDurable.get(result.opKey)===result.id)
+      send('kingdom',{action:'inspect',requestId:result.id,opKey:result.opKey});
+    },2500);
+    paint();return;
+   }
    awaitingDurable.delete(result.opKey);
    say(state?.demo?
     'Obra registrada na demonstração (dados fictícios, sem salvamento permanente).':
