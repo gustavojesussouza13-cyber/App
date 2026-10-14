@@ -7,6 +7,7 @@ const {NPCS,chapters,byId,publicNpc,freshStory,normalizeStory,journal}=require('
 const {MAX_GOLD}=require('./owner-benefits');
 const terrain=require('./world-terrain');
 const kingdoms=require('./kingdom-politics');
+const rpg=require('./rpg-attributes');
 const {ChatGuard,inspectNickname}=require('./chat-safety');
 
 const ZONES=[
@@ -119,10 +120,10 @@ const ACHIEVEMENTS=Object.freeze({
  'aurora-restaurada':{name:'Guardião do Sétimo Verso',coins:300},
  'vigilia-completa':{name:'Guardião dos Quatro Testemunhos',coins:750}
 });
-const defaultSave=()=>({crownKeyIssuedAt:0,level:1,xp:0,hp:135,coins:60,zone:0,x:ZONE_W/2,y:ZONE_H/2,role:'peregrino',inventory:{pocao:3},kills:0,quests:[],visited:[0],guild:null,guildFounded:false,achievements:[],bossRelics:[],blocked:[],story:freshStory()});
-function hpMax(s){return CLASSES[s.role].hp+(s.level-1)*12}
+const defaultSave=()=>({attributes:{},energy:null,crownKeyIssuedAt:0,level:1,xp:0,hp:135,coins:60,zone:0,x:ZONE_W/2,y:ZONE_H/2,role:'peregrino',inventory:{pocao:3},kills:0,quests:[],visited:[0],guild:null,guildFounded:false,achievements:[],bossRelics:[],blocked:[],story:freshStory()});
+function hpMax(s){return rpg.calculateAttributes(s).stats.maxHp}
 function xpNeed(level){return 70+level*level*35}
-function safeSave(s){return {crownKeyIssuedAt:s.crownKeyIssuedAt||0,level:s.level,xp:s.xp,hp:s.hp,coins:s.coins,zone:s.zone,x:s.x,y:s.y,role:s.role,inventory:s.inventory,kills:s.kills,quests:s.quests,visited:s.visited,guild:s.guild,guildFounded:s.guildFounded===true,achievements:s.achievements,bossRelics:s.bossRelics,blocked:s.blocked,story:s.story}}
+function safeSave(s){return {attributes:s.attributes,energy:s.energy,crownKeyIssuedAt:s.crownKeyIssuedAt||0,level:s.level,xp:s.xp,hp:s.hp,coins:s.coins,zone:s.zone,x:s.x,y:s.y,role:s.role,inventory:s.inventory,kills:s.kills,quests:s.quests,visited:s.visited,guild:s.guild,guildFounded:s.guildFounded===true,achievements:s.achievements,bossRelics:s.bossRelics,blocked:s.blocked,story:s.story}}
 function hash32(n){n|=0;n=Math.imul(n^(n>>>16),0x7feb352d);n=Math.imul(n^(n>>>15),0x846ca68b);return (n^(n>>>16))>>>0}
 class World {
  constructor({send,getOnline,hasClassicName,dataFile,autosave=false,persistentStore=null}){
@@ -241,7 +242,7 @@ class World {
   if(!gate||dist(p,gate)>96){this.tell(p,'Aproxime-se da passagem para atravessar.');return}
   this.travel(p,z);
  }
- ownStatus(p){const s=p.save;return {type:'character',id:p.id,name:p.name,administrator:!!p.isAdministrator,level:s.level,xp:s.xp,nextXp:xpNeed(s.level),hp:s.hp,maxHp:hpMax(s),coins:s.coins,role:s.role,inventory:s.inventory,crownKeyIssuedAt:s.crownKeyIssuedAt||0,kills:s.kills,quests:s.quests,visited:s.visited,guild:s.guild,guildFounded:s.guildFounded===true,party:p.party||null,story:journal(s.story),achievements:s.achievements,bossRelics:s.bossRelics,blocked:s.blocked,zone:p.zone,x:p.x,y:p.y}}
+ ownStatus(p){const s=p.save,build=rpg.calculateAttributes(s);return {type:'character',rpg:build,energy:Math.floor(s.energy??build.stats.maxEnergy),maxEnergy:build.stats.maxEnergy,id:p.id,name:p.name,administrator:!!p.isAdministrator,level:s.level,xp:s.xp,nextXp:xpNeed(s.level),hp:s.hp,maxHp:hpMax(s),coins:s.coins,role:s.role,inventory:s.inventory,crownKeyIssuedAt:s.crownKeyIssuedAt||0,kills:s.kills,quests:s.quests,visited:s.visited,guild:s.guild,guildFounded:s.guildFounded===true,party:p.party||null,story:journal(s.story),achievements:s.achievements,bossRelics:s.bossRelics,blocked:s.blocked,zone:p.zone,x:p.x,y:p.y}}
  tell(p,msg,type='notice'){this.send(p.socket,{type,text:msg})}
  unlockAchievement(p,id){
   const award=ACHIEVEMENTS[id],s=p.save;
@@ -289,7 +290,11 @@ class World {
     }
    }
   if(!CLASSES[s.role])s.role='peregrino';if(!Number.isInteger(s.zone)||s.zone<0||s.zone>=ZONES.length)s.zone=0;
-  s.level=clamp(Math.floor(Number(s.level)||1),1,100);s.coins=clamp(Math.floor(Number(s.coins)||0),0,MAX_GOLD);s.hp=clamp(Math.floor(Number(s.hp)||hpMax(s)),1,hpMax(s));s.x=clamp(Number(s.x)||ZONE_W/2,28,ZONE_W-28);s.y=clamp(Number(s.y)||ZONE_H/2,28,ZONE_H-28);
+  s.level=clamp(Math.floor(Number(s.level)||1),1,100);
+   s.attributes=rpg.normalizeAllocations(s.attributes,s.level);
+   const maximumEnergy=rpg.calculateAttributes(s).stats.maxEnergy;
+   s.energy=s.energy===null||!Number.isFinite(Number(s.energy))?maximumEnergy:clamp(Number(s.energy),0,maximumEnergy);
+   s.coins=clamp(Math.floor(Number(s.coins)||0),0,MAX_GOLD);s.hp=clamp(Math.floor(Number(s.hp)||hpMax(s)),1,hpMax(s));s.x=clamp(Number(s.x)||ZONE_W/2,28,ZONE_W-28);s.y=clamp(Number(s.y)||ZONE_H/2,28,ZONE_H-28);
   const safeLocation=terrain.nearestWalkable(s.zone,s.x,s.y,ZONES);
   if(s.x!==safeLocation.x||s.y!==safeLocation.y){s.x=safeLocation.x;s.y=safeLocation.y;this.dirty=true;}
   s.inventory={...defaultSave().inventory,...(s.inventory||{})};
@@ -310,7 +315,7 @@ class World {
    s.hp=clamp(hpMax(s)-healthMissing,1,hpMax(s));
    // Reconexões da mesma aba mantêm atributos; novo token cria a jornada zero.
   }
-  const p={id:crypto.randomUUID(),uid,name,isAccount:!!owner,isAdministrator:!!owner?.administrator,socket:c.socket,save:s,x:s.x,y:s.y,zone:s.zone,dir:2,lastMove:Date.now(),moveCredit:12,lastAttack:0,lastSpell:0,lastChat:0,lastUse:0,party:null,live:true};
+  const p={lastRegenAt:now,lastCombatAt:0,lastResourceBroadcast:0,attackCounter:0,id:crypto.randomUUID(),uid,name,isAccount:!!owner,isAdministrator:!!owner?.administrator,socket:c.socket,save:s,x:s.x,y:s.y,zone:s.zone,dir:2,lastMove:Date.now(),moveCredit:12,lastAttack:0,lastSpell:0,lastChat:0,lastUse:0,party:null,live:true};
   c.worldPlayer=p;c.socket._worldClient=c;this.players.set(p.id,p);
   this.send(c.socket,{type:'welcome',room:c.worldRoom?{id:c.worldRoom.id,name:c.worldRoom.name}:null,self:this.ownStatus(p),zones:this.zoneInfo(),shop:Object.fromEntries(Object.entries(GOODS).filter(([key,item])=>!item.storyOnly)),relics:RELICS,quests:QUESTS,achievements:ACHIEVEMENTS,portals:this.zonePortals(p.zone),npcs:NPCS.map(publicNpc),merchants:Object.keys(MERCHANT_STOCK).map(id=>{const n=byId.get(id);return {id,name:n.name,zone:n.zone,region:ZONES[n.zone][0]}}),maxPlayers:60,online:this.players.size+this.getOnline(),monsterTotal:this.totalMonsters()});
   this.broadcast({type:'system',text:p.name+' chegou ao mundo.'},q=>q.id!==p.id);
@@ -365,6 +370,7 @@ class World {
    case 'attack':this.attack(p,d.target,false);break;
    case 'skill':this.attack(p,d.target,true);break;
    case 'class':this.chooseClass(p,d.role);break;
+    case 'allocateStat':this.allocateStat(p,cap(d.attribute,20));break;
    case 'use':this.use(p,cap(d.item,30));break;
    case 'buy':this.buy(p,cap(d.item,30),cap(d.npc,64));break;
    case 'quest':this.claimQuests(p);break;
@@ -442,7 +448,7 @@ class World {
   const save=p.save;
   addCoins(save,npc.coins);save.xp+=npc.xp;
   if(npc.key)save.inventory.chave=(save.inventory.chave||0)+1;
-  while(save.level<100&&save.xp>=xpNeed(save.level)){save.xp-=xpNeed(save.level);save.level++;save.hp=hpMax(save)}
+  while(save.level<100&&save.xp>=xpNeed(save.level)){save.xp-=xpNeed(save.level);save.level++;save.hp=hpMax(save);save.energy=rpg.calculateAttributes(save).stats.maxEnergy}
   this.dirty=true;
   const next=chapters[s.stage];
   const completion=s.stage===chapters.length;
@@ -461,7 +467,34 @@ class World {
   if(s.stage===16)this.tell(p,'✦ As sete Centelhas foram reunidas. O Sino voltou a tocar! A Vigília Depois do Sino começa nos subsolos da Raiz.');
   if(completion)this.tell(p,'✦ Quatro testemunhos reunidos. A Aurora pertence a todos!');
  }
- chooseClass(p,role){if(!CLASSES[role])return;if(p.save.level>1||p.save.kills>0){this.tell(p,'A classe não pode ser alterada após começar a evolução.');return}const previous=hpMax(p.save);p.save.role=role;p.save.hp=clamp(p.save.hp+hpMax(p.save)-previous,1,hpMax(p.save));this.dirty=true;this.send(p.socket,this.ownStatus(p));this.tell(p,'Classe alterada para '+CLASSES[role].name+'.')}
+ chooseClass(p,role){
+  if(!CLASSES[role])return;
+  if(p.save.level>1||p.save.kills>0){this.tell(p,'A classe não pode ser alterada após começar a evolução.');return}
+  const previous=hpMax(p.save);
+  p.save.role=role;
+  p.save.hp=clamp(p.save.hp+hpMax(p.save)-previous,1,hpMax(p.save));
+  p.save.energy=rpg.calculateAttributes(p.save).stats.maxEnergy;
+  this.dirty=true;this.send(p.socket,this.ownStatus(p));
+  this.tell(p,'Classe alterada para '+CLASSES[role].name+'.')
+ }
+ allocateStat(p,key){
+  if(!p.isAccount){this.tell(p,'Entre com uma conta cadastrada para distribuir atributos permanentes.');return false}
+  if(!rpg.ATTRIBUTE_KEYS.includes(key)){this.tell(p,'Atributo desconhecido.');return false}
+  const state=rpg.calculateAttributes(p.save);
+  if(state.availablePoints<1||state.allocations[key]>=rpg.ATTRIBUTE_CAP){
+   this.tell(p,'Sem pontos disponíveis ou o atributo já atingiu o limite de especialização.');return false
+  }
+  const previousMax=state.stats.maxHp,previousEnergyMax=state.stats.maxEnergy;
+  p.save.attributes={...state.allocations,[key]:state.allocations[key]+1};
+  const current=rpg.calculateAttributes(p.save);
+  p.save.hp=clamp(p.save.hp+(current.stats.maxHp-previousMax),1,current.stats.maxHp);
+  p.save.energy=clamp((p.save.energy??previousEnergyMax)+(current.stats.maxEnergy-previousEnergyMax),0,current.stats.maxEnergy);
+  this.dirty=true;
+  const stored=this.persist();
+  if(stored&&typeof stored.catch==='function')void stored.catch(e=>console.error('[atributos] armazenamento:',e.message));
+  this.send(p.socket,this.ownStatus(p));this.tell(p,'✦ '+rpg.ATTRIBUTE_LABELS[key]+' aumentado! Pontos restantes: '+current.availablePoints);
+  return true
+ }
  claimCrownKey(p){
    const sovereign=kingdoms.continentalSovereign(this);
    if(!p.isAccount||!sovereign||sovereign.leaderUid!==p.uid){
@@ -636,7 +669,7 @@ class World {
    m.damageFrom.clear();this.dirty=true;
   }
  }
- award(p,xp,gold,boss=false,zone=p.zone){const s=p.save;const story=s.story;const chapter=chapters[story.stage];if(chapter&&story.active&&chapter.objective>0&&chapter.zone===zone){story.progress=Math.min(chapter.objective,story.progress+1);if(story.progress===chapter.objective)this.tell(p,`✦ Objetivo concluído! Volte e converse com ${chapter.name}.`)}s.xp+=xp;addCoins(s,gold);s.kills++;while(s.level<100&&s.xp>=xpNeed(s.level)){s.xp-=xpNeed(s.level);s.level++;s.hp=hpMax(s);this.tell(p,'✦ Você alcançou o nível '+s.level+'!')}
+ award(p,xp,gold,boss=false,zone=p.zone){const s=p.save;const story=s.story;const chapter=chapters[story.stage];if(chapter&&story.active&&chapter.objective>0&&chapter.zone===zone){story.progress=Math.min(chapter.objective,story.progress+1);if(story.progress===chapter.objective)this.tell(p,`✦ Objetivo concluído! Volte e converse com ${chapter.name}.`)}s.xp+=xp;addCoins(s,gold);s.kills++;while(s.level<100&&s.xp>=xpNeed(s.level)){s.xp-=xpNeed(s.level);s.level++;s.hp=hpMax(s);s.energy=rpg.calculateAttributes(s).stats.maxEnergy;this.tell(p,'✦ Você alcançou o nível '+s.level+'! Mais um ponto de atributo disponível.')}
   if(s.kills>=1)this.unlockAchievement(p,'primeira-vitoria');
   if(s.kills>=25)this.unlockAchievement(p,'cacas-25');
   if(s.kills>=100)this.unlockAchievement(p,'cacas-100');
@@ -673,7 +706,7 @@ class World {
  }
  claimQuests(p){let completed=0;for(const q of QUESTS){if(questProgress(p.save,q)>=q.target&&!p.save.quests.includes(q.id)){
   p.save.quests.push(q.id);p.save.xp+=q.reward;addCoins(p.save,q.coins);completed++;
-  while(p.save.level<100&&p.save.xp>=xpNeed(p.save.level)){p.save.xp-=xpNeed(p.save.level);p.save.level++;p.save.hp=hpMax(p.save)}
+  while(p.save.level<100&&p.save.xp>=xpNeed(p.save.level)){p.save.xp-=xpNeed(p.save.level);p.save.level++;p.save.hp=hpMax(p.save);p.save.energy=rpg.calculateAttributes(p.save).stats.maxEnergy}
  }}this.tell(p,completed?'Missões concluídas: '+completed+'!':'Ainda não há missões para resgatar.');this.send(p.socket,this.ownStatus(p));this.dirty=true}
  ignore(p,d){
   const action=cap(d.action,12),name=cap(d.target,30).trim();
