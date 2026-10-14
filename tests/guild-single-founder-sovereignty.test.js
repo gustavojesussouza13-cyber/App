@@ -82,30 +82,33 @@ test('empates na mesma região não dão território por ordem alfabética',t=>{
  assert.equal(zone.contested,true);
  assert.equal(politics.continentalSovereign(f.world),null);
 });
-test('criar uma guilda é direito único da conta, mesmo após saída ou dissolução',t=>{
+test('um fundador pode sair da guilda e criar outra, pagando taxa novamente',t=>{
  const f=fixture(t),{p,c}=f.player('FundadorUnico');
  f.world.guild(p,{action:'create',name:'Primeira Casa'});
  assert.equal(p.save.guildFounded,true);
  assert.equal(p.save.coins,9750);
  assert.equal(f.world.guilds.get('primeira casa').founderUid,p.uid);
+ // Não permitir criar duas guildas enquanto permanece vinculado à anterior.
+ f.world.guild(p,{action:'create',name:'Outra Sem Sair'});
+ assert.equal(f.world.guilds.has('outra sem sair'),false);
  f.world.guild(p,{action:'leave'});
  assert.equal(p.save.guild,null);
  assert.equal(f.world.guilds.has('primeira casa'),false);
  const coins=p.save.coins;
  f.world.guild(p,{action:'create',name:'Segunda Casa'});
- assert.equal(f.world.guilds.has('segunda casa'),false);
- assert.equal(p.save.guild,null);
- assert.equal(p.save.coins,coins,'não cobrar moedas quando segunda fundação é negada');
- assert.ok(f.events.some(e=>/apenas uma guilda/i.test(e.message.text||'')));
+ assert.equal(p.save.guild,'Segunda Casa');
+ assert.equal(f.world.guilds.get('segunda casa').founderUid,p.uid);
+ assert.equal(p.save.coins,coins-250);
  f.world.leave(c);
- const rejoin={socket:{},authUser:{uid:p.uid,username:'FundadorUnico'},worldPlayer:null};
- f.world.join(rejoin,{name:'FundadorUnico'});
- assert.equal(rejoin.worldPlayer.save.guildFounded,true,'restrição continua após reconectar');
- f.world.guild(rejoin.worldPlayer,{action:'create',name:'Terceira Casa'});
- assert.equal(f.world.guilds.has('terceira casa'),false);
- assert.ok(f.saved.some(s=>s.characters[p.uid]?.guildFounded===true),'marca fica persistida');
+ const again={socket:{},authUser:{uid:p.uid,username:'FundadorUnico'},worldPlayer:null};
+ f.world.join(again,{name:'FundadorUnico'});
+ assert.equal(again.worldPlayer.save.guild,'Segunda Casa');
+ f.world.guild(again.worldPlayer,{action:'leave'});
+ f.world.guild(again.worldPlayer,{action:'create',name:'Terceira Casa'});
+ assert.equal(again.worldPlayer.save.guild,'Terceira Casa');
+ assert.ok(f.saved.some(s=>s.characters[p.uid]?.guildFounded===true));
 });
-test('entrar numa guilda antes de fundar não consome o direito único',t=>{
+test('participar de outra guilda não impede fundar uma nova ao sair',t=>{
  const f=fixture(t),leader=f.establish('Ordem Aberta'),{p}=f.player('Participante');
  f.world.guild(leader.p,{action:'invite',target:p.name});
  f.world.guild(p,{action:'accept',name:leader.g.name});
@@ -116,7 +119,7 @@ test('entrar numa guilda antes de fundar não consome o direito único',t=>{
  assert.equal(p.save.guild,'Meu Primeiro Reino');
  assert.equal(p.save.guildFounded,true);
 });
-test('fundador legado é reconhecido ao reconectar e mantém a restrição após sair',t=>{
+test('fundador legado pode fundar outra guilda ao sair, sem perder seus dados',t=>{
  const f=fixture(t);
  const {p,c}=f.player('LiderAntigo');
  f.world.guilds.set('legado',{name:'Legado',leader:p.uid,members:[p.uid],invitations:[]});
@@ -128,14 +131,15 @@ test('fundador legado é reconhecido ao reconectar e mantém a restrição após
  assert.equal(f.world.guilds.get('legado').founderUid,p.uid);
  f.world.guild(again.worldPlayer,{action:'leave'});
  f.world.guild(again.worldPlayer,{action:'create',name:'Outro Legado'});
- assert.equal(f.world.guilds.has('outro legado'),false);
+ assert.equal(f.world.guilds.has('outro legado'),true);
 });
 test('as regras políticas atualizadas são visíveis na interface e no guia',()=>{
  const social=fs.readFileSync(path.join(__dirname,'../public/mmo.js'),'utf8');
  const guide=fs.readFileSync(path.join(__dirname,'../public/guia.html'),'utf8');
- assert.ok(social.includes('s.guildFounded'));
+ assert.ok(social.includes('Fundar guilda (250 moedas)'));
+ assert.doesNotMatch(social,/createGuild\.disabled=Boolean\(s\.guildFounded\)/);
  assert.ok(social.includes('crown.uncontested'));
- assert.match(guide,/uma única guilda durante toda a sua jornada/i);
+ assert.match(guide,/fundar outra guilda/i);
  assert.match(guide,/maioria absoluta das regiões governadas/i);
  assert.doesNotMatch(guide,/controla ao menos 7 das 12 regiões/);
 });
