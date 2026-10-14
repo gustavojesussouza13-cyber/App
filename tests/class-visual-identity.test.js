@@ -86,7 +86,7 @@ test('estúdio escolhe o sprite final correto e reutiliza cache por classe',()=>
  for(const role of ['Guardião','Curandeiro','Arqueiro','Peregrino']){
   const sprite=renderer.obtain('hero',role,2,'idle',0,false,0);
   frames.push(sprite);
-  assert.equal(sprite.width,40);assert.equal(sprite.height,52);
+  assert.equal(sprite.width,64);assert.equal(sprite.height,80);
  }
  assert.equal(new Set(frames).size,4);
  assert.ok(has(frames[0].ops,'#3865a0'));
@@ -101,8 +101,8 @@ test('HTML carrega código corrigido e invalida cache de navegadores',()=>{
  const html=read('mundo.html');
  assert.ok(html.indexOf('/character-atelier16.js')<html.indexOf('/sprite-studio.js'));
  assert.match(html,/character-atelier16\.js\?v=vigilia-56-v1/);
- assert.match(html,/sprite-studio\.js\?v=atelier-custom-v1/);
- assert.match(html,/art16\.js\?v=atelier-custom-v1/);
+ assert.match(html,/sprite-studio\.js\?v=retro-world-v1/);
+ assert.match(html,/art16\.js\?v=retro-world-v1/);
  assert.match(read('sprite-studio.js'),/ATELIER\?\.classIdentity\?\.\(g,c,/);
 });
 test('todos os módulos atualizados permanecem sintaticamente válidos',()=>{
