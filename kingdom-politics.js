@@ -584,6 +584,82 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
   world.dirty=true;accept('Sua escolta voltou instantaneamente à guarnição da guilda.');
   return true;
  }
+ if(op==='allyOffer'){
+  if(g.leader!==p.uid){reject('Somente o líder pode propor uma aliança diplomática.');return false}
+  const otherKey=String(d.target||'').toLocaleLowerCase('pt-BR');
+  const other=world.guilds.get(otherKey);
+  if(!other?.base||otherKey===key){reject('Selecione outra guilda com fortaleza.');return false}
+  if(isAlly(g,otherKey)){reject('Os dois reinos já são aliados.');return false}
+  if((g.allies||[]).length>=ALLIANCE_LIMIT||(other.allies||[]).length>=ALLIANCE_LIMIT){
+   reject('Cada guilda pode manter até '+ALLIANCE_LIMIT+' alianças.');return false
+  }
+  other.allianceOffers=[...(other.allianceOffers||[]).filter(k=>k!==key),key].slice(-10);
+  world.dirty=true;accept('Proposta de aliança enviada a '+other.name+'. O líder rival precisa aprovar.');
+  for(const member of world.players.values())if(member.uid===other.leader)
+   world.tell(member,'☮ Proposta de aliança recebida de '+g.name+'. Abra Social para responder.');
+  return true;
+ }
+ if(op==='allyAccept'){
+  if(g.leader!==p.uid){reject('Somente o líder pode aceitar alianças em nome da guilda.');return false}
+  const otherKey=String(d.target||'').toLocaleLowerCase('pt-BR'),other=world.guilds.get(otherKey);
+  if(!other?.base||otherKey===key||!(g.allianceOffers||[]).includes(otherKey)){
+   reject('Não existe proposta de aliança válida desse reino.');return false
+  }
+  if((g.allies||[]).length>=ALLIANCE_LIMIT||(other.allies||[]).length>=ALLIANCE_LIMIT){
+   reject('O limite de alianças foi atingido.');return false
+  }
+  if(g.siegeCrisis?.attacker===otherKey||other.siegeCrisis?.attacker===key){
+   reject('Resolva primeiro o conflito militar antes de firmar aliança.');return false
+  }
+  g.allies=[...new Set([...(g.allies||[]),otherKey])];
+  other.allies=[...new Set([...(other.allies||[]),key])];
+  g.allianceOffers=(g.allianceOffers||[]).filter(k=>k!==otherKey);
+  world.dirty=true;accept('Aliança diplomática firmada com '+other.name+'! Escoltas aliadas podem participar de cercos conjuntos.');
+  for(const member of world.players.values())if(other.members?.includes(member.uid))
+   world.tell(member,'☮ Aliança firmada entre '+g.name+' e '+other.name+'.');
+  return true;
+ }
+ if(op==='allyBreak'){
+  if(g.leader!==p.uid){reject('Somente o líder pode encerrar alianças.');return false}
+  const otherKey=String(d.target||'').toLocaleLowerCase('pt-BR'),other=world.guilds.get(otherKey);
+  if(!other||!isAlly(g,otherKey)){reject('A guilda indicada não é sua aliada.');return false}
+  g.allies=(g.allies||[]).filter(k=>k!==otherKey);
+  other.allies=(other.allies||[]).filter(k=>k!==key);
+  world.dirty=true;accept('Aliança com '+other.name+' encerrada.');
+  return true;
+ }
+ if(op==='surrender'||op==='surrenderVote'){
+  const crisis=g.siegeCrisis,other=world.guilds.get(crisis?.attacker);
+  if(!crisis||crisis.pressure<SURRENDER_THRESHOLD||!other||now-Number(crisis.updatedAt||0)>24*60*60*1000){
+   reject('A rendição só está disponível quando a fortaleza estiver sob ameaça crítica recente.');return false
+  }
+  if(activeTruce(g,now)){reject('Já existe um tratado de cessar-fogo em vigor.');return false}
+  // Mesmo após a queda das muralhas, a rendição nunca é imposta pelo invasor.
+  // O líder decide diretamente; os demais podem aprovar por maioria absoluta.
+  if(op==='surrender'&&g.leader!==p.uid){
+   reject('Para declarar a rendição direta, o líder da guilda deve confirmar. Você pode votar pela rendição.');return false
+  }
+  if(op==='surrenderVote'){
+   crisis.votes=crisis.votes||{};
+   if(crisis.votes[p.uid]){reject('Você já votou nesta proposta de rendição.');return false}
+   crisis.votes[p.uid]=true;
+   const votes=Object.keys(crisis.votes).filter(uid=>g.members.includes(uid)).length;
+   const needed=Math.floor(g.members.length/2)+1;
+   if(votes<needed){
+    world.dirty=true;accept('Voto registrado ('+votes+'/'+needed+'). A guilda continua lutando até a maioria decidir.');
+    return true;
+   }
+  }
+  const agreement=completeSurrender(world,key,now);
+  if(!agreement){reject('A proposta de rendição expirou ou não está mais válida.');return false}
+  const message='☮ '+agreement.loser+' aceitou rendição diante de '+agreement.winner+
+   '. Influência territorial transferida, tributo '+agreement.tribute+
+   ' moedas do tesouro e cessar-fogo por 30 minutos. Edifícios preservados.';
+  accept(message);
+  for(const member of world.players.values())
+   if(member.save.guild===other.name)world.tell(member,message);
+  return true;
+ }
  if(op==='siege'){
   if(!g.base){reject('Você precisa de uma fortaleza para participar de um cerco.');return false}
   if((g.nextRaidAt||0)>now){reject('A guilda está se reorganizando. Aguarde '+Math.ceil((g.nextRaidAt-now)/1000)+' s para outro cerco.');return false}
