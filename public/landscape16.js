@@ -54,6 +54,12 @@
     px(g,'#e2ede1',x+9+(j*5)%8,y+yy+1,2,1);
    }
    if(seed>.62){px(g,'#184f6b',x+24,y+20,7,5);px(g,'#77b6c3',x+22,y+18,8,2)}
+   // Ondas e reflexos escalonados; sem blur ou sprites esticados.
+   for(let n=0;n<3;n++){
+    const x0=x+3+Math.floor(hash(tx,ty,z,n+201)*17),y0=y+4+n*9;
+    px(g,'#225c76',x0,y0+2,11,2);px(g,'#b0d7c7',x0+2,y0,7,2);
+    px(g,'#e1e6cd',x0+5,y0,2,1);
+   }
    SHADE?.ground(g,tx,ty,z,kind,p,hash);
    return;
   }
@@ -101,6 +107,30 @@
    if(seed>.88){ // flor pequena, toda pixelada
     px(g,'#f2e7d0',x+23,y+11,5,3);px(g,'#dc99a3',x+25,y+10,3,6);
     px(g,'#f9d78b',x+25,y+12,2,2);
+   }
+  }
+  // Microdetalhes consistentes de 2-4 px: há textura, mas nunca ruído aleatório.
+  if(path){
+   for(let i=0;i<4;i++){
+    const dx=Math.floor(hash(tx,ty,z,175+i)*25),dy=3+Math.floor(hash(tx,ty,z,186+i)*25);
+    px(g,i%2?p[7]:p[6],x+dx,y+dy,5+(i%3),2);
+    px(g,'#f1d7a3',x+dx+1,y+dy,2,1);
+   }
+  }else if(rock){
+   for(let i=0;i<3;i++){
+    const dx=Math.floor(hash(tx,ty,z,218+i)*23),dy=2+Math.floor(hash(tx,ty,z,229+i)*25);
+    px(g,'#58675f',x+dx,y+dy,9,2);px(g,'#ced4bd',x+dx+2,y+dy-2,4,2);
+   }
+  }else{
+   // Folhas em cachos com dois tons e flores raras: linguagem de SNES/PC retrô.
+   for(let i=0;i<4;i++){
+    const dx=2+Math.floor(hash(tx,ty,z,245+i)*26),dy=3+Math.floor(hash(tx,ty,z,255+i)*25);
+    px(g,p[4],x+dx,y+dy,2,5);px(g,p[2],x+dx+2,y+dy-2,3,4);
+    px(g,p[3],x+dx+3,y+dy,2,2);
+   }
+   if(seed>.965){
+    px(g,'#f3ded6',x+9,y+13,7,2);px(g,'#b97b99',x+12,y+10,2,8);
+    px(g,'#f5d78e',x+12,y+13,2,2);
    }
   }
   // Luz de cima à esquerda: grupos de pixels mais claros, occlusão à direita.
@@ -203,6 +233,12 @@
      px(g,'#d8de95',xx,yy,3,3);px(g,p[3],xx+1,yy+1,1,1);
     }
    }
+   // Bordas iluminadas e folhas individuais, com agrupamentos coerentes.
+   for(let j=0;j<12;j++){
+    const xx=20+Math.floor(hash(j,v,biome.length,191)*64),yy=12+Math.floor(hash(j,v,biome.length,192)*46);
+    px(g,j%3===0?p[3]:p[2],xx,yy,4,2);
+    if(j%3===0)px(g,'#e2df9b',xx+2,yy-2,2,2);
+   }
    SHADE?.tree(g,p,v);
   }
   function shrub(g,biome,variant){
@@ -233,6 +269,11 @@
    // Musgo, poeira ou sal conforme o bioma, para não repetir a mesma rocha.
    px(g,p[2],12,24,8,3);px(g,p[4],20,14,3,10);
    if(variant%2){px(g,p[2],12,25,5,3);px(g,p[4],20,21,3,9)}
+   // Veios e quinas naturais desenhados como degraus de pixels.
+   for(let j=0;j<4;j++){
+    const xx=13+j*8,yy=19+(j%2)*4;
+    px(g,'#d7d2b7',xx,yy,6,2);px(g,'#5b6d64',xx+5,yy+2,3,3);
+   }
    SHADE?.rock(g,p,variant);
   }
   function sprite(kind,biome,variant=0){
