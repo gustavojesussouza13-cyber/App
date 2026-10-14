@@ -24,7 +24,7 @@ function createRealClientSend(messages){
 test('pacote de construção não substitui o roteamento kingdom por house',()=>{
  const messages=[],send=createRealClientSend(messages);
  assert.match(guildSource,/sendOperation\('construct',\{buildingType:selected,x,y,slotId:lot\.id,target:base\.name\}/);
- assert.match(classicSource,/send\('kingdom',\{action:'construct',buildingType:selected,x,y,target:base\.name\}/);
+ assert.match(classicSource,/send\('kingdom',\{action:'construct',buildingType:selected,x,y,slotId:lot\.id,target:base\.name\}/);
  assert.equal(send('kingdom',{action:'construct',buildingType:'house',x:6,y:9}),true);
  assert.equal(messages[0].type,'kingdom');
  assert.equal(messages[0].buildingType,'house');
