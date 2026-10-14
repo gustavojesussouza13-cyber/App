@@ -83,3 +83,26 @@ test('construções antigas sem endsAt são recuperadas como concluídas',t=>{
  assert.equal(state.cities[0].buildings[0].status,'complete');
  assert.ok(Number.isSafeInteger(work.completedAt));
 });
+
+test('falha transitória no PostgreSQL é repetida automaticamente e mantém snapshot recente',async t=>{
+ const {AccountStore}=require('../account-store');
+ const saved=[];
+ let attempts=0;
+ const store=new AccountStore({pool:{end:async()=>{}}});
+ t.after(()=>{if(store.retryTimer)clearTimeout(store.retryTimer)});
+ store.retryDelay=10; // timer do teste, não altera o intervalo em produção
+ store.saveSnapshot=async snapshot=>{
+  attempts++;
+  if(attempts===1)throw Error('PostgreSQL temporariamente indisponível');
+  saved.push(structuredClone(snapshot));
+ };
+ const state={version:3,characters:{},guilds:{reino:{name:'Reino',city:{buildings:[{
+  type:'house',x:1,y:1,status:'building',endsAt:Date.now()+20000
+ }]}}},day:1};
+ assert.equal(await store.enqueue(state),false);
+ assert.ok(store.pending,'snapshot deve sobreviver à primeira falha');
+ await new Promise(resolve=>setTimeout(resolve,120));
+ assert.ok(attempts>=2,'salvamento recupera sozinho sem nova ação do jogador');
+ assert.equal(store.pending,null,'fila deve ser esvaziada após commit');
+ assert.equal(saved.at(-1).guilds.reino.city.buildings.length,1);
+});
