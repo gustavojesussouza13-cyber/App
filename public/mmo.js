@@ -738,15 +738,27 @@ function drawTab(force=false){const parent=$('tabContent');
     if(k.base){
      const army=k.army||{};
      appendText(kingdom,'small','Exército: '+Object.entries(army).map(([id,n])=>(kingdomState.unitTypes[id]?.name||id)+' '+n).join(' · '));
-     const unitSelect=document.createElement('select');unitSelect.id='kingdomRecruitUnit';
-     for(const [id,u]of Object.entries(kingdomState.unitTypes)){
-      const opt=document.createElement('option');opt.value=id;opt.textContent=u.name+' · '+u.cost+' moedas/unidade';unitSelect.append(opt);
+     // Tropas da guilda são produzidas apenas no quartel, gastando os
+     // recursos coletivos, nunca o dinheiro pessoal de um jogador.
+     const supplies=kingdomState.trainingCosts||{},cityStock=k.stock||{};
+     const unitSelect=document.createElement('select');unitSelect.id='kingdomTrainUnit';
+     unitSelect.setAttribute('aria-label','Unidade a treinar com recursos');
+     for(const [id,cost]of Object.entries(supplies)){
+      const opt=document.createElement('option');opt.value=id;
+      opt.textContent=(kingdomState.unitTypes[id]?.name||id)+' · '+cost.food+' alimentos / '+cost.timber+' madeiras / '+cost.stone+' pedras';
+      unitSelect.append(opt);
      }
-     const howMany=document.createElement('input');howMany.type='number';howMany.min='1';howMany.max='40';howMany.value='5';howMany.id='kingdomRecruitCount';
-     howMany.setAttribute('aria-label','Quantidade a recrutar (1 a 40)');
-     const recruit=document.createElement('button');recruit.type='button';recruit.textContent='⚔ Recrutar tropas';
-     recruit.onclick=()=>send('kingdom',{action:'recruit',unit:unitSelect.value,count:Number(howMany.value)});
-     kingdom.append(unitSelect,howMany,recruit);
+     const howMany=document.createElement('input');howMany.type='number';howMany.min='1';howMany.max='40';howMany.value='5';
+     howMany.id='kingdomTrainCount';howMany.setAttribute('aria-label','Quantidade de unidades a treinar');
+     const barracksReady=(kingdomState.cities||[]).some(c=>c.name===k.name&&
+      c.buildings?.some(b=>b.type==='barracks'&&b.status==='complete'));
+     const train=document.createElement('button');train.type='button';
+     train.textContent='⚒ Produzir soldados com recursos da guilda';
+     train.disabled=!barracksReady||!kingdomState.persistentAccount;
+     train.onclick=()=>send('kingdom',{action:'train',unit:unitSelect.value,count:Number(howMany.value)});
+     appendText(kingdom,'small','Estoque coletivo: '+(cityStock.food||0)+' alimentos · '+(cityStock.timber||0)+
+      ' madeiras · '+(cityStock.stone||0)+' pedras. '+(barracksReady?'Treine próximo à capital.':'Construa e conclua um quartel antes de produzir tropas.'));
+     kingdom.append(unitSelect,howMany,train);
      appendText(kingdom,'small','Escolta pessoal: '+Object.entries(k.escort||{}).map(([u,n])=>(kingdomState.unitTypes[u]?.name||u)+' '+n).join(' · ')+' · tropas requisitadas acompanham você imediatamente no mapa 2D.');
      const escortInput=document.createElement('input');escortInput.type='number';escortInput.min='1';escortInput.max='40';escortInput.value='5';escortInput.setAttribute('aria-label','Soldados para acompanhar jogador');
      const escortType=document.createElement('select');escortType.setAttribute('aria-label','Classe da escolta');
@@ -759,7 +771,7 @@ function drawTab(force=false){const parent=$('tabContent');
      recall.disabled=!Object.values(k.escort||{}).some(v=>v>0);
      recall.onclick=()=>send('kingdom',{action:'recall'});
      kingdom.append(escortType,escortInput,deploy,recall);
-     if(k.leader){
+     if(k.canManage){
       const fortress=button('♜ Expandir fortaleza '+(k.base.level||1)+'/'+(kingdomState.fortressMaxLevel||60)+' · '+(k.base.level+1)*500+' moedas','kingdom',{action:'upgrade'});
       fortress.disabled=(k.base.level||1)>=(kingdomState.fortressMaxLevel||60);kingdom.append(fortress);
       const fortify=button('🛡 Melhorar defesa '+(k.fortressDefense?.walls||0)+'/'+(k.base.level||1)+' · força '+(k.fortressDefense?.defense||0),'kingdom',{action:'fortify'});
