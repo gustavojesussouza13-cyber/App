@@ -397,7 +397,7 @@ function create({ctx,W,H}){
   // O atlas clássico truncava rosto/cachecol/armas, e o V3 usava blocos.
   // NÃO tocar no pipeline touch: o Studio continua nas dimensões originais.
   const premiumPc=Boolean(desktopCharactersV3?.enabled);
-  const studioHero=premiumPc&&Boolean(spriteStudio?.drawHero(g,p,now,{...state,desktopPremium:true}));
+  const studioHero=(premiumPc||Boolean(p.appearance))&&Boolean(spriteStudio?.drawHero(g,p,now,{...state,desktopPremium:premiumPc}));
   const pngSprite=!studioHero&&Boolean(desktopSprites?.drawHero(g,p,now,state));
   const illustratedV3=!studioHero&&!pngSprite&&Boolean(desktopCharactersV3?.drawHero(g,p,now,state));
   const detailed=pngSprite||illustratedV3;
@@ -418,7 +418,7 @@ function create({ctx,W,H}){
   g.shadowColor='#000b';g.shadowBlur=5;g.lineWidth=3;g.strokeStyle='#0e271e';
   const roleName={guardiao:'Guardião',curandeiro:'Curandeiro',arqueiro:'Arqueiro',peregrino:'Peregrino'}[finalRole];
   const label=(p.name||'Peregrino')+(local?' · '+roleName:' · Lv.'+(p.level||1));
-  const labelY=p.y-(studioHero?87:pngSprite?80:illustratedV3?94:h)-5;
+  const labelY=p.y-(studioHero?(premiumPc?87:69):pngSprite?80:illustratedV3?94:h)-5;
   g.strokeText(label,p.x,labelY);g.fillStyle=local?'#ffe4a3':'#f1edd4';g.fillText(label,p.x,labelY);g.restore();
  }
  function npcActor(g,n,active,finished,now){
@@ -578,7 +578,7 @@ function create({ctx,W,H}){
   g.font='bold 11px monospace';g.fillStyle='#ead4a2';g.textAlign='left';g.fillText(zone>=16?'SUBSOLO '+(1+(zone-16)%6)+' · MASMORRA '+(1+Math.floor((zone-16)/6)):'REGIÃO '+(zone+1)+'/40',mx+7,my+mh+15);
  }
  function render(opt){
-  const {zone,zones,x,y,dir,monsters,players,projectiles=[],npcs=[],portals=[],kingdomBases=[],storyStage=0,cameraX,cameraY,name,role,target,now,fx,lastAction,lastActionWasSkill=false,skillEffects=[],drawSkillEffects=null,moving,monsterActions=new Map(),playerActions=new Map(),fallen=[],heroPose=null}=opt;
+  const {zone,zones,x,y,dir,appearance,monsters,players,projectiles=[],npcs=[],portals=[],kingdomBases=[],storyStage=0,cameraX,cameraY,name,role,target,now,fx,lastAction,lastActionWasSkill=false,skillEffects=[],drawSkillEffects=null,moving,monsterActions=new Map(),playerActions=new Map(),fallen=[],heroPose=null}=opt;
   ctx.imageSmoothingEnabled=false;
   const biome=biomeThemes[zones[zone]?.biome]||'meadow';
   if(!artReady){ctx.fillStyle='#193629';ctx.fillRect(0,0,W,H);ctx.textAlign='center';ctx.fillStyle='#efd39d';ctx.font='bold 20px Georgia,serif';ctx.fillText('✦ Preparando o mundo 16-bit…',W/2,H/2);return}
@@ -603,7 +603,7 @@ function create({ctx,W,H}){
   for(const m of monsters){if(m.x<cameraX-90||m.x>cameraX+W+90||m.y<cameraY-90||m.y>cameraY+H+90)continue;actors.push({depth:m.y,paint:()=>monster(ctx,m,target===m.id,now,monsterActions.get(m.id))})}
   for(const m of fallen){if(m.x<cameraX-90||m.x>cameraX+W+90||m.y<cameraY-90||m.y>cameraY+H+90)continue;actors.push({depth:m.y-1,paint:()=>monster(ctx,m,false,now,{action:'death',at:m.defeatedAt})})}
   for(const p of players){if(p.x<cameraX-75||p.x>cameraX+W+75||p.y<cameraY-95||p.y>cameraY+H+75)continue;actors.push({depth:p.y,paint:()=>character(ctx,p,false,now,p.moving!==false,playerActions.has(p.name)&&now-playerActions.get(p.name).at<390&&playerActions.get(p.name).action==='attack',playerActions.get(p.name))})}
-  actors.push({depth:y,paint:()=>character(ctx,{name,role,x,y,dir},true,now,moving,now-lastAction<370,heroPose||{action:'attack',at:lastAction})});
+  actors.push({depth:y,paint:()=>character(ctx,{name,role,appearance,x,y,dir},true,now,moving,now-lastAction<370,heroPose||{action:'attack',at:lastAction})});
   actors.sort((a,b)=>a.depth-b.depth);
   for(const a of actors)a.paint();
   for(const shot of projectiles)drawProjectile(ctx,shot);
