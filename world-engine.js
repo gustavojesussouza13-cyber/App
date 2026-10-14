@@ -186,7 +186,12 @@ class World {
    this.monsters.set(zone,mons);
   }}
  totalMonsters(){return [...this.monsters.values()].reduce((n,a)=>n+a.length,0)}
- publicPlayer(p){return {id:p.id,name:p.name,administrator:!!p.isAdministrator,zone:p.zone,x:Math.round(p.x),y:Math.round(p.y),dir:p.dir,level:p.save.level,role:p.save.role,hp:p.save.hp,maxHp:hpMax(p.save),guild:p.save.guild,party:p.party||null}}
+ publicPlayer(p){
+   const guild=this.guilds.get(p.save.guild?.toLocaleLowerCase('pt-BR'));
+   const escort=guild?.members?.includes(p.uid)?kingdoms.escortOf(guild,p.uid):null;
+   return {id:p.id,name:p.name,administrator:!!p.isAdministrator,zone:p.zone,x:Math.round(p.x),y:Math.round(p.y),dir:p.dir,level:p.save.level,role:p.save.role,hp:p.save.hp,maxHp:hpMax(p.save),guild:p.save.guild,party:p.party||null,
+    escort:escort&&kingdoms.troopCount(escort)>0?escort:null};
+  }
  publicMonster(m){return {id:m.id,name:m.name,species:m.species,zone:m.zone,x:Math.round(m.x),y:Math.round(m.y),hp:m.hp,maxHp:m.maxHp,boss:m.boss}}
  zoneInfo(){return ZONES.map((z,i)=>({id:i,name:z[0],biome:z[1],count:this.monsters.get(i).length}))}
  zonePortals(zone){
@@ -537,7 +542,16 @@ class World {
     q=>q.zone===p.zone&&dist(q,m)<780);
    this.tell(p,'✦ Flecha de precisão: aliados da equipe causam dano adicional por 5,5 s.');
   }
-  m.hp=Math.max(0,m.hp-damage);m.damageFrom.set(p.id,(m.damageFrom.get(p.id)||0)+damage);
+  // A escolta acompanha a ordem validada do jogador. Nunca ataca sem um
+   // golpe válido nem escolhe alvos do cliente sem verificação do servidor.
+   const escortGuild=this.guilds.get(p.save.guild?.toLocaleLowerCase('pt-BR'));
+   const squad=escortGuild?.members?.includes(p.uid)?kingdoms.escortStrike(escortGuild,p.uid):null;
+   const troopDamage=squad?.damage||0;
+   damage+=troopDamage;
+   m.hp=Math.max(0,m.hp-damage);m.damageFrom.set(p.id,(m.damageFrom.get(p.id)||0)+damage);
+   if(troopDamage)this.broadcast({type:'troopStrike',zone:p.zone,by:p.id,x:Math.round(p.x),y:Math.round(p.y),
+    target:m.id,to:{x:Math.round(m.x),y:Math.round(m.y)},damage:troopDamage,units:squad.units},
+    q=>q.zone===p.zone&&dist(q,m)<780);
   // Sem agressividade por proximidade: o monstro só enfrenta quem o atacou.
   // Um novo golpe renova a reação; outros peregrinos próximos ficam em paz.
   if(m.hp>0){m.aggroTarget=p.id;m.aggroUntil=now+16000}
@@ -658,7 +672,7 @@ class World {
    p.save.coins-=250;p.save.guild=name;this.guilds.set(key,{name,leader:p.uid,members:[p.uid],invitations:[]});this.tell(p,'Guilda criada: '+name);this.dirty=true;
   } else if(mode==='invite'){const g=this.guilds.get(p.save.guild?.toLowerCase());if(!g||g.leader!==p.uid)return;const other=[...this.players.values()].find(o=>o.name.toLowerCase()===cap(d.target,20).toLowerCase());if(!other||other.save.guild)return;g.invitations.push(other.uid);this.send(other.socket,{type:'guildInvite',name:g.name,by:p.name});this.dirty=true;
   } else if(mode==='accept'){const g=this.guilds.get(key);if(!g||!g.invitations.includes(p.uid)||p.save.guild)return;g.invitations=g.invitations.filter(x=>x!==p.uid);g.members.push(p.uid);p.save.guild=g.name;this.dirty=true;
-  } else if(mode==='leave'){const g=this.guilds.get(p.save.guild?.toLowerCase());if(g){g.members=g.members.filter(x=>x!==p.uid);if(g.leader===p.uid)g.leader=g.members[0]||null;if(!g.members.length)this.guilds.delete(p.save.guild.toLowerCase())}p.save.guild=null;this.dirty=true}
+  } else if(mode==='leave'){const g=this.guilds.get(p.save.guild?.toLowerCase());if(g){const escort=kingdoms.escortOf(g,p.uid);if(kingdoms.troopCount(escort)){g.army=kingdoms.armyCopy(g.army);for(const unit of Object.keys(escort))g.army[unit]+=escort[unit];g.escorts={...(g.escorts||{})};delete g.escorts[p.uid]}g.members=g.members.filter(x=>x!==p.uid);if(g.leader===p.uid)g.leader=g.members[0]||null;if(!g.members.length)this.guilds.delete(p.save.guild.toLowerCase())}p.save.guild=null;this.dirty=true}
   this.send(p.socket,this.ownStatus(p));
   this.send(p.socket,{type:'kingdomState',data:kingdoms.publicState(this,p)});
  }
