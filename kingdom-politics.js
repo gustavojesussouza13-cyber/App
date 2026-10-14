@@ -215,8 +215,12 @@ function rank(world){
   .map(([key,g])=>{
    const regions=territories.filter(t=>t.ruler===g.name).length;
    const influence=Object.values(g.influence||{}).reduce((n,value)=>n+Math.max(0,Number(value)||0),0);
-   const score=regions*100+Math.floor(influence);
+   const allies=(g.allies||[]).filter(key=>world.guilds.has(key)).length;
+   const diplomaticWins=Math.max(0,Math.floor(Number(g.diplomaticWins)||0));
+   const members=Math.max(0,g.members.length);
+   const score=regions*100+Math.floor(influence)+diplomaticWins*20+allies*8+Math.min(50,members*4);
    return {key,name:g.name,territories:regions,influence:Math.floor(influence),score,
+    diplomaticWins,alliances:allies,members,
     title:regions>=7?'Coroa Continental':regions>=4?'Alta Realeza':regions>=2?'Reino Soberano':regions>=1?'Senhorio Regional':'Guilda sem Território'};
   }).sort((a,b)=>b.score-a.score||a.name.localeCompare(b.name,'pt-BR'));
 }
