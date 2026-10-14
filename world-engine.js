@@ -827,6 +827,27 @@ class World {
   } else if(mode==='reject'){this.pendingTrades.delete(key);this.tell(other,'Troca recusada.')}
  }
  tick(){const now=Date.now(),dt=clamp((now-this.lastTick)/1000,.01,.5);this.lastTick=now;
+  for(const player of this.players.values()){
+   if(player.live===false)continue;
+   const d=rpg.calculateAttributes(player.save).stats;
+   const elapsed=clamp((now-(player.lastRegenAt||now))/1000,0,2);
+   player.lastRegenAt=now;
+   if(elapsed<.001)continue;
+   const oldEnergy=player.save.energy;
+   player.save.energy=Math.min(d.maxEnergy,Number(((player.save.energy??d.maxEnergy)+d.energyRegen*elapsed).toFixed(3)));
+   const oldHp=player.save.hp;
+   if(now-(player.lastCombatAt||0)>8000&&player.save.hp<d.maxHp){
+    player.hpRegenPool=(player.hpRegenPool||0)+d.hpRegen*elapsed;
+    const restore=Math.floor(player.hpRegenPool);
+    if(restore){player.hpRegenPool-=restore;player.save.hp=Math.min(d.maxHp,player.save.hp+restore)}
+   }
+   if(player.save.energy!==oldEnergy||player.save.hp!==oldHp){
+    this.dirty=true;
+    if(now-(player.lastResourceBroadcast||0)>=2200){
+     player.lastResourceBroadcast=now;this.send(player.socket,this.ownStatus(player));
+    }
+   }
+  }
   if(this.kingdomTickLeader!==false){
    const finished=kingdoms.resolve(this,now);
    if(finished.length){
@@ -920,12 +941,18 @@ class World {
    }
    if(m.windupUntil&&now>=m.windupUntil){
     m.windupUntil=0;m.lastAttack=now;
-    const defense=CLASSES[target.save.role].defense+(target.save.inventory.amuleto?4:0)+((target.save.inventory.manto_luz||0)>0?RELICS.manto_luz.defense:0)+(target.guardUntil>now?8+Math.floor(target.save.level/3):0);
-    const rawDamage=Math.max(1,Math.ceil(m.damage*(m.boss?1.2:1))-defense);
+    const defenses=rpg.calculateAttributes(target.save).stats;
+    const equipmentDefense=CLASSES[target.save.role].defense+
+     (target.save.inventory.amuleto?4:0)+
+     ((target.save.inventory.manto_luz||0)>0?RELICS.manto_luz.defense:0)+
+     (target.guardUntil>now?14+Math.floor(target.save.level/3):0);
+    const element=zone>=12?'magic':zone%4===1?'fire':zone%4===2?'lightning':'physical';
+    const rawDamage=rpg.mitigateDamage(
+     Math.max(1,Math.ceil(m.damage*(m.boss?1.2:1))-equipmentDefense),defenses,element);
      // Altíssima dificuldade, mas os ataques têm aviso e não são one-shot.
      const damage=crownDungeonZone(zone)?Math.min(rawDamage,Math.max(1,Math.floor(hpMax(target.save)*.58))):rawDamage;
-     target.save.hp-=damage;
-    this.send(target.socket,{type:'hurt',damage,monster:m.name});
+     target.save.hp-=damage;target.lastCombatAt=now;
+    this.send(target.socket,{type:'hurt',damage,monster:m.name,element});
     if(target.save.hp<=0){
      target.save.hp=hpMax(target.save);target.x=ZONE_W/2;target.y=ZONE_H/2;
      target.save.x=target.x;target.save.y=target.y;
