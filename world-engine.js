@@ -39,7 +39,7 @@ function zoneDifficulty(zone){
  const rootIndex=Math.floor((zone-16)/DEPTH_PER_DUNGEON);
  return 3.31+rootIndex*1.8+(dungeonDepth(zone)-1)*.28;
 }
-const autoAggroZone=zone=>zone>=16&&zone<ZONES.length&&(dungeonDepth(zone)>=3||crownDungeonZone(zone));
+const autoAggroZone=zone=>crownDungeonZone(zone)||(zone>=16&&zone<ZONES.length&&dungeonDepth(zone)>=3);
 
 const ZONE_W=1536, ZONE_H=1024;
 const CLASSES={guardiao:{name:'Guardião',hp:165,attack:17,range:85,defense:7},arqueiro:{name:'Arqueiro',hp:112,attack:21,range:250,defense:2},curandeiro:{name:'Curandeiro',hp:125,attack:12,range:160,defense:4},peregrino:{name:'Peregrino',hp:135,attack:16,range:118,defense:4}};
