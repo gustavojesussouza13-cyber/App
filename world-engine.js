@@ -718,7 +718,7 @@ class World {
  guild(p,d){const mode=cap(d.action,15),name=cap(d.name,30).trim(),key=name.toLocaleLowerCase('pt-BR');
   if(mode==='create'){
     if(!p.isAccount)return this.tell(p,'Para fundar uma guilda permanente é obrigatório entrar com uma conta cadastrada.');
-    const foundedBefore=p.save.guildFounded===true||[...this.guilds.values()].some(g=>g?.founderUid===p.uid||g?.leader===p.uid);
+    const foundedBefore=p.save.guildFounded===true||this.saved.characters[p.uid]?.guildFounded===true||[...this.guilds.values()].some(g=>g?.founderUid===p.uid||g?.leader===p.uid);
     if(foundedBefore)return this.tell(p,'Cada conta pode fundar apenas uma guilda. Mesmo ao sair dela, você não pode criar uma segunda; poderá entrar em outra guilda por convite.');
     if(p.save.guild||p.save.coins<250||!/^[\p{L}\p{N}][\p{L}\p{N} -]{2,23}$/u.test(name)||!inspectNickname(name).ok||this.guilds.has(key))
      return this.tell(p,'Guilda indisponível. Use um nome apropriado e exclusivo; são necessárias 250 moedas e você não pode pertencer a outra guilda.');
