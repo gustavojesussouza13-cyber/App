@@ -84,3 +84,15 @@ test('pintura do mundo é totalmente pixelada, sem suavização interpolada',()=
  assert.match(editor,/canvas\.width=128;canvas\.height=160/);
  assert.match(editor,/ctx\.imageSmoothingEnabled=false/);
 });
+
+test('navegador renderiza a prévia inicial sem variável root inexistente',()=>{
+ const vm=require('node:vm');
+ const js=fs.readFileSync(path.join(root,'retro-atlas64.js'),'utf8');
+ const sandbox={PeregrinosAppearance16:APPEARANCE};vm.createContext(sandbox);
+ assert.doesNotThrow(()=>vm.runInContext(js,sandbox,{filename:'retro-atlas64.js'}));
+ const api=sandbox.OsPeregrinosRetro64;assert.ok(api);
+ const ops=[];
+ const ctx={fillStyle:'#000',fillRect(x,y,w,h){ops.push({color:this.fillStyle,x,y,w,h})},save(){},restore(){},translate(){},scale(){}};
+ assert.doesNotThrow(()=>api.hero(ctx,{role:'peregrino',dir:2,action:'idle',frame:0,colors:ROLES.peregrino,appearance:APPEARANCE.DEFAULT}));
+ assert.ok(ops.length>60,'o criador deve desenhar pixels reais, não deixar a prévia vazia');
+});
