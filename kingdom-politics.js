@@ -21,7 +21,7 @@ const CITY_BUILD_MS=Object.freeze({
  house:20*1000, farm:30*1000, market:45*1000,
  tower:60*1000, barracks:90*1000
 });
-const isComplete=(b,now=Date.now())=>!Number.isSafeInteger(b?.endsAt)||b.endsAt<=now;
+const isComplete=(b,now=Date.now())=>b?.status==='complete'||!Number.isSafeInteger(b?.endsAt)||b.endsAt<=now;
 const CITY_RECEIPTS_LIMIT=80; // Replays seguros: nunca cobrar a mesma construção duas vezes.
 const cityLayout=require('./public/city-layout');
 const CITY_CYCLE_MS=15*60*1000;
