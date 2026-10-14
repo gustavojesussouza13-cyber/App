@@ -24,6 +24,11 @@ const LEGACY_ZONE_COUNT=16,DEPTH_PER_DUNGEON=6;
 const dungeonRoot=zone=>zone>=16&&zone<ZONES.length?12+Math.floor((zone-16)/DEPTH_PER_DUNGEON):zone>=12&&zone<16?zone:null;
 const dungeonDepth=zone=>zone>=16?1+(zone-16)%DEPTH_PER_DUNGEON:0;
 const dungeonFloor=(root,depth)=>root+4+(root-12)*(DEPTH_PER_DUNGEON-1)+depth-1;
+const CROWN_DUNGEON_ROOT=15;
+const CROWN_DUNGEON_KEY='chave_coroa_aurora';
+const CROWN_KEY_COOLDOWN_MS=24*60*60*1000;
+const crownDungeonZone=zone=>zone===CROWN_DUNGEON_ROOT||dungeonRoot(zone)===CROWN_DUNGEON_ROOT;
+const requiresCrownKey=(from,to)=>to===CROWN_DUNGEON_ROOT&&!crownDungeonZone(from);
 // Dificuldade cresce conforme o percurso REAL: cada uma das quatro masmorras
 // sucede o sexto subsolo da anterior (IDs 12–15 são masmorras clássicas).
 // Escala também os prêmios para que a progressão continue recompensadora.
@@ -34,7 +39,7 @@ function zoneDifficulty(zone){
  const rootIndex=Math.floor((zone-16)/DEPTH_PER_DUNGEON);
  return 3.31+rootIndex*1.8+(dungeonDepth(zone)-1)*.28;
 }
-const autoAggroZone=zone=>zone>=16&&zone<ZONES.length&&dungeonDepth(zone)>=3;
+const autoAggroZone=zone=>zone>=16&&zone<ZONES.length&&(dungeonDepth(zone)>=3||crownDungeonZone(zone));
 
 const ZONE_W=1536, ZONE_H=1024;
 const CLASSES={guardiao:{name:'Guardião',hp:165,attack:17,range:85,defense:7},arqueiro:{name:'Arqueiro',hp:112,attack:21,range:250,defense:2},curandeiro:{name:'Curandeiro',hp:125,attack:12,range:160,defense:4},peregrino:{name:'Peregrino',hp:135,attack:16,range:118,defense:4}};
@@ -103,10 +108,10 @@ const ACHIEVEMENTS=Object.freeze({
  'aurora-restaurada':{name:'Guardião do Sétimo Verso',coins:300},
  'vigilia-completa':{name:'Guardião dos Quatro Testemunhos',coins:750}
 });
-const defaultSave=()=>({level:1,xp:0,hp:135,coins:60,zone:0,x:ZONE_W/2,y:ZONE_H/2,role:'peregrino',inventory:{pocao:3},kills:0,quests:[],visited:[0],guild:null,achievements:[],bossRelics:[],blocked:[],story:freshStory()});
+const defaultSave=()=>({crownKeyIssuedAt:0,level:1,xp:0,hp:135,coins:60,zone:0,x:ZONE_W/2,y:ZONE_H/2,role:'peregrino',inventory:{pocao:3},kills:0,quests:[],visited:[0],guild:null,achievements:[],bossRelics:[],blocked:[],story:freshStory()});
 function hpMax(s){return CLASSES[s.role].hp+(s.level-1)*12}
 function xpNeed(level){return 70+level*level*35}
-function safeSave(s){return {level:s.level,xp:s.xp,hp:s.hp,coins:s.coins,zone:s.zone,x:s.x,y:s.y,role:s.role,inventory:s.inventory,kills:s.kills,quests:s.quests,visited:s.visited,guild:s.guild,achievements:s.achievements,bossRelics:s.bossRelics,blocked:s.blocked,story:s.story}}
+function safeSave(s){return {crownKeyIssuedAt:s.crownKeyIssuedAt||0,level:s.level,xp:s.xp,hp:s.hp,coins:s.coins,zone:s.zone,x:s.x,y:s.y,role:s.role,inventory:s.inventory,kills:s.kills,quests:s.quests,visited:s.visited,guild:s.guild,achievements:s.achievements,bossRelics:s.bossRelics,blocked:s.blocked,story:s.story}}
 function hash32(n){n|=0;n=Math.imul(n^(n>>>16),0x7feb352d);n=Math.imul(n^(n>>>15),0x846ca68b);return (n^(n>>>16))>>>0}
 class World {
  constructor({send,getOnline,hasClassicName,dataFile,autosave=false,persistentStore=null}){
@@ -176,12 +181,12 @@ class World {
    for(let i=0;i<count;i++){
     const boss=i===count-1;const seed=hash32(zone*9217+i*5711+77);
     const speciesId=boss?(dungeon?31:(zone+11)%32):(zone*2+i*7+((seed>>4)%5))%SPECIES.length;
-    const sp=SPECIES[speciesId],tier=zoneDifficulty(zone),mult=boss?5.5:1;
+    const sp=SPECIES[speciesId],tier=zoneDifficulty(zone),mult=(boss?5.5:1)*(crownDungeonZone(zone)?1.65:1);
     const eliteNames=['Guardião das Raízes','Marechal das Cinzas','Oráculo das Vozes','Arauto do Amanhecer'];
     const name=boss&&zone>=16?'★ '+eliteNames[Math.floor((zone-16)/6)]+' · Piso '+dungeonDepth(zone):(boss?'★ ':'')+sp[0];
     const chosen={x:130+hash32(seed+1)%(ZONE_W-260),y:130+hash32(seed+2)%(ZONE_H-260)};
     const home=terrain.nearestWalkable(zone,chosen.x,chosen.y,ZONES);
-    mons.push({id:`m-${zone}-${i}`,zone,name,species:speciesId,boss,x:home.x,y:home.y,home,hp:Math.floor(sp[1]*mult*tier),maxHp:Math.floor(sp[1]*mult*tier),damage:Math.ceil(sp[2]*tier*(boss?2:1)),xp:Math.ceil(sp[3]*tier*(boss?4:1)),coins:Math.ceil(sp[4]*tier*(boss?5:1)),lastAttack:0,windupUntil:0,deadUntil:0,damageFrom:new Map(),wander:0,wanderGoal:null,aggroTarget:null,aggroUntil:0});
+    mons.push({id:`m-${zone}-${i}`,zone,name,species:speciesId,boss,x:home.x,y:home.y,home,hp:Math.floor(sp[1]*mult*tier),maxHp:Math.floor(sp[1]*mult*tier),damage:Math.ceil(sp[2]*tier*(boss?2:1)*(crownDungeonZone(zone)?1.20:1)),xp:Math.ceil(sp[3]*tier*(boss?4:1)),coins:Math.ceil(sp[4]*tier*(boss?5:1)),lastAttack:0,windupUntil:0,deadUntil:0,damageFrom:new Map(),wander:0,wanderGoal:null,aggroTarget:null,aggroUntil:0});
    }
    this.monsters.set(zone,mons);
   }}
@@ -268,7 +273,10 @@ class World {
   s.level=clamp(Math.floor(Number(s.level)||1),1,100);s.coins=clamp(Math.floor(Number(s.coins)||0),0,MAX_GOLD);s.hp=clamp(Math.floor(Number(s.hp)||hpMax(s)),1,hpMax(s));s.x=clamp(Number(s.x)||ZONE_W/2,28,ZONE_W-28);s.y=clamp(Number(s.y)||ZONE_H/2,28,ZONE_H-28);
   const safeLocation=terrain.nearestWalkable(s.zone,s.x,s.y,ZONES);
   if(s.x!==safeLocation.x||s.y!==safeLocation.y){s.x=safeLocation.x;s.y=safeLocation.y;this.dirty=true;}
-  s.inventory={...defaultSave().inventory,...(s.inventory||{})};if(!Array.isArray(s.quests))s.quests=[];if(!Array.isArray(s.visited))s.visited=[0];if(!Array.isArray(s.achievements))s.achievements=[];if(!Array.isArray(s.bossRelics))s.bossRelics=[];s.bossRelics=s.bossRelics.filter(z=>Number.isInteger(z)&&z>=0&&z<ZONES.length);
+  s.inventory={...defaultSave().inventory,...(s.inventory||{})};
+   s.inventory[CROWN_DUNGEON_KEY]=Math.max(0,Math.min(1,Math.floor(Number(s.inventory[CROWN_DUNGEON_KEY])||0)));
+   s.crownKeyIssuedAt=Number.isSafeInteger(s.crownKeyIssuedAt)&&s.crownKeyIssuedAt>0?s.crownKeyIssuedAt:0;
+   if(!Array.isArray(s.quests))s.quests=[];if(!Array.isArray(s.visited))s.visited=[0];if(!Array.isArray(s.achievements))s.achievements=[];if(!Array.isArray(s.bossRelics))s.bossRelics=[];s.bossRelics=s.bossRelics.filter(z=>Number.isInteger(z)&&z>=0&&z<ZONES.length);
   s.blocked=Array.isArray(s.blocked)?[...new Set(s.blocked.filter(n=>typeof n==='string'&&assertName(n)).map(n=>n.toLocaleLowerCase('pt-BR')))].slice(0,30):[];
   s.story=normalizeStory(s.story);
   // Classe selecionada no novo início vale imediatamente para visitante.
@@ -337,6 +345,7 @@ class World {
    case 'use':this.use(p,cap(d.item,30));break;
    case 'buy':this.buy(p,cap(d.item,30));break;
    case 'quest':this.claimQuests(p);break;
+    case 'claimCrownKey':this.claimCrownKey(p);break;
    case 'chat':this.chat(p,d);break;
    case 'report':this.reportChat(p,d);break;
    case 'ignore':this.ignore(p,d);break;
@@ -428,12 +437,37 @@ class World {
   if(completion)this.tell(p,'✦ Quatro testemunhos reunidos. A Aurora pertence a todos!');
  }
  chooseClass(p,role){if(!CLASSES[role])return;if(p.save.level>1||p.save.kills>0){this.tell(p,'A classe não pode ser alterada após começar a evolução.');return}const previous=hpMax(p.save);p.save.role=role;p.save.hp=clamp(p.save.hp+hpMax(p.save)-previous,1,hpMax(p.save));this.dirty=true;this.send(p.socket,this.ownStatus(p));this.tell(p,'Classe alterada para '+CLASSES[role].name+'.')}
- travel(p,z){z=Number(z);if(!Number.isInteger(z)||z<0||z>=ZONES.length)return;
+ claimCrownKey(p){
+   const sovereign=kingdoms.continentalSovereign(this);
+   if(!p.isAccount||!sovereign||sovereign.leaderUid!==p.uid){
+    this.tell(p,'Somente o líder da Coroa Continental, que controla pelo menos 7 regiões, pode receber a Chave da Câmara da Aurora.');return false
+   }
+   if((p.save.inventory[CROWN_DUNGEON_KEY]||0)>0){this.tell(p,'Você já carrega a chave exclusiva da Câmara da Aurora.');return false}
+   const now=Date.now();
+   if(p.save.crownKeyIssuedAt&&now-p.save.crownKeyIssuedAt<CROWN_KEY_COOLDOWN_MS){
+    const hours=Math.ceil((CROWN_KEY_COOLDOWN_MS-(now-p.save.crownKeyIssuedAt))/3600000);
+    this.tell(p,'O selo continental ainda está se recompondo. Aguarde '+hours+' h para outra chave.');return false
+   }
+   p.save.inventory[CROWN_DUNGEON_KEY]=1;p.save.crownKeyIssuedAt=now;this.dirty=true;
+   const saved=this.persist();
+   if(saved&&typeof saved.catch==='function')void saved.catch(e=>console.error('[chave continental] gravação pendente:',e.message));
+   this.send(p.socket,this.ownStatus(p));
+   this.tell(p,'♛ A Coroa Continental confiou-lhe uma Chave da Câmara da Aurora. Ela abre somente a quarta masmorra, é pessoal e não pode ser negociada.');
+   return true;
+  }
+  travel(p,z){z=Number(z);if(!Number.isInteger(z)||z<0||z>=ZONES.length)return;
   if(z===p.zone)return;const a=p.zone,b=z;const legal=this.zonePortals(a).some(g=>g.zone===b);
   if(!legal){this.tell(p,'Use uma passagem conectada a esta região.');return}
-  const enteringDungeon=a<12&&b>=12&&b<LEGACY_ZONE_COUNT;
-  if(enteringDungeon&&(p.save.inventory.chave||0)<1){this.tell(p,'Você precisa de uma Chave da masmorra (comprável na loja).');return}
-  if(enteringDungeon){p.save.inventory.chave--;}
+  const enteringCrownDungeon=requiresCrownKey(a,b);
+  const enteringOrdinaryDungeon=a<12&&b>=12&&b<CROWN_DUNGEON_ROOT;
+  if(enteringCrownDungeon&&(p.save.inventory[CROWN_DUNGEON_KEY]||0)<1){
+   this.tell(p,'A Câmara da Aurora exige a Chave da Coroa Continental. Só o líder do reino que domina 7 regiões pode conquistá-la.');return
+  }
+  if(enteringOrdinaryDungeon&&(p.save.inventory.chave||0)<1){
+   this.tell(p,'Você precisa de uma Chave da masmorra comum (obtida na história ou na loja).');return
+  }
+  if(enteringCrownDungeon)p.save.inventory[CROWN_DUNGEON_KEY]--;
+  if(enteringOrdinaryDungeon)p.save.inventory.chave--;
   p.zone=b;p.save.zone=b;
   const arrival=terrain.nearestWalkable(b,ZONE_W/2,ZONE_H/2,ZONES);
   p.x=arrival.x;p.y=arrival.y;p.save.x=p.x;p.save.y=p.y;if(!p.save.visited.includes(b))p.save.visited.push(b);
@@ -780,7 +814,7 @@ class World {
    // O ataque precisa ser anunciado e permanecer ao alcance até o golpe.
    if(d>=53){m.windupUntil=0;continue}
    if(!m.windupUntil&&now-m.lastAttack>2200){
-    const warning=m.boss?1100:650;
+    const warning=crownDungeonZone(zone)?(m.boss?1600:950):(m.boss?1100:650);
     m.windupUntil=now+warning;
     this.send(target.socket,{type:'monsterWindup',monster:m.id,zone:m.zone,duration:warning,boss:m.boss});
     continue;
@@ -788,7 +822,10 @@ class World {
    if(m.windupUntil&&now>=m.windupUntil){
     m.windupUntil=0;m.lastAttack=now;
     const defense=CLASSES[target.save.role].defense+(target.save.inventory.amuleto?4:0)+((target.save.inventory.manto_luz||0)>0?RELICS.manto_luz.defense:0)+(target.guardUntil>now?8+Math.floor(target.save.level/3):0);
-    const damage=Math.max(1,Math.ceil(m.damage*(m.boss?1.2:1))-defense);target.save.hp-=damage;
+    const rawDamage=Math.max(1,Math.ceil(m.damage*(m.boss?1.2:1))-defense);
+     // Altíssima dificuldade, mas os ataques têm aviso e não são one-shot.
+     const damage=crownDungeonZone(zone)?Math.min(rawDamage,Math.max(1,Math.floor(hpMax(target.save)*.58))):rawDamage;
+     target.save.hp-=damage;
     this.send(target.socket,{type:'hurt',damage,monster:m.name});
     if(target.save.hp<=0){
      target.save.hp=hpMax(target.save);target.x=ZONE_W/2;target.y=ZONE_H/2;
@@ -805,4 +842,5 @@ class World {
  status(){return {connected:this.count,monsters:this.totalMonsters(),regions:ZONES.length,guilds:this.guilds.size,kingdoms:kingdoms.publicState(this,{save:{guild:null}}).bases.length,version:'mmo-aurora-reinos-v1'}}
  stop(){clearInterval(this.saveTimer);for(const p of this.players.values())if(p.isAccount)this.saved.characters[p.uid]=safeSave(p.save);this.guestReconnect.clear();this.dirty=true;this.persist();try{this.db?.close()}catch{}}
 }
-module.exports={World,ZONES,ZONE_W,ZONE_H,GOODS,RELICS,BOSS_RELICS,QUESTS,questProgress,SPECIES,CLASSES,ACHIEVEMENTS,xpNeed,zoneDifficulty,autoAggroZone,dungeonDepth};
+module.exports={World,ZONES,ZONE_W,ZONE_H,GOODS,RELICS,BOSS_RELICS,QUESTS,questProgress,SPECIES,CLASSES,ACHIEVEMENTS,xpNeed,zoneDifficulty,autoAggroZone,dungeonDepth,
+ CROWN_DUNGEON_ROOT,CROWN_DUNGEON_KEY,CROWN_KEY_COOLDOWN_MS,crownDungeonZone,requiresCrownKey};
