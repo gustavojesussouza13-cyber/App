@@ -10,6 +10,7 @@
 .rpg-stat-entry .rpg-stat-label{font-weight:600;font-size:.85rem;color:#e1c99d}
 .rpg-stat-entry .rpg-stat-value{font-variant-numeric:tabular-nums;color:#c4e8d2;font-size:.9rem;font-weight:700}
 .rpg-stat-entry .rpg-stat-label span{display:block;font-size:.64rem;line-height:1.35;margin-top:2px;color:#aec9bd;font-weight:400}
+.rpg-stat-entry .rpg-stat-label .rpg-investment-preview{display:block;margin-top:5px;color:#a9dab8;font-size:.7rem;line-height:1.4;font-weight:600}
 .rpg-stat-entry button{min-width:30px;min-height:30px;border:1px solid #6e8d65;border-radius:5px;background:#235445;color:#f0e2bd;font-size:1.1rem;font-weight:700;cursor:pointer}
 .rpg-stat-entry button:hover:not(:disabled){background:#376f55}
 .rpg-stat-entry button:disabled{opacity:.34;cursor:not-allowed}
