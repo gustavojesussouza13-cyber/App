@@ -177,6 +177,16 @@ try{
  assert.match(await page.locator('.guild3d-wallet').innerText(),/8.020 moedas/,'servidor confirma apenas dois débitos');
  assert.doesNotMatch(await page.locator('#guild3dFeedback').innerText(),/aguarde a sincronização|sincronizando o salvamento/i);
 
+ // Uma sessão visitante não deve exibir prédios que jamais seriam salvos.
+ await page.evaluate(()=>city.update({...current(),persistentAccount:false}));
+ assert.equal(await page.locator('.guild3d-building:not(:disabled)').count(),0,
+  'visitantes não podem iniciar construções permanentes');
+ assert.match(await page.locator('#guild3dVisitor').innerText(),/conta cadastrada/i);
+ assert.match(await page.locator('#guild3dCityState').innerText(),/edifício\(s\) salvos/);
+ await page.evaluate(()=>city.update(current()));
+ assert.equal(await page.locator('.guild3d-building:not(:disabled)').count(),5,
+  'conta cadastrada pode continuar construindo');
+
  await page.screenshot({path:'/tmp/guild-3d-preview.png',fullPage:true,animations:'disabled'});
  await page.locator('#guild3dClose').click();
  assert.equal(await page.locator('.guild3d-dialog').evaluate(d=>d.open),false,'fechamento limpa a cena');
