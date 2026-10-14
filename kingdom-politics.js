@@ -15,6 +15,13 @@ const MARCH_DURATION=45*1000;
 const MAX_TROOPS=300;
 const CITY_BUILDINGS=Object.freeze({house:120,farm:160,barracks:280,tower:360,market:240});
 const CITY_LIMIT=60;
+// Tempo real no servidor para cada edifício da cidade 3D. Construções antigas
+// continuam concluídas; novas obras ocupam terreno e são salvas ao começar.
+const CITY_BUILD_MS=Object.freeze({
+ house:20*1000, farm:30*1000, market:45*1000,
+ tower:60*1000, barracks:90*1000
+});
+const isComplete=(b,now=Date.now())=>b?.status==='complete'||!Number.isSafeInteger(b?.endsAt)||b.endsAt<=now;
 const CITY_RECEIPTS_LIMIT=80; // Replays seguros: nunca cobrar a mesma construção duas vezes.
 const cityLayout=require('./public/city-layout');
 const CITY_CYCLE_MS=15*60*1000;
@@ -39,7 +46,7 @@ function collectCity(g,now){
  const cycles=Math.min(CITY_MAX_CYCLES,Math.floor(elapsed/CITY_CYCLE_MS));
  const stocks=stockCopy(city.stock),yielded=stockCopy({});
  for(const b of city.buildings.slice(0,CITY_LIMIT)){
-  if(!Object.hasOwn(CITY_YIELDS,b?.type))continue;
+  if(!Object.hasOwn(CITY_YIELDS,b?.type)||!isComplete(b,now))continue;
   const multiplier=Math.min(5,Math.max(1,Number.isSafeInteger(b.level)?b.level:1));
   for(const resource of Object.keys(stocks))
    yielded[resource]+=CITY_YIELDS[b.type][resource]*multiplier*cycles;
@@ -155,7 +162,21 @@ function publicState(world,p){
    base:your.guild.base||null,army:armyCopy(your.guild.army),
    march:your.guild.march||null,nextRaidAt:your.guild.nextRaidAt||0,
    influence:your.guild.influence||{},stock:stockCopy(your.guild.city?.stock),lastCollectedAt:your.guild.city?.lastCollectedAt||0}:null,
-  cities:[...world.guilds.values()].filter(g=>g.base).map(g=>({name:g.name,buildings:(Array.isArray(g.city?.buildings)?g.city.buildings:[]).filter(b=>b&&CITY_BUILDINGS[b.type]&&Number.isInteger(b.x)&&Number.isInteger(b.y)).slice(0,CITY_LIMIT).map(b=>({type:b.type,x:b.x,y:b.y,w:cityLayout.size(b)[0],h:cityLayout.size(b)[1],level:Math.min(5,Math.max(1,Number.isSafeInteger(b.level)?b.level:1))}))})),
+  serverNow:Date.now(),
+  buildTimes:CITY_BUILD_MS,
+  cities:[...world.guilds.values()].filter(g=>g.base).map(g=>({name:g.name,
+   buildings:(Array.isArray(g.city?.buildings)?g.city.buildings:[])
+    .filter(b=>b&&CITY_BUILDINGS[b.type]&&Number.isInteger(b.x)&&Number.isInteger(b.y))
+    .slice(0,CITY_LIMIT).map(b=>({
+     type:b.type,x:b.x,y:b.y,w:cityLayout.size(b)[0],h:cityLayout.size(b)[1],
+     level:Math.min(5,Math.max(1,Number.isSafeInteger(b.level)?b.level:1)),
+     // Campos de tempo persistidos: o contador é recuperado em qualquer sala.
+     status:isComplete(b)?'complete':'building',
+     startedAt:Number.isSafeInteger(b.startedAt)?b.startedAt:null,
+     endsAt:Number.isSafeInteger(b.endsAt)?b.endsAt:null,
+     durationMs:Number.isSafeInteger(b.durationMs)?b.durationMs:null
+    }))
+  })),
   marches:[...world.guilds.values()].filter(g=>g.march&&g.base).map(g=>({name:g.name,targetName:world.guilds.get(g.march.target)?.name||'',from:g.march.from,to:g.march.to,kind:g.march.kind||'attack',startedAt:g.march.startedAt,arrivesAt:g.march.arrivesAt,route:g.march.route||null,units:troopCount(g.march.units)})),
   unitTypes:UNITS,trainingCosts:MILITARY_SUPPLIES,baseCost:BASE_COST,relocateCost:RELOCATE_COST,maxTroops:MAX_TROOPS};
 }
@@ -268,14 +289,23 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
   if(p.save.coins<cost){reject('Moedas insuficientes para construir ('+cost+').');return false}
   p.save.coins-=cost;
   const city=g.city||{buildings:[],stock:stockCopy({}),lastCollectedAt:now};
-  city.buildings=[...buildings,{...cityLayout.plan(type,x,y),level:1}];
+  const durationMs=CITY_BUILD_MS[type];
+  city.buildings=[...buildings,{
+   ...cityLayout.plan(type,x,y),level:1,
+   status:'building',startedAt:now,endsAt:now+durationMs,durationMs
+  }];
   if(!Number.isSafeInteger(city.lastCollectedAt)||city.lastCollectedAt<=0)city.lastCollectedAt=now;
   g.city=city;
-  world.dirty=true;accept('Construção concluída na cidadela de '+g.name+'.');
+  world.dirty=true;accept('Obra iniciada e salva em '+g.name+'. Conclusão em '+Math.ceil(durationMs/1000)+' segundos.');
   world.send(p.socket,world.ownStatus(p));return true;
  }
  if(op==='collect'){
-  if(!g.base||!g.city||!Array.isArray(g.city.buildings)||!g.city.buildings.length){reject('Nenhuma construção foi confirmada e salva neste reino. Construa com uma conta cadastrada e aguarde a confirmação.');return false}
+  if(!g.base||!g.city||!Array.isArray(g.city.buildings)||!g.city.buildings.length){
+   reject('Seu reino ainda não tem edifícios. Inicie uma obra para começar.');return false
+  }
+  if(!g.city.buildings.some(b=>Object.values(CITY_YIELDS[b.type]||{}).some(y=>y>0)&&isComplete(b,now))){
+   reject('As obras produtivas ainda estão em andamento. Veja o tempo restante no terreno.');return false
+  }
   if(!g.city.lastCollectedAt){g.city.lastCollectedAt=now;world.dirty=true;accept('Produção iniciada. Volte após 15 minutos.');return true}
   const collected=collectCity(g,now);
   if(!collected){reject('A produção fica pronta a cada 15 minutos.');return false}
@@ -289,6 +319,7 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
   if(!integer(x)||!integer(y)){reject('Edifício inválido.');return false}
   const b=cityLayout.at(g.city.buildings,x,y);
   if(!b||!Object.hasOwn(CITY_BUILDINGS,b.type)){reject('Edifício inexistente.');return false}
+  if(!isComplete(b,now)){reject('Aguarde a conclusão da obra para melhorar este edifício.');return false}
   const level=Math.min(5,Math.max(1,Number.isSafeInteger(b.level)?b.level:1));
   if(level>=5){reject('Este edifício já está no nível máximo.');return false}
   const stock=stockCopy(g.city.stock),fee={food:level*8,timber:level*6,stone:level*3};
@@ -334,7 +365,7 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
   if(!g.base||!g.city||!Array.isArray(g.city.buildings)){
    reject('Construa uma cidade e um quartel para treinar tropas com materiais.');return false
   }
-  if(!g.city.buildings.some(b=>b.type==='barracks')){
+  if(!g.city.buildings.some(b=>b.type==='barracks'&&isComplete(b,now))){
    reject('É necessário construir um quartel para treinar soldados.');return false
   }
   if(p.zone!==g.base.zone||Math.hypot(p.x-g.base.x,p.y-g.base.y)>180){
@@ -398,8 +429,28 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
  response(world,p,'Ação política desconhecida.');
  return false;
 }
+function resolveCityConstructions(world,now=Date.now()){
+ const completed=[];
+ for(const g of world.guilds.values()){
+  if(!g?.city||!Array.isArray(g.city.buildings))continue;
+  let changed=false;
+  for(const b of g.city.buildings){
+   // Legado sem endsAt já está concluído. Finalização é idempotente.
+   if(b?.status!=='building'||!Number.isSafeInteger(b.endsAt)||now<b.endsAt)continue;
+   b.status='complete';b.completedAt=b.endsAt;
+   completed.push({guild:g.name,type:b.type,x:b.x,y:b.y});
+   changed=true;
+  }
+  if(changed)world.dirty=true;
+ }
+ if(completed.length)world.persist();
+ return completed;
+}
 function resolve(world,now=Date.now()){
  const finished=[];
+ for(const c of resolveCityConstructions(world,now))
+  finished.push({guild:c.guild,kind:'construction',text:'Obra concluída: '+c.type+' ('+(c.x+1)+','+(c.y+1)+').'});
+
  for(const [key,g] of [...world.guilds]){
   if(!g.march||g.march.arrivesAt>now)continue;
   const march=g.march;delete g.march;
@@ -426,7 +477,7 @@ function resolve(world,now=Date.now()){
    g.army=troops;text='A campanha terminou sem confronto: a fortaleza rival não está mais disponível.';
   }else{
    const towerDefense=(Array.isArray(enemy.city?.buildings)?enemy.city.buildings:[])
-    .filter(b=>b?.type==='tower').slice(0,CITY_LIMIT)
+    .filter(b=>b?.type==='tower'&&isComplete(b,now)).slice(0,CITY_LIMIT)
     .reduce((sum,b)=>sum+8*Math.min(5,Math.max(1,Number.isSafeInteger(b.level)?b.level:1)),0);
    const attackers=power(march.units),defenders=power(enemy.army,'defense')+
     Math.max(35,(enemy.base.level||1)*35)+towerDefense;
@@ -454,4 +505,4 @@ function resolve(world,now=Date.now()){
  return finished;
 }
 module.exports={CONTINENT_REGIONS,BUILDABLE_REGIONS,BASE_COST,RELOCATE_COST,MAX_TROOPS,UNITS,
- armyCopy,troopCount,power,publicState,politicalMap,rank,marchRoute,marchPosition,collectCity,MILITARY_SUPPLIES,action,resolve};
+ armyCopy,troopCount,power,publicState,politicalMap,rank,marchRoute,marchPosition,collectCity,MILITARY_SUPPLIES,CITY_BUILD_MS,isComplete,resolveCityConstructions,action,resolve};

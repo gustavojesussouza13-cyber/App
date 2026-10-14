@@ -114,7 +114,10 @@ test('quartéis treinam soldados com recursos sem duplicar nem aceitar quantidad
  assert.equal(act({action:'train',unit:'militia',count:1}),false,'requer materiais');
  assert.equal(act({action:'collect'},1000+10*60*60*1000),true);
  const stock={...guild.city.stock};
- assert.equal(act({action:'train',unit:'militia',count:2}),true);
+ // Após concluir a obra o quartel pode treinar: o teste avança o relógio
+ // mantendo a produção coletada e as restrições de material.
+ const readyAt=1000+10*60*60*1000+1;
+ assert.equal(act({action:'train',unit:'militia',count:2},readyAt),true);
  assert.equal(guild.army.militia,2);
  assert.equal(guild.city.stock.food,stock.food-8);
  assert.equal(guild.city.stock.timber,stock.timber-4);
@@ -142,7 +145,7 @@ test('retorno do servidor informa se construiu ou recusou e revela saldo pessoal
  assert.ok(notices.findIndex(x=>x.type==='kingdomActionResult'&&x.id===101)<notices.findIndex(x=>x.type==='kingdomState'),'confirmação prioritária deve chegar antes do estado pesado');
  assert.equal(first.action,'construct');
  assert.equal(first.ok,true);
- assert.match(first.message,/Construção concluída/);
+ assert.match(first.message,/Obra iniciada e salva/);
  const state=politics.publicState(world,p);
  assert.equal(state.walletCoins,walletBefore-120);
  assert.equal(state.yourGuild.stock.coins,0,'tesouro da guilda não é a carteira do personagem');

@@ -8,7 +8,7 @@
  root.PeregrinosCity=Object.freeze({create({send}){
   // Mantém a visualização de exércitos no continente principal SEM alterar o motor 2D.
   const oldUI=old.create({send});
-  let state=null,base=null,selected=null,scene=null,token=0,loading=false;
+  let state=null,base=null,selected=null,scene=null,token=0,loading=false,clockOffset=0,queueTicker=null;
   let requestSeq=0;
   const requests=new Map(),provisionals=new Map();
   const MAX_UNCONFIRMED=60;
@@ -21,7 +21,9 @@
    '<aside class="guild3d-sidebar"><div class="guild3d-label">TESOURO E RECURSOS</div><div id="guild3dStock" class="guild3d-stocks"></div>'+
    '<button type="button" id="guild3dCollect" class="guild3d-action">✦ Coletar produção</button>'+
    '<div class="guild3d-label">URBANISMO</div><div class="guild3d-note">Toda a área verde é edificável. Apenas os terrenos ocupados e o castelo central são reservados.</div>'+
-   '<div id="guild3dCityState" class="guild3d-note" role="status">Carregando construções...</div><div id="guild3dChoices" class="guild3d-choices"></div>'+
+   '<div id="guild3dCityState" class="guild3d-note" role="status">Carregando construções...</div>'+
+   '<div class="guild3d-label">OBRAS EM ANDAMENTO</div><div id="guild3dBuildQueue" class="guild3d-build-queue" aria-label="Tempo restante de todas as construções"></div>'+
+   '<div id="guild3dChoices" class="guild3d-choices"></div>'+
    '<div id="guild3dArmy" class="guild3d-army"><div class="guild3d-label">TREINAMENTO MILITAR</div><select id="guild3dSoldier" aria-label="Tipo de tropa"></select>'+
    '<div class="guild3d-train"><input id="guild3dCount" type="number" min="1" max="40" value="1" aria-label="Quantidade de soldados"><button type="button" id="guild3dTrain">⚔ Treinar tropas</button></div></div>'+
    '<div class="guild3d-label">DIÁRIO DA CAPITAL</div><p id="guild3dFeedback" class="guild3d-feedback" role="status" aria-live="polite">Escolha uma construção e selecione um terreno livre.</p>'+
@@ -34,10 +36,51 @@
   const stock=q('guild3dStock');
   const viewport=q('guild3dViewport');
   const soldier=q('guild3dSoldier'),count=q('guild3dCount');
-  const trained=q('guild3dArmy'),collect=q('guild3dCollect');
+  const trained=q('guild3dArmy'),collect=q('guild3dCollect'),queue=q('guild3dBuildQueue');
   const owns=()=>state?.yourGuild?.name===base?.name;
   const canBuild=()=>owns()&&state?.persistentAccount===true&&state?.yourGuild?.leader===true;
   const structures=()=>(state?.cities||[]).find(c=>c.name===base?.name)?.buildings||[];
+  const nowServer=()=>Date.now()+clockOffset;
+  const buildWorks=()=>structures().filter(b=>Number.isSafeInteger(b.endsAt)&&b.endsAt>nowServer());
+  const prettyTime=ms=>{
+   const sec=Math.ceil(Math.max(0,ms)/1000);
+   return String(Math.floor(sec/60)).padStart(2,'0')+':'+String(sec%60).padStart(2,'0');
+  };
+  const labels={house:'Casario',farm:'Fazenda',barracks:'Quartel',market:'Mercado',tower:'Torre'};
+  function updateQueue(){
+   if(!dlg.open)return;
+   const works=buildWorks();
+   const previews=[...provisionals.values()].filter(v=>!isPersisted(v.building));
+   const list=[...works.map(b=>({b,local:false})),...previews.map(v=>({b:v.building,local:true}))].slice(0,60);
+   const activeKeys=new Set();
+   for(const {b,local}of list){
+    const key=(local?'pending:':'active:')+b.type+':'+b.x+':'+b.y;
+    activeKeys.add(key);
+    let row=[...queue.children].find(e=>e.dataset.queueKey===key);
+    if(!row){
+     row=document.createElement('div');row.className='guild3d-queue-item';row.dataset.queueKey=key;
+     const head=document.createElement('div');head.className='guild3d-queue-head';
+     const name=document.createElement('strong');name.textContent=(labels[b.type]||'Edifício')+' · lote '+(b.x+1)+','+(b.y+1);
+     const time=document.createElement('span');time.className='guild3d-queue-time';
+     head.append(name,time);
+     const track=document.createElement('div');track.className='guild3d-queue-track';
+     const fill=document.createElement('span');track.append(fill);
+     row.append(head,track);queue.append(row);
+    }
+    const remaining=local?null:Math.max(0,b.endsAt-nowServer());
+    const pct=Number.isSafeInteger(b.startedAt)&&Number.isSafeInteger(b.endsAt)?Math.min(100,Math.max(0,100*(nowServer()-b.startedAt)/Math.max(1,b.endsAt-b.startedAt))):0;
+    row.querySelector('.guild3d-queue-time').textContent=
+     local?(Number.isSafeInteger(b.endsAt)?prettyTime(Math.max(0,b.endsAt-nowServer()))+'*':'Confirmando…'):prettyTime(remaining);
+    row.querySelector('.guild3d-queue-track span').style.width=Math.round(pct)+'%';
+    row.dataset.progress=String(Math.round(pct));
+   }
+   for(const element of [...queue.children])if(!activeKeys.has(element.dataset.queueKey))element.remove();
+   if(!list.length){
+    const message=document.createElement('p');message.className='guild3d-note guild3d-no-works';
+    message.textContent='Nenhuma obra em andamento. As construções concluídas já estão no terreno.';
+    queue.replaceChildren(message);
+   }else queue.querySelector('.guild3d-no-works')?.remove();
+  }
   const say=(text,status='info')=>{
    info.textContent=text;
    info.dataset.status=status;
@@ -85,7 +128,7 @@
     changed=true;
    }
    if(changed&&dlg.open){
-    say('Construção concluída. Você pode continuar construindo normalmente.','success');
+    say('Obra registrada no reino. Acompanhe o tempo restante embaixo do edifício.','success');
    }
   }
   function retry(request){
@@ -182,7 +225,7 @@
      request.timer=setTimeout(()=>retry(request),1500);
      send('kingdom',{action:'inspect'});
     }
-    say('Construção concluída. Continue construindo normalmente.','success');
+    say('Obra iniciada e salva. Continue construindo enquanto o cronômetro avança.','success');
    }else{
     stopRequest(request);
     say(result.message||'Operação concluída.','success');
@@ -211,8 +254,9 @@
     'Construções permanentes exigem uma conta cadastrada. Saia do modo visitante e faça login antes de construir: o modo de entrada só com nome não salva cidades.':
     owns()?'Somente o líder pode construir e melhorar edifícios.':
      'Cidade de outra guilda: somente seu líder pode administrar a capital.';
+   const buildingCount=buildWorks().length;
    q('guild3dCityState').textContent=structures().length+' edifício(s) salvos no reino · '+
-    provisionals.size+' aguardando confirmação do servidor';
+    buildingCount+' em construção · '+provisionals.size+' aguardando registro';
    opts.replaceChildren();
    for(const [id,[label,cost,glyph]]of Object.entries(types)){
     const button=document.createElement('button');button.type='button';
@@ -233,7 +277,8 @@
     soldier.append(option);
    }
    if(costs[prior])soldier.value=prior;
-   trained.hidden=!owns()||state?.persistentAccount!==true||!structures().some(b=>b.type==='barracks');
+   trained.hidden=!owns()||state?.persistentAccount!==true||!structures().some(b=>b.type==='barracks'&&(!Number.isSafeInteger(b.endsAt)||b.endsAt<=nowServer()));
+   updateQueue();
   }
   function onCell({x,y}){
    if(!canBuild()){
@@ -244,6 +289,9 @@
    }
    const occupied=layout.at(structures(),x,y);
    if(occupied){
+    if(Number.isSafeInteger(occupied.endsAt)&&occupied.endsAt>nowServer()){
+     say('Este edifício ainda está sendo construído. Veja o contador embaixo da obra.','info');return;
+    }
     // Melhorias continuam independentes de outras construções em andamento.
     if([...requests.values()].some(r=>r.action==='buildingUpgrade'&&
      layout.at([occupied],r.details.x,r.details.y))){
@@ -270,7 +318,12 @@
    }
    // Não há tempo de espera visual nem fila: cada clique desenha e envia
    // seu pedido próprio imediatamente, mesmo com outros ACKs pendentes.
-   const building={...layout.plan(selected,x,y),level:1};
+   // Prazo estimado desde o próprio clique, antes mesmo do primeiro ACK.
+   // O horário exato do servidor substituirá esta estimativa no snapshot.
+   const startedAt=nowServer();
+   const durationMs=Number(state?.buildTimes?.[selected])||0;
+   const building={...layout.plan(selected,x,y),level:1,status:'building',
+    ...(durationMs>0?{startedAt,endsAt:startedAt+durationMs,durationMs}:{})};
    sendOperation('construct',{type:selected,x,y,target:base.name},{building,price});
   }
   function onHover(cell){
@@ -280,11 +333,11 @@
    if(scene||loading||!dlg.open)return;
    loading=true;const seq=++token;
    try{
-    const engine=await import('/guild-scene-3d.mjs?v=guild3d-multi-v3');
+    const engine=await import('/guild-scene-3d.mjs?v=guild-timers-v8');
     if(!dlg.open||seq!==token)return;
     scene=engine.createGuildScene({mount:viewport,layout,onCell,onHover});
     q('guild3dLoading')?.remove();
-    scene.updateBuildings(structures(),state?.yourGuild?.army||{});
+    scene.updateBuildings(structures(),state?.yourGuild?.army||{},state?.serverNow);
     for(const [key,v]of provisionals)scene.showPendingBuilding?.(v.building,key);
     scene.setSelection(selected);
     say('Cidade 3D pronta. Gire a câmera, explore e construa em todo o terreno livre.');
@@ -301,18 +354,28 @@
    if(!owns()||!soldier.value)return;
    sendOperation('train',{unit:soldier.value,count:Number(count.value)});
   };
-  dlg.addEventListener('close',()=>{token++;resetOperations();scene?.destroy();scene=null;selected=null;viewport.querySelector('canvas')?.remove()});
+  dlg.addEventListener('close',()=>{
+   token++;resetOperations();
+   if(queueTicker!==null)clearInterval(queueTicker);queueTicker=null;
+   scene?.destroy();scene=null;selected=null;viewport.querySelector('canvas')?.remove();
+  });
   function open(b,kingdom){
    if(dlg.open)dlg.close();
-   base=b;state=kingdom;selected=null;resetOperations();say('Selecione um edifício ou explore o terreno com a câmera.');
+   base=b;state=kingdom;selected=null;resetOperations();
+   if(Number.isSafeInteger(kingdom?.serverNow))clockOffset=kingdom.serverNow-Date.now();
+   say('Selecione um edifício ou explore o terreno com a câmera.');
    if(!dlg.open)dlg.showModal();
+   if(queueTicker!==null)clearInterval(queueTicker);
+   queueTicker=setInterval(updateQueue,200);
    paint();
    if(!state?.persistentAccount)say('Modo visitante: faça login com sua conta para construir e manter os edifícios após sair.','warning');
    void load();
    send('kingdom',{action:'inspect'});
   }
   function update(kingdom){
-   state=kingdom;oldUI.update(kingdom);
+   state=kingdom;
+   if(Number.isSafeInteger(kingdom?.serverNow))clockOffset=kingdom.serverNow-Date.now();
+   oldUI.update(kingdom);
    if(dlg.open){
     const next=(kingdom?.bases||[]).find(b=>b.name===base?.name);
     if(next)base=next;
@@ -320,7 +383,7 @@
     // Recursos e saldo são prioritários; redesenhar modelos Three.js é caro
     // e não pode impedir a atualização financeira quando ocorrer erro de WebGL.
     paint();
-    scene?.updateBuildings(structures(),owns()?kingdom?.yourGuild?.army||{}:{});
+    scene?.updateBuildings(structures(),owns()?kingdom?.yourGuild?.army||{}:{},kingdom?.serverNow);
    }
   }
   return {open,update,onActionResult,onConnectionLost,onConnectionRestored,drawMarches:oldUI.drawMarches};

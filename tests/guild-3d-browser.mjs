@@ -81,10 +81,19 @@ try{
  assert.match(instantFirst?.feedback||'',/posicionado\. Continue construindo/);
  // A mensagem pode já ter sido confirmada quando o Playwright volta a executar.
  // A confirmação ainda será analisada após a latência simulada.
- await page.waitForFunction(()=>document.querySelector('.guild3d-dialog[open] #guild3dFeedback')?.textContent?.includes('Construção concluída'),null,{timeout:6000});
+ await page.waitForFunction(()=>document.querySelector('.guild3d-dialog[open] #guild3dFeedback')?.textContent?.includes('Obra registrada'),null,{timeout:6000});
  assert.equal(await page.locator('#guild3dFeedback').getAttribute('data-status'),'success');
  assert.match(await page.locator('.guild3d-wallet').innerText(),/8.380 moedas/,'saldo deve ser atualizado após construir');
- assert.equal(await canvas.getAttribute('data-pending-building'),null,'prévia vira construção definitiva após confirmar');
+ assert.equal(await canvas.getAttribute('data-pending-building'),null,'prévia vira obra registrada após confirmar');
+ const site=page.locator('.guild3d-site-label[data-site-key="house:8:12"]');
+ await site.waitFor({timeout:5000});
+ const initialClock=await site.locator('.guild3d-site-timer').innerText();
+ assert.match(initialClock,/^00:\d\d$/,'timer visível no terreno');
+ assert.match(await page.locator('#guild3dBuildQueue').innerText(),/Casario.*lote 9,13/s);
+ assert.equal(await page.evaluate(()=>buildings.find(b=>b.type==='house'&&b.x===8&&b.y===12)?.durationMs),20000);
+ await page.waitForTimeout(1250);
+ const laterClock=await site.locator('.guild3d-site-timer').innerText();
+ assert.ok(laterClock<initialClock,'tempo decresce visivelmente sem novo pacote do servidor');
  // Uma negativa do servidor deve desfazer a prévia SEM descontar moedas.
  const projectPoint=async(x,y)=>page.evaluate(async({x,y})=>{
   const THREE=await import('/vendor/three.module.js');
@@ -135,7 +144,7 @@ try{
  await page.mouse.click(missingAck.x,missingAck.y);
  const lostInstant=await page.evaluate(()=>window.__guildInstantEventLog.at(-1));
  assert.equal(lostInstant?.pending,'house:4:12','a construção aparece no mesmo evento mesmo quando o primeiro ACK se perde');
- await page.waitForFunction(()=>document.querySelector('#guild3dFeedback')?.textContent?.includes('Construção concluída'),null,{timeout:15000});
+ await page.waitForFunction(()=>document.querySelector('#guild3dFeedback')?.textContent?.includes('Obra registrada'),null,{timeout:15000});
  assert.equal(await page.locator('#guild3dFeedback').getAttribute('data-status'),'success');
  assert.equal(await page.evaluate(()=>buildings.length),countBefore+1,'retry não cria prédio duplicado');
  assert.equal(await page.evaluate(()=>buildings.filter(b=>b.type==='house'&&b.x===4&&b.y===12).length),1);
@@ -175,6 +184,8 @@ try{
  assert.equal(await page.evaluate(()=>buildings.filter(b=>b.type==='house'&&
   ((b.x===6&&b.y===14)||(b.x===8&&b.y===15))).length),2);
  assert.match(await page.locator('.guild3d-wallet').innerText(),/8.020 moedas/,'servidor confirma apenas dois débitos');
+ assert.ok(await page.locator('.guild3d-site-label').count()>=2,'várias obras têm etiquetas individuais no cenário');
+ assert.ok(await page.evaluate(()=>buildings.filter(b=>b.status==='building').length)>=2,'obras recentes seguem seus contadores próprios');
  assert.doesNotMatch(await page.locator('#guild3dFeedback').innerText(),/aguarde a sincronização|sincronizando o salvamento/i);
 
  // Uma sessão visitante não deve exibir prédios que jamais seriam salvos.
@@ -197,8 +208,17 @@ try{
  assert.equal(ownerState,5,'conta cadastrada pode continuar construindo');
 
  await page.screenshot({path:'/tmp/guild-3d-preview.png',fullPage:true,animations:'disabled'});
+ const storedBefore=await page.evaluate(()=>buildings.find(b=>b.x===8&&b.y===15)?.endsAt);
  await page.locator('#guild3dClose').click();
  assert.equal(await page.locator('.guild3d-dialog').evaluate(d=>d.open),false,'fechamento limpa a cena');
+ // Entrar novamente NÃO reinicia o tempo nem substitui a obra por prédio pronto.
+ await page.locator('#openDemo').click();
+ await page.waitForSelector('.guild3d-canvas',{timeout:30000});
+ await page.waitForSelector('.guild3d-site-label[data-site-key="house:8:15"]',{timeout:12000});
+ const storedAfter=await page.evaluate(()=>buildings.find(b=>b.x===8&&b.y===15)?.endsAt);
+ assert.equal(storedAfter,storedBefore,'prazo da obra persiste após sair e entrar');
+ assert.match(await page.locator('.guild3d-site-label[data-site-key="house:8:15"] .guild3d-site-timer').innerText(),/^00:\d\d$/);
+ await page.locator('#guild3dClose').click();
  assert.deepEqual(pageErrors,[],'sem erros JS na cena 3D');
  console.log('BROWSER_3D_OK WebGL, cena visível, câmera, UI, terreno 26x26 e teardown.');
  await page.close();
