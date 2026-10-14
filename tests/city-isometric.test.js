@@ -197,7 +197,8 @@ test('retransmissão confiável: mesma operação não cobra duas vezes nem dupl
  assert.equal(notices.find(msg=>msg.type==='kingdomActionResult')?.ok,true);
  // Mesmo opKey com outra posição ou preço jamais deve cobrar de novo.
  notices.length=0;
- assert.equal(act({...build,x:7,y:4,requestId:302}),true);
+ assert.equal(act({...build,x:7,y:4,requestId:302}),false);
+ assert.match(notices.find(msg=>msg.type==='kingdomActionResult'&&msg.id===302)?.message||'',/parâmetros diferentes/);
  assert.equal(world.guilds.get('guilda segura').city.buildings.length,1);
  assert.equal(p.save.coins,startingCoins-160);
  // A chave também está dentro da entidade persistível da guilda.
