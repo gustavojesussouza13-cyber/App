@@ -13,6 +13,8 @@ const combatFx=window.OsPeregrinosCombatFx.create();
 const classSkillFx=window.OsPeregrinosClassSkillFx16.create({windowRef:window});
 // Eventos reais do servidor comandam poses de ataque, impacto e derrota.
 const spriteActions={monsters:new Map(),players:new Map(),fallen:[],localHurtAt:0};
+const armyArt=window.PeregrinosArmyPixel16;
+let troopShots=[];
 const latency=window.OsPeregrinosLatency.create();
 // Sons são opt-in, apenas para desktop; não alteram controles móveis.
 const desktopAudio=window.OsPeregrinosAudio.create({
@@ -196,6 +198,13 @@ function dispatch(msg){
   // O acerto é autoritativo: não desenhar flechas nem magias para cliques rejeitados.
   const started=combatFx.fire(msg,performance.now());
   if(!started)fx.push({x:m?.x||session.x,y:m?.y||session.y,text:'−'+msg.damage,t:performance.now(),color:'#ffe5a6'});
+ }
+ }else if(msg.type==='troopStrike'){if(msg.zone===session.zone){
+   const now=performance.now();
+   troopShots.push({from:{x:msg.x,y:msg.y-25},to:{x:msg.to?.x||msg.x,y:(msg.to?.y||msg.y)-22},
+    t:now,damage:msg.damage});
+   troopShots=troopShots.slice(-20);
+   fx.push({x:msg.to?.x||msg.x,y:(msg.to?.y||msg.y)-44,text:'⚔ +'+msg.damage,t:now,color:'#b5edc2'});
  }
  }else if(msg.type==='healed'){if(msg.zone===session.zone){
    const now=performance.now();
@@ -902,6 +911,24 @@ function canvasDraw(now,dt){
     drawSkillEffects:(drawCtx,events)=>classSkillFx.paint(drawCtx,events),
     moving:Math.hypot(session.x-lastFrameX,session.y-lastFrameY)>0.06});
   cityUI.drawMarches(ctx,{zone:session.zone,cameraX:session.cameraX,cameraY:session.cameraY,now});
+  // Escoltas persistidas seguem seus comandantes em todas as salas e regiões.
+  if(armyArt){
+   const own=kingdomState?.yourGuild?.escort;
+   if(own&&Object.values(own).some(n=>n>0))
+    armyArt.drawFormation(ctx,own,session.x-session.cameraX,session.y-session.cameraY,now);
+   for(const player of session.players.values()){
+    if(player.zone!==session.zone||!player.escort)continue;
+    armyArt.drawFormation(ctx,player.escort,player.x-session.cameraX,player.y-session.cameraY,now,{label:false});
+   }
+   troopShots=troopShots.filter(shot=>now-shot.t<420);
+   for(const shot of troopShots){
+    const alpha=Math.max(0,Math.min(1,(now-shot.t)/350));
+    const x=Math.round(shot.from.x+(shot.to.x-shot.from.x)*alpha-session.cameraX);
+    const y=Math.round(shot.from.y+(shot.to.y-shot.from.y)*alpha-session.cameraY);
+    ctx.save();ctx.fillStyle='#f9e1a0';ctx.fillRect(x-3,y-3,7,7);
+    ctx.fillStyle='#89d8ba';ctx.fillRect(x-1,y-1,3,3);ctx.restore();
+   }
+  }
    lastFrameX=session.x;lastFrameY=session.y;
 }
 let lastFrameX=768,lastFrameY=512;
