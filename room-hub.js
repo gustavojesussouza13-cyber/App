@@ -14,9 +14,6 @@ function ownerId({uid,token}={}){
   return 'guest:'+crypto.createHash('sha256').update(token).digest('hex');
  return null;
 }
-function hashPassword(password,salt){
- return crypto.scryptSync(password,salt,32);
-}
 class RoomError extends Error{
  constructor(message,code,status=400){super(message);this.code=code;this.status=status}
 }
@@ -26,21 +23,21 @@ class RoomHub{
   this.maxRooms=Math.max(2,Math.min(24,maxRooms));
   this.rooms=new Map();
   this.rooms.set(MAIN_ID,{id:MAIN_ID,name:'Auren — Praça Pública',
-   ownerId:null,locked:false,salt:null,hash:null,world:mainWorld,createdAt:now(),emptySince:null,primary:true});
+   ownerId:null,locked:false,world:mainWorld,createdAt:now(),emptySince:null,primary:true});
  }
  get(id){return this.rooms.get(id)}
  count(){let n=0;for(const room of this.rooms.values())n+=room.world.count;return n}
  publicInfo(room){return {id:room.id,name:room.name,online:room.world.count,capacity:MAX_PER_ROOM,
-  locked:room.locked,primary:!!room.primary};}
+  locked:false,primary:!!room.primary};}
  list(){
   this.clean();
   // As salas só são anunciadas quando possuem participantes. A sala
-  // criada mas ainda não ocupada existe apenas como convite provisório
-  // para seu dono. Nunca listar servidores de 0 jogadores.
+  // criada mas ainda não ocupada fica invisível até a primeira entrada.
+  // Nunca listar servidores vazios.
   return [...this.rooms.values()].filter(room=>room.primary||room.world.count>0)
    .map(room=>this.publicInfo(room));
  }
- create({name,password,owner}){
+ create({name,owner}){
   this.clean();
   if(this.rooms.size>=this.maxRooms)throw new RoomError('Limite de salas simultâneas atingido. Aguarde uma vaga.','rooms_full',409);
   const title=normalized(name);
@@ -50,32 +47,18 @@ class RoomHub{
   if(!owner)throw new RoomError('Identifique seu personagem antes de criar uma sala.','owner_required',401);
   if([...this.rooms.values()].some(r=>r.ownerId===owner))
    throw new RoomError('Cada criador pode manter uma sala ativa por vez.','owner_has_room',409);
-  if(typeof password!=='string')password='';
-  if(password&&(password.length<4||password.length>64))
-   throw new RoomError('Use uma senha de 4 a 64 caracteres.','invalid_password');
-  const salt=password?crypto.randomBytes(16):null;
-  const room={id:idFor(),name:title,ownerId:owner,locked:!!password,salt,
-   hash:password?hashPassword(password,salt):null,createdAt:this.now(),
+  // Todas as salas criadas pelos jogadores são públicas, sem senha ou chave de acesso.
+  const room={id:idFor(),name:title,ownerId:owner,locked:false,createdAt:this.now(),
    world:this.createWorld(),emptySince:this.now(),pending:true,primary:false};
   this.rooms.set(room.id,room);
   return this.publicInfo(room);
  }
- check(id,password,{uid=null,owner=null,guestOwner=null}={}){
+ check(id,_unusedPassword,{uid=null}={}){
   this.clean();
   const room=this.rooms.get(id);
   if(!room)throw new RoomError('Esta sala não existe mais. Escolha outra.','room_missing',404);
-  // Antes da primeira entrada, a sala é um convite exclusivo do criador.
-  // Impede salas fantasma de aparecerem e outros usuários de ativá-las
-  // antes de o dono conseguir entrar.
-  if(room.pending&&owner!==room.ownerId&&guestOwner!==room.ownerId)
-   throw new RoomError('A sala está aguardando seu criador.','room_pending',403);
-  if(room.locked){
-   if(typeof password!=='string'||password.length>64)
-    throw new RoomError('Senha da sala incorreta.','wrong_room_password',403);
-   const digest=hashPassword(password,room.salt);
-   if(!crypto.timingSafeEqual(digest,room.hash))
-    throw new RoomError('Senha da sala incorreta.','wrong_room_password',403);
-  }
+  // A sala recém-criada não é listada até a primeira entrada, mas qualquer
+  // jogador com o ID pode participar, inclusive antes de seu criador.
   const replacing=uid&&[...room.world.players.values()].some(p=>p.uid===uid);
   if(room.world.count>=MAX_PER_ROOM&&!replacing)throw new RoomError('Sala cheia: 60/60 jogadores.','room_full',409);
   return room;
