@@ -39,6 +39,7 @@ const buildings=[];
 for(const [type,x,y] of seeds){
  if(layout.canPlace(buildings,type,x,y))buildings.push({...layout.plan(type,x,y),level:1+(x+y)%3});
 }
+const durations={house:20000,farm:30000,market:45000,tower:60000,barracks:90000};
 const costs={house:120,farm:160,barracks:280,tower:360,market:240},
 units={militia:{food:4,timber:2,stone:0},archer:{food:5,timber:5,stone:0},knight:{food:8,timber:3,stone:3},siege:{food:12,timber:12,stone:8}};
 const base={name,zone:0,x:768,y:512,level:2};
@@ -48,6 +49,7 @@ let localCoins=8500,lastCollected=start-15*60*1000;
 function current(){return {
  bases:[{...base}],
  cities:[{name,buildings:buildings.map(b=>({...b}))}],
+ serverNow:Date.now(),buildTimes:durations,
  walletCoins:localCoins,
  persistentAccount:true, // apenas a demonstração representa uma conta fictícia ativa
  yourGuild:{name,leader:true,stock:{...stock},army:{...army}},
@@ -85,8 +87,10 @@ const city=window.PeregrinosCity.create({send(type,request){
   if(localCoins<costs[type])
    return result(request,false,'Moedas pessoais insuficientes na demonstração.');
   localCoins-=costs[type];
-  buildings.push({...layout.plan(type,x,y),level:1});
-  result(request,true,'Construção concluída! Saldo fictício: '+localCoins+' moedas.');
+  const now=Date.now();
+  buildings.push({...layout.plan(type,x,y),level:1,status:'building',
+   startedAt:now,endsAt:now+durations[type],durationMs:durations[type]});
+  result(request,true,'Obra iniciada e salva. Conclusão em '+durations[type]/1000+' segundos.');
  }else if(request.action==='collect'){
   if(Date.now()-lastCollected<15*60*1000)
    return result(request,false,'A produção fictícia fica pronta a cada 15 minutos.');
@@ -94,7 +98,7 @@ const city=window.PeregrinosCity.create({send(type,request){
   result(request,true,'Produção fictícia coletada.');
  }else if(request.action==='buildingUpgrade'){
   const b=layout.at(buildings,request.x,request.y);
-  if(!b||b.level>=5)return result(request,false,'Este edifício não pode ser melhorado.');
+  if(!b||b.level>=5||b.endsAt>Date.now())return result(request,false,'Aguarde o término da obra para melhorá-la.');
   const cost={food:b.level*8,timber:b.level*6,stone:b.level*3};
   if(Object.keys(cost).some(id=>stock[id]<cost[id]))
    return result(request,false,'Materiais fictícios insuficientes.');
@@ -109,5 +113,14 @@ const city=window.PeregrinosCity.create({send(type,request){
   result(request,true,count+' soldados treinados na simulação.');
  }else result(request,false,'Operação inválida.');
 }});
+// Simula a conclusão autoritativa: o servidor enviaria o estado e gravaria
+// o resultado; não troca o prédio apenas porque o contador do navegador chegou a zero.
+setInterval(()=>{
+ const now=Date.now();
+ if(buildings.some(b=>b.status==='building'&&b.endsAt<=now)){
+  for(const b of buildings)if(b.status==='building'&&b.endsAt<=now)b.status='complete';
+  city.update(current());
+ }
+},350);
 document.querySelector('#openDemo').addEventListener('click',()=>city.open(base,current()));
 </script></body></html>
