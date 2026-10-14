@@ -664,8 +664,9 @@ function drawTab(force=false){const parent=$('tabContent');
    appendText(starter,'small','Arma inicial da classe: flechas ilimitadas. O Arco dos ventos do mercado aumenta o dano.');
   }
   for(const [id,count] of Object.entries(s.inventory||{}).filter(([,n])=>n>0)){
-   const item=id==='chave_coroa_aurora'?{name:'♛ Chave da Câmara da Aurora',rarity:'soberano'}:session.shop[id]||session.relics[id];if(!item)continue;
+   const item=id==='chave_coroa_aurora'?{name:'♛ Chave da Câmara da Aurora',storyOnly:true}:id==='chave'?{name:'Chave da masmorra · presente da história',storyOnly:true}:session.shop[id]||session.relics[id];if(!item)continue;
    const d=group(parent);appendText(d,'b',item.name+' · '+count+(id==='arco'&&s.role==='arqueiro'?' · Equipado':''));appendText(d,'small',
+    item.storyOnly?'Chave pessoal conquistada no enredo ou pela soberania continental · não vendida nem negociável':
     item.rarity?'✦ '+item.rarity.toUpperCase()+' · Relíquia de chefe · '+(item.role&&item.role!==s.role?'Exclusiva de '+item.role+' (não equipada)':'Bônus passivo equipado ao possuir'):
     id==='pocao'||id==='superpocao'?'Restaura vida':id==='chave_coroa_aurora'?'Chave pessoal e não negociável. Abre apenas a quarta masmorra; obtida pelo soberano da Coroa Continental.':'Equipamento / recurso');
    if(item.heal)d.append(button('Usar', 'use',{item:id}));
