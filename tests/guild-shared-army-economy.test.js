@@ -36,8 +36,8 @@ test('qualquer integrante cadastrado pode construir, evoluir edifícios, ampliar
  assert.equal(kingdoms.publicState(f.world,leader).yourGuild.canManage,true);
  assert.equal(kingdoms.publicState(f.world,member).yourGuild.leader,false);
  assert.equal(act(member,{action:'place',x:768,y:512}),false,'fundação e transferência continuam com o líder');
- assert.equal(act(member,{action:'construct',buildingType:'house',x:18,y:13}),true);
- assert.equal(act(member,{action:'construct',buildingType:'barracks',x:8,y:8}),true);
+ assert.equal(act(member,{action:'construct',buildingType:'house',x:6,y:9}),true);
+ assert.equal(act(member,{action:'construct',buildingType:'barracks',x:11,y:7}),true);
  assert.equal(g.city.buildings.length,2);
  const oldLevel=g.base.level,oldCoins=member.save.coins;
  assert.equal(act(member,{action:'upgrade'}),true);
@@ -45,7 +45,7 @@ test('qualquer integrante cadastrado pode construir, evoluir edifícios, ampliar
  assert.equal(member.save.coins,oldCoins-(oldLevel+1)*500);
  for(const building of g.city.buildings){building.status='complete';building.endsAt=Date.now()-1000}
  g.city.stock={food:600,timber:600,stone:600,coins:0};
- assert.equal(act(member,{action:'buildingUpgrade',x:18,y:13}),true);
+ assert.equal(act(member,{action:'buildingUpgrade',x:6,y:9}),true);
  assert.equal(g.city.buildings[0].level,2);
  assert.equal(act(member,{action:'fortify'}),true);
  assert.equal(g.base.defenseLevel,1);
@@ -63,7 +63,7 @@ test('quartel produz exército apenas com recursos do reino, sem reduzir moedas 
  assert.equal(member.save.coins,before);
  assert.equal(kingdoms.troopCount(g.army),0);
  assert.equal(act(member,{action:'train',unit:'militia',count:1}),false,'quartel obrigatório');
- assert.equal(act(member,{action:'construct',buildingType:'barracks',x:8,y:8}),true);
+ assert.equal(act(member,{action:'construct',buildingType:'barracks',x:11,y:7}),true);
  const barracks=g.city.buildings[0];barracks.status='complete';barracks.endsAt=Date.now()-1000;
  g.city.stock={food:100,timber:100,stone:50,coins:0};
  const wallet=member.save.coins,original={...g.city.stock};
@@ -85,7 +85,7 @@ test('estranhos ou falsos membros não podem gastar estoques ou editar as muralh
  g.city={buildings:[],stock:{food:100,timber:100,stone:100,coins:0},lastCollectedAt:Date.now()};
  const before=structuredClone(g.city);
  for(const action of [
-  {action:'construct',buildingType:'house',x:18,y:13},
+  {action:'construct',buildingType:'house',x:6,y:9},
   {action:'upgrade'},{action:'fortify'},{action:'collect'},
   {action:'train',unit:'militia',count:1}
  ])assert.equal(act(outsider,action),false,action.action);
@@ -93,7 +93,7 @@ test('estranhos ou falsos membros não podem gastar estoques ou editar as muralh
  assert.equal(g.base.level,1);
  // Uma string adulterada no personagem não é uma associação legítima.
  outsider.save.guild=g.name;
- assert.equal(act(outsider,{action:'construct',buildingType:'house',x:18,y:13}),false);
+ assert.equal(act(outsider,{action:'construct',buildingType:'house',x:6,y:9}),false);
 });
 test('telas 2D e 3D liberam administração coletiva e eliminam compras de tropas com moedas',()=>{
  const social=fs.readFileSync(path.join(__dirname,'../public/mmo.js'),'utf8');
