@@ -113,7 +113,7 @@
    brick(g,13,33+bounce,11,8,out,metal,'#eaf2e7');
    brick(g,43,33+bounce,11,8,out,metal,'#eaf2e7');
    brick(g,1,39+bounce,21,25,'#263746','#708d9e','#d9e6e2');
-   px(g,'#334e64',5,44+bounce,14,14);px(g,trim,10,44+bounce,4,15);
+   px(g,'#3865a0',5,44+bounce,14,14);px(g,'#2e65ac',7,45+bounce,10,12);px(g,trim,10,44+bounce,4,15);
    px(g,trim,7,51+bounce,10,4);px(g,gem,10,49+bounce,4,4);
    px(g,trim,53,60+bounce-lift,8,4);
    px(g,metal,54,23+bounce-lift,6,38);
@@ -121,11 +121,11 @@
   }else if(role==='arqueiro'){
    // Aljava e arco curvado com corda entre quadros; nunca parece guardião.
    brick(g,48,24+bounce,10,35,'#332f32','#694c34','#ac8551');
-   for(let i=0;i<5;i++){px(g,'#eee0b6',49+i*2,15+bounce+(i%2)*3,2,17);px(g,'#83a47e',49+i*2,12+bounce+(i%2)*3,3,6)}
-   px(g,'#533b32',4,23+bounce,5,40);px(g,'#c79d61',5,26+bounce,3,10);
+   for(let i=0;i<5;i++){px(g,'#e4d2a7',49+i*2,15+bounce+(i%2)*3,2,17);px(g,'#83a47e',49+i*2,12+bounce+(i%2)*3,3,6)}
+   px(g,'#533b32',4,23+bounce,5,40);px(g,'#d49e57',5,26+bounce,3,10);
    px(g,'#e2bd83',5,53+bounce,4,10);
    px(g,'#e6dcbd',12,24+bounce,2,39);
-   if(action==='attack'){px(g,trim,11,47+bounce,37,2);px(g,metal,49,44+bounce,10,7);px(g,cloth,11,43+bounce,7,10)}
+   if(action==='attack'){px(g,trim,11,47+bounce,37,2);px(g,'#f9f2d8',49,44+bounce,10,7);px(g,cloth,11,43+bounce,7,10)}
    px(g,lit,19,33+bounce,7,4);
   }else if(role==='curandeiro'){
    // Capuz de marfim, bordados, insígnias e cajado com cristal.
@@ -136,12 +136,12 @@
    for(const x of [20,44]){px(g,lit,x,37+bounce,4,28);px(g,trim,x+1,47+bounce,2,11)}
    px(g,'#78573e',55,14-lift+bounce,4,64);
    px(g,trim,53,25-lift+bounce,8,4);
-   brick(g,50,4-lift+bounce,14,16,'#335666','#65c7ba','#dcfff2');
+   brick(g,50,4-lift+bounce,14,16,'#335666','#65d7c6','#72dbea');px(g,'#70c7e0',56,13-lift+bounce,5,4);
    px(g,'#f1ffeb',56,6-lift+bounce,4,4);px(g,gem,54,17-lift+bounce,7,3);
    if(action==='attack')for(let i=0;i<3;i++)px(g,i%2?gem:trim,43+i*5,5+(frame+i)%3*7,3,3);
   }else{
    // Peregrino: capuz leve, bornal, fivela e espada de viagem.
-   px(g,lit,17,31+bounce,8,23);px(g,trim,20,36+bounce,3,16);
+   px(g,'#ba6050',17,31+bounce,8,23);px(g,'#9e4350',20,36+bounce,3,16);
    brick(g,47,47+bounce,13,15,'#4c332c','#856343','#d3a773');
    px(g,trim,51,51+bounce,5,3);
    px(g,'#896c48',7,49+bounce,5,20);px(g,metal,8,24+bounce-lift,5,28);
@@ -194,6 +194,12 @@
    for(const x of [4,49])brick(g,x,33+jitter,12,27,edge,base,lit);
    for(const x of [20,38])brick(g,x,62+jitter,11,13,edge,base,lit);
    px(g,edge,23,45+jitter,23,5);
+  }
+  // Marcas de escamas em cinco placas: todas as 32 variantes têm assinatura única.
+  for(let bit=0;bit<5;bit++){
+   const litScale=((Math.abs(species)|0)>>bit)&1;
+   px(g,litScale?lit:edge,17+bit*7,56+jitter,5,3);
+   if(litScale)px(g,eye,19+bit*7,55+jitter,2,2);
   }
   // Facetas de material específicas e cicatrizes determinadas pela espécie.
   for(let i=0;i<9;i++){
