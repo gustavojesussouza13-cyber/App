@@ -107,13 +107,14 @@ test('passagem do sexto subsolo do Templo também exige a chave especial',t=>{
  assert.equal(king.save.inventory[CROWN_DUNGEON_KEY],0);
 });
 
-test('as outras três masmorras continuam acessíveis com a chave comum',t=>{
+test('as outras três masmorras dependem das chaves da história, não de compras',t=>{
  const {w,king}=game(t);
  for(const [surface,root]of [[1,12],[3,13],[5,14]]){
   king.zone=surface;king.save.zone=surface;king.save.inventory.chave=1;
-  w.travel(king,root);
-  assert.equal(king.zone,root,'porta '+root+' continua liberada');
-  assert.equal(king.save.inventory.chave,0);
+  king.save.story.stage=0;w.travel(king,root);assert.equal(king.zone,surface,'chave avulsa não libera a história');
+  king.save.story.stage={12:2,13:5,14:9}[root];w.travel(king,root);
+  assert.equal(king.zone,root,'porta '+root+' deve ser liberada pela missão');
+  assert.equal(king.save.inventory.chave,1,'chave narrativa é uma autorização permanente');
  }
 });
 
