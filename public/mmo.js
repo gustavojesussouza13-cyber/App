@@ -712,17 +712,24 @@ function drawTab(force=false){const parent=$('tabContent');
  }else if(tab==='shop'){
   appendText(parent,'h3','Mercado de Auren');for(const [id,item] of Object.entries(session.shop)){const d=group(parent);appendText(d,'b',item.name);appendText(d,'small',item.price+' moedas');d.append(button('Comprar', 'buy',{item:id}))}
  }else if(tab==='social'){
-  appendText(parent,'h3','Amigos e guildas');appendText(parent,'small','Grupo: até cinco peregrinos · Guilda: 250 moedas · Comércio de itens entre jogadores próximos').className='muted';
+  appendText(parent,'h3','Amigos e guildas');appendText(parent,'small','Grupo: até cinco peregrinos · Fundar uma guilda por conta (250 moedas) · Comércio de itens entre jogadores próximos').className='muted';
   const p=group(parent);appendText(p,'b','Equipe');const n=field(p,'inviteName','Nome do convidado',18);const actions=document.createElement('div');actions.className='entry-actions';
   const create=button('Criar equipe','party',{action:'create'});const inv=document.createElement('button');inv.textContent='Convidar';inv.onclick=()=>send('party',{action:'invite',target:n.value.trim()});actions.append(create,inv,button('Sair','party',{action:'leave'}));p.append(actions);
   if(session.partyInvite)p.append(button('Aceitar equipe de '+session.partyInvite.by,'party',{action:'accept',party:session.partyInvite.party}));
   const g=group(parent);appendText(g,'b','Guildas');appendText(g,'small',s.guild?'Guilda atual: '+s.guild:'Nenhuma guilda');const gn=field(g,'guildName','Nome da guilda / convite',24);const target=field(g,'guildTarget','Convidar jogador',18);const gactions=document.createElement('div');gactions.className='entry-actions';
-  const createGuild=document.createElement('button');createGuild.textContent='Criar (250 moedas)';createGuild.onclick=()=>send('guild',{action:'create',name:gn.value.trim()});
+  const createGuild=document.createElement('button');
+   createGuild.textContent=s.guildFounded?'Guilda já fundada nesta conta':'Fundar minha única guilda (250 moedas)';
+   createGuild.disabled=Boolean(s.guildFounded)||Boolean(s.guild)||kingdomState?.persistentAccount===false;
+   createGuild.title=s.guildFounded?'Esta conta já fundou sua guilda; você pode entrar em outras por convite, mas não criar uma segunda.':
+    'Uma conta registrada pode fundar uma única guilda, mesmo que saia dela depois.';
+   createGuild.onclick=()=>send('guild',{action:'create',name:gn.value.trim()});
   const inviteGuild=document.createElement('button');inviteGuild.textContent='Convidar';inviteGuild.onclick=()=>send('guild',{action:'invite',target:target.value.trim()});gactions.append(createGuild,inviteGuild,button('Sair','guild',{action:'leave'}));g.append(gactions);
+   appendText(g,'small',s.guildFounded?'Direito de fundação utilizado: esta conta não poderá fundar outra guilda.':
+    'Cada conta cadastrada pode fundar apenas uma guilda. Depois disso, continua podendo participar de outras por convite.');
   if(session.guildInvite)g.append(button('Aceitar guilda '+session.guildInvite.name,'guild',{action:'accept',name:session.guildInvite.name}));
   const kingdom=group(parent);kingdom.classList.add('kingdom-panel');
   appendText(kingdom,'h3','✦ Reinos e política continental');
-  appendText(kingdom,'small','O conselho possui 16 regiões históricas. As 4 masmorras não admitem bases. Construa fortalezas nas 12 regiões da superfície. Exércitos são persistentes e disputam influência territorial.');
+  appendText(kingdom,'small','Auren possui 12 regiões de superfície para a política e 4 masmorras sem fortalezas. Cada guilda possui apenas uma capital. Um único reino estabelecido já governa o continente; com rivais, o poder depende da maioria das regiões efetivamente controladas.');
   if(!kingdomState){kingdom.append(button('Consultar reinos','kingdom',{action:'inspect'}))}
   else{
    const k=kingdomState.yourGuild;
@@ -731,8 +738,10 @@ function drawTab(force=false){const parent=$('tabContent');
     const crownBox=group(kingdom);
     appendText(crownBox,'b','♛ Câmara da Aurora — Masmorra da Coroa Continental');
     appendText(crownBox,'small',crown?
-     'Soberania atual: '+crown.guild+' · '+crown.territories+'/12 regiões. Somente o líder soberano recebe a chave pessoal da quarta masmorra.':
-     'A chave da quarta masmorra só será concedida ao líder da guilda que dominar 7 das 12 regiões de superfície.');
+     'Coroa Continental: '+crown.guild+' · '+(crown.uncontested?'único reino com fortaleza, domínio incontestado de Auren.':
+      'maioria das regiões governadas ('+crown.territories+'/12).')+
+      ' A Chave da Câmara da Aurora é exclusiva do líder soberano.':
+     'Coroa Continental em disputa. Com vários reinos, a chave pertence ao líder de quem obtiver maioria das regiões sob governo; não são necessárias sete bases.');
     if(crown?.holder){
      const owns=(s.inventory?.chave_coroa_aurora||0)>0;
      const remaining=Math.max(0,24*3600000-(Date.now()-(s.crownKeyIssuedAt||0)));
@@ -744,7 +753,7 @@ function drawTab(force=false){const parent=$('tabContent');
      crownBox.append(claim);
     }
    if(k){
-    appendText(kingdom,'b','Seu reino: '+k.name+(k.leader?' · COROA':' · Membro'));
+    appendText(kingdom,'b','Seu reino: '+k.name+(crown?.guild===k.name?(k.leader?' · SOBERANO CONTINENTAL':' · Reino da Coroa'):(k.leader?' · Líder':' · Integrante')));
     appendText(kingdom,'small',k.base?'Capital em '+(session.zones[k.base.zone]?.name||'Região')+' · ('+k.base.x+', '+k.base.y+')':'Sua guilda ainda não tem capital.');
     if(k.leader){
      const btn=button(k.base?'Transferir capital (450 moedas)':'Construir fortaleza (800 moedas)','kingdom',{
