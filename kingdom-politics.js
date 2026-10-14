@@ -662,40 +662,109 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
  }
  if(op==='siege'){
   if(!g.base){reject('Você precisa de uma fortaleza para participar de um cerco.');return false}
-  if((g.nextRaidAt||0)>now){reject('A guilda está se reorganizando. Aguarde '+Math.ceil((g.nextRaidAt-now)/1000)+' s para outro cerco.');return false}
+  if(g.nextRaidAt>now){reject('Sua guilda ainda está se reorganizando para outro cerco.');return false}
   const enemyKey=String(d.target||'').toLocaleLowerCase('pt-BR');
   const defender=world.guilds.get(enemyKey);
   if(!defender?.base||enemyKey===key){reject('Escolha uma fortaleza rival válida.');return false}
-  if(p.zone!==defender.base.zone||Math.hypot(p.x-defender.base.x,p.y-defender.base.y)>170){
-   reject('Aproxime-se da fortaleza inimiga para atacar com a sua escolta.');return false
+  if(isAlly(g,enemyKey)||isAlly(defender,key)){
+   reject('É proibido atacar reinos aliados. Encerre a aliança primeiro.');return false
   }
-  const escort=escortOf(g,p.uid);
-  if(troopCount(escort)<5){reject('Leve ao menos 5 soldados na sua escolta para iniciar o cerco.');return false}
+  if(activeTruce(defender,now)||activeTruce(g,now)&&g.truce.with===enemyKey){
+   reject('Esta fortaleza está protegida por um tratado de cessar-fogo.');return false
+  }
+  if(!nearestFortress(p,defender.base,170)){
+   reject('O comandante deve se aproximar até 170 passos da fortaleza rival.');return false
+  }
+  const participants=[];
+  const included=new Set();
+  // Só jogadores realmente presentes na mesma sala/região contribuem.
+  // Uma escolta de outra sala ou desconectada nunca ataca à distância.
+  for(const member of [p,...world.players.values()]){
+   if(included.has(member.uid)||!member.isAccount||!nearestFortress(member,defender.base,200))continue;
+   const troopOwner=guildFor(world,member);
+   if(!troopOwner)continue;
+   const ally=troopOwner.key!==key&&isAlly(g,troopOwner.key)&&isAlly(troopOwner.guild,key);
+   if(troopOwner.key!==key&&!ally)continue;
+   if(ally&&troopOwner.guild.nextRaidAt>now)continue;
+   const escort=escortOf(troopOwner.guild,member.uid);
+   if(!troopCount(escort))continue;
+   included.add(member.uid);
+   participants.push({member,guild:troopOwner.guild,key:troopOwner.key,escort,
+    attack:power(escort)+12*escort.siege+Math.max(5,Math.min(100,Number(member.save.level)||1)*2)});
+  }
+  // O jogador que inicia o ataque deve ao menos levar uma unidade própria.
+  if(!participants.some(v=>v.member.uid===p.uid)){
+   reject('Mobilize sua própria escolta antes de coordenar um cerco.');return false
+  }
+  const totalUnits=participants.reduce((n,v)=>n+troopCount(v.escort),0);
+  if(totalUnits<5){reject('Reúna ao menos cinco soldados nas escoltas próximas.');return false}
   const defense=fortressDefense(defender,now);
-  const attackPower=power(escort)+Math.max(5,p.save.level*2);
+  const formationBonus=1+Math.min(.18,Math.max(0,participants.length-1)*.03);
+  const attackPower=Math.round(participants.reduce((n,v)=>n+v.attack,0)*formationBonus);
   const won=attackPower>defense.defense;
-  const ownSurvivors=armyCopy({});
-  for(const unit of Object.keys(UNITS))ownSurvivors[unit]=Math.floor(escort[unit]*(won?.72:.40));
-  g.escorts={...(g.escorts||{}),[p.uid]:ownSurvivors};
-  const defenderArmy=armyCopy(defender.army);
+  let survivors=0;
+  const alliedNames=new Set();
+  const contribution=new Map();
+  for(const part of participants){
+   const remaining=armyCopy({});
+   for(const unit of Object.keys(UNITS)){
+    remaining[unit]=Math.floor(part.escort[unit]*(won?.78:.48));
+   }
+   survivors+=troopCount(remaining);
+   part.guild.escorts={...(part.guild.escorts||{}),[part.member.uid]:remaining};
+   contribution.set(part.key,(contribution.get(part.key)||0)+part.attack);
+   if(part.key!==key)alliedNames.add(part.guild.name);
+  }
+  const defenders=armyCopy(defender.army);
   for(const unit of Object.keys(UNITS))
-   defenderArmy[unit]=Math.floor(defenderArmy[unit]*(won?.72:.93));
-  defender.army=defenderArmy;
-  g.influence=g.influence||{};defender.influence=defender.influence||{};
+   defenders[unit]=Math.floor(defenders[unit]*(won?.78:.93));
+  defender.army=defenders;
   const region=defender.base.zone;
+  g.influence=g.influence||{};defender.influence=defender.influence||{};
   if(won){
-   g.influence[region]=Math.min(1000,(Number(g.influence[region])||0)+6);
-   defender.influence[region]=Math.max(0,(Number(defender.influence[region])||0)-4);
-  }else defender.influence[region]=Math.min(1000,(Number(defender.influence[region])||0)+1);
+   g.influence[region]=Math.min(1000,(Number(g.influence[region])||0)+12);
+   defender.influence[region]=Math.max(0,(Number(defender.influence[region])||0)-8);
+   for(const [allyKey,value] of contribution){
+    if(allyKey===key)continue;
+    const allyGuild=world.guilds.get(allyKey);
+    if(!allyGuild)continue;
+    allyGuild.influence=allyGuild.influence||{};
+    allyGuild.influence[region]=Math.min(1000,
+     (Number(allyGuild.influence[region])||0)+Math.max(1,Math.round(5*value/Math.max(1,attackPower))));
+   }
+   // A pressão cresce por cerco vitorioso e só abre a rendição após
+   // múltiplas vitórias. Revezar agressores não acumula pressão entre rivais.
+   const old=defender.siegeCrisis;
+   const pressure=old?.attacker===key&&now-Number(old.updatedAt||0)<24*60*60*1000?old.pressure:0;
+   defender.siegeCrisis={attacker:key,attackerName:g.name,region,
+    pressure:Math.min(100,pressure+32),updatedAt:now,
+    votes:old?.attacker===key?old.votes||{}:{}};
+  }else{
+   defender.influence[region]=Math.min(1000,(Number(defender.influence[region])||0)+2);
+   if(defender.siegeCrisis?.attacker===key)
+    defender.siegeCrisis={...defender.siegeCrisis,pressure:Math.max(0,defender.siegeCrisis.pressure-12),
+     updatedAt:now,votes:{}};
+  }
   g.nextRaidAt=now+SIEGE_COOLDOWN;
+  for(const allyKey of contribution.keys())if(allyKey!==key){
+   const ally=world.guilds.get(allyKey);if(ally)ally.nextRaidAt=now+SIEGE_COOLDOWN;
+  }
   world.dirty=true;
   const details=(won?'Vitória':'Derrota')+' no cerco a '+defender.name+
+   ' · '+participants.length+' comandante(s), '+totalUnits+' soldados'+
+   (alliedNames.size?' · aliados: '+[...alliedNames].join(', '):'')+
    ' · ataque '+attackPower+' / defesa '+defense.defense+
-   ' · '+troopCount(ownSurvivors)+' soldados sobreviventes seguem o comandante.';
+   ' · '+survivors+' sobreviventes.';
   accept(details);
-  // Alertar os defensores conectados, sem permitir que o cliente decida perdas.
-  for(const member of world.players.values())if(member.save.guild===defender.name)
-   world.tell(member,'⚔ A fortaleza da sua guilda sofreu um cerco! '+details);
+  if(won&&defender.siegeCrisis?.pressure>=SURRENDER_THRESHOLD)
+   for(const member of world.players.values())if(member.save.guild===defender.name)
+    world.tell(member,'☮ Sua capital atingiu '+defender.siegeCrisis.pressure+
+     '% de pressão. O líder pode render-se ou os integrantes podem votar. A decisão preserva os edifícios.');
+  for(const member of world.players.values()){
+   if(member.save.guild===defender.name)world.tell(member,'⚔ Sua capital sofreu um cerco! '+details);
+   else if(member.uid!==p.uid&&contribution.has(member.save.guild?.toLocaleLowerCase('pt-BR')))
+    world.send(member.socket,{type:'kingdomState',data:publicState(world,member)});
+  }
   return true;
  }
  if(op==='patrol'){
