@@ -341,8 +341,9 @@
    q('guild3dTitle').textContent='♜ '+base.name;
    q('guild3dSubtitle').textContent='Fortaleza nível '+(base.level||1)+'/'+(state?.fortressMaxLevel||60)+' · '+['Povoado','Vila fortificada','Burgo de pedra','Cidadela nobre','Capital imperial','Fortaleza lendária'][Math.min(5,Math.floor((Math.max(1,base.level||1)-1)/10))]+(owns()?' · Seu reino':' · Reino visitante');
     const bounds=layout.bounds(base.level||1),cap=state?.stockCapacity||600;
-    q('guild3dProgress').textContent='Área liberada: '+bounds.width+'×'+bounds.width+' · '+bounds.cells+' lotes. Estoque: '+cap+' por recurso.'+
-     ((base.level||1)<(state?.fortressMaxLevel||60)?' Próximo nível: '+layout.bounds((base.level||1)+1).width+'×'+layout.bounds((base.level||1)+1).width+' · estoque maior · novos espaços até '+(state?.maxBuildings||60)+'.':' Nível máximo.');
+    const opened=layout.availableLots(base.level||1).length,upcoming=layout.availableLots((base.level||1)+1).length;
+    q('guild3dProgress').textContent='Mapa '+bounds.width+'×'+bounds.width+' · '+opened+' de '+layout.slots.length+' terrenos liberados · estoque '+cap+' por recurso.'+
+     ((base.level||1)<(state?.fortressMaxLevel||60)?' Próximo nível: +'+(upcoming-opened)+' lotes e maior capacidade econômica.':' Fortaleza no nível máximo.');
     const upgrade=q('guild3dUpgrade'),fortify=q('guild3dFortify'),siege=q('guild3dSiege');
     upgrade.hidden=!owns();upgrade.disabled=!canBuild()||(base.level||1)>=(state?.fortressMaxLevel||60);
     upgrade.textContent=(base.level||1)>=(state?.fortressMaxLevel||60)?'♜ Fortaleza no nível máximo':'♜ Ampliar para nível '+((base.level||1)+1)+' · '+((base.level||1)+1)*500+' moedas';
