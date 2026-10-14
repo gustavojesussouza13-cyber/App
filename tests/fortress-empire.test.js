@@ -41,13 +41,13 @@ test('níveis 1 a 5 desbloqueiam áreas progressivas e respeitam o castelo',()=>
 test('fortaleza sobe de nível, libera terrenos antes bloqueados e aumenta o limite do estoque',t=>{
  const f=fixture(t),p=f.join('Fundador'),g=f.build(p,'Reino Evolutivo');
  assert.equal(f.act(p,{action:'construct',buildingType:'house',x:1,y:1}),false);
- assert.equal(f.act(p,{action:'construct',buildingType:'house',x:18,y:13}),true);
+ assert.equal(f.act(p,{action:'construct',buildingType:'house',x:6,y:9}),true);
  const house=g.city.buildings[0];assert.equal(house.status,'building');
  assert.equal(politics.publicState(f.world,p).stockCapacity,600);
  assert.equal(f.act(p,{action:'upgrade'}),true);
  assert.equal(politics.publicState(f.world,p).buildBounds.width,18);
  assert.equal(politics.publicState(f.world,p).stockCapacity,1200);
- assert.equal(f.act(p,{action:'construct',buildingType:'house',x:4,y:4}),true);
+ assert.equal(f.act(p,{action:'construct',buildingType:'house',x:6,y:12}),true);
  for(let i=3;i<=5;i++)assert.equal(f.act(p,{action:'upgrade'}),true);
  assert.equal(politics.publicState(f.world,p).buildBounds.width,26);
  assert.equal(politics.publicState(f.world,p).stockCapacity,5000);
@@ -69,7 +69,7 @@ test('a guarnição transfere instantaneamente tropas ao membro e volta sem dupl
 });
 test('torres e muralhas reforçam a defesa e são persistidas',t=>{
  const f=fixture(t),p=f.join('Guardiao'),g=f.build(p,'Defesas do Norte');
- assert.equal(f.act(p,{action:'construct',buildingType:'tower',x:6,y:6}),true);
+ assert.equal(f.act(p,{action:'construct',buildingType:'tower',x:8,y:9}),true);
  const tower=g.city.buildings[0];tower.status='complete';
  const before=politics.fortressDefense(g).defense;
  g.city.stock={food:100,timber:100,stone:100,coins:100};
