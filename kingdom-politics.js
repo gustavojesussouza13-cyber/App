@@ -116,6 +116,53 @@ function fortressDefense(g,now=Date.now()){
  const towers=Math.round(24*Math.sqrt(towerLevels));
  return {level:lv,walls,towers,defense:25*lv+12*walls+towers+power(g?.army,'defense')};
 }
+// Prévia autoritativa da evolução: as regras e os números vêm do servidor,
+// exatamente das fórmulas usadas na transação final. Não altera dados.
+function buildingUpgradePreview(g,b,now=Date.now()){
+ if(!b||!Object.hasOwn(CITY_BUILDINGS,b.type))return null;
+ const level=buildingLevel(b.level);
+ if(level>=BUILDING_MAX_LEVEL||!isComplete(b,now))return null;
+ const next=level+1,stock=stockCopy(g.city?.stock),fee={
+  food:level*8,timber:level*6,stone:level*3
+ };
+ const yields=CITY_YIELDS[b.type];
+ const beforeDefense=fortressDefense(g,now).defense;
+ const towerLevels=(g.city?.buildings||[])
+  .filter(v=>v.type==='tower'&&isComplete(v,now))
+  .reduce((sum,v)=>sum+buildingLevel(v.level),0);
+ const defenseGain=b.type==='tower'?
+  Math.round(24*Math.sqrt(towerLevels+1))-Math.round(24*Math.sqrt(towerLevels)):0;
+ return {
+  kind:'building',type:b.type,x:b.x,y:b.y,
+  levelBefore:level,levelAfter:next,cost:fee,
+  affordable:Object.entries(fee).every(([id,cost])=>stock[id]>=cost),
+  before:{stock,defense:beforeDefense,storage:stockCapacity(g.base.level),
+   armyCapacity:militaryCapacity(g.base.level),buildingSlots:buildingSlots(g.base.level),
+   cycleMs:productionCycleMs(b.type,level),
+   yields:Object.fromEntries(Object.entries(yields).map(([id,n])=>[id,n*level]))},
+  after:{stock:Object.fromEntries(Object.entries(stock).map(([id,n])=>[id,n-(fee[id]||0)])),
+   defense:beforeDefense+defenseGain,storage:stockCapacity(g.base.level),
+   armyCapacity:militaryCapacity(g.base.level),buildingSlots:buildingSlots(g.base.level),
+   cycleMs:productionCycleMs(b.type,next),
+   yields:Object.fromEntries(Object.entries(yields).map(([id,n])=>[id,n*next]))}
+ };
+}
+function fortressUpgradePreview(g,walletCoins,now=Date.now()){
+ if(!g?.base)return null;
+ const level=fortressLevel(g.base.level);
+ if(level>=FORTRESS_MAX_LEVEL)return null;
+ const cost=(level+1)*500,wallet=Math.max(0,Math.floor(Number(walletCoins)||0));
+ const defense=fortressDefense(g,now).defense;
+ return {kind:'fortress',levelBefore:level,levelAfter:level+1,
+  cost:{walletCoins:cost},affordable:wallet>=cost,
+  before:{walletCoins:wallet,stock:stockCopy(g.city?.stock),defense,
+   storage:stockCapacity(level),armyCapacity:militaryCapacity(level),
+   buildingSlots:buildingSlots(level),unlockedLots:cityLayout.availableLots(level).length},
+  after:{walletCoins:wallet-cost,stock:stockCopy(g.city?.stock),defense:defense+25,
+   storage:stockCapacity(level+1),armyCapacity:militaryCapacity(level+1),
+   buildingSlots:buildingSlots(level+1),unlockedLots:cityLayout.availableLots(level+1).length}
+ };
+}
 // O abastecimento pertence ao reino: não usa a carteira dos personagens.
 // Processa até três ciclos atrasados, evitando perdas ilimitadas após downtime.
 function applyArmyUpkeep(g,now){
@@ -344,7 +391,8 @@ function publicState(world,p){
      yourVote:Boolean(your.guild.siegeCrisis.votes?.[p.uid]),
      canSurrender:your.guild.siegeCrisis.pressure>=SURRENDER_THRESHOLD}:null,
     truce:your.guild.truce||null,surrenderHistory:(your.guild.surrenderHistory||[]).slice(-5),
-   influence:your.guild.influence||{},stock:stockCopy(your.guild.city?.stock),lastCollectedAt:your.guild.city?.lastCollectedAt||0}:null,
+   influence:your.guild.influence||{},stock:stockCopy(your.guild.city?.stock),lastCollectedAt:your.guild.city?.lastCollectedAt||0,
+   fortressUpgradePreview:fortressUpgradePreview(your.guild,p?.save?.coins)}:null,
   serverNow:Date.now(),
   buildTimes:CITY_BUILD_MS,stockCapacity:stockCapacity(your?.guild?.base?.level),
   fortressMaxLevel:FORTRESS_MAX_LEVEL,buildingMaxLevel:BUILDING_MAX_LEVEL,
@@ -356,6 +404,7 @@ function publicState(world,p){
     .slice(0,CITY_LIMIT).map(b=>({
      type:b.type,x:b.x,y:b.y,w:cityLayout.size(b)[0],h:cityLayout.size(b)[1],
      level:buildingLevel(b.level),production:productionState(g.city,b,Date.now()),
+     upgradePreview:g===your?.guild?buildingUpgradePreview(g,b):null,
      // Campos de tempo persistidos: o contador é recuperado em qualquer sala.
      // A conclusão definitiva é registrada pelo tick do servidor, não
      // inferida apenas do relógio do navegador. Ao expirar, o cliente
