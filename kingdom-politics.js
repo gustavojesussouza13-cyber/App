@@ -67,6 +67,7 @@ const stockCopy=v=>Object.fromEntries(['food','timber','stone','coins'].map(id=>
 function collectCity(g,now){
  if(!g.city||!Array.isArray(g.city.buildings)||!Number.isSafeInteger(now))return null;
  const city=g.city,stocks=stockCopy(city.stock),yielded=stockCopy({});
+ for(const b of city.buildings)if(isComplete(b,now)&&!Number.isSafeInteger(b.productionAt))b.productionAt=productionStart(city,b);
  let readyBuildings=0;
  for(const b of city.buildings.slice(0,CITY_LIMIT)){
   const production=productionState(city,b,now);
@@ -95,10 +96,10 @@ const armyCopy=army=>Object.fromEntries(Object.keys(UNITS).map(id=>[id,Math.min(
 const escortOf=(guild,uid)=>armyCopy(guild?.escorts?.[uid]);
 const escortTotal=guild=>Object.values(guild?.escorts||{}).reduce((n,v)=>n+troopCount(armyCopy(v)),0);
 function fortressDefense(g,now=Date.now()){
- const lv=Math.max(1,Math.min(5,Number(g?.base?.level)||1));
- const walls=Math.max(0,Math.min(5,Math.floor(Number(g?.base?.defenseLevel)||0)));
+ const lv=fortressLevel(g?.base?.level);
+ const walls=Math.max(0,Math.min(FORTRESS_MAX_LEVEL,Math.floor(Number(g?.base?.defenseLevel)||0)));
  const towers=(g?.city?.buildings||[]).filter(b=>b?.type==='tower'&&isComplete(b,now))
-  .reduce((sum,b)=>sum+8*Math.min(5,Math.max(1,Number(b.level)||1)),0);
+  .reduce((sum,b)=>sum+8*buildingLevel(b.level),0);
  return {level:lv,walls,towers,defense:35*lv+25*walls+towers+power(g?.army,'defense')};
 }
 function escortStrike(g,uid){
@@ -209,13 +210,15 @@ function publicState(world,p){
    influence:your.guild.influence||{},stock:stockCopy(your.guild.city?.stock),lastCollectedAt:your.guild.city?.lastCollectedAt||0}:null,
   serverNow:Date.now(),
   buildTimes:CITY_BUILD_MS,stockCapacity:stockCapacity(your?.guild?.base?.level),
+  fortressMaxLevel:FORTRESS_MAX_LEVEL,buildingMaxLevel:BUILDING_MAX_LEVEL,
+  maxBuildings:buildingSlots(your?.guild?.base?.level),productionTimes:CITY_PRODUCTION_MS,
   buildBounds:cityLayout.bounds(your?.guild?.base?.level||1),maxEscort:ESCORT_LIMIT,
   cities:[...world.guilds.values()].filter(g=>g.base).map(g=>({name:g.name,
    buildings:(Array.isArray(g.city?.buildings)?g.city.buildings:[])
     .filter(b=>b&&CITY_BUILDINGS[b.type]&&Number.isInteger(b.x)&&Number.isInteger(b.y))
     .slice(0,CITY_LIMIT).map(b=>({
      type:b.type,x:b.x,y:b.y,w:cityLayout.size(b)[0],h:cityLayout.size(b)[1],
-     level:Math.min(5,Math.max(1,Number.isSafeInteger(b.level)?b.level:1)),
+     level:buildingLevel(b.level),production:productionState(g.city,b,Date.now()),
      // Campos de tempo persistidos: o contador é recuperado em qualquer sala.
      // A conclusão definitiva é registrada pelo tick do servidor, não
      // inferida apenas do relógio do navegador. Ao expirar, o cliente
@@ -359,7 +362,7 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
    reject('Terreno ou edifício inválido.');return false
   }
   const buildings=Array.isArray(g.city?.buildings)?g.city.buildings:[];
-  if(buildings.length>=CITY_LIMIT){
+  if(buildings.length>=buildingSlots(g.base.level)){
    reject('Este terreno já está ocupado ou a cidade atingiu seu limite.');return false
   }
   if(p.save.coins<cost){reject('Moedas insuficientes para construir ('+cost+').');return false}
@@ -382,11 +385,11 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
   if(!g.city.buildings.some(b=>Object.values(CITY_YIELDS[b.type]||{}).some(y=>y>0)&&isComplete(b,now))){
    reject('As obras produtivas ainda estão em andamento. Veja o tempo restante no terreno.');return false
   }
-  if(!g.city.lastCollectedAt){g.city.lastCollectedAt=now;world.dirty=true;accept('Produção iniciada. Volte após 15 minutos.');return true}
+  if(!g.city.lastCollectedAt){g.city.lastCollectedAt=now;world.dirty=true;accept('Relógios individuais de produção iniciados. Consulte os prazos de cada edifício.');return true}
   const collected=collectCity(g,now);
-  if(!collected){reject('A produção fica pronta a cada 15 minutos.');return false}
+  if(!collected){reject('Nenhum edifício concluiu seu ciclo. Consulte o tempo de cada produção.');return false}
   world.dirty=true;
-  accept('Produção coletada: '+Object.entries(collected.yielded).map(([id,v])=>id+' '+v).join(' · '));
+  accept('Recursos de '+collected.readyBuildings+' edifício(s): '+Object.entries(collected.yielded).map(([id,v])=>id+' '+v).join(' · '));
   return true;
  }
  if(op==='buildingUpgrade'){
@@ -396,28 +399,28 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
   const b=cityLayout.at(g.city.buildings,x,y);
   if(!b||!Object.hasOwn(CITY_BUILDINGS,b.type)){reject('Edifício inexistente.');return false}
   if(!isComplete(b,now)){reject('Aguarde a conclusão da obra para melhorar este edifício.');return false}
-  const level=Math.min(5,Math.max(1,Number.isSafeInteger(b.level)?b.level:1));
-  if(level>=5){reject('Este edifício já está no nível máximo.');return false}
+  const level=buildingLevel(b.level);
+  if(level>=BUILDING_MAX_LEVEL){reject('Este edifício já está no nível máximo '+BUILDING_MAX_LEVEL+'.');return false}
   const stock=stockCopy(g.city.stock),fee={food:level*8,timber:level*6,stone:level*3};
   if(Object.entries(fee).some(([id,cost])=>stock[id]<cost)){
    reject('Materiais insuficientes para ampliar este edifício.');return false
   }
   for(const [id,cost] of Object.entries(fee))stock[id]-=cost;
   g.city.stock=stock;b.level=level+1;world.dirty=true;
-  accept('Edifício aprimorado para nível '+b.level+'.');return true;
+  accept('Edifício aprimorado para nível '+b.level+'. A produção será mais rápida e renderá mais recursos.');return true;
  }
  if(op==='upgrade'){
   if(g.leader!==p.uid||!g.base){response(world,p,'Somente o líder pode ampliar as muralhas de sua capital.');return false}
   if(p.zone!==g.base.zone||Math.hypot(p.x-g.base.x,p.y-g.base.y)>180){
    response(world,p,'Visite a sua fortaleza para melhorar as defesas.');return false}
   const level=Math.max(1,Math.floor(Number(g.base.level)||1));
-  if(level>=5){response(world,p,'Sua fortaleza já alcançou o nível máximo 5.');return false}
+  if(level>=FORTRESS_MAX_LEVEL){response(world,p,'Sua fortaleza já alcançou o nível máximo '+FORTRESS_MAX_LEVEL+'.');return false}
   const cost=(level+1)*500;
   if(p.save.coins<cost){response(world,p,'Moedas insuficientes para ampliar a fortaleza ('+cost+').');return false}
   p.save.coins-=cost;g.base.level=level+1;
   g.influence=g.influence||{};
   g.influence[g.base.zone]=Math.min(1000,Math.max(0,Number(g.influence[g.base.zone])||0)+1);
-  world.dirty=true;accept('Capital ampliada! Nível '+g.base.level+' · '+cityLayout.bounds(g.base.level).cells+' terrenos úteis · estoque '+stockCapacity(g.base.level)+' por recurso.');
+  world.dirty=true;accept('Capital ampliada! Nível '+g.base.level+' · '+cityLayout.bounds(g.base.level).cells+' terrenos úteis · estoque '+stockCapacity(g.base.level)+' por recurso · '+buildingSlots(g.base.level)+' espaços para edifícios.');
   world.send(p.socket,world.ownStatus(p));return true;
  }
  if(op==='recruit'){
@@ -657,4 +660,5 @@ function resolve(world,now=Date.now()){
  return finished;
 }
 module.exports={CONTINENT_REGIONS,BUILDABLE_REGIONS,BASE_COST,RELOCATE_COST,MAX_TROOPS,UNITS,
- armyCopy,troopCount,power,publicState,politicalMap,rank,marchRoute,marchPosition,collectCity,MILITARY_SUPPLIES,CITY_BUILD_MS,stockCapacity,fortressDefense,escortOf,escortTotal,escortStrike,ESCORT_LIMIT,SIEGE_COOLDOWN,isComplete,resolveCityConstructions,action,resolve};
+ armyCopy,troopCount,power,publicState,politicalMap,rank,marchRoute,marchPosition,collectCity,
+ FORTRESS_MAX_LEVEL,BUILDING_MAX_LEVEL,CITY_PRODUCTION_MS,productionCycleMs,productionState,buildingSlots,MILITARY_SUPPLIES,CITY_BUILD_MS,stockCapacity,fortressDefense,escortOf,escortTotal,escortStrike,ESCORT_LIMIT,SIEGE_COOLDOWN,isComplete,resolveCityConstructions,action,resolve};
