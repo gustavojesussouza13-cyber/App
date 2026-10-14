@@ -18,18 +18,21 @@ test('homepage mostra as quantidades corretas, sem apresentar dez jogadores como
  assert.match(js,/number\.textContent=String\(d\.online\|\|0\)/);
  assert.doesNotMatch(js,/number\.textContent=d\.online\+'\/'/);
 });
-test('lobby contém seleção, criação e senha protegida; CSS mantém formulário rolável',()=>{
+test('lobby de salas públicas não oferece senhas e mantém seleção, criação e rolagem',()=>{
  const html=read('mundo.html'),client=read('mmo.js'),css=read('mmo.css');
- for(const id of ['roomSelect','roomJoinPassword','newRoomName','newRoomPassword','createRoomForm','roomSummary','roomError'])
+ for(const id of ['roomSelect','newRoomName','createRoomForm','roomSummary','roomError'])
   assert.match(html,new RegExp('id="'+id+'"'));
  assert.match(html,/até 60 jogadores/);
  assert.match(html,/último jogador sai/);
- assert.match(html,/mmo\.js\?v=monstros-evoluem-v1/);
+ assert.match(html,/mmo\.js\?v=salas-publicas-v1/);
  assert.match(client,/fetch\('\/api\/rooms'/);
- assert.match(client,/roomId:selectedRoomId,roomPassword:selectedRoomPassword/);
+ assert.match(client,/roomId:selectedRoomId/);
+ assert.doesNotMatch(client,/roomPassword:selectedRoomPassword|wrong_room_password|roomSwitchNewPassword|newRoomPassword/);
+ assert.doesNotMatch(html,/id="(?:roomJoinPassword|newRoomPassword|roomSwitchPassword|roomSwitchNewPassword)"/);
+ assert.match(html,/Todas as salas são públicas e não possuem senha/);
  assert.match(client,/response\.ok/);
  assert.match(css,/max-height:calc\(100% - 14px\)/);
- assert.match(css,/#roomJoinPassword|\.room-selection input/);
+ assert.match(css,/\.room-selection input/);
 });
 test('trocar de sala não perde estado de conta registrada nem mistura criaturas',t=>{
  const persistent={pending:null,enqueue(save){this.pending=structuredClone(save)}};
