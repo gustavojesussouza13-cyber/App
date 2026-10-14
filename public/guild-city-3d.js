@@ -375,7 +375,7 @@
    if(scene||loading||!dlg.open)return;
    loading=true;const seq=++token;
    try{
-    const engine=await import('/guild-scene-3d.mjs?v=guild-restore-v9');
+    const engine=await import('/guild-scene-3d.mjs?v=guild-restore-v10');
     if(!dlg.open||seq!==token)return;
     scene=engine.createGuildScene({mount:viewport,layout,onCell,onHover});
     q('guild3dLoading')?.remove();
