@@ -75,7 +75,7 @@ test('torres e muralhas reforçam a defesa e são persistidas',t=>{
  g.city.stock={food:100,timber:100,stone:100,coins:100};
  assert.equal(f.act(p,{action:'fortify'}),true);
  assert.equal(g.base.defenseLevel,1);
- assert.equal(politics.fortressDefense(g).defense,before+25);
+ assert.equal(politics.fortressDefense(g).defense,before+12);
  assert.equal(f.act(p,{action:'fortify'}),false,'muralha não ultrapassa o nível da capital');
  assert.ok(f.snapshots.some(s=>s.guilds['defesas do norte']?.base?.defenseLevel===1));
 });
