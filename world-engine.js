@@ -888,6 +888,7 @@ class World {
     // uma guilda fantasma após reinícios. Ausência de registro preserva legado.
     (!this.saved.characters?.[uid]||this.saved.characters[uid].guild===undefined||
      this.saved.characters[uid].guild?.toLocaleLowerCase('pt-BR')===key)))];
+   if(unique.length===0){this.guilds.delete(key);changed=true;continue}
    if(unique.length!==g.members.length){g.members=unique;changed=true}
    if(!g.leader||!unique.includes(g.leader)){g.leader=unique[0];changed=true}
    const mods=[...new Set((g.moderators||[]).filter(uid=>unique.includes(uid)&&uid!==g.leader))];
