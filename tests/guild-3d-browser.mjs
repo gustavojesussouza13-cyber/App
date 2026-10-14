@@ -78,7 +78,7 @@ try{
  await page.mouse.click(buildTarget.x,buildTarget.y);
  const instantFirst=await page.evaluate(()=>window.__guildInstantEventLog.at(-1));
  assert.equal(instantFirst?.pending,'house:8:12','edifício 3D aparece no próprio clique, antes da rede');
- assert.match(instantFirst?.feedback||'',/posicionado imediatamente/);
+ assert.match(instantFirst?.feedback||'',/posicionado\. Continue construindo/);
  // A mensagem pode já ter sido confirmada quando o Playwright volta a executar.
  // A confirmação ainda será analisada após a latência simulada.
  await page.waitForFunction(()=>document.querySelector('.guild3d-dialog[open] #guild3dFeedback')?.textContent?.includes('Construção concluída'),null,{timeout:6000});
@@ -120,7 +120,7 @@ try{
  await page.mouse.click(offline.x,offline.y);
  const instantOffline=await page.evaluate(()=>window.__guildInstantEventLog.at(-1));
  assert.equal(instantOffline?.pending,null,'sem conexão, a prévia é revertida dentro do mesmo clique');
- await page.waitForFunction(()=>document.querySelector('#guild3dFeedback')?.textContent?.includes('Não há conexão'),null,{timeout:2000});
+ await page.waitForFunction(()=>document.querySelector('#guild3dFeedback')?.textContent?.includes('Sem conexão'),null,{timeout:2000});
  assert.equal(await canvas.getAttribute('data-pending-building'),null,'prévia offline precisa ser removida imediatamente');
  await page.evaluate(()=>{window.__guildDemoOffline=false});
 
