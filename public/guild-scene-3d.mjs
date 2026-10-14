@@ -306,7 +306,7 @@ export function createGuildScene({mount,layout,onCell,onHover}){
   const label=document.createElement('div');label.className='guild3d-site-label';label.dataset.siteKey=key;
   const name=document.createElement('strong');
   name.textContent=({house:'Casario',farm:'Fazenda',market:'Mercado',tower:'Torre',barracks:'Quartel'})[building.type]||'Obra';
-  const timer=document.createElement('span');timer.className='guild3d-site-timer';timer.textContent=local?'Confirmando…':'00:00';
+  const timer=document.createElement('span');timer.className='guild3d-site-timer';timer.textContent=local?'00:00*':'00:00';
   const bar=document.createElement('div');bar.className='guild3d-site-rail';const fill=document.createElement('span');bar.append(fill);
   const stage=document.createElement('small');stage.textContent=local?'Preparando obra':'Fundação';
   label.append(name,timer,bar,stage);labels.append(label);
@@ -482,16 +482,16 @@ export function createGuildScene({mount,layout,onCell,onHover}){
   if(refresh)lastTimerPaint=now;
   for(const site of [...activeSites.values(),...[...pendingVisuals.values()]]){
    const b=site.building;
-   const pct=site.local?0:Math.max(0,Math.min(1,(current-b.startedAt)/Math.max(1,b.endsAt-b.startedAt)));
-   site.model.visible=!site.local&&pct>.12;
+   const pct=Number.isSafeInteger(b.startedAt)&&Number.isSafeInteger(b.endsAt)?Math.max(0,Math.min(1,(current-b.startedAt)/Math.max(1,b.endsAt-b.startedAt))):0;
+   site.model.visible=pct>.12;
    site.model.scale.y=Math.max(.04,Math.min(1,(pct-.12)/.88));
-   site.scaffold.visible=site.local||pct<.96;
+   site.scaffold.visible=pct<.96;
    site.scaffold.position.y=Math.sin(now*.0016+site.p.x)*.04;
    if(refresh){
-    const text=site.local?'Confirmando…':timerText(b.endsAt-current);
+    const text=site.local?(Number.isSafeInteger(b.endsAt)?timerText(b.endsAt-current)+'*':'Confirmando…'):timerText(b.endsAt-current);
     if(text!==site.lastText){site.timer.textContent=text;site.lastText=text}
     site.fill.style.width=Math.round(pct*100)+'%';
-    site.stage.textContent=site.local?'Preparando terreno':pct<.25?'Fundações':pct<.50?'Erguendo paredes':pct<.75?'Montando estrutura':pct<1?'Colocando telhado':'Finalizando';
+    site.stage.textContent=site.local?'Tempo estimado · validando':pct<.25?'Fundações':pct<.50?'Erguendo paredes':pct<.75?'Montando estrutura':pct<1?'Colocando telhado':'Finalizando';
     site.label.dataset.progress=String(Math.round(pct*100));
    }
    const pt=site.p.clone().project(camera);
