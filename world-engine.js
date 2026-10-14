@@ -685,7 +685,11 @@ class World {
     for(const result of finished){
      affected.add(result.guild);
      for(const member of this.players.values())
-      if(member.save.guild===result.guild)this.tell(member,result.text);
+      if(member.save.guild===result.guild){
+       if(result.kind==='construction')
+        this.send(member.socket,{type:'system',text:result.text});
+       else this.tell(member,result.text);
+      }
     }
     // Avisar conclusão na hora, sem o atraso periódico de até oito segundos
     // do snapshot: o contador 00:00 vira prédio definitivo no mesmo tick.
