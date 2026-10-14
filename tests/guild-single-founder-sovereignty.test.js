@@ -135,8 +135,9 @@ test('fundador legado pode fundar outra guilda ao sair, sem perder seus dados',t
 });
 test('as regras políticas atualizadas são visíveis na interface e no guia',()=>{
  const social=fs.readFileSync(path.join(__dirname,'../public/mmo.js'),'utf8');
+ const recruitment=fs.readFileSync(path.join(__dirname,'../public/guild-recruitment.js'),'utf8');
  const guide=fs.readFileSync(path.join(__dirname,'../public/guia.html'),'utf8');
- assert.ok(social.includes('Fundar guilda (250 moedas)'));
+ assert.ok(recruitment.includes('Fundar guilda (250 moedas)'));
  assert.doesNotMatch(social,/createGuild\.disabled=Boolean\(s\.guildFounded\)/);
  assert.ok(social.includes('crown.uncontested'));
  assert.match(guide,/fundar outra guilda/i);
