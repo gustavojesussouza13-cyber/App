@@ -252,7 +252,9 @@
    if(!dlg.open||!result?.ok||!result.opKey)return;
    if(awaitingDurable.get(result.opKey)!==result.id)return;
    awaitingDurable.delete(result.opKey);
-   say('Obra registrada e salva permanentemente no banco do reino.','success');
+   say(state?.demo?
+    'Obra registrada na demonstração (dados fictícios, sem salvamento permanente).':
+    'Obra registrada e salva permanentemente no banco do reino.','success');
    paint();
   }
   function paint(){
