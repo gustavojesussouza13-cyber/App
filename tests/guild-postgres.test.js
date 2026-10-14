@@ -101,7 +101,7 @@ test('PostgreSQL conserva obras em salas privadas, conclui ao voltar e restaura 
  const client={socket:{},authUser:{uid:accountId,username:'ArquitetoCI'},worldPlayer:null};
  privateRoom.world.join(client,{name:'ArquitetoCI'});
  hub.entered(privateRoom);
- const p=client.worldPlayer;p.x=768;p.y=512;p.save.coins=11000;
+ const p=client.worldPlayer;p.zone=1;p.save.zone=1;p.x=768;p.y=512;p.save.coins=11000;
  privateRoom.world.guild(p,{action:'create',name:guildName});
  assert.equal(p.save.guild,guildName,'criação da guilda deve ser aceita antes de fundar capital');
  const act=(action,now=Date.now())=>politics.action(privateRoom.world,p,action,{now,walkable:()=>true,portals:[],npcs:[]});
