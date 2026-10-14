@@ -29,14 +29,14 @@ test('criaturas e chefes no PC usam animação exclusiva do Atelier antes do atl
 test('classe do servidor, nome e posicionamento obedecem a arte desenhada em PC',()=>{
  const art=source('art16.js');
  assert.match(art,/const finalRole=studioHero\?spriteStudio\.normalizeRole\(p\.role\)/);
- assert.match(art,/const labelY=p\.y-\(studioHero\?87:pngSprite\?80/);
+ assert.match(art,/const labelY=p\.y-\(studioHero\?\(premiumPc\?87:69\):pngSprite\?80/);
  assert.match(art,/const nameY=y-\(studioNpc\?91:pngNpc\?82/);
  assert.match(art,/#0d202019/);
 });
 test('versões atualizadas invalidam cache do Chrome sem mudar mobile',()=>{
  const html=source('mundo.html'),studio=source('sprite-studio.js');
  assert.match(html,/sprite-studio\.js\?v=atelier-custom-v1/);
- assert.match(html,/art16\.js\?v=pixel-art-v1&pc=reinos-v1/);
+ assert.match(html,/art16\.js\?v=atelier-custom-v1/);
  assert.match(studio,/state\.desktopPremium===true/);
  assert.ok(html.indexOf('/sprite-studio.js')<html.indexOf('/art16.js'));
  assert.doesNotMatch(source('mmo.css'),/class-skill-fx-v1/);
