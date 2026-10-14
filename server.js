@@ -5,7 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const { TextDecoder } = require('node:util');
-const {World} = require('./world-engine');
+const {World,CLASSES} = require('./world-engine');
 const {RoomHub,RoomError,MAIN_ID,MAX_PER_ROOM,ownerId}=require('./room-hub');
 const {MobileCoop} = require('./mobile-coop');
 const {ChatGuard,inspectNickname}=require('./chat-safety');
@@ -73,6 +73,7 @@ const rooms=new RoomHub({mainWorld:world,createWorld:()=>{
  instance.saved=world.saved;
  instance.monsterPersistenceEnabled=false; // salas temporárias evoluem criaturas localmente e não sobrescrevem o mundo permanente.
  instance.guilds=world.guilds;
+ instance.guildDefenseTargets=world.guildDefenseTargets; // alvos válidos entre salas, sem PvP global
  instance.sharedGuildWorlds=()=>rooms.allWorlds();
  instance.day=world.day;
  instance.kingdomTickLeader=false; // Uma campanha se resolve uma vez, mesmo com várias salas.
@@ -434,7 +435,13 @@ function switchWorldRoom(c,data){
  if([...target.world.players.values()].some(p=>p.name.toLocaleLowerCase('pt-BR')===player.name.toLocaleLowerCase('pt-BR')&&p.uid!==player.uid))
   return send(c.socket,{type:'roomSwitchError',code:'name_taken',message:'Já existe um personagem com seu nome nessa sala.'});
  const save=structuredClone(player.save),uid=player.uid;
+ // A troca de sala é o ÚNICO momento em que a classe de personagens
+ // evoluídos pode mudar. A escolha é validada antes de liberar a sala antiga.
+ const newRole=data.role===undefined?save.role:data.role;
+ if(typeof newRole!=='string'||!Object.hasOwn(CLASSES,newRole))
+  return send(c.socket,{type:'roomSwitchError',code:'invalid_class',message:'Escolha uma classe válida para a nova sala.'});
  const login={name:player.name,role:save.role,token:c.roomToken};
+ c.roomTransferRole=newRole;
  c.roomTransferSave=save;
  c.roomTransferUid=uid;
  from.world.leave(c);
@@ -445,17 +452,22 @@ function switchWorldRoom(c,data){
   if(!c.worldPlayer)throw new Error('Não foi possível entrar na nova sala.');
   rooms.entered(target);
   rooms.left(from);
+  // Confirma a classe escolhida no armazenamento persistente da conta.
+  // Em sala temporária, o persist() redireciona ao mundo permanente.
+  const written=target.world.persist();
+  if(written&&typeof written.catch==='function')void written.catch(err=>console.error('[salas] persistência da classe:',err.message));
   console.info('[salas] transferência concluída entre salas.');
  }catch(err){
   // Restaura a mesma sessão e o mesmo personagem se algo inesperado impedir
   // a entrada. Tokens pessoais jamais vão para logs ou eventos públicos.
   c.worldRoom=from;
+  delete c.roomTransferRole; // restauração nunca troca a classe por acidente
   if(!c.worldPlayer)from.world.join(c,login);
   if(c.worldPlayer)rooms.entered(from);
   send(c.socket,{type:'roomSwitchError',code:'switch_failed',message:'Falha ao trocar de servidor. Você permaneceu na sala anterior.'});
   console.error('[salas] troca interrompida:',err.message);
  }finally{
-  delete c.roomTransferSave;delete c.roomTransferUid;
+  delete c.roomTransferSave;delete c.roomTransferUid;delete c.roomTransferRole;
  }
 }
 function receive(c,data){
