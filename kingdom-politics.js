@@ -200,7 +200,6 @@ function forts(world){
 // Quando houver rivais, somente território efetivamente disputado conta.
 function eligibleKingdoms(world){
  return [...world.guilds.entries()].filter(([key,g])=>
-  g?.base&&Number.isInteger(g.base.zone)&&g.base.zone>=0&&g.base.zone<BUILDABLE_REGIONS&&
   Array.isArray(g.members)&&g.members.length>0&&g.leader&&g.members.includes(g.leader));
 }
 function politicalMap(world){
@@ -209,9 +208,9 @@ function politicalMap(world){
  return Array.from({length:CONTINENT_REGIONS},(_,zone)=>{
   if(zone>=BUILDABLE_REGIONS)
    return {zone,buildable:false,ruler:null,influence:0,contested:false};
-  const contenders=eligible.filter(([key,g])=>g.base.zone===zone||Number(g.influence?.[zone])>0)
+  const contenders=eligible.filter(([key,g])=>(g.base?.zone===zone&&g.base.zone<BUILDABLE_REGIONS)||Number(g.influence?.[zone])>0)
    .map(([key,g])=>({key,name:g.name,
-    influence:Math.max(0,Number(g.influence?.[zone])||(g.base.zone===zone?1:0))}))
+    influence:Math.max(0,Number(g.influence?.[zone])||(g.base?.zone===zone?1:0))}))
    .filter(c=>c.influence>0)
    .sort((a,b)=>b.influence-a.influence||a.name.localeCompare(b.name,'pt-BR'));
   // Empates não são vitórias. Um reino só deve mandar numa região
@@ -265,7 +264,7 @@ function continentalSovereign(world){
  const key=crownCandidate(world);
  if(!key)return null;
  const g=world.guilds.get(key);
- if(!g?.base||!g.leader||!g.members?.includes(g.leader))return null;
+ if(!g?.leader||!g.members?.includes(g.leader))return null;
  const territories=politicalMap(world).filter(zone=>zone.ruler===g.name).length;
  return {guildKey:key,guildName:g.name,leaderUid:g.leader,territories,
   uncontested:eligibleKingdoms(world).length===1};
