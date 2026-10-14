@@ -144,6 +144,9 @@ function marchPosition(march,now=Date.now()){
 function publicState(world,p){
  const your=guildFor(world,p);
  return {continent:CONTINENT_REGIONS,buildable:BUILDABLE_REGIONS,
+  // A capital pode ser visitada por convidados, mas construções permanentes
+  // requerem conta. Evita prédios provisórios que jamais seriam aceitos.
+  persistentAccount:Boolean(p?.isAccount),
   walletCoins:Math.max(0,Math.floor(Number(p?.save?.coins)||0)),
   zones:politicalMap(world),bases:forts(world).map(b=>({name:b.name,zone:b.zone,x:b.x,y:b.y,
    level:b.level,realm:b.name})),
@@ -186,8 +189,11 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
    world.dirty=true;
   }
   if(requestId!==null)world.send(p.socket,{type:'kingdomActionResult',id:requestId,action:op,opKey,ok,message});
-  // A capital mostra a mensagem no próprio diário: não abrir alert() bloqueante
-  // do mundo 2D, que pode congelar a tela e simular timeout de construção.
+  // Construir na capital registra o snapshot de guildas e carteira na fila
+  // durável imediatamente, sem esperar o autosave de 30 segundos. Nas salas
+  // personalizadas, world.persist() propaga o snapshot ao mundo principal.
+  if(ok&&replayable)world.persist();
+  // A capital mostra a mensagem no próprio diário; nenhum alert bloqueante.
   response(world,p,message,requestId===null);
  };
  const reject=message=>report(message,false);
