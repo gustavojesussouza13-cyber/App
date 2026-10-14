@@ -11,45 +11,42 @@ function fakeHub(){
  const hub=new RoomHub({mainWorld:world(),createWorld:world,now:()=>time,maxRooms:12});
  return {hub,world,tick(ms){time+=ms},get stopped(){return stopped}};
 }
-test('a praça pública existe sem senha; salas dos jogadores têm capacidade de dez',()=>{
+test('a praça pública e todas as salas dos jogadores são públicas para até 60',()=>{
  const h=fakeHub();
  assert.deepEqual(h.hub.list(),[{id:MAIN_ID,name:'Auren — Praça Pública',online:0,capacity:60,locked:false,primary:true}]);
  const room=h.hub.create({name:'Cavaleiros da Aurora',password:'',owner:'account:alpha'});
  assert.equal(room.capacity,MAX_PER_ROOM);assert.equal(room.locked,false);
  assert.equal(h.hub.list().length,1,'salas vazias não aparecem no catálogo');
- assert.throws(()=>h.hub.check(room.id,''),e=>e.code==='room_pending');
+ assert.equal(h.hub.check(room.id,'').id,room.id,'uma sala pública permite entrada mesmo antes do criador');
  assert.equal(h.hub.check(room.id,'',{owner:'account:alpha'}).id,room.id);
  h.hub.get(room.id).world.count=1;h.hub.entered(h.hub.get(room.id));
  assert.equal(h.hub.list().length,2);
  assert.equal(h.hub.count(),1);
  assert.equal(h.hub.get(room.id).ownerId,'account:alpha');
 });
-test('uma sala privada nunca revela a senha e rejeita acessos incorretos',()=>{
+test('senhas recebidas no pedido são ignoradas: todas as salas permanecem públicas',()=>{
  const h=fakeHub();
- const r=h.hub.create({name:'Salão Guardião',password:'secreto42',owner:'account:bravo'});
- assert.equal(h.hub.list().length,1);
- const publicInfo=r;
- assert.equal(publicInfo.locked,true);
- assert.ok(!JSON.stringify(publicInfo).includes('secreto42'));
- assert.ok(!JSON.stringify(publicInfo).includes('bravo'));
- assert.equal(h.hub.get(r.id).password,undefined);
- assert.throws(()=>h.hub.check(r.id,'outra',{owner:'account:bravo'}),e=>e.code==='wrong_room_password'&&e.status===403);
- assert.throws(()=>h.hub.check(r.id,'',{owner:'account:bravo'}),e=>e.code==='wrong_room_password');
- assert.equal(h.hub.check(r.id,'secreto42',{owner:'account:bravo'}).id,r.id);
- h.hub.get(r.id).world.count=1;h.hub.entered(h.hub.get(r.id));
- assert.equal(h.hub.list().find(x=>x.id===r.id).locked,true);
+ const room=h.hub.create({name:'Salão Guardião',password:'secreto42',owner:'account:bravo'});
+ assert.equal(room.locked,false);
+ assert.equal(h.hub.get(room.id).locked,false);
+ assert.equal(h.hub.get(room.id).hash,undefined);
+ assert.equal(h.hub.get(room.id).salt,undefined);
+ assert.equal(h.hub.check(room.id,'qualquer senha',{uid:'account:alguem'}).id,room.id);
+ assert.equal(h.hub.check(room.id,undefined,{uid:'account:outro'}).id,room.id);
+ h.hub.get(room.id).world.count=1;h.hub.entered(h.hub.get(room.id));
+ assert.equal(h.hub.list().find(x=>x.id===room.id).locked,false);
+ assert.ok(!JSON.stringify(h.hub.list()).includes('secreto42'));
 });
-test('não aceitar nomes inadequados, duplicados, senhas curtas nem salas ilimitadas',()=>{
+test('não aceitar nomes inadequados ou duplicados e respeitar os limites de salas',()=>{
  const h=fakeHub();
  assert.throws(()=>h.hub.create({name:'ab',owner:'account:a'}),e=>e.code==='invalid_room');
  assert.throws(()=>h.hub.create({name:'<img>',owner:'account:a'}),e=>e.code==='invalid_room');
- assert.throws(()=>h.hub.create({name:'Novo Reino',password:'123',owner:'account:a'}),e=>e.code==='invalid_password');
- h.hub.create({name:'Novo Reino',owner:'account:a'});
+ assert.equal(h.hub.create({name:'Novo Reino',password:'123',owner:'account:a'}).locked,false);
  assert.throws(()=>h.hub.create({name:'novo reino',owner:'account:b'}),e=>e.code==='room_name_taken');
  assert.throws(()=>h.hub.create({name:'Outra Sala',owner:'account:a'}),e=>e.code==='owner_has_room');
  for(let i=1;i<11;i++)h.hub.create({name:'Sala '+i,owner:'account:'+i});
  assert.equal(h.hub.rooms.size,12,'salas pendentes também ocupam vagas de criação');
- assert.equal(h.hub.list().length,1,'salas pendentes não aparecem como 0/10');
+ assert.equal(h.hub.list().length,1,'salas pendentes não aparecem como 0/60');
  assert.throws(()=>h.hub.create({name:'Sala Lotada',owner:'account:extra'}),e=>e.code==='rooms_full');
 });
 test('capacidade é por sala, sem esgotar a capacidade de salas distintas',()=>{
@@ -82,7 +79,7 @@ test('reserva vazia fica invisível e desaparece após sessenta segundos',()=>{
  const h=fakeHub(),created=h.hub.create({name:'Convite Pendente',owner:'account:a'});
  assert.equal(h.hub.list().length,1);
  assert.equal(h.hub.check(created.id,'',{owner:'account:a'}).id,created.id);
- assert.throws(()=>h.hub.check(created.id,'',{owner:'account:b'}),e=>e.code==='room_pending');
+ assert.equal(h.hub.check(created.id,'',{owner:'account:b'}).id,created.id,'qualquer jogador pode entrar numa sala pública pendente');
  h.tick(PENDING_MS-1);h.hub.clean();assert.ok(h.hub.get(created.id));
  h.tick(2);h.hub.clean();assert.equal(h.hub.get(created.id),undefined);
  assert.equal(h.stopped,1);
