@@ -40,11 +40,11 @@ test('60 níveis de fortaleza aumentam armazenamento, espaços e defesa sem supe
 test('cada edifício tem ciclo próprio e coletar um pronto não reinicia os demais',t=>{
  const {g,act,now}=fixture(t);
  const entries=[
-  {type:'house',x:1,y:2},
-  {type:'farm',x:5,y:2},
-  {type:'market',x:9,y:2},
-  {type:'barracks',x:1,y:6},
-  {type:'tower',x:6,y:6}
+  {type:'house',x:6,y:9},
+  {type:'farm',x:8,y:15},
+  {type:'market',x:16,y:12},
+  {type:'barracks',x:11,y:7},
+  {type:'tower',x:8,y:9}
  ];
  for(const {type,x,y} of entries)assert.equal(act({action:'construct',buildingType:type,x,y}),true,type);
  assert.deepEqual(entries.map(({type})=>policy.CITY_PRODUCTION_MS[type]),[240000,480000,720000,960000,1200000]);
@@ -66,29 +66,29 @@ test('cada edifício tem ciclo próprio e coletar um pronto não reinicia os dem
 });
 test('evolução de edifício aumenta rendimento e acelera tempo até nível 60',t=>{
  const f=fixture(t);
- assert.equal(f.act({action:'construct',buildingType:'farm',x:5,y:2}),true);
+ assert.equal(f.act({action:'construct',buildingType:'farm',x:8,y:15}),true);
  const farm=f.g.city.buildings[0];
  const initial=policy.productionState(f.g.city,farm,f.now+3*60000);
  assert.equal(initial.cycleMs,8*60000);
  assert.equal(initial.yields.food,8);
  f.g.city.stock={food:40000,timber:40000,stone:40000,coins:0};
  const upgradeAt=f.now+60000;
- assert.equal(f.act({action:'buildingUpgrade',x:5,y:2},upgradeAt),true);
+ assert.equal(f.act({action:'buildingUpgrade',x:8,y:15},upgradeAt),true);
  assert.equal(farm.level,2);
  const second=policy.productionState(f.g.city,farm,upgradeAt);
  assert.ok(second.cycleMs<initial.cycleMs);
  assert.equal(second.yields.food,16);
  farm.level=59;
- assert.equal(f.act({action:'buildingUpgrade',x:5,y:2},upgradeAt+1),true);
+ assert.equal(f.act({action:'buildingUpgrade',x:8,y:15},upgradeAt+1),true);
  assert.equal(farm.level,60);
  const max=policy.productionState(f.g.city,farm,upgradeAt+1);
  assert.equal(max.yields.food,480);
  assert.equal(max.cycleMs,96000);
- assert.equal(f.act({action:'buildingUpgrade',x:5,y:2},upgradeAt+2),false);
+ assert.equal(f.act({action:'buildingUpgrade',x:8,y:15},upgradeAt+2),false);
 });
 test('salvamento antigo migra produção individual sem duplicar coleta ou perder progresso',t=>{
  const f=fixture(t);
- assert.equal(f.act({action:'construct',buildingType:'farm',x:5,y:2}),true);
+ assert.equal(f.act({action:'construct',buildingType:'farm',x:8,y:15}),true);
  const farm=f.g.city.buildings[0];
  f.g.city.lastCollectedAt=f.now+10*60000;delete farm.productionAt;
  assert.equal(f.act({action:'collect'},f.now+11*60000),false);
