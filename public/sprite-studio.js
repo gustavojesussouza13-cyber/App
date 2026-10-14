@@ -13,6 +13,7 @@
  const SHADE=typeof module==='object'&&module.exports?require('./shading16'):globalThis.OsPeregrinosShade16;
  const ATELIER=typeof module==='object'&&module.exports?require('./character-atelier16'):globalThis.OsPeregrinosCharacterAtelier;
  const POLISH=typeof module==='object'&&module.exports?require('./sprite-polish16'):globalThis.OsPeregrinosSpritePolish16;
+ const APPEARANCE=typeof module==='object'&&module.exports?require('./appearance16'):globalThis.PeregrinosAppearance16;
  const W=40,H=52;
  const ROLES=Object.freeze({
   peregrino:{coat:'#8a6245',edge:'#402e32',light:'#b99163',trim:'#dcc28e',hair:'#493328',skin:'#e1af7f',boots:'#352b34',metal:'#acb6a4',gem:'#a9e6ca'},
@@ -66,8 +67,8 @@
    pix(g,base,x,y,w,h);
    if(shine)pix(g,shine,x+2,y+1,Math.max(1,w-4),2);
   };
-  function heroFrame(g,role,dir,action,frame){
-   const c=ROLES[role]||ROLES.peregrino,front=dir===2,back=dir===0,side=dir===1||dir===3;
+  function heroFrame(g,role,dir,action,frame,appearance=null){
+   const c=appearance&&APPEARANCE?APPEARANCE.palette(ROLES[role]||ROLES.peregrino,appearance):ROLES[role]||ROLES.peregrino,front=dir===2,back=dir===0,side=dir===1||dir===3;
    const cycle=action==='walk'?[0,2,3,1,0,-1][frame%6]:0;
    const step=action==='walk'?[0,3,2,-2,-3,-2][frame%6]:0;
    const breathe=action==='idle'?[0,0,1,0][frame%4]:0;
@@ -166,6 +167,9 @@
    // o capuz e a aljava do arqueiro para guardião nem curandeiro.
    ATELIER?.classIdentity?.(g,c,{role,dir,action,frame,by});
    POLISH?.hero(g,{role,dir,action,frame,by});
+   // Detalhes individuais no próprio quadro 40×52, sem aumentar pixels,
+   // apagar a silhueta da classe ou interpolar o sprite original.
+   if(appearance&&APPEARANCE)APPEARANCE.details(g,c,appearance,{dir,by,action,frame});
    // Golpe percebido por um contorno curto que não altera hitbox.
    if(action==='hurt'&&frame%3!==2){
     pix(g,'#fff0dc',10,17,24,2);
@@ -290,7 +294,7 @@
    if(action==='death')g.restore();
    if(dir===3)g.restore();
   }
-  function obtain(kind,name,dir,action,frame,boss,zone,species=0,npc=null){
+  function obtain(kind,name,dir,action,frame,boss,zone,species=0,npc=null,appearance=null){
    const group=kind==='hero'?ROLES:CREATURES;
    if(kind==='hero')name=normalizeRole(name);
    else if(kind!=='npc'&&!group[name])name='limo';
@@ -298,7 +302,8 @@
    action=phases[action]?action:'idle';
    frame=((Number.isFinite(frame)?Math.floor(frame):0)%phases[action]+phases[action])%phases[action];
    const id=kind==='npc'?(npc?.id||npc?.name||name):'';
-   const key=[kind,name,dir,action,frame,boss?1:0,kind==='monster'?family(zone):0,kind==='monster'?species:id].join(':');
+   const key=[kind,name,dir,action,frame,boss?1:0,kind==='monster'?family(zone):0,kind==='monster'?species:id,
+    kind==='hero'&&appearance&&APPEARANCE?APPEARANCE.key(appearance):''].join(':');
    let sprite=cache.get(key);
    if(sprite){cache.delete(key);cache.set(key,sprite);return sprite}
    if(!documentRef?.createElement)return null;
@@ -306,7 +311,7 @@
    const g=canvas.getContext('2d');
    if(!g)return null;
    g.imageSmoothingEnabled=false;
-   if(kind==='hero')heroFrame(g,name,dir,action,frame);
+   if(kind==='hero')heroFrame(g,name,dir,action,frame,appearance);
    else if(kind==='npc'&&ATELIER?.npc){
     ATELIER.npc(g,npc||{name}, {dir,action,frame});
     POLISH?.npc(g,{style:name,dir,action,frame});
@@ -328,7 +333,7 @@
   function drawHero(g,p,now,state={}){
    if(!g?.drawImage)return false;
    const sel=pose({now,moving:state.moving,attacking:state.attacking,hurt:state.hurt,elapsed:state.elapsed,seed:state.seed||0});
-   const sheet=obtain('hero',p.role,p.dir,sel.action,sel.frame,false,0);
+   const sheet=obtain('hero',p.role,p.dir,sel.action,sel.frame,false,0,0,null,p.appearance);
    if(!sheet)return false;
    g.imageSmoothingEnabled=false;
    const pc=state.desktopPremium===true;
