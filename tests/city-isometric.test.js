@@ -52,8 +52,10 @@ test('patrulha caminha, retorna e nunca duplica soldados',t=>{
  world.guild(p,{action:'create',name:'Guardas do Vale'});
  const options={walkable:()=>true,portals:[],npcs:[],now:100000};
  assert.equal(politics.action(world,p,{action:'place',x:768,y:512},options),true);
- assert.equal(politics.action(world,p,{action:'recruit',unit:'militia',count:12},options),true);
  const guild=world.guilds.get('guardas do vale');
+ guild.city={buildings:[{type:'barracks',x:8,y:8,w:4,h:3,level:1,status:'complete'}],
+  stock:{food:200,timber:200,stone:200,coins:0},lastCollectedAt:100000};
+ assert.equal(politics.action(world,p,{action:'train',unit:'militia',count:12},options),true);
  assert.equal(politics.action(world,p,{action:'patrol',zone:3},options),true);
  assert.equal(politics.troopCount(guild.army),0);
  assert.equal(politics.action(world,p,{action:'patrol',zone:2},options),false);
