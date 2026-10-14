@@ -577,7 +577,8 @@ class World {
   if(now-(p.lastGuildDefenseAttack||0)<700)return false;
   p.lastGuildDefenseAttack=now;p.lastCombatAt=now;
   const r=rpg.calculateAttributes(p.save);
-  const amount=Math.max(5,Math.round((CLASSES[p.save.role].attack+p.save.level*1.5+r.stats.attackPower*.1)*.75));
+  const rating=p.save.role==='curandeiro'?r.stats.magicPower:r.stats.physicalPower;
+  const amount=Math.max(5,Math.round((CLASSES[p.save.role].attack+p.save.level*1.5+Math.max(0,Number(rating)||0)*.1)*.75));
   const damage=Math.min(amount,Math.max(0,target.save.hp-1));
   if(damage<=0)return false;
   target.save.hp-=damage;target.lastCombatAt=now;
