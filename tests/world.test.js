@@ -65,7 +65,8 @@ test('equipes, missões e mercado funcionam como Visitante; guilda permanente ex
  w.server.guild(a.p,{action:'create',name:'Aurora Viva'});
  assert.equal(a.p.save.guild,null,'Visitante não funda guilda permanente');
  assert.equal(w.server.guilds.has('aurora viva'),false);
- w.server.buy(a.p,'pocao');assert.ok(a.p.save.inventory.pocao>=4);
+ // Compra remota fica bloqueada mesmo quando o jogador possui moedas.
+ assert.equal(w.server.buy(a.p,'pocao'),false);assert.equal(a.p.save.inventory.pocao,3);
  a.p.save.kills=6;w.server.claimQuests(a.p);assert.ok(a.p.save.quests.includes('primeiro-passo'));
 });
 test('comércio só permite entregar itens possuídos e jogadores próximos',t=>{
@@ -80,7 +81,8 @@ test('viagens aceitam vizinhas e chave para masmorras; teleportes remotos são r
  w.server.travel(a.p,11);assert.equal(a.p.zone,0);
  w.server.travel(a.p,1);assert.equal(a.p.zone,1);
  w.server.travel(a.p,12);assert.equal(a.p.zone,1);
- a.p.save.inventory.chave=1;w.server.travel(a.p,12);assert.equal(a.p.zone,12);assert.equal(a.p.save.inventory.chave,0);
+ a.p.save.inventory.chave=1;w.server.travel(a.p,12);assert.equal(a.p.zone,1,'comprar ou possuir chave não contorna missão');
+ a.p.save.story.stage=2;w.server.travel(a.p,12);assert.equal(a.p.zone,12);assert.equal(a.p.save.inventory.chave,1,'permissão narrativa não consome chave na reentrada');
  w.server.travel(a.p,1);assert.equal(a.p.zone,1);
 });
 test('classes e vida persistem; API protege faixas de movimentação',t=>{
