@@ -146,7 +146,7 @@ try{
   pendingBuilding:document.querySelector('.guild3d-canvas')?.dataset.pendingBuilding,
   receipts:successfulRequests.size
  }));
- console.log('GUILD_LOST_ACK_DIAGNOSTIC',JSON.stringify(lostDiagnostic));
+ console.log('GUILD_LOST_ACK_DIAGNOSTIC',JSON.stringify({...lostDiagnostic,pageErrors}));
  await page.waitForFunction(()=>document.querySelector('.guild3d-wallet')?.textContent?.includes('8.260 moedas'),null,{timeout:6000});
  assert.match(await page.locator('.guild3d-wallet').innerText(),/8.260 moedas/,'retry não pode cobrar novamente');
  assert.equal(await canvas.getAttribute('data-pending-building'),null,'prédio sincronizado deixa de ser provisório');
