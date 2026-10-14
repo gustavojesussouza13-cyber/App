@@ -88,6 +88,8 @@ const rooms=new RoomHub({mainWorld:world,createWorld:()=>{
  };
  return instance;
 }});
+// As decisões de guilda atravessam salas e notificam todos os membros em tempo real.
+world.sharedGuildWorlds=()=>rooms.allWorlds();
 // As guildas/cidades são compartilhadas, mas as conexões estão divididas
 // em salas. Quando uma construção termina, avisar a TODAS as salas, inclusive
 // quando a Praça Pública estiver vazia.
@@ -553,6 +555,12 @@ const start=async()=>{
  try{
   if(accountStore){
    await accountStore.initialize(world);
+   // Limpeza transacional de guildas antigas vazias e membros desvinculados.
+   // Guildas com jogadores apenas offline permanecem intactas.
+   if(world.reconcileGuilds()){
+    if(await world.persist()!==true)throw new Error('Não foi possível confirmar a limpeza das guildas no PostgreSQL');
+    console.info('[guildas] registros órfãos reconciliados e persistidos');
+   }
    console.log('[contas] Postgres conectado: contas e progresso no armazenamento externo');
    const grant=await grantOwnerBenefits({pool:accountStore.pool,world,ownerEmail:process.env.OWNER_ACCOUNT_EMAIL});
    if(grant.status!=='disabled')console.log('[privilégios] Concessão ao proprietário: '+grant.status+
