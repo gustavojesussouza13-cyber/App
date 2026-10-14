@@ -20,12 +20,19 @@
    '<div class="guild3d-hud"><span>Arraste para girar · Roda para aproximar · Shift + arraste para mover</span><span id="guild3dCoords">Terreno 26×26 · 3D</span></div></div>'+
    '<aside class="guild3d-sidebar"><div class="guild3d-label">TESOURO E RECURSOS</div><div id="guild3dStock" class="guild3d-stocks"></div>'+
    '<button type="button" id="guild3dCollect" class="guild3d-action">✦ Coletar produção</button>'+
-   '<div class="guild3d-label">URBANISMO</div><div class="guild3d-note">Toda a área verde é edificável. Apenas os terrenos ocupados e o castelo central são reservados.</div>'+
+    '<div class="guild3d-label">EXPANSÃO DO REINO</div><p id="guild3dProgress" class="guild3d-note"></p>'+
+    '<button type="button" id="guild3dUpgrade" class="guild3d-action">♜ Evoluir fortaleza</button>'+
+    '<button type="button" id="guild3dFortify" class="guild3d-action">🛡 Reforçar muralhas</button>'+
+    '<button type="button" id="guild3dSiege" class="guild3d-action" hidden>⚔ Cercar fortaleza rival</button>'+
+   '<div class="guild3d-label">URBANISMO</div><div class="guild3d-note">A área clara é edificável. Melhore a fortaleza para liberar mais terrenos e aumentar os estoques.</div>'+
    '<div id="guild3dCityState" class="guild3d-note" role="status">Carregando construções...</div>'+
    '<div class="guild3d-label">OBRAS EM ANDAMENTO</div><div id="guild3dBuildQueue" class="guild3d-build-queue" aria-label="Tempo restante de todas as construções"></div>'+
    '<div id="guild3dChoices" class="guild3d-choices"></div>'+
    '<div id="guild3dArmy" class="guild3d-army"><div class="guild3d-label">TREINAMENTO MILITAR</div><select id="guild3dSoldier" aria-label="Tipo de tropa"></select>'+
-   '<div class="guild3d-train"><input id="guild3dCount" type="number" min="1" max="40" value="1" aria-label="Quantidade de soldados"><button type="button" id="guild3dTrain">⚔ Treinar tropas</button></div></div>'+
+   '<div class="guild3d-train"><input id="guild3dCount" type="number" min="1" max="40" value="1" aria-label="Quantidade de soldados"><button type="button" id="guild3dTrain">⚔ Treinar tropas</button></div>'+
+    '<p id="guild3dEscortInfo" class="guild3d-note"></p>'+
+    '<button type="button" id="guild3dDeploy" class="guild3d-action">➤ Requisitar escolta imediata</button>'+
+    '<button type="button" id="guild3dRecall" class="guild3d-action">↩ Recolher escolta</button></div>'+
    '<div class="guild3d-label">DIÁRIO DA CAPITAL</div><p id="guild3dFeedback" class="guild3d-feedback" role="status" aria-live="polite">Escolha uma construção e selecione um terreno livre.</p>'+
    '<p id="guild3dVisitor" class="guild3d-note" hidden>Esta cidade pertence a outra guilda. Somente seu líder pode construir ou melhorar edifícios.</p>'+
    '</aside></div></div>';
@@ -359,7 +366,7 @@
    if(occupiedPreview){
     say('Este lote já está ocupado. Escolha outro espaço.','info');return;
    }
-   if(!layout.canPlace(structuresWithPreviews(),selected,x,y)){
+   if(!layout.canPlace(structuresWithPreviews(),selected,x,y,base?.level||1)){
     say('Lote indisponível: existem construções ou o castelo neste terreno.','info');return;
    }
    const price=types[selected][1],coins=spendableCoins();
@@ -425,7 +432,12 @@
    if(!owns()||!soldier.value)return;
    sendOperation('train',{unit:soldier.value,count:Number(count.value)});
   };
-  dlg.addEventListener('close',()=>{
+  q('guild3dUpgrade').onclick=()=>sendOperation('upgrade',{});
+   q('guild3dFortify').onclick=()=>sendOperation('fortify',{});
+   q('guild3dDeploy').onclick=()=>sendOperation('escort',{unit:soldier.value,count:Number(count.value)});
+   q('guild3dRecall').onclick=()=>sendOperation('recall',{});
+   q('guild3dSiege').onclick=()=>sendOperation('siege',{target:base.name.toLocaleLowerCase('pt-BR')});
+   dlg.addEventListener('close',()=>{
    // Evitar que um evento "close" enfileirado destrua uma nova sessão 3D
    // quando o jogador reabre a mesma capital imediatamente.
    if(!dlg.open)cleanupCity();
