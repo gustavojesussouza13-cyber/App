@@ -25,7 +25,7 @@ test('pacote de construção não substitui o roteamento kingdom por house',()=>
  const messages=[],send=createRealClientSend(messages);
  assert.match(guildSource,/sendOperation\('construct',\{buildingType:selected,x,y,target:base\.name\}/);
  assert.match(classicSource,/send\('kingdom',\{action:'construct',buildingType:selected,x,y,target:base\.name\}/);
- assert.equal(send('kingdom',{action:'construct',buildingType:'house',x:18,y:13}),true);
+ assert.equal(send('kingdom',{action:'construct',buildingType:'house',x:6,y:9}),true);
  assert.equal(messages[0].type,'kingdom');
  assert.equal(messages[0].buildingType,'house');
  // Mesmo um chamador incorreto não pode sobrescrever o tipo de mensagem.
@@ -49,7 +49,7 @@ test('caminho completo: envio WebSocket, construção autoritativa, estado e rec
  assert.equal(politics.action(world,player,{action:'place',x:768,y:512},options),true);
  const send=createRealClientSend(packets);
  const opKey='c1a0b123-32aa-4123-8abc-abcdef123456';
- assert.equal(send('kingdom',{action:'construct',buildingType:'house',x:18,y:13,requestId:101,opKey}),true);
+ assert.equal(send('kingdom',{action:'construct',buildingType:'house',x:6,y:9,requestId:101,opKey}),true);
  const packet=packets[0];
  assert.equal(packet.type,'kingdom');
  assert.equal(packet.buildingType,'house');
