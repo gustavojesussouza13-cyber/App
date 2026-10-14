@@ -222,7 +222,7 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
  // Uma chave aleatória por ação persiste nas tentativas de retransmissão da mesma operação.
  // A guilda guarda recibos de sucesso (incluídos no snapshot persistido da conta).
  const opKey=typeof d.opKey==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(d.opKey)?d.opKey:null;
- const replayable=['construct','buildingUpgrade','collect','train','escort','recall','fortify','siege'].includes(op);
+ const replayable=['construct','buildingUpgrade','collect','train','escort','recall','fortify','siege','upgrade'].includes(op);
  // "type" identifica o pacote WebSocket (kingdom); buildingType é o edifício.
  // Aceitar d.type legado permite que testes/chamadas diretas continuem válidos.
  const buildingType=typeof d.buildingType==='string'?d.buildingType:d.type;
@@ -395,7 +395,7 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
   p.save.coins-=cost;g.base.level=level+1;
   g.influence=g.influence||{};
   g.influence[g.base.zone]=Math.min(1000,Math.max(0,Number(g.influence[g.base.zone])||0)+1);
-  world.dirty=true;response(world,p,'Capital ampliada! Nível '+g.base.level+' · '+cityLayout.bounds(g.base.level).cells+' terrenos úteis · estoque '+stockCapacity(g.base.level)+' por recurso.');
+  world.dirty=true;accept('Capital ampliada! Nível '+g.base.level+' · '+cityLayout.bounds(g.base.level).cells+' terrenos úteis · estoque '+stockCapacity(g.base.level)+' por recurso.');
   world.send(p.socket,world.ownStatus(p));return true;
  }
  if(op==='recruit'){
@@ -440,6 +440,81 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
   for(const [id,fee] of Object.entries(cost))stock[id]-=fee*count;
   g.city.stock=stock;troops[unit]+=count;g.army=troops;world.dirty=true;
   accept(count+' unidades de '+UNITS[unit].name.toLowerCase()+' treinadas com recursos da cidade.');
+  return true;
+ }
+
+ if(op==='fortify'){
+  if(g.leader!==p.uid||!g.base||!g.city){reject('Somente o líder pode reforçar as defesas da capital.');return false}
+  const current=Math.max(0,Math.min(5,Number(g.base.defenseLevel)||0));
+  if(current>=g.base.level){reject('As muralhas já estão no limite deste nível da fortaleza.');return false}
+  const stock=stockCopy(g.city.stock),timber=(current+1)*10,stone=(current+1)*16;
+  if(stock.timber<timber||stock.stone<stone){reject('Necessários '+timber+' madeiras e '+stone+' pedras para reforçar as muralhas.');return false}
+  stock.timber-=timber;stock.stone-=stone;
+  g.city.stock=stock;g.base.defenseLevel=current+1;world.dirty=true;
+  accept('Muralhas reforçadas ao nível '+g.base.defenseLevel+' · defesa adicional de '+(g.base.defenseLevel*25)+' pontos.');
+  return true;
+ }
+ if(op==='escort'){
+  if(!g.base){reject('É necessário possuir uma fortaleza para requisitar tropas.');return false}
+  if(!Object.hasOwn(UNITS,d.unit)||!integer(d.count)||d.count<1||d.count>40){
+   reject('Requisite de 1 a 40 unidades válidas por vez.');return false
+  }
+  const army=armyCopy(g.army),deployed=escortOf(g,p.uid);
+  if(army[d.unit]<d.count){reject('Não há soldados suficientes desse tipo no estoque da guilda.');return false}
+  if(troopCount(deployed)+d.count>ESCORT_LIMIT){
+   reject('Sua escolta comporta no máximo '+ESCORT_LIMIT+' unidades.');return false
+  }
+  army[d.unit]-=d.count;deployed[d.unit]+=d.count;
+  g.army=army;g.escorts={...(g.escorts||{}),[p.uid]:deployed};world.dirty=true;
+  accept(d.count+' '+UNITS[d.unit].name.toLowerCase()+' mobilizados imediatamente. As tropas seguem seu personagem e atacam seus alvos.');
+  return true;
+ }
+ if(op==='recall'){
+  const deployed=escortOf(g,p.uid);
+  if(!troopCount(deployed)){reject('Você não possui uma escolta mobilizada.');return false}
+  const army=armyCopy(g.army);
+  for(const unit of Object.keys(UNITS))army[unit]+=deployed[unit];
+  g.army=army;
+  g.escorts={...(g.escorts||{})};delete g.escorts[p.uid];
+  world.dirty=true;accept('Sua escolta voltou instantaneamente à guarnição da guilda.');
+  return true;
+ }
+ if(op==='siege'){
+  if(!g.base){reject('Você precisa de uma fortaleza para participar de um cerco.');return false}
+  if((g.nextRaidAt||0)>now){reject('A guilda está se reorganizando. Aguarde '+Math.ceil((g.nextRaidAt-now)/1000)+' s para outro cerco.');return false}
+  const enemyKey=String(d.target||'').toLocaleLowerCase('pt-BR');
+  const defender=world.guilds.get(enemyKey);
+  if(!defender?.base||enemyKey===key){reject('Escolha uma fortaleza rival válida.');return false}
+  if(p.zone!==defender.base.zone||Math.hypot(p.x-defender.base.x,p.y-defender.base.y)>170){
+   reject('Aproxime-se da fortaleza inimiga para atacar com a sua escolta.');return false
+  }
+  const escort=escortOf(g,p.uid);
+  if(troopCount(escort)<5){reject('Leve ao menos 5 soldados na sua escolta para iniciar o cerco.');return false}
+  const defense=fortressDefense(defender,now);
+  const attackPower=power(escort)+Math.max(5,p.save.level*2);
+  const won=attackPower>defense.defense;
+  const ownSurvivors=armyCopy({});
+  for(const unit of Object.keys(UNITS))ownSurvivors[unit]=Math.floor(escort[unit]*(won?.72:.40));
+  g.escorts={...(g.escorts||{}),[p.uid]:ownSurvivors};
+  const defenderArmy=armyCopy(defender.army);
+  for(const unit of Object.keys(UNITS))
+   defenderArmy[unit]=Math.floor(defenderArmy[unit]*(won?.72:.93));
+  defender.army=defenderArmy;
+  g.influence=g.influence||{};defender.influence=defender.influence||{};
+  const region=defender.base.zone;
+  if(won){
+   g.influence[region]=Math.min(1000,(Number(g.influence[region])||0)+6);
+   defender.influence[region]=Math.max(0,(Number(defender.influence[region])||0)-4);
+  }else defender.influence[region]=Math.min(1000,(Number(defender.influence[region])||0)+1);
+  g.nextRaidAt=now+SIEGE_COOLDOWN;
+  world.dirty=true;
+  const details=(won?'Vitória':'Derrota')+' no cerco a '+defender.name+
+   ' · ataque '+attackPower+' / defesa '+defense.defense+
+   ' · '+troopCount(ownSurvivors)+' soldados sobreviventes seguem o comandante.';
+  accept(details);
+  // Alertar os defensores conectados, sem permitir que o cliente decida perdas.
+  for(const member of world.players.values())if(member.save.guild===defender.name)
+   world.tell(member,'⚔ A fortaleza da sua guilda sofreu um cerco! '+details);
   return true;
  }
  if(op==='patrol'){
@@ -560,4 +635,4 @@ function resolve(world,now=Date.now()){
  return finished;
 }
 module.exports={CONTINENT_REGIONS,BUILDABLE_REGIONS,BASE_COST,RELOCATE_COST,MAX_TROOPS,UNITS,
- armyCopy,troopCount,power,publicState,politicalMap,rank,marchRoute,marchPosition,collectCity,MILITARY_SUPPLIES,CITY_BUILD_MS,isComplete,resolveCityConstructions,action,resolve};
+ armyCopy,troopCount,power,publicState,politicalMap,rank,marchRoute,marchPosition,collectCity,MILITARY_SUPPLIES,CITY_BUILD_MS,stockCapacity,fortressDefense,escortOf,escortTotal,escortStrike,ESCORT_LIMIT,SIEGE_COOLDOWN,isComplete,resolveCityConstructions,action,resolve};
