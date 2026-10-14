@@ -8,10 +8,10 @@ const source=p=>fs.readFileSync(path.join(root,p),'utf8');
 
 test('PC retorna ao Atelier detalhado antes dos recortes PNG e dos bonecos V3',()=>{
  const art=source('art16.js');
- const hero=art.indexOf('const studioHero=(premiumPc||Boolean(p.appearance))&&Boolean(spriteStudio?.drawHero');
+ const hero=art.indexOf('const studioHero=Boolean(spriteStudio?.drawHero');
  const png=art.indexOf('const pngSprite=!studioHero&&Boolean(desktopSprites?.drawHero');
  const v3=art.indexOf('const illustratedV3=!studioHero&&!pngSprite&&Boolean(desktopCharactersV3?.drawHero');
- const npc=art.indexOf('const studioNpc=premiumPc&&Boolean(spriteStudio?.drawNpc');
+ const npc=art.indexOf('const studioNpc=Boolean(spriteStudio?.drawNpc');
  const npcPng=art.indexOf('const pngNpc=!studioNpc&&Boolean(desktopSprites?.drawNpc');
  assert.ok(hero>0&&png>hero&&v3>png,'a camada de blocos não pode substituir sprites detalhados');
  assert.ok(npc>0&&npcPng>npc,'identidade própria dos NPCs restaurada');
@@ -31,12 +31,12 @@ test('classe do servidor, nome e posicionamento obedecem a arte desenhada em PC'
  assert.match(art,/const finalRole=studioHero\?spriteStudio\.normalizeRole\(p\.role\)/);
  assert.match(art,/const labelY=p\.y-\(studioHero\?\(premiumPc\?87:69\):pngSprite\?80/);
  assert.match(art,/const nameY=y-\(studioNpc\?91:pngNpc\?82/);
- assert.match(art,/#0d202019/);
+ assert.match(art,/#0d20200d/);
 });
 test('versões atualizadas invalidam cache do Chrome sem mudar mobile',()=>{
  const html=source('mundo.html'),studio=source('sprite-studio.js');
- assert.match(html,/sprite-studio\.js\?v=atelier-custom-v1/);
- assert.match(html,/art16\.js\?v=atelier-custom-v1/);
+ assert.match(html,/sprite-studio\.js\?v=retro-world-v1/);
+ assert.match(html,/art16\.js\?v=retro-world-v1/);
  assert.match(studio,/state\.desktopPremium===true/);
  assert.ok(html.indexOf('/sprite-studio.js')<html.indexOf('/art16.js'));
  assert.doesNotMatch(source('mmo.css'),/class-skill-fx-v1/);
