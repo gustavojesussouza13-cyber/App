@@ -92,6 +92,7 @@ let selectedRoomId='auren-publica',roomCatalog=[],roomName='Praça Pública',pen
 let roomSwitchPending=false,roomSwitchTarget=null;
 let kingdomState=null,visibleKingdomBases=[];
 let guildDirectory=null,socialSection='guilds';
+let defenseTargets=[],defenseTargetId=null;
 const cityUI=window.PeregrinosCity.create({send:(type,data)=>send(type,data)});
 // Cada abertura do site cria uma nova jornada Visitante. O token existe
 // somente nesta execução da página; queda da conexão reutiliza o token.
@@ -268,6 +269,12 @@ function dispatch(msg){
  if(msg.type==='guildDirectory'){
   guildDirectory=msg.data||null;if(tab==='social')drawTab();return;
  }
+ if(msg.type==='guildDefense'){
+  defenseTargets=Array.isArray(msg.targets)?msg.targets:[];
+  if(!defenseTargets.some(t=>t.id===defenseTargetId))defenseTargetId=null;
+  if(msg.text){say('',msg.text,'sys');alert(msg.text)}
+  if(tab==='social')drawTab();return;
+ }
  if(msg.type==='kingdomState'){
   kingdomState=msg.data||null;
   visibleKingdomBases=(kingdomState?.bases||[]).filter(b=>b.zone===session.zone);
@@ -287,6 +294,7 @@ function dispatch(msg){
   spriteActions.fallen.length=0;
   visibleKingdomBases=[];kingdomState=null;guildDirectory=null;
   session.partyInvite=null;session.tradeOffer=null;
+  defenseTargets=[];defenseTargetId=null;
  }
  // Os portais são autoritativos em TODOS os welcomes (login ou troca de
  // servidor). Nunca zerar após aplicar a lista recebida na nova sala.
@@ -304,6 +312,7 @@ function dispatch(msg){
   $('roomSwitchConfirm').disabled=false;
  }
  setOnline(true,'Conectado');displayOnline(msg.online);character(msg.self);
+ session.formClass=msg.self.role;
  cityUI.onConnectionRestored?.();
  if(roomChanged)alert('✦ Você entrou na sala '+roomName+'!');
  if(!authed){
@@ -333,7 +342,10 @@ function dispatch(msg){
    updateMonsterLife();
   const people=new Map();for(const p of msg.players||[])people.set(p.id,p);
   playerMotion.sync([...people.values()],performance.now());session.players=people;
- }else if(msg.type==='travel'){desktopAudio.play('travel');session.zone=msg.zone;visibleKingdomBases=[];session.portals=msg.portals||[];session.x=msg.x;session.y=msg.y;session.target=null;session.monsters.clear();monsterMotion.clear();playerMotion.clear();combatFx.clear();if(typeof clearMonsterSheet==='function')clearMonsterSheet();classSkillFx.clear();$('zoneTitle').textContent=msg.name;alert('✦ '+msg.name);drawTravel();
+  defenseTargets=Array.isArray(msg.defenseTargets)?msg.defenseTargets:[];
+  if(!defenseTargets.some(t=>t.id===defenseTargetId))defenseTargetId=null;
+  if(tab==='social'&&socialSection==='guilds'&&defenseTargets.length)drawTab();
+ }else if(msg.type==='travel'){defenseTargets=[];defenseTargetId=null;desktopAudio.play('travel');session.zone=msg.zone;visibleKingdomBases=[];session.portals=msg.portals||[];session.x=msg.x;session.y=msg.y;session.target=null;session.monsters.clear();monsterMotion.clear();playerMotion.clear();combatFx.clear();if(typeof clearMonsterSheet==='function')clearMonsterSheet();classSkillFx.clear();$('zoneTitle').textContent=msg.name;alert('✦ '+msg.name);drawTravel();
  }else if(msg.type==='hit'){if(msg.zone===session.zone){
   if(typeof desktopAudio!=='undefined')desktopAudio.play(msg.projectile==='arrow'?'arrow':msg.projectile==='holy-bolt'?'magic':'hit');
   const m=session.monsters.get(msg.monster);if(m)m.hp=msg.remaining;
@@ -344,6 +356,11 @@ function dispatch(msg){
   const started=combatFx.fire(msg,performance.now());
   if(!started)fx.push({x:m?.x||session.x,y:m?.y||session.y,text:'−'+msg.damage,t:performance.now(),color:'#ffe5a6'});
   if(msg.critical)fx.push({x:m?.x||session.x,y:(m?.y||session.y)-48,text:'✦ CRÍTICO!',t:performance.now(),color:'#ffc66d'});
+ }
+ }else if(msg.type==='guildDefenseHit'){if(msg.zone===session.zone){
+  const victim=session.players.get(msg.targetId);if(victim)victim.hp=msg.remaining;
+  fx.push({x:msg.x,y:msg.y-46,text:msg.neutralized?'🛡 NEUTRALIZADO':'⚔ −'+msg.damage,t:performance.now(),color:'#ffe28a'});
+  if(msg.neutralized){defenseTargetId=null;alert(msg.targetName+' neutralizado. O contra-ataque foi encerrado.')}
  }
  }else if(msg.type==='monsterSheet'){renderMonsterSheet(msg.sheet);
  }else if(msg.type==='monsterEvolution'){if(msg.zone===session.zone){
@@ -527,6 +544,7 @@ $('roomSwitchBtn').addEventListener('click',async()=>{
  if(!session.connected||roomSwitchPending)return;
  const dialog=$('roomSwitchDialog');
  $('roomSwitchCurrent').textContent=roomName+' · '+session.online+'/60 jogadores';
+ $('roomSwitchRole').value=session.role;
  $('roomSwitchError').textContent='';
  $('roomSwitchInfo').textContent='Consultando salas disponíveis…';
  $('roomSwitchSelect').replaceChildren();
@@ -573,7 +591,7 @@ $('roomSwitchConfirm').addEventListener('click',()=>{
  $('roomSwitchInfo').textContent='Conectando à nova sala…';
  $('roomSwitchConfirm').disabled=true;$('roomSwitchCancel').disabled=true;
  $('roomSwitchBtn').disabled=true;
- send('switchRoom',{roomId:chosen.id});
+ send('switchRoom',{roomId:chosen.id,role:$('roomSwitchRole').value});
 });
 
 const requestedRoom=new URLSearchParams(location.search).get('room');
@@ -731,6 +749,14 @@ $('touchPotionBtn').addEventListener('click',()=>send('use',{item:'pocao'}));
 $('touchTalkBtn').addEventListener('click',()=>talkToNearest());
 function attack(skill){
  if(!session.connected)return;
+ // J/Atacar permite atingir apenas o comandante cujo cerco foi
+ // confirmado no servidor. Monstros e habilidades de suporte seguem iguais.
+ if(!skill&&defenseTargetId){
+  if(defenseTargets.some(t=>t.id===defenseTargetId&&t.expiresAt>Date.now())){
+   send('defendGuild',{target:defenseTargetId});lastAction=performance.now();return;
+  }
+  defenseTargetId=null;
+ }
  // Habilidades de suporte não exigem alvo. Somente Arqueiro exige marcação.
  // O servidor decide se há cura/defesa e se o golpe também alcança um monstro.
  if(skill&&['curandeiro','guardiao','peregrino'].includes(session.role)){
@@ -776,7 +802,12 @@ cvs.addEventListener('click',e=>{if(!session.connected)return;const rect=cvs.get
  const npcRadius=touchDevice?Math.max(38,32*W/Math.max(1,rect.width)):38;
  const npc=session.npcs.filter(n=>n.zone===session.zone).find(n=>Math.hypot(n.x-wx,n.y-wy)<npcRadius);
  if(npc){tryTalk(npc);return}
- if(candidate){session.target=candidate.id;send('inspectMonster',{monster:candidate.id});alert('Alvo: '+candidate.name+' · Nível '+candidate.level+' · '+candidate.rank+(touchDevice?' · Toque em Atacar':' · J para atacar'))}});
+ const hostile=defenseTargets.filter(t=>t.id&&t.expiresAt>Date.now());
+ const defender=hostile.map(t=>({threat:t,player:session.players.get(t.id)})).find(({player})=>
+  player&&Math.hypot(player.x-wx,player.y-wy)<Math.max(45,touchRadius));
+ if(defender){defenseTargetId=defender.threat.id;session.target=null;
+  alert('🛡 Alvo legítimo: '+defender.threat.name+' · J ou Atacar para defender sua guilda.');return}
+ if(candidate){defenseTargetId=null;session.target=candidate.id;send('inspectMonster',{monster:candidate.id});alert('Alvo: '+candidate.name+' · Nível '+candidate.level+' · '+candidate.rank+(touchDevice?' · Toque em Atacar':' · J para atacar'))}});
 function selectTab(next){tab=next;document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
  if(next==='social'&&session.connected)send('guild',{action:'list'});
  drawTab(true)}
@@ -883,9 +914,27 @@ function drawTab(force=false){const parent=$('tabContent');
    actions.append(create,inv,button('Sair','party',{action:'leave'}));p.append(actions);
    if(session.partyInvite)p.append(button('Aceitar equipe de '+session.partyInvite.by,'party',{action:'accept',party:session.partyInvite.party}));
   }
-  if(socialSection==='guilds')window.PeregrinosGuildRecruitment.render(parent,{
-   directory:guildDirectory,character:s,invite:session.guildInvite,send
-  });
+  if(socialSection==='guilds'){
+   window.PeregrinosGuildRecruitment.render(parent,{
+    directory:guildDirectory,character:s,invite:session.guildInvite,send
+   });
+   if(s.guild){
+    const guard=group(parent);guard.classList.add('guild-defense-panel');
+    appendText(guard,'b','🛡 Defesa da guilda · PvP restrito');
+    appendText(guard,'small','Somente quem iniciou um cerco real pode ser atacado. O direito dura cinco minutos. É necessário estar na mesma sala e região, dentro do alcance da classe. Neutralizar imobiliza o agressor por 12 segundos, sem matar nem roubar itens.');
+    if(!defenseTargets.length)appendText(guard,'small','Nenhum agressor autorizado para contra-ataque neste momento.');
+    for(const threat of defenseTargets){
+     const secs=Math.max(0,Math.ceil((threat.expiresAt-Date.now())/1000));
+     const row=document.createElement('div');row.className='guild-defense-target';
+     appendText(row,'strong',threat.name+' · '+threat.attackerGuild);
+     appendText(row,'small',secs+' s de defesa · '+(threat.id?'Na sua sala e região':threat.inRoom?'Em outra região':'Em outra sala ou desconectado'));
+     const fight=document.createElement('button');fight.type='button';fight.textContent='⚔ Contra-atacar somente '+threat.name;
+     fight.disabled=!threat.id||secs<=0;
+     fight.onclick=()=>{defenseTargetId=threat.id;session.target=null;send('defendGuild',{target:threat.id})};
+     row.append(fight);guard.append(row);
+    }
+   }
+  }
   if(socialSection==='politics'){
   const kingdom=group(parent);kingdom.classList.add('kingdom-panel');
   appendText(kingdom,'h3','✦ Reinos e política continental');
