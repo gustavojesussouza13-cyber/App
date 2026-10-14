@@ -38,6 +38,6 @@ test('obra no estado do servidor continua consultando COMMIT, sem compras repeti
 test('páginas da capital carregam nova versão do script sem reutilizar cache antigo',()=>{
  const world=fs.readFileSync(path.join(__dirname,'../public/mundo.html'),'utf8');
  const demo=fs.readFileSync(path.join(__dirname,'../public/cidade-demo.html'),'utf8');
- assert.ok(world.includes('/guild-city-3d.js?v=monstros-evoluem-v1'));
- assert.ok(demo.includes('/guild-city-3d.js?v=monstros-evoluem-v1'));
+ assert.ok(world.includes('/guild-city-3d.js?v=planned-city-v1'));
+ assert.ok(demo.includes('/guild-city-3d.js?v=planned-city-v1'));
 });
