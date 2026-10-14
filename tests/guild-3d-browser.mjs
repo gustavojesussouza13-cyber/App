@@ -139,6 +139,15 @@ try{
  assert.equal(await page.locator('#guild3dFeedback').getAttribute('data-status'),'success');
  assert.equal(await page.evaluate(()=>buildings.length),countBefore+1,'retry não cria prédio duplicado');
  assert.equal(await page.evaluate(()=>buildings.filter(b=>b.type==='house'&&b.x===4&&b.y===12).length),1);
+ const lostDiagnostic=await page.evaluate(()=>({
+  localCoins,displayedWallet:document.querySelector('.guild3d-wallet')?.textContent,
+  feedback:document.querySelector('.guild3d-dialog[open] #guild3dFeedback')?.textContent,
+  status:document.querySelector('.guild3d-dialog[open] #guild3dFeedback')?.dataset.status,
+  pendingBuilding:document.querySelector('.guild3d-canvas')?.dataset.pendingBuilding,
+  receipts:successfulRequests.size
+ }));
+ console.log('GUILD_LOST_ACK_DIAGNOSTIC',JSON.stringify(lostDiagnostic));
+ await page.waitForFunction(()=>document.querySelector('.guild3d-wallet')?.textContent?.includes('8.260 moedas'),null,{timeout:6000});
  assert.match(await page.locator('.guild3d-wallet').innerText(),/8.260 moedas/,'retry não pode cobrar novamente');
  assert.equal(await canvas.getAttribute('data-pending-building'),null,'prédio sincronizado deixa de ser provisório');
  assert.doesNotMatch(await page.locator('#guild3dFeedback').innerText(),/prévia foi retirada|não confirmou/i);
