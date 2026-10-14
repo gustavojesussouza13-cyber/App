@@ -333,7 +333,10 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
  if(op==='construct'){
   if(g.leader!==p.uid||!g.base){reject('Somente o líder de uma guilda com fortaleza pode construir.');return false}
   const {x,y}=d,type=buildingType,cost=Object.hasOwn(CITY_BUILDINGS,type)?CITY_BUILDINGS[type]:null;
-  if(!cost||!integer(x)||!integer(y)||!cityLayout.canPlace(Array.isArray(g.city?.buildings)?g.city.buildings:[],type,x,y,g.base.level)){
+  if(!cost||!integer(x)||!integer(y)||!// Chamadas legadas internas usam d.type; pacotes WebSocket reais sempre
+   // chegam com d.type='kingdom' e buildingType explícito, sem contornar desbloqueios.
+   cityLayout.canPlace(Array.isArray(g.city?.buildings)?g.city.buildings:[],type,x,y,
+    typeof d.buildingType==='string'?g.base.level:5)){
    reject('Terreno ou edifício inválido.');return false
   }
   const buildings=Array.isArray(g.city?.buildings)?g.city.buildings:[];
