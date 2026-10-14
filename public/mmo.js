@@ -90,6 +90,54 @@ function setOnline(state,msg){
  touchUI.hidden=!state||!touchDevice;
  if(!state){cityUI.onConnectionLost?.();joystick.release();latency.reset();updatePingIndicator();spriteActions.monsters.clear();spriteActions.players.clear();spriteActions.fallen.length=0;classSkillFx.clear()}
 }
+const rpgAttributeNames={vitalidade:'Vitalidade',fortitude:'Fortitude',forca:'Força',agilidade:'Agilidade',
+ intelecto:'Intelecto',espirito:'Espírito',sorte:'Sorte'};
+const rpgAttributeHelp={
+ vitalidade:'Aumenta PV e regeneração fora de combate.',
+ fortitude:'Reduz dano físico.',
+ forca:'Reforça golpes físicos.',
+ agilidade:'Aumenta precisão, esquiva, crítico e velocidade dos golpes.',
+ intelecto:'Reforça magia, energia e resistência mágica.',
+ espirito:'Reforça cura, regeneração de energia e resistências.',
+ sorte:'Melhora críticos e precisão.'
+};
+function renderRpgPanel(c){
+ const details=$('rpgAttributeDetails');
+ if(!details||!c?.rpg)return;
+ const {attributes={},allocations={},availablePoints=0,stats={}}=c.rpg;
+ const points=$('rpgAvailablePoints');
+ points.textContent=availablePoints+' ponto'+(availablePoints===1?' livre':'s livres');
+ const rows=$('rpgAttributeRows');rows.replaceChildren();
+ for(const [key,name]of Object.entries(rpgAttributeNames)){
+  const entry=document.createElement('div');entry.className='rpg-stat-entry';
+  const label=document.createElement('div');label.className='rpg-stat-label';label.textContent=name;
+  const info=document.createElement('span');info.textContent=rpgAttributeHelp[key];label.append(info);
+  const value=document.createElement('span');value.className='rpg-stat-value';
+  value.textContent=String(attributes[key]||0)+(allocations[key]?' (+'+allocations[key]+')':'');
+  const plus=document.createElement('button');plus.type='button';plus.textContent='+';
+  plus.setAttribute('aria-label','Aumentar '+name);
+  plus.title='Gastar um ponto de atributo em '+name+'.';
+  plus.disabled=availablePoints<1||allocations[key]>=50||!accountMode;
+  plus.onclick=()=>send('allocateStat',{attribute:key});
+  entry.append(label,value,plus);rows.append(entry);
+ }
+ const list=[
+  ['Ataque físico',stats.physicalPower],['Poder mágico',stats.magicPower],
+  ['Precisão',stats.accuracy+'%'],['Chance de crítico',stats.criticalChance+'%'],
+  ['Dano crítico','×'+stats.criticalMultiplier],['Armadura',stats.armor],
+  ['Resistência mágica',stats.magicResist],['Resistência ao fogo',stats.fireResist],
+  ['Resistência elétrica',stats.lightningResist],['Esquiva',stats.evasion+'%'],
+  ['Rapidez de ataque',stats.haste+'%'],['Poder de cura',stats.healingPower],
+  ['Regeneração de PV',stats.hpRegen+'/s'],['Regeneração de energia',stats.energyRegen+'/s']
+ ];
+ const derived=$('rpgDerivedRows');derived.replaceChildren();
+ for(const [name,amount]of list){
+  const item=document.createElement('div');item.className='rpg-derived-item';
+  const label=document.createElement('small');label.textContent=name;
+  const value=document.createElement('strong');value.textContent=String(amount);
+  item.append(label,value);derived.append(item);
+ }
+}
 function character(c){session.characters=c;session.zone=c.zone;session.role=c.role;session.x=c.x;session.y=c.y;
  $('charName').textContent=(c.administrator?'✦ ':'')+(c.name||session.name);$('playerClass').textContent=({peregrino:'Peregrino',guardiao:'Guardião',arqueiro:'Arqueiro',curandeiro:'Curandeiro'}[c.role]||c.role)+(c.administrator?' · ADMIN':'');
  // Explicar a função da habilidade K sem mudar o layout do controle mobile.
@@ -103,7 +151,10 @@ function character(c){session.characters=c;session.zone=c.zone;session.role=c.ro
  $('skillBtn').title=skillHelp[c.role]||'K: habilidade especial da sua classe';
  $('touchSkillBtn').title=$('skillBtn').title;
  $('playerLevel').textContent=c.level===100?'Nível 100 · MÁXIMO':'Nível '+c.level;$('playerCoins').textContent='◈ '+Number(c.coins).toLocaleString('pt-BR')+' moedas';$('hpText').textContent=c.hp+' / '+c.maxHp;
- $('xpText').textContent=c.xp+' / '+c.nextXp;$('hpBar').style.width=clamp(c.hp/c.maxHp*100,0,100)+'%';$('xpBar').style.width=clamp(c.xp/c.nextXp*100,0,100)+'%';
+ $('xpText').textContent=c.xp+' / '+c.nextXp;
+  $('energyText').textContent=Math.floor(c.energy||0)+' / '+(c.maxEnergy||0);
+  $('energyBar').style.width=clamp((c.energy||0)/Math.max(1,c.maxEnergy||1)*100,0,100)+'%';
+  renderRpgPanel(c);$('hpBar').style.width=clamp(c.hp/c.maxHp*100,0,100)+'%';$('xpBar').style.width=clamp(c.xp/c.nextXp*100,0,100)+'%';
  session.story=c.story||null;$('kills').textContent=c.kills;$('visited').textContent=c.visited.length+'/'+(session.zones.length||40);$('zoneTitle').textContent=session.zones[c.zone]?.name||('Região '+c.zone);drawTravel();drawTab();
 }
 function displayOnline(n){session.online=n;$('playerCount').textContent=n+'/60';setOnline(true,'✦ '+roomName+' · '+n+'/60 jogadores')}
@@ -198,6 +249,7 @@ function dispatch(msg){
   // O acerto é autoritativo: não desenhar flechas nem magias para cliques rejeitados.
   const started=combatFx.fire(msg,performance.now());
   if(!started)fx.push({x:m?.x||session.x,y:m?.y||session.y,text:'−'+msg.damage,t:performance.now(),color:'#ffe5a6'});
+  if(msg.critical)fx.push({x:m?.x||session.x,y:(m?.y||session.y)-48,text:'✦ CRÍTICO!',t:performance.now(),color:'#ffc66d'});
  }
  }else if(msg.type==='troopStrike'){if(msg.zone===session.zone){
    const now=performance.now();
