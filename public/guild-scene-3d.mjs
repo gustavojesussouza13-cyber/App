@@ -937,8 +937,6 @@ export function createGuildScene({mount,layout,onCell,onHover}){
   raf=requestAnimationFrame(frame);
  }
  raf=requestAnimationFrame(frame);
- }
- raf=requestAnimationFrame(frame);
  function destroy(){
   if(destroyed)return;destroyed=true;cancelAnimationFrame(raf);
   ro?.disconnect();if(!ro)window.removeEventListener('resize',resize);
