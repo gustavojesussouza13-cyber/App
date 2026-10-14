@@ -686,6 +686,7 @@ class World {
    const squad=escortGuild?.members?.includes(p.uid)?kingdoms.escortStrike(escortGuild,p.uid):null;
    const troopDamage=squad?.damage||0;
    damage+=troopDamage;
+   damage=creatureRpg.damageAfterMonsterDefense(damage,m,p.save.role==='curandeiro'?'magic':'physical');
    m.hp=Math.max(0,m.hp-damage);m.damageFrom.set(p.id,(m.damageFrom.get(p.id)||0)+damage);
    if(troopDamage)this.broadcast({type:'troopStrike',zone:p.zone,by:p.id,x:Math.round(p.x),y:Math.round(p.y),
     target:m.id,to:{x:Math.round(m.x),y:Math.round(m.y)},damage:troopDamage,units:squad.units},
@@ -702,9 +703,21 @@ class World {
    // O foco do cajado fica à direita do corpo no sprite 16-bit.
    {projectile:'holy-bolt',from:{x:Math.round(p.x+25),y:Math.round(p.y-57)},to:aim}:{};
   this.broadcast({type:'hit',monster:m.id,zone:m.zone,damage,remaining:m.hp,by:p.name,skill,critical,...projectile},q=>q.zone===p.zone&&dist(q,m)<780);
-  if(m.hp===0){m.aggroTarget=null;m.aggroUntil=0;m.windupUntil=0;m.markUntil=0;m.markOwner=null;m.deadUntil=now+(m.boss?45000:14000);let recipients=new Map();for(const [pid] of m.damageFrom){const x=this.players.get(pid);if(x&&x.zone===p.zone&&dist(x,m)<690)recipients.set(x.id,x)}
+  if(m.hp===0){m.defeats=(m.defeats||0)+1;m.aggroTarget=null;m.aggroUntil=0;m.windupUntil=0;m.markUntil=0;m.markOwner=null;m.deadUntil=now+(m.boss?45000:14000);let recipients=new Map();for(const [pid] of m.damageFrom){const x=this.players.get(pid);if(x&&x.zone===p.zone&&dist(x,m)<690)recipients.set(x.id,x)}
    for(const x of [...recipients.values()])if(x.party){for(const ally of this.players.values())if(ally.party===x.party&&ally.zone===x.zone&&dist(ally,m)<500)recipients.set(ally.id,ally)}
    for(const x of recipients.values())this.award(x,Math.round(m.xp/Math.max(1,recipients.size)*1.3),Math.ceil(m.coins/Math.max(1,recipients.size)),m.boss,m.zone);
+   if(recipients.has(p.id)){
+    // Espólios descritos na ficha são recompensas reais, não apenas decoração.
+    const roll=hash32((m.zone+1)*7177+(m.species+1)*193+
+     (m.defeats||0)*53+(m.progress?.victories||0)*389)%100;
+    const drop=creatureRpg.chooseLoot(m,roll);
+    if(drop&&GOODS[drop]){
+     p.save.inventory[drop]=(p.save.inventory[drop]||0)+1;
+     this.tell(p,'✦ Espólio de '+m.name+': '+GOODS[drop].name+'!');
+     this.send(p.socket,{type:'monsterLoot',monster:m.id,item:drop,name:GOODS[drop].name});
+     this.send(p.socket,this.ownStatus(p));
+    }
+   }
    this.broadcast({type:'defeated',monster:m.id,zone:m.zone,by:p.name,boss:m.boss},q=>q.zone===p.zone);
    m.damageFrom.clear();this.dirty=true;
   }
@@ -958,7 +971,7 @@ class World {
    if(d>42){const step=Math.min(58*dt,d);m.x+=(target.x-m.x)/d*step;m.y+=(target.y-m.y)/d*step}
    // O ataque precisa ser anunciado e permanecer ao alcance até o golpe.
    if(d>=53){m.windupUntil=0;continue}
-   if(!m.windupUntil&&now-m.lastAttack>2200){
+   if(!m.windupUntil&&now-m.lastAttack>Math.round(2200*(1-(m.attackHaste||0)/100))){
     const warning=crownDungeonZone(zone)?(m.boss?1600:950):(m.boss?1100:650);
     m.windupUntil=now+warning;
     this.send(target.socket,{type:'monsterWindup',monster:m.id,zone:m.zone,duration:warning,boss:m.boss});
@@ -979,6 +992,17 @@ class World {
      target.save.hp-=damage;target.lastCombatAt=now;
     this.send(target.socket,{type:'hurt',damage,monster:m.name,element});
     if(target.save.hp<=0){
+     const evolved=creatureRpg.evolveOnVictory(m,{level:target.save.level,role:target.save.role});
+     if(this.monsterPersistenceEnabled){
+      this.saved.monsters=this.saved.monsters||{};
+      this.saved.monsters[m.id]=creatureRpg.cleanRecord(m.progress);
+     }
+     this.broadcast({type:'monsterEvolution',zone:m.zone,monster:m.id,
+      level:evolved.level,rank:evolved.rank,victories:evolved.victories,
+      maxHp:m.maxHp,damage:m.damage,sheet:creatureRpg.publicSheet(m)},
+      watcher=>watcher.zone===m.zone&&dist(watcher,m)<900);
+     this.tell(target,'⚠ '+m.name+' venceu você e evoluiu! Nível '+evolved.level+
+      ' · '+evolved.rank+' · '+evolved.victories+' vitória(s).');
      target.save.hp=hpMax(target.save);target.x=ZONE_W/2;target.y=ZONE_H/2;
      target.save.x=target.x;target.save.y=target.y;
      target.save.coins=Math.max(0,target.save.coins-10);
@@ -986,6 +1010,10 @@ class World {
      this.tell(target,'Você caiu em batalha e voltou ao santuário.');
     }
     this.send(target.socket,this.ownStatus(target));this.dirty=true;
+    if(this.monsterPersistenceEnabled&&this.saved.monsters?.[m.id]){
+     const saved=this.persist();
+     if(saved&&typeof saved.catch==='function')void saved.catch(err=>console.error('[monstros] salvamento:',err.message));
+    }
    }
   }}
   for(const p of this.players.values())this.snapshotTo(p);
