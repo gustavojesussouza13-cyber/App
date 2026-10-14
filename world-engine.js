@@ -679,8 +679,19 @@ class World {
  }
  tick(){const now=Date.now(),dt=clamp((now-this.lastTick)/1000,.01,.5);this.lastTick=now;
   if(this.kingdomTickLeader!==false){
-   for(const result of kingdoms.resolve(this,now)){
-    for(const member of this.players.values())if(member.save.guild===result.guild)this.tell(member,result.text);
+   const finished=kingdoms.resolve(this,now);
+   if(finished.length){
+    const affected=new Set();
+    for(const result of finished){
+     affected.add(result.guild);
+     for(const member of this.players.values())
+      if(member.save.guild===result.guild)this.tell(member,result.text);
+    }
+    // Avisar conclusão na hora, sem o atraso periódico de até oito segundos
+    // do snapshot: o contador 00:00 vira prédio definitivo no mesmo tick.
+    for(const member of this.players.values())
+     if(affected.has(member.save.guild))
+      this.send(member.socket,{type:'kingdomState',data:kingdoms.publicState(this,member)});
    }
   }
   // Apenas regiões ocupadas têm IA ativa. O servidor controla quem provocou cada monstro.
