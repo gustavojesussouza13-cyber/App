@@ -149,6 +149,9 @@ function marchPosition(march,now=Date.now()){
  return {...route.at(-1)};
 }
 function publicState(world,p){
+ // Todo snapshot reconcilia obras vencidas, inclusive após reinício, em
+ // salas vazias e quando o tick anterior não conseguiu finalizar a obra.
+ resolveCityConstructions(world,Date.now());
  const your=guildFor(world,p);
  return {continent:CONTINENT_REGIONS,buildable:BUILDABLE_REGIONS,
   // A capital pode ser visitada por convidados, mas construções permanentes
@@ -206,8 +209,13 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
  const confirmSaved=(promise,id=requestId)=>{
   if(id===null||!opKey||!promise||typeof promise.then!=='function')return;
   void Promise.resolve(promise).then(saved=>{
-   if(saved===true)world.send(p.socket,{type:'kingdomDurable',id,opKey,ok:true});
-  }).catch(err=>console.error('[reinos] confirmação de persistência adiada:',err.message));
+   world.send(p.socket,{type:'kingdomDurable',id,opKey,ok:saved===true,
+    ...(saved===true?{}:{message:'O banco ainda não confirmou a gravação. O servidor continuará tentando salvar.'})});
+  }).catch(err=>{
+   console.error('[reinos] confirmação de persistência adiada:',err.message);
+   world.send(p.socket,{type:'kingdomDurable',id,opKey,ok:false,
+    message:'Não foi possível confirmar o salvamento agora. A tentativa permanece pendente.'});
+  });
  };
  const report=(message,ok)=>{
   // Registra operações confirmadas antes do ACK. É persistido com a guilda
@@ -314,7 +322,7 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
   }];
   if(!Number.isSafeInteger(city.lastCollectedAt)||city.lastCollectedAt<=0)city.lastCollectedAt=now;
   g.city=city;
-  world.dirty=true;accept('Obra iniciada e salva em '+g.name+'. Conclusão em '+Math.ceil(durationMs/1000)+' segundos.');
+  world.dirty=true;accept('Obra iniciada em '+g.name+'. Aguardando gravação no banco. Conclusão em '+Math.ceil(durationMs/1000)+' segundos.');
   world.send(p.socket,world.ownStatus(p));return true;
  }
  if(op==='collect'){
@@ -454,8 +462,9 @@ function resolveCityConstructions(world,now=Date.now()){
   let changed=false;
   for(const b of g.city.buildings){
    // Legado sem endsAt já está concluído. Finalização é idempotente.
-   if(b?.status!=='building'||!Number.isSafeInteger(b.endsAt)||now<b.endsAt)continue;
-   b.status='complete';b.completedAt=b.endsAt;
+   if(!b||b.status!=='building'||(Number.isSafeInteger(b.endsAt)&&now<b.endsAt))continue;
+   // Dados antigos sem prazo válido não podem ficar presos em 00:00.
+   b.status='complete';b.completedAt=Number.isSafeInteger(b.endsAt)?b.endsAt:now;
    completed.push({guild:g.name,type:b.type,x:b.x,y:b.y});
    changed=true;
   }
