@@ -25,7 +25,8 @@
  function canPlace(buildings,type,x,y){
   if(!Number.isSafeInteger(x)||!Number.isSafeInteger(y))return false;
   const b=plan(type,x,y);if(!b)return false;
-  return cells(b).every(([cx,cy])=>cx>=0&&cy>=0&&cx<N&&cy<N&&!isCore(cx,cy)&&!at(buildings,cx,cy));
+  const {min,max}=bounds(level);
+   return cells(b).every(([cx,cy])=>cx>=min&&cy>=min&&cx<=max&&cy<=max&&!isCore(cx,cy)&&!at(buildings,cx,cy));
  }
- return Object.freeze({N,CORE,footprints,size,cells,at,isCore,plan,canPlace});
+ return Object.freeze({N,CORE,footprints,size,cells,at,isCore,plan,bounds,canPlace});
 });
