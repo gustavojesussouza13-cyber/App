@@ -75,7 +75,9 @@ function say(sender,text,kind='',reportId=null){const line=document.createElemen
 }
 function send(type,data={}){
  if(socket&&socket.readyState===WebSocket.OPEN&&(type!=='kingdom'||session.connected)){
-  socket.send(JSON.stringify({type,...data}));
+  // O discriminador da mensagem WebSocket é sempre "type". Um campo
+  // do payload jamais pode sobrescrever a rota para o servidor.
+  socket.send(JSON.stringify({...data,type}));
   return true;
  }
  return false;
