@@ -58,14 +58,18 @@ class AccountStore{
   await this.pool.query('CREATE INDEX IF NOT EXISTS game_sessions_expires ON game_sessions(expires_at)');
   await this.pool.query('CREATE TABLE IF NOT EXISTS characters(uid TEXT PRIMARY KEY,data JSONB NOT NULL)');
   await this.pool.query('CREATE TABLE IF NOT EXISTS guilds(key TEXT PRIMARY KEY,data JSONB NOT NULL)');
+  await this.pool.query('CREATE TABLE IF NOT EXISTS monster_progress(key TEXT PRIMARY KEY,data JSONB NOT NULL)');
   await this.pool.query('CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY,value TEXT NOT NULL)');
-  const [chars,guilds,day]=await Promise.all([
+  const [chars,guilds,day,monsters]=await Promise.all([
    this.pool.query('SELECT uid,data FROM characters'),
    this.pool.query('SELECT key,data FROM guilds'),
-   this.pool.query("SELECT value FROM meta WHERE key='day'")
+   this.pool.query("SELECT value FROM meta WHERE key='day'"),
+   this.pool.query('SELECT key,data FROM monster_progress')
   ]);
   world.saved.characters=Object.fromEntries(chars.rows.map(r=>[r.uid,r.data]));
   world.saved.guilds=Object.fromEntries(guilds.rows.map(r=>[r.key,r.data]));
+  world.saved.monsters=Object.fromEntries(monsters.rows.map(r=>[r.key,r.data]));
+  world.restoreMonsterProfiles();
   world.guilds=new Map(Object.entries(world.saved.guilds));
   world.day=Number(day.rows[0]?.value||1);
   this.world=world;this.ready=true;
@@ -117,6 +121,9 @@ class AccountStore{
    await client.query('BEGIN');
    for(const [uid,data] of Object.entries(snapshot.characters)){
     await client.query('INSERT INTO characters(uid,data) VALUES($1,$2::jsonb) ON CONFLICT(uid) DO UPDATE SET data=EXCLUDED.data',[uid,JSON.stringify(data)]);
+   }
+   for(const [key,data] of Object.entries(snapshot.monsters||{})){
+    await client.query('INSERT INTO monster_progress(key,data) VALUES($1,$2::jsonb) ON CONFLICT(key) DO UPDATE SET data=EXCLUDED.data',[key,JSON.stringify(data)]);
    }
    for(const [key,data] of Object.entries(snapshot.guilds)){
     await client.query('INSERT INTO guilds(key,data) VALUES($1,$2::jsonb) ON CONFLICT(key) DO UPDATE SET data=EXCLUDED.data',[key,JSON.stringify(data)]);
