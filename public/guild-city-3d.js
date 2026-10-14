@@ -8,7 +8,7 @@
  root.PeregrinosCity=Object.freeze({create({send}){
   // Mantém a visualização de exércitos no continente principal SEM alterar o motor 2D.
   const oldUI=old.create({send});
-  let state=null,base=null,selected=null,scene=null,token=0,loading=false,clockOffset=0,queueTicker=null;
+  let state=null,base=null,selected=null,scene=null,token=0,loading=false,clockOffset=0,queueTicker=null,lastCompletionInspect=0;
   let requestSeq=0;
   const requests=new Map(),provisionals=new Map();
   const MAX_UNCONFIRMED=60;
@@ -41,7 +41,10 @@
   const canBuild=()=>owns()&&state?.persistentAccount===true&&state?.yourGuild?.leader===true;
   const structures=()=>(state?.cities||[]).find(c=>c.name===base?.name)?.buildings||[];
   const nowServer=()=>Date.now()+clockOffset;
-  const buildWorks=()=>structures().filter(b=>Number.isSafeInteger(b.endsAt)&&b.endsAt>nowServer());
+  // O prazo vencido não torna a obra concluída sozinho. O status real
+  // vem do servidor e permanece gravado no banco.
+  const buildWorks=()=>structures().filter(b=>b.status==='building'&&Number.isSafeInteger(b.endsAt));
+  const completedCount=()=>structures().filter(b=>b.status!=='building').length;
   const prettyTime=ms=>{
    const sec=Math.ceil(Math.max(0,ms)/1000);
    return String(Math.floor(sec/60)).padStart(2,'0')+':'+String(sec%60).padStart(2,'0');
@@ -50,6 +53,13 @@
   function updateQueue(){
    if(!dlg.open)return;
    const works=buildWorks();
+   // A cada prazo vencido (ou recuperação da conexão), consultar o servidor
+   // sem bloquear a interface. Servidor finaliza idempotentemente e devolve
+   // o snapshot confirmado; também funciona em servidores privados.
+   if(works.some(b=>b.endsAt<=nowServer())&&Date.now()-lastCompletionInspect>1600){
+    lastCompletionInspect=Date.now();
+    send('kingdom',{action:'inspect'});
+   }
    const previews=[...provisionals.values()].filter(v=>!isPersisted(v.building));
    const list=[...works.map(b=>({b,local:false})),...previews.map(v=>({b:v.building,local:true}))].slice(0,60);
    const activeKeys=new Set();
@@ -70,9 +80,12 @@
     const remaining=local?null:Math.max(0,b.endsAt-nowServer());
     const pct=Number.isSafeInteger(b.startedAt)&&Number.isSafeInteger(b.endsAt)?Math.min(100,Math.max(0,100*(nowServer()-b.startedAt)/Math.max(1,b.endsAt-b.startedAt))):0;
     row.querySelector('.guild3d-queue-time').textContent=
-     local?(Number.isSafeInteger(b.endsAt)?prettyTime(Math.max(0,b.endsAt-nowServer()))+'*':'Confirmando…'):prettyTime(remaining);
+     local?(Number.isSafeInteger(b.endsAt)?prettyTime(Math.max(0,b.endsAt-nowServer()))+'*':'Confirmando…'):
+     remaining===0?'Concluindo…':prettyTime(remaining);
     row.querySelector('.guild3d-queue-track span').style.width=Math.round(pct)+'%';
     row.dataset.progress=String(Math.round(pct));
+    if(!local&&remaining===0)row.setAttribute('aria-label','Prazo terminado; aguardando confirmação do servidor');
+    else row.removeAttribute('aria-label');
    }
    for(const element of [...queue.children])if(!activeKeys.has(element.dataset.queueKey))element.remove();
    if(!list.length){
@@ -202,7 +215,9 @@
   function onConnectionRestored(){
    if(!dlg.open)return;
    for(const request of requests.values())retry(request);
-   if(provisionals.size&&!requests.size)send('kingdom',{action:'inspect'});
+   lastCompletionInspect=0;
+   // Reconcilia também obras aceitas antes da última desconexão.
+   send('kingdom',{action:'inspect'});
   }
   function onActionResult(result){
    if(!dlg.open)return;
@@ -255,8 +270,9 @@
     owns()?'Somente o líder pode construir e melhorar edifícios.':
      'Cidade de outra guilda: somente seu líder pode administrar a capital.';
    const buildingCount=buildWorks().length;
-   q('guild3dCityState').textContent=structures().length+' edifício(s) salvos no reino · '+
-    buildingCount+' em construção · '+provisionals.size+' aguardando registro';
+   q('guild3dCityState').textContent=structures().length+' edifício(s) registrados no reino · '+
+    completedCount()+' concluído(s) · '+buildingCount+' em construção · '+
+    provisionals.size+' aguardando registro';
    opts.replaceChildren();
    for(const [id,[label,cost,glyph]]of Object.entries(types)){
     const button=document.createElement('button');button.type='button';
@@ -289,7 +305,7 @@
    }
    const occupied=layout.at(structures(),x,y);
    if(occupied){
-    if(Number.isSafeInteger(occupied.endsAt)&&occupied.endsAt>nowServer()){
+    if(occupied.status==='building'){
      say('Este edifício ainda está sendo construído. Veja o contador embaixo da obra.','info');return;
     }
     // Melhorias continuam independentes de outras construções em andamento.
@@ -365,6 +381,7 @@
    if(Number.isSafeInteger(kingdom?.serverNow))clockOffset=kingdom.serverNow-Date.now();
    say('Selecione um edifício ou explore o terreno com a câmera.');
    if(!dlg.open)dlg.showModal();
+   lastCompletionInspect=0;
    if(queueTicker!==null)clearInterval(queueTicker);
    queueTicker=setInterval(updateQueue,200);
    paint();
