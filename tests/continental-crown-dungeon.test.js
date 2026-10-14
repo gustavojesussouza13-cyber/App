@@ -137,6 +137,6 @@ test('GUIA e interface descrevem o único portão imperial e oferecem reivindica
  assert.ok(ui.includes("chave_coroa_aurora"));
  assert.ok(ui.includes("Chave da Câmara da Aurora"));
  assert.match(guide,/Apenas a quarta masmorra/);
- assert.match(guide,/7 das 12 regiões/);
+ assert.match(guide,/uma única guilda no continente/);
  assert.match(guide,/três primeiras continuam usando a Chave da masmorra comum/);
 });
