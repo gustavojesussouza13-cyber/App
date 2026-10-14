@@ -8,17 +8,20 @@
  root.PeregrinosCity=Object.freeze({create({send}){
   // Mantém a visualização de exércitos no continente principal SEM alterar o motor 2D.
   const oldUI=old.create({send});
-  let state=null,base=null,selected=null,scene=null,token=0,loading=false,clockOffset=0,queueTicker=null,lastCompletionInspect=0,lastProductionPaint=0;
+  let state=null,base=null,selected=null,selectedLot=null,selectedBuilding=null,scene=null,token=0,loading=false,clockOffset=0,queueTicker=null,lastCompletionInspect=0,lastProductionPaint=0;
   let requestSeq=0;
   const requests=new Map(),provisionals=new Map(),awaitingDurable=new Map();
   const MAX_UNCONFIRMED=60;
   const dlg=document.createElement('dialog');dlg.className='guild3d-dialog';dlg.setAttribute('aria-label','Capital tridimensional da guilda');
   dlg.innerHTML='<div class="guild3d-shell">'+
    '<header class="guild3d-header"><div class="guild3d-brand"><span class="guild3d-kicker">OS PEREGRINOS · REINOS DE AUREN</span><strong id="guild3dTitle">Capital da guilda</strong><small id="guild3dSubtitle">Gestão do reino</small></div>'+
+   '<div class="guild3d-topresources"><div class="guild3d-label">TESOURO · RECURSOS</div><div id="guild3dStock" class="guild3d-stocks"></div></div>'+
    '<div class="guild3d-header-actions"><button type="button" id="guild3dFocus" title="Centralizar câmera">◎ Centralizar</button><button type="button" id="guild3dClose">✕ Voltar ao continente</button></div></header>'+
    '<div class="guild3d-main"><div class="guild3d-stage"><div id="guild3dViewport" class="guild3d-viewport"><p id="guild3dLoading">Preparando sua capital tridimensional…</p></div>'+
+   '<div class="guild3d-build-panel"><div class="guild3d-panel-heading"><strong>⚒ MENU DE CONSTRUÇÃO</strong><small>Edifícios do reino</small></div><div id="guild3dChoices" class="guild3d-choices"></div></div>'+
+   '<div class="guild3d-lot-panel"><div class="guild3d-panel-heading"><strong>⌂ LOTE SELECIONADO</strong><small id="guild3dLotName">Escolha um terreno no mapa</small></div><p id="guild3dLotInfo" class="guild3d-note">Clique nos lotes demarcados para ver as construções e os desbloqueios.</p><div class="guild3d-lot-actions"><button type="button" id="guild3dLotAction" class="guild3d-action" disabled>Construir</button><button type="button" id="guild3dLotUpgrade" class="guild3d-action" hidden>Evoluir edifício</button></div></div>'+
    '<div class="guild3d-hud"><span>Arraste para girar · Roda para aproximar · Shift + arraste para mover</span><span id="guild3dCoords">Terreno 26×26 · 3D</span></div></div>'+
-   '<aside class="guild3d-sidebar"><div class="guild3d-label">TESOURO E RECURSOS</div><div id="guild3dStock" class="guild3d-stocks"></div>'+
+   '<aside class="guild3d-sidebar"><div class="guild3d-label">ADMINISTRAÇÃO DA CAPITAL</div>'+
    '<button type="button" id="guild3dCollect" class="guild3d-action">✦ Coletar recursos prontos</button>'+ 
     '<div class="guild3d-label">PRODUÇÃO DOS EDIFÍCIOS</div><div id="guild3dProduction" class="guild3d-build-queue" aria-label="Tempo de recursos por edifício"></div>'+
     '<div class="guild3d-label">EXPANSÃO DO REINO</div><p id="guild3dProgress" class="guild3d-note"></p>'+
@@ -28,10 +31,10 @@
     '<button type="button" id="guild3dSurrenderVote" class="guild3d-action" hidden>☮ Votar pela rendição</button>'+
     '<button type="button" id="guild3dSurrender" class="guild3d-action" hidden>☮ Assinar rendição e cessar-fogo</button>'+
     '<button type="button" id="guild3dSiege" class="guild3d-action" hidden>⚔ Cercar fortaleza rival</button>'+
-   '<div class="guild3d-label">URBANISMO</div><div class="guild3d-note">A área clara é edificável. Melhore a fortaleza para liberar mais terrenos e aumentar os estoques.</div>'+
+   '<div class="guild3d-label">URBANISMO</div><div class="guild3d-note">Os terrenos marcados têm funções fixas. Evolua a fortaleza para liberar novos bairros.</div>'+
    '<div id="guild3dCityState" class="guild3d-note" role="status">Carregando construções...</div>'+
    '<div class="guild3d-label">OBRAS EM ANDAMENTO</div><div id="guild3dBuildQueue" class="guild3d-build-queue" aria-label="Tempo restante de todas as construções"></div>'+
-   '<div id="guild3dChoices" class="guild3d-choices"></div>'+
+   '<div class="guild3d-label">LOTES DISPONÍVEIS</div><div id="guild3dLotsCount" class="guild3d-note"></div>'+
    '<div id="guild3dArmy" class="guild3d-army"><div class="guild3d-label">TREINAMENTO MILITAR</div><select id="guild3dSoldier" aria-label="Tipo de tropa"></select>'+
    '<div class="guild3d-train"><input id="guild3dCount" type="number" min="1" max="40" value="1" aria-label="Quantidade de soldados"><button type="button" id="guild3dTrain">⚔ Treinar tropas</button></div>'+
     '<p id="guild3dEscortInfo" class="guild3d-note"></p>'+
@@ -383,6 +386,8 @@
     owns()?'Todos os membros cadastrados da guilda podem construir e melhorar os edifícios.':
      'Cidade de outra guilda: somente seus integrantes podem administrar a capital.';
    const buildingCount=buildWorks().length;
+   const emptyLots=layout.availableLots(base.level||1).filter(l=>layout.lotStatus(l,structuresWithPreviews(),base.level||1)==='empty');
+   q('guild3dLotsCount').textContent=emptyLots.length+' terrenos livres · '+layout.slots.length+' lotes projetados.';
    q('guild3dCityState').textContent=structures().length+' / '+(state?.maxBuildings||60)+' edifício(s) registrados no reino · '+
     completedCount()+' concluído(s) · '+buildingCount+' em construção · '+
     provisionals.size+' aguardando registro · '+awaitingDurable.size+' aguardando gravação';
@@ -393,7 +398,15 @@
     button.setAttribute('aria-pressed',String(selected===id));
     const size=layout.footprints[id].join(' × ');
     button.textContent=glyph+' '+label+' · '+size+' · '+cost+' moedas · ciclo '+prettyTime(state?.productionTimes?.[id]||0);
-    button.onclick=()=>{selected=id;scene?.setSelection(id);say('Construindo '+label.toLowerCase()+'. Clique em um lote livre '+size+'.');paint()};
+    button.onclick=()=>{
+     selected=id;
+     if(!selectedLot||selectedLot.type!==id){
+      selectedLot=layout.availableLots(base?.level||1).find(l=>l.type===id&&layout.lotStatus(l,structuresWithPreviews(),base?.level||1)==='empty')||null;
+      selectedBuilding=null;
+     }
+     scene?.setSelection(id);
+     say(selectedLot?'Edifício escolhido: '+label+'. Confirme o lote '+selectedLot.id+' no painel.':'Sem lote livre para '+label+'. Evolua a fortaleza.');paint()
+    };
     opts.append(button);
    }
    const costs=state?.trainingCosts||{};
@@ -411,6 +424,7 @@
     q('guild3dEscortInfo').textContent='Guarnição: '+Object.entries(state?.yourGuild?.army||{}).map(([id,n])=>(labels[id]||id)+' '+n).join(' · ')+'. Sua escolta: '+Object.entries(state?.yourGuild?.escort||{}).filter(([,n])=>n>0).map(([id,n])=>(labels[id]||id)+' '+n).join(' · ')+'. Limite: '+(state?.maxEscort||60)+'.';
     q('guild3dRecall').disabled=!Object.values(state?.yourGuild?.escort||{}).some(n=>n>0);
     q('guild3dDeploy').disabled=!((state?.yourGuild?.army||{})[soldier.value]>0);
+   renderLotCard();
    updateQueue();lastProductionPaint=0;updateProduction();
    }
    function onCell({x,y}){
@@ -473,7 +487,7 @@
     scene.updateBuildings(structures(),state?.yourGuild?.army||{},state?.serverNow,base?.level||1);
     for(const [key,v]of provisionals)scene.showPendingBuilding?.(v.building,key);
     scene.setSelection(selected);
-    say('Cidade 3D pronta. Gire a câmera, explore e construa em todo o terreno livre.');
+    say('Cidade pronta! Selecione um lote demarcado e confirme a construção no painel.');
    }catch(err){
     console.error('Guild3D:',err);
     say('Seu navegador não iniciou o ambiente 3D. Abrindo a cidade em modo de compatibilidade.');
@@ -494,7 +508,7 @@
     request.timer=null;
    }
    if(queueTicker!==null)clearInterval(queueTicker);queueTicker=null;
-   scene?.destroy();scene=null;selected=null;
+   scene?.destroy();scene=null;selected=null;selectedLot=null;selectedBuilding=null;
    viewport.querySelector('canvas')?.remove();
   }
   q('guild3dClose').onclick=()=>{cleanupCity();dlg.close()};
@@ -526,9 +540,9 @@
    const sameGuild=base?.name===b?.name&&state?.persistentAccount===kingdom?.persistentAccount;
    // Nunca levar pendências de uma guilda ou sessão visitante a outra.
    if(!sameGuild)resetOperations();
-   base=b;state=kingdom;selected=null;
+   base=b;state=kingdom;selected=null;selectedLot=null;selectedBuilding=null;
    if(Number.isSafeInteger(kingdom?.serverNow))clockOffset=kingdom.serverNow-Date.now();
-   say('Selecione um edifício ou explore o terreno com a câmera.');
+   say('Escolha um terreno emoldurado para construir. Cada bairro tem uma função própria.');
    if(!dlg.open)dlg.showModal();
    lastCompletionInspect=0;
    if(queueTicker!==null)clearInterval(queueTicker);
