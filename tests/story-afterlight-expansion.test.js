@@ -18,7 +18,7 @@ test('os primeiros 16 capítulos e seus IDs originais permanecem intactos',()=>{
  assert.equal(chapters[0].name,'Lia, a Acendedora');
  assert.equal(chapters[15].name,'Cálen, o Esquecido');
  assert.equal(chapters.filter(x=>x.shard).length,7);
- assert.equal(chapters.slice(0,16).filter(x=>x.key).length,4);
+ assert.equal(chapters.slice(0,16).filter(x=>x.key).length,3,'as três chaves comuns são dadas na história; a quarta é exclusivamente política');
 });
 test('Vigília: quatro atos originais de seis capítulos, cada um em um subsolo',()=>{
  assert.equal(BOOKS.length,4);
