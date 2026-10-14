@@ -27,6 +27,34 @@ window.PeregrinosCity=Object.freeze({create({send}){
  const N=art.N,TW=art.TW,TH=art.TH,ox=art.OX,oy=art.OY;
  const project=art.project;
 
+ function confirmUpgrade(preview,title){
+  if(!preview){feedback.textContent='Aguarde os dados atualizados do reino antes de evoluir.';return false}
+  const before=preview.before,after=preview.after,fee=preview.cost||{};
+  const num=n=>Number(n||0).toLocaleString('pt-BR');
+  const rows=[
+   'Nível: '+preview.levelBefore+' → '+preview.levelAfter,
+   'Defesa: '+num(before.defense)+' → '+num(after.defense),
+   'Capacidade de tropas: '+num(before.armyCapacity)+' → '+num(after.armyCapacity),
+   'Estoque máximo: '+num(before.storage)+' → '+num(after.storage),
+   'Limite de edifícios: '+num(before.buildingSlots)+' → '+num(after.buildingSlots)
+  ];
+  if(before.unlockedLots!==undefined)rows.push('Lotes: '+before.unlockedLots+' → '+after.unlockedLots);
+  if(before.cycleMs)rows.push('Ciclo: '+Math.ceil(before.cycleMs/1000)+'s → '+Math.ceil(after.cycleMs/1000)+'s');
+  for(const [id,label] of [['food','Alimentos'],['timber','Madeira'],['stone','Pedra'],['coins','Tesouro']]){
+   if(before.yields?.[id]||after.yields?.[id])
+    rows.push('Produção '+label+': '+num(before.yields[id])+' → '+num(after.yields[id]));
+   rows.push('Estoque '+label+': '+num(before.stock?.[id])+' → '+num(after.stock?.[id]));
+  }
+  if(before.walletCoins!==undefined)rows.push('Carteira: '+num(before.walletCoins)+' → '+num(after.walletCoins));
+  if(!preview.affordable){
+   feedback.textContent='Recursos insuficientes para evoluir '+title+'.';return false;
+  }
+  const costs=Object.entries(fee).map(([id,v])=>num(v)+' '+({
+   food:'alimentos',timber:'madeira',stone:'pedra',walletCoins:'moedas'
+  }[id]||id)).join(' · ');
+  return window.confirm('EVOLUIR '+title+'?\n\nATUAL → APÓS A MELHORIA\n'+rows.join('\n')+
+   '\n\nCusto: '+costs+'\n\nConfirmar esta evolução?');
+ }
  function myCity(){return state?.yourGuild?.name===base?.name}
  function canBuild(){return myCity()&&state?.persistentAccount===true&&state?.yourGuild?.canManage===true}
  function structures(){return (state?.cities||[]).find(c=>c.name===base?.name)?.buildings||[]}
@@ -45,7 +73,8 @@ window.PeregrinosCity=Object.freeze({create({send}){
    const overview=document.createElement('p');
    overview.textContent='FORTALEZA '+(base.level||1)+'/'+(state?.fortressMaxLevel||60)+' · ÁREA '+layout.bounds(base.level||1).width+'×'+layout.bounds(base.level||1).width+' · LIMITE '+(state?.stockCapacity||600)+' · Alimentos '+(stock.food||0)+' · Madeira '+(stock.timber||0)+' · Pedra '+(stock.stone||0)+' · Tesouro '+(stock.coins||0);
    choices.append(overview);
-    if(canBuild()){const expand=document.createElement('button');expand.textContent='♜ Evoluir fortaleza';expand.onclick=()=>send('kingdom',{action:'upgrade'});expand.disabled=(base.level||1)>=(state?.fortressMaxLevel||60);choices.append(expand);
+    if(canBuild()){const expand=document.createElement('button');expand.textContent='♜ Evoluir fortaleza';expand.onclick=()=>{const preview=state?.yourGuild?.fortressUpgradePreview;
+     if(confirmUpgrade(preview,'Fortaleza'))send('kingdom',{action:'upgrade'})};expand.disabled=(base.level||1)>=(state?.fortressMaxLevel||60);choices.append(expand);
      const fortify=document.createElement('button');fortify.textContent='🛡 Reforçar muralhas';fortify.onclick=()=>send('kingdom',{action:'fortify'});choices.append(fortify)}
    const collect=document.createElement('button');collect.type='button';collect.textContent='✦ Coletar recursos prontos';
    collect.onclick=()=>send('kingdom',{action:'collect'});choices.append(collect);
@@ -100,7 +129,9 @@ window.PeregrinosCity=Object.freeze({create({send}){
   const rect=canvas.getBoundingClientRect(),px=(e.clientX-rect.left)*canvas.width/rect.width,py=(e.clientY-rect.top)*canvas.height/rect.height;
   const dx=(px-ox)/(TW/2),dy=(py-oy-TH/2)/(TH/2),x=Math.round((dx+dy)/2),y=Math.round((dy-dx)/2);
   const existing=layout.at(structures(),x,y);
-  if(existing){feedback.textContent='Solicitando melhoria do edifício…';send('kingdom',{action:'buildingUpgrade',x,y});return}
+  if(existing){if(existing.status==='building'){feedback.textContent='Espere concluir esta obra.';return}
+   if(confirmUpgrade(existing.upgradePreview,types[existing.type]?.label||existing.type)){
+    feedback.textContent='Solicitando melhoria confirmada do edifício…';send('kingdom',{action:'buildingUpgrade',x,y})}return}
   if(!selected){feedback.textContent='Selecione um edifício na lista para construir.';return}
   const lot=layout.lotFor(selected,x,y);
   if(!lot||!layout.canPlaceInLot(structures(),selected,x,y,base?.level||1)){feedback.textContent='Selecione um lote oficial desbloqueado para essa construção no menu lateral.';return}
