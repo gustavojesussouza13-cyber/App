@@ -372,9 +372,20 @@
     console.error('Guild3D:',err);
     say('Seu navegador não iniciou o ambiente 3D. Abrindo a cidade em modo de compatibilidade.');
     dlg.close();oldUI.open(base,state);
-   }finally{loading=false}
+   }finally{
+    loading=false;
+    // Uma importação 3D antiga não pode deixar a janela nova vazia se o
+    // jogador fechou/reabriu durante o carregamento assíncrono.
+    if(dlg.open&&!scene&&seq!==token)queueMicrotask(()=>void load());
+   }
   }
-  q('guild3dClose').onclick=()=>dlg.close();
+  function cleanupCity(){
+   token++;resetOperations();
+   if(queueTicker!==null)clearInterval(queueTicker);queueTicker=null;
+   scene?.destroy();scene=null;selected=null;
+   viewport.querySelector('canvas')?.remove();
+  }
+  q('guild3dClose').onclick=()=>{cleanupCity();dlg.close()};
   q('guild3dFocus').onclick=()=>scene?.focus();
   collect.onclick=()=>sendOperation('collect',{});
   q('guild3dTrain').onclick=()=>{
@@ -382,12 +393,14 @@
    sendOperation('train',{unit:soldier.value,count:Number(count.value)});
   };
   dlg.addEventListener('close',()=>{
-   token++;resetOperations();
-   if(queueTicker!==null)clearInterval(queueTicker);queueTicker=null;
-   scene?.destroy();scene=null;selected=null;viewport.querySelector('canvas')?.remove();
+   // Evitar que um evento "close" enfileirado destrua uma nova sessão 3D
+   // quando o jogador reabre a mesma capital imediatamente.
+   if(!dlg.open)cleanupCity();
   });
   function open(b,kingdom){
-   if(dlg.open)dlg.close();
+   // A cidade aberta troca de reino sem fechar e recriar o modal.
+   // Ao reabrir, limpa os objetos antigos sincronicamente antes da cena nova.
+   if(!dlg.open&&scene)cleanupCity();
    base=b;state=kingdom;selected=null;resetOperations();
    if(Number.isSafeInteger(kingdom?.serverNow))clockOffset=kingdom.serverNow-Date.now();
    say('Selecione um edifício ou explore o terreno com a câmera.');
@@ -397,6 +410,10 @@
    queueTicker=setInterval(updateQueue,200);
    paint();
    if(!state?.persistentAccount)say('Modo visitante: faça login com sua conta para construir e manter os edifícios após sair.','warning');
+   if(scene){
+    scene.updateBuildings(structures(),owns()?state?.yourGuild?.army||{}:{},state?.serverNow);
+    scene.setSelection(selected);
+   }
    void load();
    send('kingdom',{action:'inspect'});
   }
