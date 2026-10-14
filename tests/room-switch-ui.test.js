@@ -30,7 +30,7 @@ function harness(){
   roomName:'Guilda da Luz',roomSwitchPending:false,roomSwitchTarget:null,
   selectedRoomId:'auren-publica',roomCatalog:[
    {id:'auren-publica',name:'Praça Pública',online:1,capacity:10,locked:false},
-   {id:'private',name:'Guilda da Luz',online:4,capacity:10,locked:true}
+   {id:'sala-luz',name:'Guilda da Luz',online:4,capacity:60,locked:false}
   ],
   $:el,
   loadRooms:async()=>{context.refreshed++},
@@ -77,16 +77,12 @@ test('jogador escolhe outra sala e só então confirma; servidor recebe uma soli
  h.el('roomSwitchSelect').value='auren-publica';
  await h.click('roomSwitchConfirm');
  assert.equal(h.sent.length,0,'seleção da mesma sala não deve enviar pedido');
- h.el('roomSwitchSelect').value='private';
- await h.click('roomSwitchConfirm');
- assert.equal(h.sent.length,0,'senha obrigatória');
- assert.match(h.el('roomSwitchError').textContent,/senha/);
- h.el('roomSwitchPassword').value='senha-confidencial';
+ h.el('roomSwitchSelect').value='sala-luz';
  await h.click('roomSwitchConfirm');
  assert.equal(h.sent.length,1);
  assert.equal(h.sent[0][0],'switchRoom');
- assert.equal(h.sent[0][1].roomId,'private');
- assert.equal(h.sent[0][1].password,'senha-confidencial');
+ assert.equal(h.sent[0][1].roomId,'sala-luz');
+ assert.equal('password' in h.sent[0][1],false,'nenhuma senha é enviada ao trocar de sala');
  assert.equal(h.context.roomSwitchPending,true);
  assert.equal(h.el('roomSwitchCancel').disabled,true);
  assert.equal(h.el('roomSwitchDialog').open,true,'aguardar confirmação do servidor');
