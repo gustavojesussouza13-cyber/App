@@ -666,6 +666,11 @@ export function createGuildScene({mount,layout,onCell,onHover}){
  }
  const target=new THREE.Vector3(0,0,0);
  let distance=81,azimuth=Math.PI/4,elevation=.74;
+ function focusLot(lot){
+  if(!lot)return;
+  const p=pos(lot.x,lot.y,lot.w,lot.h);
+  target.set(p.x,0,p.z);distance=48;updateCamera();
+ }
  function updateCamera(){
   camera.position.set(target.x+distance*Math.sin(elevation)*Math.sin(azimuth),
    distance*Math.cos(elevation)+target.y,
@@ -783,5 +788,5 @@ export function createGuildScene({mount,layout,onCell,onHover}){
   pickPlane.material.dispose();
   renderer.dispose();canvas.remove();
  }
- return {setSelection,updateBuildings,showPendingBuilding,clearPendingBuilding,destroy,focus(){target.set(0,0,0);distance=68;updateCamera()}};
+ return {setSelection,updateBuildings,showPendingBuilding,clearPendingBuilding,focusLot,destroy,focus(){target.set(0,0,0);distance=68;updateCamera()}};
 }
