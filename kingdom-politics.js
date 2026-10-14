@@ -667,7 +667,8 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
    ' moedas do tesouro e cessar-fogo por 30 minutos. Edifícios preservados.';
   accept(message);
   for(const member of world.players.values())
-   if(member.save.guild===other.name)world.tell(member,message);
+   if(member.save.guild===other.name){world.tell(member,message);
+    world.send(member.socket,{type:'kingdomState',data:publicState(world,member)});}
   return true;
  }
  if(op==='siege'){
@@ -771,7 +772,10 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
     world.tell(member,'☮ Sua capital atingiu '+defender.siegeCrisis.pressure+
      '% de pressão. O líder pode render-se ou os integrantes podem votar. A decisão preserva os edifícios.');
   for(const member of world.players.values()){
-   if(member.save.guild===defender.name)world.tell(member,'⚔ Sua capital sofreu um cerco! '+details);
+   if(member.save.guild===defender.name){
+    world.tell(member,'⚔ Sua capital sofreu um cerco! '+details);
+    world.send(member.socket,{type:'kingdomState',data:publicState(world,member)});
+   }
    else if(member.uid!==p.uid&&contribution.has(member.save.guild?.toLocaleLowerCase('pt-BR')))
     world.send(member.socket,{type:'kingdomState',data:publicState(world,member)});
   }
