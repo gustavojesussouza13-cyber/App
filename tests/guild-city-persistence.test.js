@@ -102,3 +102,39 @@ test('visitantes não podem fundar ou simular construções permanentes',t=>{
  assert.equal(act({action:'construct',type:'house',x:1,y:1}),false);
  assert.equal(world.guilds.get('visitantes do norte').city,undefined);
 });
+
+test('construções em servidores privados são gravadas na mesma guilda global e reaparecem na praça pública',t=>{
+ const store=mockStore(),shared={send:()=>{},getOnline:()=>0,hasClassicName:()=>false};
+ const primary=new World({...shared,persistentStore:store,autosave:false});
+ const secondary=new World({...shared,persistentStore:store,autosave:false});
+ t.after(()=>{secondary.stop();primary.stop()});
+ // A mesma integração usada por createWorld() no server.js:
+ secondary.saved=primary.saved;
+ secondary.guilds=primary.guilds;
+ secondary.kingdomTickLeader=false;
+ secondary.persist=function(){
+  for(const player of this.players.values())if(player.isAccount)
+   this.saved.characters[player.uid]={...player.save,guild:player.save.guild};
+  if(this.dirty){primary.dirty=true;this.dirty=false}
+  primary.persist();
+ };
+ const client={socket:{},authUser:{uid:'account:server-room',username:'RoomKing'},worldPlayer:null};
+ secondary.join(client,{name:'RoomKing'});
+ const p=client.worldPlayer;p.x=768;p.y=512;p.save.coins=5000;
+ secondary.guild(p,{action:'create',name:'Cidade das Salas'});
+ const now=Date.now(),act=data=>politics.action(secondary,p,data,{walkable:()=>true,now,portals:[],npcs:[]});
+ assert.equal(act({action:'place',x:768,y:512}),true);
+ const before=store.snapshots.length;
+ assert.equal(act({action:'construct',type:'house',x:2,y:2,requestId:1,
+  opKey:'f1a0b123-32aa-4123-8abc-abcdef123461'}),true);
+ assert.ok(store.snapshots.length>before,'a sala precisa gravar por intermédio do mundo principal sem esperar sair');
+ assert.equal(store.snapshots.at(-1).guilds['cidade das salas'].city.buildings.length,1);
+ secondary.leave(client);
+ const reentry={socket:{},authUser:{uid:'account:server-room',username:'RoomKing'},worldPlayer:null};
+ primary.join(reentry,{name:'RoomKing'});
+ const state=politics.publicState(primary,reentry.worldPlayer);
+ assert.equal(state.persistentAccount,true);
+ assert.equal(state.yourGuild.name,'Cidade das Salas');
+ assert.deepEqual(state.cities.find(c=>c.name==='Cidade das Salas').buildings.map(b=>b.type),['house']);
+ assert.equal(state.walletCoins,5000-250-800-120);
+});
