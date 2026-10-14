@@ -414,7 +414,7 @@
     if(!dlg.open||seq!==token)return;
     scene=engine.createGuildScene({mount:viewport,layout,onCell,onHover});
     q('guild3dLoading')?.remove();
-    scene.updateBuildings(structures(),state?.yourGuild?.army||{},state?.serverNow);
+    scene.updateBuildings(structures(),state?.yourGuild?.army||{},state?.serverNow,base?.level||1);
     for(const [key,v]of provisionals)scene.showPendingBuilding?.(v.building,key);
     scene.setSelection(selected);
     say('Cidade 3D pronta. Gire a câmera, explore e construa em todo o terreno livre.');
@@ -475,7 +475,7 @@
    paint();
    if(!state?.persistentAccount)say('Modo visitante: faça login com sua conta para construir e manter os edifícios após sair.','warning');
    if(scene){
-    scene.updateBuildings(structures(),owns()?state?.yourGuild?.army||{}:{},state?.serverNow);
+    scene.updateBuildings(structures(),owns()?state?.yourGuild?.army||{}:{},state?.serverNow,base?.level||1);
     scene.setSelection(selected);
    }
    void load();
@@ -493,7 +493,7 @@
     // Recursos e saldo são prioritários; redesenhar modelos Three.js é caro
     // e não pode impedir a atualização financeira quando ocorrer erro de WebGL.
     paint();
-    scene?.updateBuildings(structures(),owns()?kingdom?.yourGuild?.army||{}:{},kingdom?.serverNow);
+    scene?.updateBuildings(structures(),owns()?kingdom?.yourGuild?.army||{}:{},kingdom?.serverNow,base?.level||1);
    }
   }
   return {open,update,onActionResult,onDurableResult,onConnectionLost,onConnectionRestored,drawMarches:oldUI.drawMarches};
