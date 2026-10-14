@@ -449,7 +449,7 @@ function resolveCityConstructions(world,now=Date.now()){
 function resolve(world,now=Date.now()){
  const finished=[];
  for(const c of resolveCityConstructions(world,now))
-  finished.push({guild:c.guild,text:'Obra concluída: '+c.type+' ('+(c.x+1)+','+(c.y+1)+').'});
+  finished.push({guild:c.guild,kind:'construction',text:'Obra concluída: '+c.type+' ('+(c.x+1)+','+(c.y+1)+').'});
 
  for(const [key,g] of [...world.guilds]){
   if(!g.march||g.march.arrivesAt>now)continue;
