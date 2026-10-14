@@ -12,7 +12,6 @@ test('cidades isométricas são validadas pelo servidor e persistem por guilda',
  world.guild(p,{action:'create',name:'Reino da Luz'});
  const act=d=>politics.action(world,p,d,{walkable:()=>true,portals:[],npcs:[],now:1000});
  assert.equal(act({action:'place',x:768,y:512}),true);
- world.guilds.get(p.save.guild.toLocaleLowerCase('pt-BR')).base.level=5; // fixture legada: testa a regra antiga de lotes sem expansão
  const before=p.save.coins;
  assert.equal(act({action:'construct',type:'house',x:1,y:2}),true);
  assert.equal(p.save.coins,before-120);
@@ -53,7 +52,6 @@ test('patrulha caminha, retorna e nunca duplica soldados',t=>{
  world.guild(p,{action:'create',name:'Guardas do Vale'});
  const options={walkable:()=>true,portals:[],npcs:[],now:100000};
  assert.equal(politics.action(world,p,{action:'place',x:768,y:512},options),true);
- world.guilds.get(p.save.guild.toLocaleLowerCase('pt-BR')).base.level=5; // fixture legada: testa a regra antiga de lotes sem expansão
  assert.equal(politics.action(world,p,{action:'recruit',unit:'militia',count:12},options),true);
  const guild=world.guilds.get('guardas do vale');
  assert.equal(politics.action(world,p,{action:'patrol',zone:3},options),true);
@@ -78,7 +76,6 @@ test('produção da cidade acumula em ciclos limitados e edifícios evoluem usan
  world.guild(p,{action:'create',name:'Reino Verde'});
  const at=(time,data)=>politics.action(world,p,data,{walkable:()=>true,portals:[],npcs:[],now:time});
  assert.equal(at(1000,{action:'place',x:768,y:512}),true);
- world.guilds.get(p.save.guild.toLocaleLowerCase('pt-BR')).base.level=5; // fixture legada: testa a regra antiga de lotes sem expansão
  assert.equal(at(1000,{action:'construct',type:'farm',x:1,y:2}),true);
  assert.equal(at(1000,{action:'construct',type:'market',x:5,y:2}),true);
  const guild=world.guilds.get('reino verde');
@@ -109,7 +106,6 @@ test('quartéis treinam soldados com recursos sem duplicar nem aceitar quantidad
  world.guild(p,{action:'create',name:'Reino dos Campos'});
  const act=(data,now=1000)=>politics.action(world,p,data,{walkable:()=>true,portals:[],npcs:[],now});
  assert.equal(act({action:'place',x:768,y:512}),true);
- world.guilds.get(p.save.guild.toLocaleLowerCase('pt-BR')).base.level=5; // fixture legada: testa a regra antiga de lotes sem expansão
  assert.equal(act({action:'construct',type:'farm',x:1,y:1}),true);
  assert.equal(act({action:'construct',type:'market',x:5,y:2}),true);
  assert.equal(act({action:'train',unit:'militia',count:1}),false,'treinar exige quartel');
@@ -142,7 +138,6 @@ test('retorno do servidor informa se construiu ou recusou e revela saldo pessoal
  world.guild(p,{action:'create',name:'Guilda das Muralhas'});
  const act=(data)=>politics.action(world,p,data,{walkable:()=>true,portals:[],npcs:[],now:1000});
  assert.equal(act({action:'place',x:768,y:512}),true);
- world.guilds.get(p.save.guild.toLocaleLowerCase('pt-BR')).base.level=5; // fixture legada: testa a regra antiga de lotes sem expansão
  const walletBefore=p.save.coins;
  notices.length=0;
  assert.equal(act({action:'construct',type:'house',x:5,y:5,requestId:101}),true);
@@ -187,7 +182,6 @@ test('retransmissão confiável: mesma operação não cobra duas vezes nem dupl
  world.guild(p,{action:'create',name:'Guilda Segura'});
  const act=(data)=>politics.action(world,p,data,{walkable:()=>true,portals:[],npcs:[],now:1000});
  assert.equal(act({action:'place',x:768,y:512}),true);
- world.guilds.get(p.save.guild.toLocaleLowerCase('pt-BR')).base.level=5; // fixture legada: testa a regra antiga de lotes sem expansão
  const startingCoins=p.save.coins;
  const opKey='f1a0b123-32aa-4123-8abc-abcdef123456';
  const build={action:'construct',type:'farm',x:1,y:4,requestId:301,opKey};
