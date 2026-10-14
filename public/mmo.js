@@ -795,7 +795,7 @@ function drawTab(force=false){const parent=$('tabContent');
        const votes=Object.keys(k.crisis.votes||{}).length;
        appendText(crisis,'small','Votos pela rendição: '+votes+' / '+(Math.floor((k.membersCount||1)/2)+1)+'.');
        const vote=document.createElement('button');vote.type='button';vote.textContent='☮ Votar pela rendição negociada';
-       vote.disabled=Boolean(k.crisis.votes?.[session.uid]);
+       vote.disabled=Boolean(k.crisis.yourVote);
        vote.onclick=()=>send('kingdom',{action:'surrenderVote'});
        crisis.append(vote);
        if(k.leader){
