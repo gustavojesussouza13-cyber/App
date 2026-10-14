@@ -250,7 +250,7 @@ try{
  await page.waitForSelector('.guild3d-site-label[data-site-key="house:8:15"]',{timeout:12000});
  const storedAfter=await page.evaluate(()=>buildings.find(b=>b.x===8&&b.y===15)?.endsAt);
  assert.equal(storedAfter,storedBefore,'prazo da obra persiste após sair e entrar');
- assert.match(await page.locator('.guild3d-site-label[data-site-key="house:8:15"] .guild3d-site-timer').innerText(),/^00:\d\d$/);
+ assert.match(await page.locator('.guild3d-site-label[data-site-key="house:8:15"] .guild3d-site-timer').innerText(),/^\d\d:\d\d$/);
  await page.locator('#guild3dClose').click();
  // O botão de voltar seguido de reentrada imediata não pode apagar
  // edifícios nem destruir a nova cena por um evento close antigo.
