@@ -69,7 +69,7 @@ test('PostgreSQL real persiste duas construções, recibos e moedas após sair e
 test('PostgreSQL conserva obras em salas privadas, conclui ao voltar e restaura após novo login', {
  skip:!process.env.TEST_POSTGRES_URL?'Requer PostgreSQL isolado':false
 },async t=>{
- const accountId='account:ci-private-room-build',guildName='Cidade Durável de Auren';
+ const accountId='account:ci-private-room-build',guildName='Reino Vivo CI';
  const stores=[],worlds=[],outbox=[];
  t.after(async()=>{
   for(const world of worlds)world.stop();
@@ -103,6 +103,7 @@ test('PostgreSQL conserva obras em salas privadas, conclui ao voltar e restaura 
  hub.entered(privateRoom);
  const p=client.worldPlayer;p.x=768;p.y=512;p.save.coins=11000;
  privateRoom.world.guild(p,{action:'create',name:guildName});
+ assert.equal(p.save.guild,guildName,'criação da guilda deve ser aceita antes de fundar capital');
  const act=(action,now=Date.now())=>politics.action(privateRoom.world,p,action,{now,walkable:()=>true,portals:[],npcs:[]});
  assert.equal(act({action:'place',x:768,y:512}),true);
  const key='f7b0b123-32aa-4123-8abc-abcdef123456';
@@ -111,7 +112,7 @@ test('PostgreSQL conserva obras em salas privadas, conclui ao voltar e restaura 
  await Promise.resolve();
  assert.ok(outbox.some(m=>m.type==='kingdomDurable'&&m.id===301&&m.ok),
   'a UI só confirma gravação definitiva após commit do PostgreSQL');
- const guildBefore=(await store.pool.query('SELECT data FROM guilds WHERE key=$1',['cidade durável de auren'])).rows[0]?.data;
+ const guildBefore=(await store.pool.query('SELECT data FROM guilds WHERE key=$1',['reino vivo ci'])).rows[0]?.data;
  assert.equal(guildBefore.city.buildings.length,1);
  assert.equal(guildBefore.city.buildings[0].status,'building');
  const savedEndsAt=guildBefore.city.buildings[0].endsAt;
@@ -121,7 +122,7 @@ test('PostgreSQL conserva obras em salas privadas, conclui ao voltar e restaura 
  assert.equal(await store.flush(),true);
  const localLogin={socket:{},authUser:{uid:accountId,username:'ArquitetoCI'},worldPlayer:null};
  main.join(localLogin,{name:'ArquitetoCI'});
- assert.equal(main.guilds.get('cidade durável de auren').city.buildings[0].endsAt,savedEndsAt);
+ assert.equal(main.guilds.get('reino vivo ci').city.buildings[0].endsAt,savedEndsAt);
  const already=politics.publicState(main,localLogin.worldPlayer);
  assert.equal(already.yourGuild.name,guildName);
  assert.equal(already.cities.find(c=>c.name===guildName).buildings.length,1);
@@ -130,9 +131,9 @@ test('PostgreSQL conserva obras em salas privadas, conclui ao voltar e restaura 
  const completion=politics.action(main,localLogin.worldPlayer,{action:'inspect'},
   {now:savedEndsAt+1,walkable:()=>true});
  assert.equal(completion,false,'inspect responde estado e não gera cobrança');
- assert.equal(main.guilds.get('cidade durável de auren').city.buildings[0].status,'complete');
+ assert.equal(main.guilds.get('reino vivo ci').city.buildings[0].status,'complete');
  assert.equal(await store.flush(),true);
- const persisted=(await store.pool.query('SELECT data FROM guilds WHERE key=$1',['cidade durável de auren'])).rows[0]?.data;
+ const persisted=(await store.pool.query('SELECT data FROM guilds WHERE key=$1',['reino vivo ci'])).rows[0]?.data;
  assert.equal(persisted.city.buildings[0].status,'complete');
  main.leave(localLogin);
  assert.equal(await store.flush(),true);
