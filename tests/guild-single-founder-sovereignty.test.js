@@ -30,6 +30,18 @@ function fixture(t){
  };
  return {world,player,establish,saved,events};
 }
+test('a primeira guilda é soberana antes mesmo de escolher a localização da capital',t=>{
+ const f=fixture(t),{p}=f.player('PrimeiroRei');
+ f.world.guild(p,{action:'create',name:'Peregrinos Originais'});
+ assert.equal(p.save.guildFounded,true);
+ assert.equal(f.world.guilds.get('peregrinos originais').base,undefined);
+ const crown=politics.continentalSovereign(f.world);
+ assert.equal(crown.leaderUid,p.uid);
+ assert.equal(crown.uncontested,true);
+ assert.equal(politics.rank(f.world)[0].title,'Coroa Continental');
+ assert.equal(f.world.claimCrownKey(p),true);
+ assert.equal(p.save.inventory.chave_coroa_aurora,1);
+});
 test('uma única guilda com fortaleza governa as 12 regiões e pode reivindicar a chave',t=>{
  const f=fixture(t),a=f.establish('Casa Aurora');
  const map=politics.politicalMap(f.world);
