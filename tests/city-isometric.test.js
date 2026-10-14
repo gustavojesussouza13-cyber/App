@@ -155,7 +155,7 @@ test('retorno do servidor informa se construiu ou recusou e revela saldo pessoal
  assert.equal(act({action:'construct',type:'house',x:5,y:5,requestId:102}),false);
  const invalid=notices.find(x=>x.type==='kingdomActionResult'&&x.id===102);
  assert.equal(invalid.ok,false);
- assert.match(invalid.message,/Terreno ou edifício inválido/);
+ assert.match(invalid.message,/Lote não autorizado, bloqueado ou ocupado/);
  assert.equal(notices.find(x=>x.type==='kingdomState').data.walletCoins,walletBefore-120);
  p.save.coins=0;notices.length=0;
  assert.equal(act({action:'construct',type:'tower',x:1,y:1,requestId:103}),false);
