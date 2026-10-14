@@ -14,7 +14,12 @@ const RAID_COOLDOWN=10*60*1000;
 const MARCH_DURATION=45*1000;
 const MAX_TROOPS=300;
 const CITY_BUILDINGS=Object.freeze({house:120,farm:160,barracks:280,tower:360,market:240});
-const CITY_LIMIT=60;
+const CITY_LIMIT=120;
+const FORTRESS_MAX_LEVEL=60;
+const BUILDING_MAX_LEVEL=60;
+const fortressLevel=v=>Math.max(1,Math.min(FORTRESS_MAX_LEVEL,Math.floor(Number(v)||1)));
+const buildingLevel=v=>Math.max(1,Math.min(BUILDING_MAX_LEVEL,Math.floor(Number(v)||1)));
+const buildingSlots=lv=>Math.min(CITY_LIMIT,60+Math.max(0,fortressLevel(lv)-5)*2);
 // Tempo real no servidor para cada edifício da cidade 3D. Construções antigas
 // continuam concluídas; novas obras ocupam terreno e são salvas ao começar.
 const CITY_BUILD_MS=Object.freeze({
@@ -24,44 +29,58 @@ const CITY_BUILD_MS=Object.freeze({
 const isComplete=(b,now=Date.now())=>b?.status==='complete'||!Number.isSafeInteger(b?.endsAt)||b.endsAt<=now;
 const CITY_RECEIPTS_LIMIT=80; // Replays seguros: nunca cobrar a mesma construção duas vezes.
 const cityLayout=require('./public/city-layout');
-const CITY_CYCLE_MS=15*60*1000;
+const CITY_CYCLE_MS=15*60*1000; // Prazo histórico preservado na migração.
+const CITY_PRODUCTION_MS=Object.freeze({house:4*60000,farm:8*60000,market:12*60000,barracks:16*60000,tower:20*60000});
+const productionCycleMs=(type,level=1)=>{
+ const base=CITY_PRODUCTION_MS[type];
+ return base?Math.max(60000,Math.round(base*Math.max(.20,1-(buildingLevel(level)-1)*.015)/1000)*1000):0;
+};
 const CITY_MAX_CYCLES=24; // Até 6h de produção acumulada; evita inflação sem limite.
 const CITY_YIELDS=Object.freeze({
  house:{food:0,timber:0,stone:0,coins:2},
  farm:{food:8,timber:0,stone:0,coins:0},
- barracks:{food:0,timber:0,stone:0,coins:0},
- tower:{food:0,timber:0,stone:0,coins:0},
+ barracks:{food:1,timber:0,stone:0,coins:0},
+ tower:{food:0,timber:0,stone:1,coins:0},
  market:{food:0,timber:2,stone:1,coins:5}
 });
-const CITY_CAP=50000;
+const CITY_CAP=200000;
 const STOCK_CAPACITY=Object.freeze([0,600,1200,2200,3500,5000]);
 const SIEGE_COOLDOWN=60*1000;
 const ESCORT_LIMIT=60;
-const stockCapacity=level=>STOCK_CAPACITY[Math.max(1,Math.min(5,Math.floor(Number(level)||1)))];
+const stockCapacity=level=>{const lv=fortressLevel(level);return lv<=5?STOCK_CAPACITY[lv]:Math.min(CITY_CAP,5000+(lv-5)*800)};
+const productionStart=(city,b)=>{
+ if(Number.isSafeInteger(b.productionAt)&&b.productionAt>0)return b.productionAt;
+ const last=Number.isSafeInteger(city.lastCollectedAt)?city.lastCollectedAt:0;
+ const built=Number.isSafeInteger(b.endsAt)?b.endsAt:(Number.isSafeInteger(b.startedAt)?b.startedAt:0);
+ return Math.max(last,built);
+};
+function productionState(city,b,now=Date.now()){
+ const cycleMs=productionCycleMs(b?.type,b?.level),yields=CITY_YIELDS[b?.type];
+ if(!cycleMs||!yields||!Object.values(yields).some(Boolean))return null;
+ const complete=isComplete(b,now),since=productionStart(city,b),nextAt=since+cycleMs;
+ const readyCycles=complete&&since>0?Math.min(CITY_MAX_CYCLES,Math.max(0,Math.floor((now-since)/cycleMs))):0;
+ return {cycleMs,nextAt,readyCycles,yields:Object.fromEntries(Object.entries(yields).map(([r,n])=>[r,n*buildingLevel(b.level)]))};
+}
 const MILITARY_SUPPLIES=Object.freeze({militia:{food:4,timber:2,stone:0},archer:{food:5,timber:5,stone:0},knight:{food:8,timber:3,stone:3},siege:{food:12,timber:12,stone:8}});
 const stockCopy=v=>Object.fromEntries(['food','timber','stone','coins'].map(id=>
  [id,Math.min(CITY_CAP,Math.max(0,Number.isSafeInteger(v?.[id])?v[id]:0))]));
 function collectCity(g,now){
- if(!g.city||!Array.isArray(g.city.buildings))return null;
- const city=g.city;
- if(!Number.isSafeInteger(city.lastCollectedAt)||city.lastCollectedAt<=0){city.lastCollectedAt=now;return null}
- const elapsed=now-city.lastCollectedAt;
- if(!Number.isSafeInteger(now)||elapsed<CITY_CYCLE_MS)return null;
- const cycles=Math.min(CITY_MAX_CYCLES,Math.floor(elapsed/CITY_CYCLE_MS));
- const stocks=stockCopy(city.stock),yielded=stockCopy({});
+ if(!g.city||!Array.isArray(g.city.buildings)||!Number.isSafeInteger(now))return null;
+ const city=g.city,stocks=stockCopy(city.stock),yielded=stockCopy({});
+ let readyBuildings=0;
  for(const b of city.buildings.slice(0,CITY_LIMIT)){
-  if(!Object.hasOwn(CITY_YIELDS,b?.type)||!isComplete(b,now))continue;
-  const multiplier=Math.min(5,Math.max(1,Number.isSafeInteger(b.level)?b.level:1));
-  for(const resource of Object.keys(stocks))
-   yielded[resource]+=CITY_YIELDS[b.type][resource]*multiplier*cycles;
+  const production=productionState(city,b,now);
+  if(!production?.readyCycles)continue;
+  readyBuildings++;
+  for(const [resource,amount] of Object.entries(production.yields))yielded[resource]+=amount*production.readyCycles;
+  b.productionAt=productionStart(city,b)+production.readyCycles*production.cycleMs;
  }
- for(const resource of Object.keys(stocks)){
-   // Manter estoques legados acima do limite, sem permitir produção extra.
-   const cap=stockCapacity(g.base?.level);
-   stocks[resource]=stocks[resource]>=cap?stocks[resource]:Math.min(cap,stocks[resource]+yielded[resource]);
-  }
+ if(!readyBuildings)return null;
+ const capacity=stockCapacity(g.base?.level);
+ for(const resource of Object.keys(stocks))
+  if(stocks[resource]<capacity)stocks[resource]=Math.min(capacity,stocks[resource]+yielded[resource]);
  city.stock=stocks;city.lastCollectedAt=now;
- return {cycles,yielded};
+ return {cycles:readyBuildings,yielded,readyBuildings};
 }
 const UNITS=Object.freeze({
  militia:{name:'Milícia',cost:22,power:2,defense:2},
