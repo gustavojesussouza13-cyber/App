@@ -90,6 +90,26 @@ function calculateAttributes(save){
   stats
  };
 }
+// Prévia honesta: diferenças calculadas pelo mesmo motor usado na batalha.
+function allocationPreview(save,key){
+ if(!ATTRIBUTE_KEYS.includes(key))return null;
+ const before=calculateAttributes(save);
+ if(before.availablePoints<1||before.allocations[key]>=ATTRIBUTE_CAP)return null;
+ const after=calculateAttributes({...save,attributes:{...before.allocations,[key]:before.allocations[key]+1}});
+ const labels={
+  vitalidade:[['maxHp','PV máximos'],['hpRegen','PV/s'],['armor','armadura']],
+  fortitude:[['armor','armadura'],['fireResist','resistência ao fogo']],
+  forca:[['physicalPower','poder físico']],
+  agilidade:[['physicalPower','poder físico'],['haste','rapidez (%)'],['evasion','esquiva (%)']],
+  intelecto:[['magicPower','poder mágico'],['maxEnergy','energia'],['magicResist','resistência mágica']],
+  espirito:[['healingPower','poder de cura'],['energyRegen','energia/s'],['magicResist','resistência mágica']],
+  sorte:[['criticalChance','crítico (%)'],['criticalMultiplier','multiplicador crítico'],['accuracy','precisão (%)']]
+ };
+ return labels[key].map(([stat,label])=>{
+  const delta=Number(((after.stats[stat]||0)-(before.stats[stat]||0)).toFixed(2));
+  return delta>0?label+' +'+(Number.isInteger(delta)?delta:delta.toFixed(2).replace(/0+$/,'').replace(/\\.$/,'')):null;
+ }).filter(Boolean).slice(0,3).join(' · ');
+}
 function attackModifiers(save,kind='physical'){
  const p=calculateAttributes(save);
  return {
@@ -113,4 +133,4 @@ function mitigateDamage(raw,stats,element='physical'){
  return Math.max(1,Math.ceil((base-armor)*(1-(stats.evasion||0)/100)));
 }
 module.exports={ATTRIBUTE_KEYS,ATTRIBUTE_LABELS,ATTRIBUTE_INFO,ATTRIBUTE_CAP,MAX_LEVEL,POINTS_PER_LEVEL,pointsEarned,
- PROFILES,normalizeAllocations,totalAllocated,calculateAttributes,attackModifiers,isCritical,mitigateDamage};
+ PROFILES,normalizeAllocations,totalAllocated,calculateAttributes,allocationPreview,attackModifiers,isCritical,mitigateDamage};
