@@ -17,11 +17,12 @@
    '<header class="guild3d-header"><div class="guild3d-brand"><span class="guild3d-kicker">OS PEREGRINOS · REINOS DE AUREN</span><strong id="guild3dTitle">Capital da guilda</strong><small id="guild3dSubtitle">Gestão do reino</small></div>'+
    '<div class="guild3d-topresources"><div class="guild3d-label">TESOURO · RECURSOS</div><div id="guild3dStock" class="guild3d-stocks"></div></div>'+
    '<div class="guild3d-header-actions"><button type="button" id="guild3dFocus" title="Centralizar câmera">◎ Centralizar</button><button type="button" id="guild3dClose">✕ Voltar ao continente</button></div></header>'+
-   '<div class="guild3d-main"><div class="guild3d-stage"><div id="guild3dViewport" class="guild3d-viewport"><p id="guild3dLoading">Preparando sua capital tridimensional…</p></div>'+
-   '<div class="guild3d-build-panel"><div class="guild3d-panel-heading"><strong>⚒ MENU DE CONSTRUÇÃO</strong><small>Edifícios do reino</small></div><div id="guild3dChoices" class="guild3d-choices"></div></div>'+
-   '<div class="guild3d-lot-panel"><div class="guild3d-panel-heading"><strong>⌂ LOTE SELECIONADO</strong><small id="guild3dLotName">Escolha um terreno no mapa</small></div><p id="guild3dLotInfo" class="guild3d-note">Clique nos lotes demarcados para ver as construções e os desbloqueios.</p><div class="guild3d-lot-actions"><button type="button" id="guild3dLotAction" class="guild3d-action" disabled>Construir</button><button type="button" id="guild3dLotUpgrade" class="guild3d-action" hidden>Evoluir edifício</button></div></div>'+
+   '<div id="guild3dMain" class="guild3d-main" data-sidebar-collapsed="false"><div class="guild3d-stage"><div id="guild3dViewport" class="guild3d-viewport"><p id="guild3dLoading">Preparando sua capital tridimensional…</p></div>'+
+   '<div class="guild3d-left-dock" aria-label="Painéis laterais da cidade">'+
+   '<section id="guild3dBuildShell" class="guild3d-build-panel guild3d-dock-panel" data-collapsed="false"><div class="guild3d-panel-heading"><div class="guild3d-panel-caption"><strong>⚒ MENU DE CONSTRUÇÃO</strong><small>Edifícios do reino</small></div><button type="button" id="guild3dToggleBuild" class="guild3d-panel-toggle" title="Recolher construções" aria-label="Recolher menu de construção" aria-expanded="true" aria-controls="guild3dBuildContents">◀</button></div><div id="guild3dBuildContents" class="guild3d-panel-body"><div id="guild3dChoices" class="guild3d-choices"></div></div></section>'+
+   '<section id="guild3dLotShell" class="guild3d-lot-panel guild3d-dock-panel" data-collapsed="false"><div class="guild3d-panel-heading"><div class="guild3d-panel-caption"><strong>⌂ LOTE SELECIONADO</strong><small id="guild3dLotName">Escolha um terreno no mapa</small></div><button type="button" id="guild3dToggleLot" class="guild3d-panel-toggle" title="Recolher painel do lote" aria-label="Recolher painel do lote" aria-expanded="true" aria-controls="guild3dLotContents">◀</button></div><div id="guild3dLotContents" class="guild3d-panel-body"><p id="guild3dLotInfo" class="guild3d-note">Clique nos lotes demarcados para ver as construções e os desbloqueios.</p><div class="guild3d-lot-actions"><button type="button" id="guild3dLotAction" class="guild3d-action" disabled>Construir</button><button type="button" id="guild3dLotUpgrade" class="guild3d-action" hidden>Evoluir edifício</button></div></div></section></div>'+
    '<div class="guild3d-hud"><span>Arraste para girar · Roda para aproximar · Shift + arraste para mover</span><span id="guild3dCoords">Terreno 26×26 · 3D</span></div></div>'+
-   '<aside class="guild3d-sidebar"><div class="guild3d-label">ADMINISTRAÇÃO DA CAPITAL</div>'+
+   '<aside id="guild3dSidebar" class="guild3d-sidebar" data-collapsed="false"><div class="guild3d-sidebar-bar"><strong>ADMINISTRAÇÃO DA CAPITAL</strong><button type="button" class="guild3d-panel-toggle" id="guild3dToggleSidebar" title="Recolher administração" aria-label="Recolher painel de administração" aria-controls="guild3dSidebarContents" aria-expanded="true">▶</button></div><div id="guild3dSidebarContents" class="guild3d-sidebar-body">'+
    '<button type="button" id="guild3dCollect" class="guild3d-action">✦ Coletar recursos prontos</button>'+ 
     '<div class="guild3d-label">PRODUÇÃO DOS EDIFÍCIOS</div><div id="guild3dProduction" class="guild3d-build-queue" aria-label="Tempo de recursos por edifício"></div>'+
     '<div class="guild3d-label">EXPANSÃO DO REINO</div><p id="guild3dProgress" class="guild3d-note"></p>'+
@@ -42,9 +43,30 @@
     '<button type="button" id="guild3dRecall" class="guild3d-action">↩ Recolher escolta</button></div>'+
    '<div class="guild3d-label">DIÁRIO DA CAPITAL</div><p id="guild3dFeedback" class="guild3d-feedback" role="status" aria-live="polite">Escolha uma construção e selecione um terreno livre.</p>'+
    '<p id="guild3dVisitor" class="guild3d-note" hidden>Esta cidade pertence a outra guilda. Somente seu líder pode construir ou melhorar edifícios.</p>'+
-   '</aside></div></div>';
+   '</div></aside></div></div>';
   document.body.append(dlg);
   const q=id=>dlg.querySelector('#'+id);
+  // Cada painel possui estado próprio. Recolher não remove os elementos nem
+  // interrompe relógios, solicitações, menus ou a sincronização do reino.
+  function bindPanel(shellId,toggleId,side){
+   const shell=q(shellId),button=q(toggleId);
+   if(!shell||!button)return;
+   const title=side==='right'?'painel de administração':
+    side==='lot'?'painel do lote':'menu de construção';
+   const apply=collapsed=>{
+    shell.dataset.collapsed=String(collapsed);
+    if(side==='right')q('guild3dMain').dataset.sidebarCollapsed=String(collapsed);
+    button.setAttribute('aria-expanded',String(!collapsed));
+    button.setAttribute('aria-label',(collapsed?'Expandir ':'Recolher ')+title);
+    button.title=(collapsed?'Expandir ':'Recolher ')+title;
+    button.textContent=side==='right'?(collapsed?'◀':'▶'):(collapsed?'▶':'◀');
+   };
+   apply(false);
+   button.addEventListener('click',()=>apply(shell.dataset.collapsed!=='true'));
+  }
+  bindPanel('guild3dBuildShell','guild3dToggleBuild','build');
+  bindPanel('guild3dLotShell','guild3dToggleLot','lot');
+  bindPanel('guild3dSidebar','guild3dToggleSidebar','right');
   const opts=q('guild3dChoices');
   const info=q('guild3dFeedback');
   const stock=q('guild3dStock');
