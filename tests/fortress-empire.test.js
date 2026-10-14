@@ -99,6 +99,6 @@ test('a arte 2D distingue os quatro tipos de tropa e aparece no carregamento do 
  const src=fs.readFileSync(path.join(__dirname,'../public/army-pixel16.js'),'utf8');
  const html=fs.readFileSync(path.join(__dirname,'../public/mundo.html'),'utf8');
  for(const id of ['militia','archer','knight','siege'])assert.match(src,new RegExp("type==='"+id+"'"));
- assert.ok(html.includes('/army-pixel16.js?v=atributos-pontos-v2'));
+ assert.ok(html.includes('/army-pixel16.js?v=monstros-evoluem-v1'));
  assert.match(src,/imageSmoothingEnabled=false/);
 });
