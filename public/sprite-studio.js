@@ -14,7 +14,8 @@
  const ATELIER=typeof module==='object'&&module.exports?require('./character-atelier16'):globalThis.OsPeregrinosCharacterAtelier;
  const POLISH=typeof module==='object'&&module.exports?require('./sprite-polish16'):globalThis.OsPeregrinosSpritePolish16;
  const APPEARANCE=typeof module==='object'&&module.exports?require('./appearance16'):globalThis.PeregrinosAppearance16;
- const W=40,H=52;
+ const RETRO=typeof module==='object'&&module.exports?require('./retro-atlas64'):globalThis.OsPeregrinosRetro64;
+ const W=RETRO?.WIDTH||40,H=RETRO?.HEIGHT||52;
  const ROLES=Object.freeze({
   peregrino:{coat:'#8a6245',edge:'#402e32',light:'#b99163',trim:'#dcc28e',hair:'#493328',skin:'#e1af7f',boots:'#352b34',metal:'#acb6a4',gem:'#a9e6ca'},
   guardiao:{coat:'#667d8b',edge:'#263848',light:'#b5c9ca',trim:'#e4be78',hair:'#3a322f',skin:'#dda879',boots:'#293744',metal:'#e0e4db',gem:'#96dbea'},
@@ -311,12 +312,15 @@
    const g=canvas.getContext('2d');
    if(!g)return null;
    g.imageSmoothingEnabled=false;
-   if(kind==='hero')heroFrame(g,name,dir,action,frame,appearance);
+   if(kind==='hero'&&RETRO?.hero)RETRO.hero(g,{role:name,dir,action,frame,colors:ROLES[name]||ROLES.peregrino,appearance});
+   else if(kind==='hero')heroFrame(g,name,dir,action,frame,appearance);
+   else if(kind==='npc'&&RETRO?.npc)RETRO.npc(g,{npc:npc||{name},dir,action,frame});
    else if(kind==='npc'&&ATELIER?.npc){
     ATELIER.npc(g,npc||{name}, {dir,action,frame});
     POLISH?.npc(g,{style:name,dir,action,frame});
    }
    else if(kind==='npc')heroFrame(g,npc?.role||'peregrino',dir,action,frame);
+   else if(RETRO?.creature)RETRO.creature(g,{type:name,dir,action,frame,boss:!!boss,zone,species,colors:CREATURES[name]||CREATURES.limo});
    else monsterFrame(g,name,dir,action,frame,!!boss,zone,species);
    cache.set(key,canvas);builds++;
    if(cache.size>Math.max(128,limit))cache.delete(cache.keys().next().value);
@@ -337,7 +341,7 @@
    if(!sheet)return false;
    g.imageSmoothingEnabled=false;
    const pc=state.desktopPremium===true;
-   const w=pc?70:56,h=pc?87:69;
+   const w=pc?88:70,h=pc?110:88;
    if(pc){
     // Sombras duras do contorno: preservam pixel art sobre folhas e pedras.
     g.save();
@@ -357,8 +361,8 @@
    const sheet=obtain('monster',type,dir,sel.action,sel.frame,!!m.boss,m.zone||0,Number.isInteger(m.species)?m.species:0);
    if(!sheet)return false;
    const pc=state.desktopPremium===true;
-   const w=pc?(m.boss?106:66):(m.boss?77:54);
-   const h=pc?(m.boss?132:81):(m.boss?92:61);
+   const w=pc?(m.boss?124:80):(m.boss?98:68);
+   const h=pc?(m.boss?155:100):(m.boss?123:85);
    g.imageSmoothingEnabled=false;
    if(pc){
     g.save();g.shadowColor='#071b1c';g.shadowBlur=0;
@@ -381,7 +385,7 @@
    if(!sprite)return false;
    g.imageSmoothingEnabled=false;
    const pc=state.desktopPremium===true;
-   const w=pc?62:52,h=pc?78:62;
+   const w=pc?80:66,h=pc?100:83;
    if(pc){
     g.save();g.shadowColor='#071b1c';g.shadowBlur=0;
     g.shadowOffsetX=2;g.shadowOffsetY=2;
@@ -392,7 +396,7 @@
    return true;
   }
   function clear(){cache.clear()}
-  return {drawHero,drawMonster,drawNpc,pose,clear,
+  return {drawHero,drawMonster,drawNpc,pose,clear,spriteSize:{width:W,height:H},
    obtain,normalizeRole,get stats(){return{builds,cached:cache.size}},roles:Object.keys(ROLES),creatures:Object.keys(CREATURES)};
  }
  return {create,ROLES,CREATURES,phases,family,normalizeRole};
