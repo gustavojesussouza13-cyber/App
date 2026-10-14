@@ -74,7 +74,8 @@ function collectCity(g,now){
   if(!production?.readyCycles)continue;
   readyBuildings++;
   for(const [resource,amount] of Object.entries(production.yields))yielded[resource]+=amount*production.readyCycles;
-  b.productionAt=productionStart(city,b)+production.readyCycles*production.cycleMs;
+  const elapsedCycles=Math.floor((now-productionStart(city,b))/production.cycleMs);
+  b.productionAt=productionStart(city,b)+elapsedCycles*production.cycleMs; // Sem coletar 24 ciclos repetidamente após longa ausência.
  }
  if(!readyBuildings)return null;
  const capacity=stockCapacity(g.base?.level);
