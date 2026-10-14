@@ -29,6 +29,7 @@ class AccountStore{
  constructor({databaseUrl,pool}={}){
   this.pool=pool||new (require('pg').Pool)({connectionString:databaseUrl,max:4,connectionTimeoutMillis:8000,idleTimeoutMillis:30000});
   this.world=null;this.pending=null;this.saving=null;this.ready=false;
+  this.retryTimer=null;this.retryDelay=2000;
  }
  async initialize(world){
   await this.pool.query(`CREATE TABLE IF NOT EXISTS game_accounts (
@@ -72,8 +73,25 @@ class AccountStore{
  enqueue(worldState){
   // Sempre substituir pelo instantâneo mais recente. Falhas não eliminam dados pendentes.
   this.pending=JSON.parse(JSON.stringify(worldState));
-  if(!this.saving)this.saving=this._flushLoop().finally(()=>{this.saving=null});
+  return this._beginFlush();
+ }
+ _beginFlush(){
+  if(!this.saving)this.saving=this._flushLoop().finally(()=>{
+   this.saving=null;
+   // Recuperar a fila após falha sem esperar um novo comando nem o autosave.
+   this._scheduleRetry();
+  });
   return this.saving;
+ }
+ _scheduleRetry(){
+  if(!this.pending||this.retryTimer)return;
+  const delay=this.retryDelay;
+  this.retryDelay=Math.min(30000,Math.round(delay*1.8));
+  this.retryTimer=setTimeout(()=>{
+   this.retryTimer=null;
+   if(this.pending)this._beginFlush();
+  },delay);
+  this.retryTimer.unref?.();
  }
  async _flushLoop(){
   while(this.pending){
@@ -84,11 +102,13 @@ class AccountStore{
     return false;
    }
   }
+  this.retryDelay=2000;
+  if(this.retryTimer){clearTimeout(this.retryTimer);this.retryTimer=null}
   return true;
  }
  async flush(){
   if(this.saving)await this.saving;
-  if(this.pending){this.saving=this._flushLoop().finally(()=>{this.saving=null});return this.saving}
+  if(this.pending)return this._beginFlush();
   return true;
  }
  async saveSnapshot(snapshot){
