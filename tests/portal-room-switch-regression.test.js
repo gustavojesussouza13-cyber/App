@@ -33,6 +33,7 @@ function welcomeHarness(){
   spriteActions:{monsters:new Map(),players:new Map(),fallen:[{id:'velho'}]},
   drawTravel(){travelRenders.push([...state.portals])},
   setOnline(){},displayOnline(){},character(){},alert(){},
+  cityUI:{onConnectionRestored(){}},
  };
  const context=vm.createContext(sandbox);
  vm.runInContext(source+';this.processWelcome=processWelcome;',context);
