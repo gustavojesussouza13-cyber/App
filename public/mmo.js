@@ -6,6 +6,54 @@ const cvs=$('game'),ctx=cvs.getContext('2d',{alpha:false});ctx.imageSmoothingEna
 const W=cvs.width,H=cvs.height,ZONE_W=1536,ZONE_H=1024;
 const session={id:'',name:'',connected:false,characters:null,online:0,zones:[],portals:[],shop:{},relics:{},quests:[],npcs:[],merchants:[],story:null,achievements:{},monsters:new Map(),players:new Map(),zone:0,x:768,y:512,dir:2,target:null,partyInvite:null,guildInvite:null,tradeOffer:null,role:'peregrino',cameraX:0,cameraY:0,formClass:'peregrino'};
 const keys=new Set(),moves={up:['KeyW','ArrowUp'],down:['KeyS','ArrowDown'],left:['KeyA','ArrowLeft'],right:['KeyD','ArrowRight']};
+let selectedMonsterSheet=null;
+const monsterAttributeLabels={vitalidade:'Vitalidade',fortitude:'Fortitude',forca:'Força',agilidade:'Agilidade',intelecto:'Intelecto',espirito:'Espírito',sorte:'Sorte'};
+function updateMonsterLife(){
+ const monster=selectedMonsterSheet&&session.monsters.get(selectedMonsterSheet.id);
+ if(!monster)return;
+ const health=document.getElementById('monsterSheetLife'),bar=document.getElementById('monsterSheetBar');
+ if(health)health.textContent=monster.hp+' / '+monster.maxHp;
+ if(bar)bar.style.width=Math.max(0,Math.min(100,monster.hp/Math.max(1,monster.maxHp)*100))+'%';
+}
+function clearMonsterSheet(){selectedMonsterSheet=null;const panel=document.getElementById('monsterSheet');if(panel)panel.hidden=true}
+function renderMonsterSheet(sheet){
+ if(!sheet||sheet.id!==session.target)return;
+ selectedMonsterSheet=sheet;
+ const panel=document.getElementById('monsterSheet');if(!panel)return;
+ panel.hidden=false;
+ document.getElementById('monsterSheetTitle').textContent=sheet.name;
+ document.getElementById('monsterSheetRank').textContent='Nível '+sheet.level+' · '+sheet.rank+' · '+sheet.archetype;
+ const stats=document.getElementById('monsterSheetStats');stats.replaceChildren();
+ function addStat(label,value){
+  const tile=document.createElement('div');tile.className='monster-sheet-stat';
+  const caption=document.createElement('small');caption.textContent=label;
+  const number=document.createElement('strong');number.textContent=String(value);
+  tile.append(caption,number);stats.append(tile);
+ }
+ addStat('Peregrinos derrotados',sheet.victories);
+ addStat('Experiência conquistada',sheet.evolutionXp);
+ addStat('Poder de ataque',sheet.attack);
+ addStat('Armadura / Resistência',sheet.armor+' / '+sheet.magicResist);
+ addStat('Esquiva',sheet.evasion+'%');addStat('Rapidez',sheet.attackHaste+'%');
+ const attrs=document.getElementById('monsterSheetAttributes');attrs.replaceChildren();
+ for(const [key,label]of Object.entries(monsterAttributeLabels)){
+  const tile=document.createElement('div'),caption=document.createElement('small'),value=document.createElement('strong');
+  caption.textContent=label;value.textContent=String(sheet.attributes?.[key]||0);
+  tile.append(caption,value);attrs.append(tile);
+ }
+ function renderList(id,items,empty){
+  const target=document.getElementById(id);target.replaceChildren();
+  if(!items?.length){target.textContent=empty;return}
+  for(const item of items){
+   const tile=document.createElement('div');tile.className='monster-equipment-item';tile.textContent=item.name;
+   const desc=document.createElement('span');desc.textContent=item.effect||item.kind||item.slot||'';
+   tile.append(desc);target.append(tile);
+  }
+ }
+ renderList('monsterSheetEquipment',sheet.equipment,'Esta criatura não carrega equipamentos.');
+ renderList('monsterSheetLoot',sheet.loot,'Nenhum espólio registrado.');
+ updateMonsterLife();
+}
 const monsterMotion=window.OsPeregrinosMonsterMotion.create();
 const playerMotion=window.OsPeregrinosPlayerMotion.create();
 const combatFx=window.OsPeregrinosCombatFx.create();
@@ -202,7 +250,7 @@ function dispatch(msg){
   // Não deixar sprites, efeitos e diálogos da sala anterior no novo mundo.
   closeDialogue();
   keys.clear();joystick.release();
-  session.monsters.clear();monsterMotion.clear();playerMotion.clear();combatFx.clear();
+  session.monsters.clear();clearMonsterSheet();monsterMotion.clear();playerMotion.clear();combatFx.clear();
   session.players.clear();spriteActions.monsters.clear();spriteActions.players.clear();
   spriteActions.fallen.length=0;
   visibleKingdomBases=[];kingdomState=null;
@@ -247,12 +295,14 @@ function dispatch(msg){
   if(Array.isArray(msg.kingdoms))visibleKingdomBases=msg.kingdoms;
   const now=new Map();for(const m of msg.monsters||[])now.set(m.id,m);
   monsterMotion.sync([...now.values()]);session.monsters=now;
+   updateMonsterLife();
   const people=new Map();for(const p of msg.players||[])people.set(p.id,p);
   playerMotion.sync([...people.values()],performance.now());session.players=people;
- }else if(msg.type==='travel'){desktopAudio.play('travel');session.zone=msg.zone;visibleKingdomBases=[];session.portals=msg.portals||[];session.x=msg.x;session.y=msg.y;session.target=null;session.monsters.clear();monsterMotion.clear();playerMotion.clear();combatFx.clear();classSkillFx.clear();$('zoneTitle').textContent=msg.name;alert('✦ '+msg.name);drawTravel();
+ }else if(msg.type==='travel'){desktopAudio.play('travel');session.zone=msg.zone;visibleKingdomBases=[];session.portals=msg.portals||[];session.x=msg.x;session.y=msg.y;session.target=null;session.monsters.clear();clearMonsterSheet();monsterMotion.clear();playerMotion.clear();combatFx.clear();classSkillFx.clear();$('zoneTitle').textContent=msg.name;alert('✦ '+msg.name);drawTravel();
  }else if(msg.type==='hit'){if(msg.zone===session.zone){
   if(typeof desktopAudio!=='undefined')desktopAudio.play(msg.projectile==='arrow'?'arrow':msg.projectile==='holy-bolt'?'magic':'hit');
   const m=session.monsters.get(msg.monster);if(m)m.hp=msg.remaining;
+   if(selectedMonsterSheet?.id===msg.monster)updateMonsterLife();
   spriteActions.monsters.set(msg.monster,{action:'hurt',at:performance.now()});
   if(msg.by)spriteActions.players.set(msg.by,{action:'attack',at:performance.now()});
   // O acerto é autoritativo: não desenhar flechas nem magias para cliques rejeitados.
@@ -260,6 +310,14 @@ function dispatch(msg){
   if(!started)fx.push({x:m?.x||session.x,y:m?.y||session.y,text:'−'+msg.damage,t:performance.now(),color:'#ffe5a6'});
   if(msg.critical)fx.push({x:m?.x||session.x,y:(m?.y||session.y)-48,text:'✦ CRÍTICO!',t:performance.now(),color:'#ffc66d'});
  }
+ }else if(msg.type==='monsterSheet'){renderMonsterSheet(msg.sheet);
+ }else if(msg.type==='monsterEvolution'){if(msg.zone===session.zone){
+  const monster=session.monsters.get(msg.monster);
+  if(monster){monster.level=msg.level;monster.rank=msg.rank;monster.victories=msg.victories;monster.maxHp=msg.maxHp}
+  if(selectedMonsterSheet?.id===msg.monster)renderMonsterSheet(msg.sheet);
+  alert('⚔ '+(monster?.name||'Uma criatura')+' evoluiu após vencer um jogador: nível '+msg.level+' · '+msg.rank);
+ }
+ }else if(msg.type==='monsterLoot'){say('','Espólio encontrado: '+msg.name,'sys');
  }else if(msg.type==='troopStrike'){if(msg.zone===session.zone){
    const now=performance.now();
    troopShots.push({from:{x:msg.x,y:msg.y-25},to:{x:msg.to?.x||msg.x,y:(msg.to?.y||msg.y)-22},
@@ -332,7 +390,7 @@ function connect(){
     $('roomSwitchConfirm').disabled=true;$('roomSwitchCancel').disabled=false;
    }
    setOnline(false,'Desconectado');
-   session.monsters.clear();monsterMotion.clear();playerMotion.clear();combatFx.clear();session.players.clear();spriteActions.monsters.clear();spriteActions.players.clear();spriteActions.fallen.length=0;session.portals=[];
+   session.monsters.clear();clearMonsterSheet();monsterMotion.clear();playerMotion.clear();combatFx.clear();session.players.clear();spriteActions.monsters.clear();spriteActions.players.clear();spriteActions.fallen.length=0;session.portals=[];
    if(!authed)return;
    clearTimeout(reconnectTimer);reconnectTimer=setTimeout(connect,reconnectMs);
    reconnectMs=Math.min(14000,reconnectMs*1.7);
@@ -672,7 +730,7 @@ function attack(skill){
     const dist=Math.hypot(monster.x-session.x,monster.y-session.y);
     if(dist<=limit&&(!m||dist<Math.hypot(m.x-session.x,m.y-session.y)))m=monster;
    }
-   if(m)session.target=m.id;
+   if(m){session.target=m.id;send('inspectMonster',{monster:m.id})}
   }
  }
  if(!session.target){alert(touchDevice?'Aproxime-se de um monstro ou toque nele para selecionar.':'Clique sobre um monstro para selecioná-lo.');return}
@@ -682,7 +740,8 @@ function attack(skill){
  }
  send(skill?'skill':'attack',{target:session.target});lastActionWasSkill=Boolean(skill);lastAction=performance.now();
 }
-$('talkBtn').onclick=talkToNearest;$('attackBtn').onclick=()=>attack(false);$('skillBtn').onclick=()=>attack(true);$('potionBtn').onclick=()=>send('use',{item:'pocao'});$('questBtn').onclick=()=>selectTab('quests');$('mapBtn').onclick=showWorldMap;$('chatFocusBtn').onclick=()=>$('chatInput').focus();
+$('monsterSheetClose').onclick=clearMonsterSheet;
+ $('talkBtn').onclick=talkToNearest;$('attackBtn').onclick=()=>attack(false);$('skillBtn').onclick=()=>attack(true);$('potionBtn').onclick=()=>send('use',{item:'pocao'});$('questBtn').onclick=()=>selectTab('quests');$('mapBtn').onclick=showWorldMap;$('chatFocusBtn').onclick=()=>$('chatInput').focus();
 cvs.addEventListener('click',e=>{if(!session.connected)return;const rect=cvs.getBoundingClientRect(),wx=(e.clientX-rect.left)*W/rect.width+session.cameraX,wy=(e.clientY-rect.top)*H/rect.height+session.cameraY;
  // O sprite real tem 92px de altura, portanto toda a porta é clicável,
  // não apenas a posição dos pés; o servidor ainda valida proximidade do jogador.
@@ -698,7 +757,7 @@ cvs.addEventListener('click',e=>{if(!session.connected)return;const rect=cvs.get
  const npcRadius=touchDevice?Math.max(38,32*W/Math.max(1,rect.width)):38;
  const npc=session.npcs.filter(n=>n.zone===session.zone).find(n=>Math.hypot(n.x-wx,n.y-wy)<npcRadius);
  if(npc){tryTalk(npc);return}
- if(candidate){session.target=candidate.id;alert('Alvo: '+candidate.name+(touchDevice?' · Toque em Atacar':' · J para atacar'))}});
+ if(candidate){session.target=candidate.id;send('inspectMonster',{monster:candidate.id});alert('Alvo: '+candidate.name+' · Nível '+candidate.level+' · '+candidate.rank+(touchDevice?' · Toque em Atacar':' · J para atacar'))}});
 function selectTab(next){tab=next;document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));drawTab(true)}
 document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>selectTab(b.dataset.tab));
 $('tabContent').addEventListener('focusout',()=>{
