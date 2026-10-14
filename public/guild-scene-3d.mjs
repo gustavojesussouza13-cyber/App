@@ -42,17 +42,6 @@ export function createGuildScene({mount,layout,onCell,onHover}){
  const lotsGroup=new THREE.Group();scene.add(lotsGroup);
  const streets=new THREE.Group();root.add(streets);
  const lotCells=new Set(layout.slots.flatMap(lot=>layout.cells(lot).map(([x,y])=>x+':'+y)));
- for(let y=0;y<N;y++)for(let x=0;x<N;x++){
-  if(layout.isCore(x,y)||lotCells.has(x+':'+y))continue;
-  const p=pos(x,y);
-  const road=box(streets,CELL*.97,.055,CELL*.97,(x+y)%4===0?'#96896e':'#b3a58a',p.x,.04,p.z,false);
-  road.receiveShadow=true;
-  if((x+y)%5===0){
-   box(streets,CELL*.28,.025,.12,'#c9bfa4',p.x-CELL*.23,.077,p.z-.36,false);
-   box(streets,CELL*.22,.025,.11,'#8a806e',p.x+CELL*.23,.078,p.z+.28,false);
-  }
- }
- const walkers=new THREE.Group();scene.add(walkers);
  const pickPlane=new THREE.Mesh(new THREE.PlaneGeometry(N*CELL,N*CELL),new THREE.MeshBasicMaterial({visible:false,side:THREE.DoubleSide}));
  pickPlane.rotation.x=-Math.PI/2;pickPlane.position.y=0.03;scene.add(pickPlane);
  const ground=new THREE.Mesh(new THREE.PlaneGeometry(N*CELL,N*CELL),material('#71995b'));
@@ -65,6 +54,17 @@ export function createGuildScene({mount,layout,onCell,onHover}){
   m.castShadow=cast;m.receiveShadow=true;parent.add(m);return m;
  }
  const pos=(x,y,w=1,h=1)=>new THREE.Vector3((x+w/2)*CELL-HALF,0,(y+h/2)*CELL-HALF);
+ for(let y=0;y<N;y++)for(let x=0;x<N;x++){
+  if(layout.isCore(x,y)||lotCells.has(x+':'+y))continue;
+  const p=pos(x,y);
+  const road=box(streets,CELL*.97,.055,CELL*.97,(x+y)%4===0?'#96896e':'#b3a58a',p.x,.04,p.z,false);
+  road.receiveShadow=true;
+  if((x+y)%5===0){
+   box(streets,CELL*.28,.025,.12,'#c9bfa4',p.x-CELL*.23,.077,p.z-.36,false);
+   box(streets,CELL*.22,.025,.11,'#8a806e',p.x+CELL*.23,.078,p.z+.28,false);
+  }
+ }
+ const walkers=new THREE.Group();scene.add(walkers);
  const hash=(x,y,s=0)=>{let n=Math.imul(x+17,73856093)^Math.imul(y+23,19349663)^Math.imul(s+41,83492791);return ((n^(n>>>13))>>>0)/4294967295};
  function cone(parent,r,height,sides,c,x=0,y=0,z=0){
   const m=new THREE.Mesh(new THREE.ConeGeometry(r,height,sides),material(c));
