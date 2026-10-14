@@ -39,6 +39,19 @@ export function createGuildScene({mount,layout,onCell,onHover}){
  labels.className='guild3d-construction-layer';mount.append(labels);
  const provisionalStructures=new THREE.Group();scene.add(provisionalStructures);
  const decor=new THREE.Group();scene.add(decor);
+ const lotsGroup=new THREE.Group();scene.add(lotsGroup);
+ const streets=new THREE.Group();root.add(streets);
+ const lotCells=new Set(layout.slots.flatMap(lot=>layout.cells(lot).map(([x,y])=>x+':'+y)));
+ for(let y=0;y<N;y++)for(let x=0;x<N;x++){
+  if(layout.isCore(x,y)||lotCells.has(x+':'+y))continue;
+  const p=pos(x,y);
+  const road=box(streets,CELL*.97,.055,CELL*.97,(x+y)%4===0?'#96896e':'#b3a58a',p.x,.04,p.z,false);
+  road.receiveShadow=true;
+  if((x+y)%5===0){
+   box(streets,CELL*.28,.025,.12,'#c9bfa4',p.x-CELL*.23,.077,p.z-.36,false);
+   box(streets,CELL*.22,.025,.11,'#8a806e',p.x+CELL*.23,.078,p.z+.28,false);
+  }
+ }
  const walkers=new THREE.Group();scene.add(walkers);
  const pickPlane=new THREE.Mesh(new THREE.PlaneGeometry(N*CELL,N*CELL),new THREE.MeshBasicMaterial({visible:false,side:THREE.DoubleSide}));
  pickPlane.rotation.x=-Math.PI/2;pickPlane.position.y=0.03;scene.add(pickPlane);
@@ -426,7 +439,7 @@ export function createGuildScene({mount,layout,onCell,onHover}){
  function freshDecor(){
   disposeGroup(decor);
   for(let y=0;y<N;y++)for(let x=0;x<N;x++){
-   if(layout.isCore(x,y)||layout.at(buildings,x,y))continue;
+   if(layout.isCore(x,y)||layout.lotAt(x,y)||layout.at(buildings,x,y))continue;
    const seed=hash(x,y,3),p=pos(x,y);
    if(seed>.91&&x>0&&y>0){
     littleTree(decor,p.x+CELL*.15,p.z+CELL*.18,seed);
@@ -508,6 +521,27 @@ export function createGuildScene({mount,layout,onCell,onHover}){
   }
  }
  let lastBuildingState=null;
+ function paintLotFoundations(){
+  disposeGroup(lotsGroup);
+  const all=[...buildings,...[...pendingVisuals.values()].map(entry=>entry.building)];
+  for(const lot of layout.slots){
+   if(layout.lotStatus(lot,all,buildLevel)==='occupied')continue;
+   const locked=lot.unlockLevel>buildLevel;
+   const p=pos(lot.x,lot.y,lot.w,lot.h),w=lot.w*CELL-.13,d=lot.h*CELL-.13;
+   const group=new THREE.Group();group.position.copy(p);lotsGroup.add(group);
+   group.userData.lot=lot;
+   box(group,w,.09,d,locked?'#606d62':'#bbb091',0,.09,0,false);
+   const tone=locked?'#626c66':lot.type==='farm'?'#95c17c':lot.type==='barracks'||lot.type==='tower'?'#b7a7a1':lot.type==='market'?'#d3ba76':'#bcd6aa';
+   for(const z of [-d*.47,d*.47])box(group,w*.94,.055,.11,tone,0,.17,z,false);
+   for(const x of [-w*.47,w*.47])box(group,.11,.055,d*.9,tone,x,.17,0,false);
+   if(!locked){
+    const glyph=box(group,.67,.055,.67,tone,0,.19,0,false);
+    glyph.rotation.y=Math.PI/4;
+   }else box(group,.62,.17,.62,'#797967',0,.18,0,false);
+  }
+  renderer.domElement.dataset.availableLots=String(layout.availableLots(buildLevel).filter(l=>layout.lotStatus(l,all,buildLevel)==='empty').length);
+ }
+
  const lockedGroup=new THREE.Group();scene.add(lockedGroup);
   const lockedMaterial=new THREE.MeshBasicMaterial({color:'#384347',transparent:true,opacity:.26,depthWrite:false});
   let previousLevel=0;
@@ -547,7 +581,7 @@ export function createGuildScene({mount,layout,onCell,onHover}){
   for(const b of buildings)
    if(b.status!=='building'||!Number.isSafeInteger(b.endsAt))
     drawBuilding(b,structures);
-  freshDecor();rebuildWalkers();
+  paintLotFoundations();freshDecor();rebuildWalkers();
  }
  // Cada construção possui sua própria instância. Não eliminar as anteriores
  // quando o jogador posiciona outro prédio antes do ACK do servidor.
@@ -566,7 +600,7 @@ export function createGuildScene({mount,layout,onCell,onHover}){
   clearPendingBuilding(id,false);
   const site=makeSite(building,'pending:'+id,true);
   pendingVisuals.set(id,{...site,building});
-  setPendingDataset();
+  setPendingDataset();paintLotFoundations();
   renderer.render(scene,camera);
  }
  function clearPendingBuilding(id,refresh=true){
@@ -575,7 +609,7 @@ export function createGuildScene({mount,layout,onCell,onHover}){
    const site=pendingVisuals.get(key);if(!site)continue;
    pendingVisuals.delete(key);deleteSite(site);
   }
-  if(refresh)setPendingDataset();
+  if(refresh){setPendingDataset();paintLotFoundations();}
  }
 
  const people=[];
@@ -617,9 +651,11 @@ export function createGuildScene({mount,layout,onCell,onHover}){
  function setSelection(type){selection=type||null;showHover(hover)}
  function showHover(cell){
   hover=cell;
-  if(!cell||!selection||!layout.footprints[selection]){ghost.visible=false;highlight.visible=false;return}
-  const [w,h]=layout.footprints[selection],valid=layout.canPlace([...buildings,...[...pendingVisuals.values()].map(p=>p.building)],selection,cell.x,cell.y,buildLevel);
-  const p=pos(cell.x,cell.y,w,h);
+  const lot=cell?layout.lotAt(cell.x,cell.y):null;
+  if(!lot){ghost.visible=false;highlight.visible=false;return}
+  const [w,h]=[lot.w,lot.h];
+  const valid=layout.lotStatus(lot,[...buildings,...[...pendingVisuals.values()].map(p=>p.building)],buildLevel)==='empty';
+  const p=pos(lot.x,lot.y,w,h);
   const g=geom(w*CELL,.11,h*CELL);
   ghost.geometry=g;highlight.geometry.dispose();
   highlight.geometry=new THREE.EdgesGeometry(g);
@@ -629,7 +665,7 @@ export function createGuildScene({mount,layout,onCell,onHover}){
   ghost.visible=true;highlight.visible=true;
  }
  const target=new THREE.Vector3(0,0,0);
- let distance=70,azimuth=.77,elevation=.92;
+ let distance=81,azimuth=Math.PI/4,elevation=.74;
  function updateCamera(){
   camera.position.set(target.x+distance*Math.sin(elevation)*Math.sin(azimuth),
    distance*Math.cos(elevation)+target.y,
