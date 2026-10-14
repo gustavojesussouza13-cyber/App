@@ -130,6 +130,7 @@ function hash32(n){n|=0;n=Math.imul(n^(n>>>16),0x7feb352d);n=Math.imul(n^(n>>>15
 class World {
  constructor({send,getOnline,hasClassicName,dataFile,autosave=false,persistentStore=null}){
   this.send=send;this.getOnline=getOnline;this.hasClassicName=hasClassicName;
+  this.guildDefenseTargets=new Map(); // ameaças de cerco temporárias, somente em RAM
   this.players=new Map();this.guestReconnect=new Map();this.monsters=new Map();this.parties=new Map();this.guilds=new Map();this.pendingTrades=new Map();this.chatGuard=new ChatGuard();this.chatReceipts=new Map();this.chatReports=new Map();this.chatReportRate=new Map();
   this.dirty=false;this.lastTick=Date.now();this.day=1;this.monsterPersistenceEnabled=true;
   this.dataFile=dataFile||path.join(__dirname,'data','world.sqlite');
@@ -340,12 +341,21 @@ class World {
   s.story=normalizeStory(s.story);
   // Classe selecionada no novo início vale imediatamente para visitante.
   // Em contas registradas, NÃO ler d.role: a classe é a da conta persistida.
-  if(!owner&&typeof d.role==='string'&&Object.hasOwn(CLASSES,d.role)&&s.role!==d.role){
+  if(!owner&&!c.roomTransferRole&&typeof d.role==='string'&&Object.hasOwn(CLASSES,d.role)&&s.role!==d.role){
    const healthMissing=Math.max(0,hpMax(s)-s.hp);
    s.role=d.role;
    s.hp=clamp(hpMax(s)-healthMissing,1,hpMax(s));
    // Reconexões da mesma aba mantêm atributos; novo token cria a jornada zero.
   }
+  // Classe aprovada pelo servidor exclusivamente na transferência entre salas;
+  // mantém XP, nível, inventário, missão e especializações.
+  if(c.roomTransferRole&&Object.hasOwn(CLASSES,c.roomTransferRole)&&s.role!==c.roomTransferRole){
+   const missing=Math.max(0,hpMax(s)-s.hp);
+   s.role=c.roomTransferRole;
+   s.hp=clamp(hpMax(s)-missing,1,hpMax(s));
+   s.energy=rpg.calculateAttributes(s).stats.maxEnergy;
+  }
+  if(owner&&c.roomTransferRole){this.saved.characters[uid]=safeSave(s);this.dirty=true}
   const p={lastRegenAt:now,lastCombatAt:0,lastResourceBroadcast:0,attackCounter:0,id:crypto.randomUUID(),uid,name,isAccount:!!owner,isAdministrator:!!owner?.administrator,socket:c.socket,save:s,x:s.x,y:s.y,zone:s.zone,dir:2,lastMove:Date.now(),moveCredit:12,lastAttack:0,lastSpell:0,lastChat:0,lastUse:0,party:null,live:true};
   c.worldPlayer=p;c.socket._worldClient=c;this.players.set(p.id,p);
   this.send(c.socket,{type:'welcome',room:c.worldRoom?{id:c.worldRoom.id,name:c.worldRoom.name}:null,self:this.ownStatus(p),zones:this.zoneInfo(),shop:Object.fromEntries(Object.entries(GOODS).filter(([key,item])=>!item.storyOnly)),relics:RELICS,quests:QUESTS,achievements:ACHIEVEMENTS,portals:this.zonePortals(p.zone),npcs:NPCS.map(publicNpc),merchants:Object.keys(MERCHANT_STOCK).map(id=>{const n=byId.get(id);return {id,name:n.name,zone:n.zone,region:ZONES[n.zone][0]}}),maxPlayers:60,online:this.players.size+this.getOnline(),monsterTotal:this.totalMonsters()});
@@ -371,7 +381,7 @@ class World {
  snapshotTo(p){const near=[...this.players.values()].filter(o=>o.id!==p.id&&o.zone===p.zone&&dist(o,p)<680).map(o=>this.publicPlayer(o));
   // Margem de visibilidade evita monstros aparecendo/desaparecendo na borda da tela.
   const mons=(this.monsters.get(p.zone)||[]).filter(m=>m.hp>0&&dist(m,p)<850).map(m=>this.publicMonster(m));
-  this.send(p.socket,{type:'snapshot',online:this.players.size+this.getOnline(),zone:p.zone,players:near,monsters:mons,day:this.day,
+  this.send(p.socket,{type:'snapshot',online:this.players.size+this.getOnline(),zone:p.zone,players:near,monsters:mons,defenseTargets:this.guildDefenseList(p),day:this.day,
    kingdoms:kingdoms.publicState(this,p).bases.filter(b=>b.zone===p.zone)});
   if(Date.now()-(p.lastKingdomState||0)>8000){
    p.lastKingdomState=Date.now();
@@ -380,6 +390,12 @@ class World {
  }
  receive(c,d){if(!d||typeof d!=='object'||Array.isArray(d))return;if(!c.worldPlayer){if(d.type==='hello')this.join(c,d);return}
   const p=c.worldPlayer;const now=Date.now();
+  // Um agressor neutralizado não se move, usa habilidades ou inicia outro
+  // cerco até terminar a imobilização. Itens de cura continuam disponíveis.
+  if(p.neutralizedUntil>now&&['move','travel','portal','attack','skill','kingdom'].includes(d.type)){
+   if(now-(p.lastNeutralizedNotice||0)>1700){p.lastNeutralizedNotice=now;this.tell(p,'🛡 Você foi neutralizado. Aguarde o término da imobilização.');}
+   return;
+  }
   switch(d.type){
    case 'move':{
     if(now-p.lastMove<20)break;const x=Number(d.x),y=Number(d.y);if(!Number.isFinite(x)||!Number.isFinite(y))break;
@@ -400,6 +416,7 @@ class World {
    case 'travel':this.travel(p,d.zone);break;
    case 'portal':this.usePortal(p,d.zone);break;
    case 'inspectMonster':this.inspectMonster(p,cap(d.monster,64));break;
+   case 'defendGuild':this.guildDefenseAttack(p,d.target);break;
    case 'attack':this.attack(p,d.target,false);break;
    case 'skill':this.attack(p,d.target,true);break;
    case 'class':this.chooseClass(p,d.role);break;
@@ -512,6 +529,74 @@ class World {
   this.send(p.socket,this.ownStatus(p));
   this.broadcast({type:'appearanceChanged',id:p.id,appearance:p.save.appearance},q=>q.id!==p.id);
   this.persist();
+  return true;
+ }
+ // Gatilho defensivo exclusivo para cercos válidos iniciados por um jogador.
+ // Nenhuma ação enviada pelo navegador cria direitos de PvP.
+ declareGuildAggressor(defenderKey,attacker,now=Date.now()){
+  const key=String(defenderKey||'').toLocaleLowerCase('pt-BR');
+  const g=this.guilds.get(key);
+  if(!g?.members?.length||!attacker?.uid||!attacker.live||attacker.save.guild?.toLocaleLowerCase('pt-BR')===key)return false;
+  let active=this.guildDefenseTargets.get(key);
+  if(!active){active=new Map();this.guildDefenseTargets.set(key,active)}
+  active.set(attacker.uid,{uid:attacker.uid,name:attacker.name,attackerGuild:attacker.save.guild||'Sem guilda',
+   expiresAt:now+5*60*1000});
+  for(const w of this.guildWorlds())for(const member of w.players.values()){
+   if(member.live===false||member.save.guild?.toLocaleLowerCase('pt-BR')!==key||!g.members.includes(member.uid))continue;
+   w.send(member.socket,{type:'guildDefense',targets:w.guildDefenseList(member,now),
+    text:'⚔ '+attacker.name+' iniciou um cerco contra '+g.name+'. Somente esse agressor pode ser neutralizado por seus membros por cinco minutos. Entre na mesma sala e região para enfrentá-lo.'});
+  }
+  return true;
+ }
+ guildDefenseList(p,now=Date.now()){
+  const key=p.save.guild?.toLocaleLowerCase('pt-BR'),g=this.guilds.get(key);
+  if(!g?.members?.includes(p.uid))return [];
+  const active=this.guildDefenseTargets.get(key);
+  if(!active)return [];
+  const result=[];
+  for(const [uid,entry] of active){
+   if(entry.expiresAt<=now){active.delete(uid);continue}
+   const online=this.guildPlayer(uid);
+   result.push({name:entry.name,attackerGuild:entry.attackerGuild,expiresAt:entry.expiresAt,
+    // ID de combate somente quando ambos estão na MESMA sala e região.
+    id:online&&this.players.get(online.id)===online&&online.zone===p.zone?online.id:null,
+    inRoom:!!(online&&this.players.get(online.id)===online),sameRegion:!!(online&&this.players.get(online.id)===online&&online.zone===p.zone)});
+  }
+  return result;
+ }
+ guildDefenseAttack(p,tid){
+  const now=Date.now(),target=this.players.get(tid);
+  const key=p.save.guild?.toLocaleLowerCase('pt-BR'),g=this.guilds.get(key);
+  const rights=this.guildDefenseTargets.get(key);
+  if(!target||target.live===false||!g?.members?.includes(p.uid)||!rights||p.uid===target.uid||target.zone!==p.zone)return false;
+  const threat=rights.get(target.uid);
+  if(!threat||threat.expiresAt<=now||target.save.guild?.toLocaleLowerCase('pt-BR')===key)return false;
+  if(target.neutralizedUntil>now)return false;
+  const range=CLASSES[p.save.role]?.range||85;
+  if(dist(p,target)>range)return false;
+  if(now-(p.lastGuildDefenseAttack||0)<700)return false;
+  p.lastGuildDefenseAttack=now;p.lastCombatAt=now;
+  const r=rpg.calculateAttributes(p.save);
+  const amount=Math.max(5,Math.round((CLASSES[p.save.role].attack+p.save.level*1.5+r.stats.attackPower*.1)*.75));
+  const damage=Math.min(amount,Math.max(0,target.save.hp-1));
+  if(damage<=0)return false;
+  target.save.hp-=damage;target.lastCombatAt=now;
+  if(target.save.hp<=1){
+   target.save.hp=1;target.neutralizedUntil=now+12000;
+   rights.delete(target.uid); // interrompe o direito de ataque: sem perseguição infinita
+   this.tell(target,'🛡 Você foi neutralizado ao atacar a guilda '+g.name+'. Sua movimentação e seu combate ficam bloqueados por 12 segundos.');
+   for(const w of this.guildWorlds())for(const member of w.players.values()){
+    if(member.live===false||member.save.guild?.toLocaleLowerCase('pt-BR')!==key||!g.members.includes(member.uid))continue;
+    w.send(member.socket,{type:'guildDefense',targets:w.guildDefenseList(member,now),
+     text:'🛡 '+target.name+' foi neutralizado. O direito temporário de contra-ataque foi encerrado.'});
+   }
+  }
+  this.send(target.socket,this.ownStatus(target));
+  this.send(p.socket,this.ownStatus(p));
+  this.broadcast({type:'guildDefenseHit',zone:p.zone,by:p.id,targetId:target.id,targetName:target.name,
+   x:Math.round(target.x),y:Math.round(target.y),damage,remaining:target.save.hp,
+   neutralized:target.neutralizedUntil>now},q=>q.zone===p.zone&&dist(q,target)<780);
+  this.dirty=true;
   return true;
  }
  chooseClass(p,role){
