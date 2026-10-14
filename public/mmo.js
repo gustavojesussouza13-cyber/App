@@ -21,6 +21,7 @@ function renderMonsterSheet(sheet){
  selectedMonsterSheet=sheet;
  const panel=document.getElementById('monsterSheet');if(!panel)return;
  panel.hidden=false;
+ document.getElementById('monsterSheetClose').onclick=clearMonsterSheet;
  document.getElementById('monsterSheetTitle').textContent=sheet.name;
  document.getElementById('monsterSheetRank').textContent='Nível '+sheet.level+' · '+sheet.rank+' · '+sheet.archetype;
  const stats=document.getElementById('monsterSheetStats');stats.replaceChildren();
@@ -250,7 +251,7 @@ function dispatch(msg){
   // Não deixar sprites, efeitos e diálogos da sala anterior no novo mundo.
   closeDialogue();
   keys.clear();joystick.release();
-  session.monsters.clear();clearMonsterSheet();monsterMotion.clear();playerMotion.clear();combatFx.clear();
+  session.monsters.clear();monsterMotion.clear();playerMotion.clear();combatFx.clear();if(typeof clearMonsterSheet==='function')clearMonsterSheet();
   session.players.clear();spriteActions.monsters.clear();spriteActions.players.clear();
   spriteActions.fallen.length=0;
   visibleKingdomBases=[];kingdomState=null;
@@ -298,7 +299,7 @@ function dispatch(msg){
    updateMonsterLife();
   const people=new Map();for(const p of msg.players||[])people.set(p.id,p);
   playerMotion.sync([...people.values()],performance.now());session.players=people;
- }else if(msg.type==='travel'){desktopAudio.play('travel');session.zone=msg.zone;visibleKingdomBases=[];session.portals=msg.portals||[];session.x=msg.x;session.y=msg.y;session.target=null;session.monsters.clear();clearMonsterSheet();monsterMotion.clear();playerMotion.clear();combatFx.clear();classSkillFx.clear();$('zoneTitle').textContent=msg.name;alert('✦ '+msg.name);drawTravel();
+ }else if(msg.type==='travel'){desktopAudio.play('travel');session.zone=msg.zone;visibleKingdomBases=[];session.portals=msg.portals||[];session.x=msg.x;session.y=msg.y;session.target=null;session.monsters.clear();monsterMotion.clear();playerMotion.clear();combatFx.clear();if(typeof clearMonsterSheet==='function')clearMonsterSheet();classSkillFx.clear();$('zoneTitle').textContent=msg.name;alert('✦ '+msg.name);drawTravel();
  }else if(msg.type==='hit'){if(msg.zone===session.zone){
   if(typeof desktopAudio!=='undefined')desktopAudio.play(msg.projectile==='arrow'?'arrow':msg.projectile==='holy-bolt'?'magic':'hit');
   const m=session.monsters.get(msg.monster);if(m)m.hp=msg.remaining;
@@ -390,7 +391,7 @@ function connect(){
     $('roomSwitchConfirm').disabled=true;$('roomSwitchCancel').disabled=false;
    }
    setOnline(false,'Desconectado');
-   session.monsters.clear();clearMonsterSheet();monsterMotion.clear();playerMotion.clear();combatFx.clear();session.players.clear();spriteActions.monsters.clear();spriteActions.players.clear();spriteActions.fallen.length=0;session.portals=[];
+   session.monsters.clear();monsterMotion.clear();playerMotion.clear();combatFx.clear();if(typeof clearMonsterSheet==='function')clearMonsterSheet();session.players.clear();spriteActions.monsters.clear();spriteActions.players.clear();spriteActions.fallen.length=0;session.portals=[];
    if(!authed)return;
    clearTimeout(reconnectTimer);reconnectTimer=setTimeout(connect,reconnectMs);
    reconnectMs=Math.min(14000,reconnectMs*1.7);
@@ -740,8 +741,7 @@ function attack(skill){
  }
  send(skill?'skill':'attack',{target:session.target});lastActionWasSkill=Boolean(skill);lastAction=performance.now();
 }
-$('monsterSheetClose').onclick=clearMonsterSheet;
- $('talkBtn').onclick=talkToNearest;$('attackBtn').onclick=()=>attack(false);$('skillBtn').onclick=()=>attack(true);$('potionBtn').onclick=()=>send('use',{item:'pocao'});$('questBtn').onclick=()=>selectTab('quests');$('mapBtn').onclick=showWorldMap;$('chatFocusBtn').onclick=()=>$('chatInput').focus();
+$('talkBtn').onclick=talkToNearest;$('attackBtn').onclick=()=>attack(false);$('skillBtn').onclick=()=>attack(true);$('potionBtn').onclick=()=>send('use',{item:'pocao'});$('questBtn').onclick=()=>selectTab('quests');$('mapBtn').onclick=showWorldMap;$('chatFocusBtn').onclick=()=>$('chatInput').focus();
 cvs.addEventListener('click',e=>{if(!session.connected)return;const rect=cvs.getBoundingClientRect(),wx=(e.clientX-rect.left)*W/rect.width+session.cameraX,wy=(e.clientY-rect.top)*H/rect.height+session.cameraY;
  // O sprite real tem 92px de altura, portanto toda a porta é clicável,
  // não apenas a posição dos pés; o servidor ainda valida proximidade do jogador.
