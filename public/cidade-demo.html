@@ -43,7 +43,15 @@ const costs={house:120,farm:160,barracks:280,tower:360,market:240},
 units={militia:{food:4,timber:2,stone:0},archer:{food:5,timber:5,stone:0},knight:{food:8,timber:3,stone:3},siege:{food:12,timber:12,stone:8}};
 const base={name,zone:0,x:768,y:512,level:2};
 let localCoins=8500,lastCollected=start-15*60*1000;
-function current(){return {bases:[base],cities:[{name,buildings}],walletCoins:localCoins,yourGuild:{name,leader:true,stock,army},trainingCosts:units,marches:[]}}
+// Mensagens WebSocket chegam serializadas: o cliente recebe snapshots, não
+// referências mutáveis à memória do servidor. Essencial para testar ACK perdido.
+function current(){return {
+ bases:[{...base}],
+ cities:[{name,buildings:buildings.map(b=>({...b}))}],
+ walletCoins:localCoins,
+ yourGuild:{name,leader:true,stock:{...stock},army:{...army}},
+ trainingCosts:units,marches:[]
+}}
 const successfulRequests=new Map();
 function result(request,ok,message){
  if(ok&&request.opKey)successfulRequests.set(request.opKey,{ok,message});
