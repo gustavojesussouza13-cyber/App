@@ -546,7 +546,7 @@ class World {
  healParty(p){
   // A cura é uma habilidade de suporte independente de acertar monstros.
   // Só cura o próprio Curandeiro e membros de sua equipe na mesma região.
-  const amount=28+p.save.level*4+
+  const amount=28+p.save.level*4+Math.round(rpg.calculateAttributes(p.save).stats.healingPower*.70)+
    ((p.save.inventory.cajado_misericordia||0)>0?RELICS.cajado_misericordia.healing:0);
   let healed=0;
   for(const ally of this.players.values()){
@@ -580,7 +580,7 @@ class World {
   return protectedCount;
  }
  restorePilgrim(p){
-  const restored=Math.max(0,Math.min(12+p.save.level*2,hpMax(p.save)-p.save.hp));
+  const restored=Math.max(0,Math.min(12+p.save.level*2+Math.floor(rpg.calculateAttributes(p.save).stats.healingPower*.25),hpMax(p.save)-p.save.hp));
   if(restored){
    p.save.hp+=restored;
    this.send(p.socket,this.ownStatus(p));
@@ -591,10 +591,20 @@ class World {
    q=>q.zone===p.zone&&dist(q,p)<780);
   return restored;
  }
- attack(p,tid,skill){const now=Date.now(),role=CLASSES[p.save.role];const cooldown=skill?4000:600;
+ attack(p,tid,skill){const now=Date.now(),role=CLASSES[p.save.role];
+  const derived=rpg.calculateAttributes(p.save),modifiers=rpg.attackModifiers(p.save,p.save.role==='curandeiro'?'magic':'physical');
+  const cooldown=Math.round((skill?4000:600)*modifiers.cooldownFactor);
   if(now-(skill?p.lastSpell:p.lastAttack)<cooldown)return;
   const m=(this.monsters.get(p.zone)||[]).find(x=>x.id===tid&&x.hp>0);
   const canHit=!!(m&&dist(m,p)<=(skill?role.range*1.4:role.range));
+  if(skill){
+   if(!canHit&&p.save.role==='arqueiro')return;
+   if((p.save.energy??derived.stats.maxEnergy)<20){
+    if(now-(p.lastEnergyNotice||0)>1800){p.lastEnergyNotice=now;this.tell(p,'Energia insuficiente para a habilidade. Aguarde regenerar.');}
+    return;
+   }
+   p.save.energy=Math.max(0,(p.save.energy??derived.stats.maxEnergy)-20);this.dirty=true;
+  }
   // Suporte K não exige monstro. Se há alvo dentro do alcance, o golpe
   // fortalecido acontece junto da habilidade. J ainda exige inimigo.
   if(skill&&p.save.role==='curandeiro'){
@@ -622,13 +632,18 @@ class World {
    }
   }
   if(!canHit)return;
+  p.lastCombatAt=now;
   if(skill)p.lastSpell=now;else p.lastAttack=now;
   const level=p.save.level;
   const bestRelic=RELICS[RELIC_WEAPON[p.save.role]];
   const weapon=(p.save.inventory[RELIC_WEAPON[p.save.role]]||0)>0?bestRelic.attack:
     p.save.role==='arqueiro'?((p.save.inventory.arco||0)>0?6:0):
     ((p.save.inventory.espada||0)>0?7:0);
-  let damage=Math.round(role.attack+level*2+weapon+(skill?role.attack*.9:0));
+  let damage=Math.max(1,Math.round((role.attack+level*2+weapon+
+   modifiers.bonus*(p.save.role==='curandeiro'?.56:.54)+(skill?role.attack*.9:0))*modifiers.precision));
+  p.attackCounter=(p.attackCounter||0)+1;
+  const critical=rpg.isCritical(p.attackCounter,derived.stats.criticalChance);
+  if(critical)damage=Math.round(damage*derived.stats.criticalMultiplier);
   const marker=this.players.get(m.markOwner);
   if(m.markUntil>now&&marker&&marker.id!==p.id&&marker.party&&p.party===marker.party){
    damage+=Math.max(1,Math.round(damage*.18));
@@ -661,7 +676,7 @@ class World {
    p.save.role==='curandeiro'?
    // O foco do cajado fica à direita do corpo no sprite 16-bit.
    {projectile:'holy-bolt',from:{x:Math.round(p.x+25),y:Math.round(p.y-57)},to:aim}:{};
-  this.broadcast({type:'hit',monster:m.id,zone:m.zone,damage,remaining:m.hp,by:p.name,skill,...projectile},q=>q.zone===p.zone&&dist(q,m)<780);
+  this.broadcast({type:'hit',monster:m.id,zone:m.zone,damage,remaining:m.hp,by:p.name,skill,critical,...projectile},q=>q.zone===p.zone&&dist(q,m)<780);
   if(m.hp===0){m.aggroTarget=null;m.aggroUntil=0;m.windupUntil=0;m.markUntil=0;m.markOwner=null;m.deadUntil=now+(m.boss?45000:14000);let recipients=new Map();for(const [pid] of m.damageFrom){const x=this.players.get(pid);if(x&&x.zone===p.zone&&dist(x,m)<690)recipients.set(x.id,x)}
    for(const x of [...recipients.values()])if(x.party){for(const ally of this.players.values())if(ally.party===x.party&&ally.zone===x.zone&&dist(ally,m)<500)recipients.set(ally.id,ally)}
    for(const x of recipients.values())this.award(x,Math.round(m.xp/Math.max(1,recipients.size)*1.3),Math.ceil(m.coins/Math.max(1,recipients.size)),m.boss,m.zone);
