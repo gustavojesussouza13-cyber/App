@@ -34,6 +34,10 @@ const CITY_YIELDS=Object.freeze({
  market:{food:0,timber:2,stone:1,coins:5}
 });
 const CITY_CAP=50000;
+const STOCK_CAPACITY=Object.freeze([0,600,1200,2200,3500,5000]);
+const SIEGE_COOLDOWN=60*1000;
+const ESCORT_LIMIT=60;
+const stockCapacity=level=>STOCK_CAPACITY[Math.max(1,Math.min(5,Math.floor(Number(level)||1)))];
 const MILITARY_SUPPLIES=Object.freeze({militia:{food:4,timber:2,stone:0},archer:{food:5,timber:5,stone:0},knight:{food:8,timber:3,stone:3},siege:{food:12,timber:12,stone:8}});
 const stockCopy=v=>Object.fromEntries(['food','timber','stone','coins'].map(id=>
  [id,Math.min(CITY_CAP,Math.max(0,Number.isSafeInteger(v?.[id])?v[id]:0))]));
@@ -51,7 +55,11 @@ function collectCity(g,now){
   for(const resource of Object.keys(stocks))
    yielded[resource]+=CITY_YIELDS[b.type][resource]*multiplier*cycles;
  }
- for(const resource of Object.keys(stocks))stocks[resource]=Math.min(CITY_CAP,stocks[resource]+yielded[resource]);
+ for(const resource of Object.keys(stocks)){
+   // Manter estoques legados acima do limite, sem permitir produção extra.
+   const cap=stockCapacity(g.base?.level);
+   stocks[resource]=stocks[resource]>=cap?stocks[resource]:Math.min(cap,stocks[resource]+yielded[resource]);
+  }
  city.stock=stocks;city.lastCollectedAt=now;
  return {cycles,yielded};
 }
@@ -65,6 +73,19 @@ const integer=v=>typeof v==='number'&&Number.isSafeInteger(v);
 const troopCount=army=>Object.values(UNITS).reduce((n,u,i)=>n+Math.max(0,Number(army?.[Object.keys(UNITS)[i]])||0),0);
 const power=(army,field='power')=>Object.entries(UNITS).reduce((n,[id,unit])=>n+Math.max(0,Number(army?.[id])||0)*unit[field],0);
 const armyCopy=army=>Object.fromEntries(Object.keys(UNITS).map(id=>[id,Math.min(MAX_TROOPS,Math.max(0,Math.floor(Number(army?.[id])||0)))]));
+const escortOf=(guild,uid)=>armyCopy(guild?.escorts?.[uid]);
+const escortTotal=guild=>Object.values(guild?.escorts||{}).reduce((n,v)=>n+troopCount(armyCopy(v)),0);
+function fortressDefense(g,now=Date.now()){
+ const lv=Math.max(1,Math.min(5,Number(g?.base?.level)||1));
+ const walls=Math.max(0,Math.min(5,Math.floor(Number(g?.base?.defenseLevel)||0)));
+ const towers=(g?.city?.buildings||[]).filter(b=>b?.type==='tower'&&isComplete(b,now))
+  .reduce((sum,b)=>sum+8*Math.min(5,Math.max(1,Number(b.level)||1)),0);
+ return {level:lv,walls,towers,defense:35*lv+25*walls+towers+power(g?.army,'defense')};
+}
+function escortStrike(g,uid){
+ const escort=escortOf(g,uid);
+ return {units:escort,damage:troopCount(escort)?Math.min(50,Math.max(1,Math.round(power(escort)*.18))):0};
+}
 function guildFor(world,p){
  if(!p.save.guild)return null;
  const key=p.save.guild.toLocaleLowerCase('pt-BR'),guild=world.guilds.get(key);
@@ -159,14 +180,17 @@ function publicState(world,p){
   persistentAccount:Boolean(p?.isAccount),
   walletCoins:Math.max(0,Math.floor(Number(p?.save?.coins)||0)),
   zones:politicalMap(world),bases:forts(world).map(b=>({name:b.name,zone:b.zone,x:b.x,y:b.y,
-   level:b.level,realm:b.name})),
+   level:b.level,defenseLevel:world.guilds.get(b.key)?.base?.defenseLevel||0,realm:b.name})),
   ranking:rank(world).slice(0,30),
   yourGuild:your?{name:your.guild.name,leader:your.guild.leader===p.uid,
    base:your.guild.base||null,army:armyCopy(your.guild.army),
+   escort:escortOf(your.guild,p.uid),escortsTotal:escortTotal(your.guild),
+   fortressDefense:fortressDefense(your.guild),
    march:your.guild.march||null,nextRaidAt:your.guild.nextRaidAt||0,
    influence:your.guild.influence||{},stock:stockCopy(your.guild.city?.stock),lastCollectedAt:your.guild.city?.lastCollectedAt||0}:null,
   serverNow:Date.now(),
-  buildTimes:CITY_BUILD_MS,
+  buildTimes:CITY_BUILD_MS,stockCapacity:stockCapacity(your?.guild?.base?.level),
+  buildBounds:cityLayout.bounds(your?.guild?.base?.level||1),maxEscort:ESCORT_LIMIT,
   cities:[...world.guilds.values()].filter(g=>g.base).map(g=>({name:g.name,
    buildings:(Array.isArray(g.city?.buildings)?g.city.buildings:[])
     .filter(b=>b&&CITY_BUILDINGS[b.type]&&Number.isInteger(b.x)&&Number.isInteger(b.y))
@@ -198,13 +222,14 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
  // Uma chave aleatória por ação persiste nas tentativas de retransmissão da mesma operação.
  // A guilda guarda recibos de sucesso (incluídos no snapshot persistido da conta).
  const opKey=typeof d.opKey==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(d.opKey)?d.opKey:null;
- const replayable=op==='construct'||op==='buildingUpgrade'||op==='collect'||op==='train';
+ const replayable=['construct','buildingUpgrade','collect','train','escort','recall','fortify','siege'].includes(op);
  // "type" identifica o pacote WebSocket (kingdom); buildingType é o edifício.
  // Aceitar d.type legado permite que testes/chamadas diretas continuem válidos.
  const buildingType=typeof d.buildingType==='string'?d.buildingType:d.type;
  const operationParams=op==='construct'?JSON.stringify([buildingType,d.x,d.y]):
   op==='buildingUpgrade'?JSON.stringify([d.x,d.y]):
-  op==='train'?JSON.stringify([d.unit,d.count]):'[]';
+  op==='train'||op==='escort'?JSON.stringify([d.unit,d.count]):
+   op==='siege'?JSON.stringify([d.target]):'[]';
  const owner=guildFor(world,p);
  const {guild:g,key} = owner||{};
  const receipt=()=>opKey&&g&&Array.isArray(g.recentCityActions)?
@@ -308,7 +333,7 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
  if(op==='construct'){
   if(g.leader!==p.uid||!g.base){reject('Somente o líder de uma guilda com fortaleza pode construir.');return false}
   const {x,y}=d,type=buildingType,cost=Object.hasOwn(CITY_BUILDINGS,type)?CITY_BUILDINGS[type]:null;
-  if(!cost||!integer(x)||!integer(y)||!cityLayout.canPlace(Array.isArray(g.city?.buildings)?g.city.buildings:[],type,x,y)){
+  if(!cost||!integer(x)||!integer(y)||!cityLayout.canPlace(Array.isArray(g.city?.buildings)?g.city.buildings:[],type,x,y,g.base.level)){
    reject('Terreno ou edifício inválido.');return false
   }
   const buildings=Array.isArray(g.city?.buildings)?g.city.buildings:[];
@@ -370,7 +395,7 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
   p.save.coins-=cost;g.base.level=level+1;
   g.influence=g.influence||{};
   g.influence[g.base.zone]=Math.min(1000,Math.max(0,Number(g.influence[g.base.zone])||0)+1);
-  world.dirty=true;response(world,p,'Muralhas ampliadas! Fortaleza de nível '+g.base.level+'.');
+  world.dirty=true;response(world,p,'Capital ampliada! Nível '+g.base.level+' · '+cityLayout.bounds(g.base.level).cells+' terrenos úteis · estoque '+stockCapacity(g.base.level)+' por recurso.');
   world.send(p.socket,world.ownStatus(p));return true;
  }
  if(op==='recruit'){
@@ -382,7 +407,7 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
    response(world,p,'Escolha de 1 a 40 unidades por recrutamento.');return false
   }
   const troops=armyCopy(g.army),total=troopCount(troops),fee=unit.cost*count;
-  if(total+count>MAX_TROOPS||p.save.coins<fee){
+  if(total+escortTotal(g)+count>MAX_TROOPS||p.save.coins<fee){
    response(world,p,'O exército comporta até '+MAX_TROOPS+' unidades. Verifique também suas moedas.');return false
   }
   p.save.coins-=fee;troops[d.unit]+=count;g.army=troops;world.dirty=true;
@@ -405,7 +430,7 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
    reject('Escolha de 1 a 40 unidades militares válidas.');return false
   }
   const troops=armyCopy(g.army);
-  if(troopCount(troops)+count>MAX_TROOPS){
+  if(troopCount(troops)+escortTotal(g)+count>MAX_TROOPS){
    reject('Capacidade máxima de 300 soldados atingida.');return false
   }
   const cost=MILITARY_SUPPLIES[unit],stock=stockCopy(g.city.stock);
