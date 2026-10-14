@@ -28,7 +28,7 @@ window.PeregrinosCity=Object.freeze({create({send}){
  const project=art.project;
 
  function myCity(){return state?.yourGuild?.name===base?.name}
- function canBuild(){return myCity()&&state?.yourGuild?.leader===true}
+ function canBuild(){return myCity()&&state?.persistentAccount===true&&state?.yourGuild?.canManage===true}
  function structures(){return (state?.cities||[]).find(c=>c.name===base?.name)?.buildings||[]}
  function draw(){
   if(!dlg.open)return;
@@ -79,7 +79,7 @@ window.PeregrinosCity=Object.freeze({create({send}){
    }
    const instruction=document.createElement('p');instruction.textContent='Cada edifício produz recursos. Clique em um prédio construído para evoluí-lo com alimentos, madeira e pedra (até nível 60).';choices.append(instruction);
    for(const [id,t] of Object.entries(types)){const b=document.createElement('button');b.disabled=!canBuild();b.type='button';b.style.display='block';b.style.width='100%';b.style.marginBottom='6px';b.textContent=t.label+' ('+layout.footprints[id].join('×')+') · '+t.cost+' moedas';b.setAttribute('aria-pressed',String(selected===id));b.onclick=()=>{selected=id;feedback.textContent='Clique em um terreno disponível para construir '+t.label.toLowerCase()+'.';refresh()};choices.append(b)}
-  }else{const p=document.createElement('p');p.textContent='Você está visitando a capital de outra guilda. Somente a liderança do reino pode construir aqui.';choices.append(p)}
+  }else{const p=document.createElement('p');p.textContent='Você está visitando a capital de outra guilda. Somente integrantes cadastrados deste reino podem administrar a fortaleza.';choices.append(p)}
   draw();
  }
  canvas.addEventListener('click',e=>{
