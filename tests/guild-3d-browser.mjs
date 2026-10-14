@@ -178,14 +178,23 @@ try{
  assert.doesNotMatch(await page.locator('#guild3dFeedback').innerText(),/aguarde a sincronização|sincronizando o salvamento/i);
 
  // Uma sessão visitante não deve exibir prédios que jamais seriam salvos.
- await page.evaluate(()=>city.update({...current(),persistentAccount:false}));
- assert.equal(await page.locator('.guild3d-building:not(:disabled)').count(),0,
-  'visitantes não podem iniciar construções permanentes');
- assert.match(await page.locator('#guild3dVisitor').innerText(),/conta cadastrada/i);
- assert.match(await page.locator('#guild3dCityState').innerText(),/edifício\(s\) salvos/);
- await page.evaluate(()=>city.update(current()));
- assert.equal(await page.locator('.guild3d-building:not(:disabled)').count(),5,
-  'conta cadastrada pode continuar construindo');
+ const visitorState=await page.evaluate(()=>{
+  city.update({...current(),persistentAccount:false});
+  // Estado e botões no mesmo turno JS, sem o atraso de outros ACKs da demo.
+  return {
+   enabled:[...document.querySelectorAll('.guild3d-building')].filter(b=>!b.disabled).length,
+   notice:document.querySelector('#guild3dVisitor')?.textContent,
+   saved:document.querySelector('#guild3dCityState')?.textContent
+  };
+ });
+ assert.equal(visitorState.enabled,0,'visitantes não podem iniciar construções permanentes');
+ assert.match(visitorState.notice,/conta cadastrada/i);
+ assert.match(visitorState.saved,/edifício\(s\) salvos/);
+ const ownerState=await page.evaluate(()=>{
+  city.update(current());
+  return [...document.querySelectorAll('.guild3d-building')].filter(b=>!b.disabled).length;
+ });
+ assert.equal(ownerState,5,'conta cadastrada pode continuar construindo');
 
  await page.screenshot({path:'/tmp/guild-3d-preview.png',fullPage:true,animations:'disabled'});
  await page.locator('#guild3dClose').click();
