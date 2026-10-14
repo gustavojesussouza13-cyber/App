@@ -68,8 +68,9 @@
      row.append(head,track);queue.append(row);
     }
     const remaining=local?null:Math.max(0,b.endsAt-nowServer());
-    const pct=local?0:Math.min(100,Math.max(0,100*(nowServer()-b.startedAt)/Math.max(1,b.endsAt-b.startedAt)));
-    row.querySelector('.guild3d-queue-time').textContent=local?'Confirmando…':prettyTime(remaining);
+    const pct=Number.isSafeInteger(b.startedAt)&&Number.isSafeInteger(b.endsAt)?Math.min(100,Math.max(0,100*(nowServer()-b.startedAt)/Math.max(1,b.endsAt-b.startedAt))):0;
+    row.querySelector('.guild3d-queue-time').textContent=
+     local?(Number.isSafeInteger(b.endsAt)?prettyTime(Math.max(0,b.endsAt-nowServer()))+'*':'Confirmando…'):prettyTime(remaining);
     row.querySelector('.guild3d-queue-track span').style.width=Math.round(pct)+'%';
     row.dataset.progress=String(Math.round(pct));
    }
@@ -317,7 +318,12 @@
    }
    // Não há tempo de espera visual nem fila: cada clique desenha e envia
    // seu pedido próprio imediatamente, mesmo com outros ACKs pendentes.
-   const building={...layout.plan(selected,x,y),level:1};
+   // Prazo estimado desde o próprio clique, antes mesmo do primeiro ACK.
+   // O horário exato do servidor substituirá esta estimativa no snapshot.
+   const startedAt=nowServer();
+   const durationMs=Number(state?.buildTimes?.[selected])||0;
+   const building={...layout.plan(selected,x,y),level:1,status:'building',
+    ...(durationMs>0?{startedAt,endsAt:startedAt+durationMs,durationMs}:{})};
    sendOperation('construct',{type:selected,x,y,target:base.name},{building,price});
   }
   function onHover(cell){
