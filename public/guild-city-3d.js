@@ -265,8 +265,10 @@
       say('Construção concluída e confirmada pelo servidor.','success');
      }
     }
-    scene?.updateBuildings(structures(),owns()?kingdom?.yourGuild?.army||{}:{});
+    // Recursos e saldo são prioritários; redesenhar modelos Three.js é caro
+    // e não pode impedir a atualização financeira quando ocorrer erro de WebGL.
     paint();
+    scene?.updateBuildings(structures(),owns()?kingdom?.yourGuild?.army||{}:{});
    }
   }
   return {open,update,onActionResult,onConnectionLost,onConnectionRestored,drawMarches:oldUI.drawMarches};
