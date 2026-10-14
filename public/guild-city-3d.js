@@ -10,7 +10,7 @@
   const oldUI=old.create({send});
   let state=null,base=null,selected=null,scene=null,token=0,loading=false,clockOffset=0,queueTicker=null,lastCompletionInspect=0;
   let requestSeq=0;
-  const requests=new Map(),provisionals=new Map();
+  const requests=new Map(),provisionals=new Map(),awaitingDurable=new Map();
   const MAX_UNCONFIRMED=60;
   const dlg=document.createElement('dialog');dlg.className='guild3d-dialog';dlg.setAttribute('aria-label','Capital tridimensional da guilda');
   dlg.innerHTML='<div class="guild3d-shell">'+
@@ -126,7 +126,7 @@
   }
   function resetOperations(){
    for(const request of requests.values())if(request.timer!==null)clearTimeout(request.timer);
-   requests.clear();
+   requests.clear();awaitingDurable.clear();
    for(const key of provisionals.keys())scene?.clearPendingBuilding?.(key);
    provisionals.clear();
   }
@@ -194,6 +194,7 @@
    const id=++requestSeq;
    const request={id,action,details,opKey,building,timer:null,attempts:0,confirmed:false};
    requests.set(id,request);
+   if(building)awaitingDurable.set(opKey,id);
    if(building){
     provisionals.set(opKey,{id,building,cost:price});
     scene?.showPendingBuilding?.(building,opKey);
@@ -226,6 +227,7 @@
    if(request.opKey&&result.opKey&&request.opKey!==result.opKey)return;
    if(!result.ok){
     stopRequest(request);
+    awaitingDurable.delete(request.opKey);
     removePreview(request.opKey);
     say(result.message||'O servidor recusou esta operação.','error');
     return;
@@ -240,11 +242,18 @@
      request.timer=setTimeout(()=>retry(request),1500);
      send('kingdom',{action:'inspect'});
     }
-    say('Obra iniciada e salva. Continue construindo enquanto o cronômetro avança.','success');
+    say('Obra registrada no servidor. Confirmando gravação permanente no banco…','pending');
    }else{
     stopRequest(request);
     say(result.message||'Operação concluída.','success');
    }
+  }
+  function onDurableResult(result){
+   if(!dlg.open||!result?.ok||!result.opKey)return;
+   if(awaitingDurable.get(result.opKey)!==result.id)return;
+   awaitingDurable.delete(result.opKey);
+   say('Obra registrada e salva permanentemente no banco do reino.','success');
+   paint();
   }
   function paint(){
    if(!dlg.open||!base)return;
@@ -272,7 +281,7 @@
    const buildingCount=buildWorks().length;
    q('guild3dCityState').textContent=structures().length+' edifício(s) registrados no reino · '+
     completedCount()+' concluído(s) · '+buildingCount+' em construção · '+
-    provisionals.size+' aguardando registro';
+    provisionals.size+' aguardando registro · '+awaitingDurable.size+' aguardando gravação';
    opts.replaceChildren();
    for(const [id,[label,cost,glyph]]of Object.entries(types)){
     const button=document.createElement('button');button.type='button';
@@ -403,6 +412,6 @@
     scene?.updateBuildings(structures(),owns()?kingdom?.yourGuild?.army||{}:{},kingdom?.serverNow);
    }
   }
-  return {open,update,onActionResult,onConnectionLost,onConnectionRestored,drawMarches:oldUI.drawMarches};
+  return {open,update,onActionResult,onDurableResult,onConnectionLost,onConnectionRestored,drawMarches:oldUI.drawMarches};
  }});
 })(window);
