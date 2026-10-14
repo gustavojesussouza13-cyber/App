@@ -59,7 +59,7 @@ test('NPCs da história e moradores não usam o sprite das quatro classes como s
  for(const n of NPCS){
   assert.equal(b.instance.drawNpc(b.screen,n,640),true);
   const sheet=b.screen.calls.at(-1)[0];
-  assert.equal(sheet.width,40);assert.equal(sheet.height,52);
+  assert.equal(sheet.width,64);assert.equal(sheet.height,80);
   assert.ok(sheet.ops.length>=30,'NPC pouco detalhado: '+n.name);
   unique.push(sig(sheet.ops));
  }
