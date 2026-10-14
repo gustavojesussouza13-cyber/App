@@ -42,13 +42,13 @@ test('quatro masmorras possuem seis andares e caminho de volta válido',t=>{
   assert.equal(world.zonePortals(root)[0].zone,[1,3,5,11][root-12]);
  }
 });
-test('entrar na masmorra gasta uma chave, andar entre subsolos não gasta outras',t=>{
+test('concluir a história libera entrada e reentrada; subsolos não gastam a chave',t=>{
  const {world,p,client,events}=setup(t);
- world.travel(p,1);p.save.inventory.chave=1;
+ world.travel(p,1);p.save.inventory.chave=1;p.save.story.stage=2;
  const gate=world.zonePortals(1).find(g=>g.zone===12);
  p.x=gate.x;p.y=gate.y;
  world.receive(client,{type:'portal',zone:12});
- assert.equal(p.zone,12);assert.equal(p.save.inventory.chave,0);
+ assert.equal(p.zone,12);assert.equal(p.save.inventory.chave,1);
  for(let level=1;level<=6;level++){
   const next=15+level;
   const stair=world.zonePortals(p.zone).find(g=>g.zone===next);
@@ -56,7 +56,7 @@ test('entrar na masmorra gasta uma chave, andar entre subsolos não gasta outras
   p.x=stair.x;p.y=stair.y;
   world.receive(client,{type:'portal',zone:next});
   assert.equal(p.zone,next,`subsolo ${level} falhou`);
-  assert.equal(p.save.inventory.chave,0,'chave não deve ser gasta repetidamente');
+  assert.equal(p.save.inventory.chave,1,'chave narrativa mantém seu direito de retorno');
  }
  const exit=world.zonePortals(p.zone)[0];
  p.x=exit.x;p.y=exit.y;
@@ -105,7 +105,7 @@ test('cada região adicional tem criaturas e um chefe independente',t=>{
 test('jogador atravessa os 24 subsolos das quatro masmorras por portais reais',t=>{
  const {world,p,client,events}=setup(t);
  world.travel(p,1);
- p.save.inventory.chave=1;
+ p.save.inventory.chave=1;p.save.story.stage=40;
  for(let root=12;root<16;root++){
   const entrance=world.zonePortals(p.zone).find(g=>g.zone===root);
   assert.ok(entrance,`entrada da masmorra ${root} ausente vindo de ${p.zone}`);
@@ -122,7 +122,7 @@ test('jogador atravessa os 24 subsolos das quatro masmorras por portais reais',t
    assert.equal(p.zone,floor,`falhou entrar no subsolo ${depth} de ${root}`);
    assert.ok(p.save.visited.includes(floor),'subsolo não registrado como visitado');
   }
-  assert.equal(p.save.inventory.chave,0,'a jornada contínua não deve consumir várias chaves');
+  assert.equal(p.save.inventory.chave,1,'chave da história permanece válida em toda a jornada');
  }
  const end=world.zonePortals(p.zone).find(g=>g.gateway);
  assert.equal(p.zone,39);
@@ -136,7 +136,7 @@ test('jogador atravessa os 24 subsolos das quatro masmorras por portais reais',t
 test('porta final não permite pular masmorras nem teleportar de longe',t=>{
  const {world,p,client}=setup(t);
  world.travel(p,1);
- p.save.inventory.chave=1;
+ p.save.inventory.chave=1;p.save.story.stage=2;
  const entry=world.zonePortals(1).find(g=>g.zone===12);
  p.x=entry.x;p.y=entry.y;
  world.receive(client,{type:'portal',zone:12});
