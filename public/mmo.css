@@ -466,3 +466,35 @@ body.world-fullscreen{overflow:hidden!important}
 .room-switch-actions button:disabled{opacity:.55;cursor:default}
 .room-switch-actions button:focus-visible{outline:3px solid #fff;outline-offset:2px}
 @media(max-width:650px){.room-status-button{max-width:100%}.room-switch-dialog{padding:17px}.room-switch-actions button{flex-basis:100%}}
+
+/* Guildas de Auren: abas independentes, diretório expansível e ações compactas. */
+.social-section-nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;margin:10px 0 14px}
+.tabcontent .social-section-nav button{padding:9px 5px;border:1px solid #8b7250;border-radius:7px;color:#ddc89d;background:#26342d;font-size:11px;min-width:0}
+.tabcontent .social-section-nav button.active{background:linear-gradient(150deg,#7c6037,#4d4830);border-color:#e6c47d;color:#fff1c5}
+.guild-recruitment{display:grid;gap:11px}
+.guild-recruitment>h3{color:#e9cc97;margin:0}
+.guild-recruitment>p{font-size:12px;line-height:1.5;margin:0}
+.guild-social-meta{font-size:11px;color:#b6d4b2!important}
+.guild-cards{display:grid;gap:8px}
+.guild-entry-card,.guild-found-panel{border:1px solid #88724d;border-radius:8px;background:linear-gradient(145deg,#344031,#202e28);overflow:hidden}
+.guild-entry-summary,.guild-found-panel>summary{cursor:pointer;padding:10px;color:#ffe1a6;font-size:12px;font-weight:700;list-style-position:inside}
+.guild-entry-summary{display:flex;gap:5px;align-items:center;justify-content:space-between}
+.guild-entry-summary strong{min-width:0;overflow-wrap:anywhere}
+.guild-entry-summary small{font-size:10px;white-space:nowrap;opacity:.85}
+.guild-entry-card[open]>.guild-entry-summary{border-bottom:1px solid #816f4f;background:#675437}
+.guild-entry-content{display:grid;gap:9px;padding:10px 11px}
+.guild-entry-content>p{margin:0;font-size:12px}
+.guild-entry-content>small{font-size:11px;color:#e1d0ac;line-height:1.5}
+.guild-nested{border:1px solid #6b795b;border-radius:6px;background:#172922aa;padding:7px}
+.guild-nested>summary{font-size:11px;cursor:pointer;color:#e6cf9c;padding:5px}
+.guild-person{display:flex;align-items:center;flex-wrap:wrap;gap:5px;justify-content:space-between;border-top:1px solid #65765b55;padding:8px 2px;font-size:11px}
+.guild-person span{flex:1 0 100%;overflow-wrap:anywhere}
+.tabcontent .guild-person button{flex:1;padding:6px 5px;font-size:10px}
+.guild-found-panel{padding:8px 10px;display:grid;gap:8px}
+.guild-found-panel>summary{padding:7px 2px}
+.guild-found-panel:not([open])>*:not(summary){display:none}
+.guild-recruitment input,.guild-recruitment textarea{box-sizing:border-box;width:100%;max-width:100%;background:#101f1b;color:#ffe6ae;border:1px solid #806c4e;border-radius:4px;padding:9px}
+.guild-recruitment button{min-width:0}
+.guild-entry-content button{white-space:normal}
+@media(min-width:1100px){.social-section-nav{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(max-width:470px){.guild-entry-summary{align-items:flex-start;flex-direction:column}.guild-person{gap:4px}}
