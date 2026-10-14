@@ -53,7 +53,7 @@ const SPECIES=[
  ['Salamandra',110,19,100,52],['Fera do Pântano',145,25,130,67],['Dragão Jovem',230,29,190,99],['Gigante das Colinas',200,26,151,88],
  ['Sentinela da Noite',174,25,138,81],['Basilisco',192,27,175,95],['Anjo Caído',225,32,203,118],['Guardião da Aurora',280,38,252,142]
 ];
-const GOODS={pocao:{name:'Poção de vida',price:18,heal:65},superpocao:{name:'Poção radiante',price:60,heal:165},espada:{name:'Espada temperada',price:170,attack:7},arco:{name:'Arco dos ventos',price:170,attack:6},amuleto:{name:'Amuleto da esperança',price:250,defense:4},chave:{name:'Chave da masmorra',price:110}};
+const GOODS={pocao:{name:'Poção de vida',price:18,heal:65},superpocao:{name:'Poção radiante',price:60,heal:165},espada:{name:'Espada temperada',price:170,attack:7},arco:{name:'Arco dos ventos',price:170,attack:6},amuleto:{name:'Amuleto da esperança',price:250,defense:4},chave:{name:'Chave da masmorra',storyOnly:true}};
 // Relíquias exclusivas de chefes; não são vendidas por moedas.
 const RELICS=Object.freeze({
   lamina_aurora:{name:'Lâmina da Aurora',rarity:'épico',role:'guardiao',slot:'arma',attack:12},
@@ -62,6 +62,17 @@ const RELICS=Object.freeze({
   sabre_peregrino:{name:'Sabre dos Caminhos',rarity:'épico',role:'peregrino',slot:'arma',attack:10},
   manto_luz:{name:'Manto da Luz Serena',rarity:'raro',slot:'armadura',defense:6}
 });
+// Comerciantes são moradores existentes no mapa; a loja global não vende.
+const MERCHANT_STOCK=Object.freeze({
+ 'morador-0':Object.freeze(['pocao','espada','arco']), // Bento, Vale das Oliveiras
+ 'morador-1':Object.freeze(['pocao','amuleto']), // Sara, Floresta da Promessa
+ 'morador-4':Object.freeze(['pocao','espada','arco']), // Mara, Deserto das Provações
+ 'morador-12':Object.freeze(['pocao','superpocao','amuleto']) // Noemi, Bosque da Misericórdia
+});
+const MERCHANT_INTERACT_DISTANCE=165;
+const MERCHANT_SESSION_MS=120000;
+// Capítulos em que os personagens concedem a chave narrativa da masmorra.
+const storyDungeonChapter=root=>({12:1,13:4,14:8})[root]??null;
 const BOSS_RELICS=Object.freeze(['lamina_aurora','arco_alvorada','cajado_misericordia','sabre_peregrino','manto_luz']);
 const RELIC_WEAPON=Object.freeze({guardiao:'lamina_aurora',arqueiro:'arco_alvorada',curandeiro:'cajado_misericordia',peregrino:'sabre_peregrino'});
 const QUESTS=[
@@ -301,7 +312,7 @@ class World {
   }
   const p={id:crypto.randomUUID(),uid,name,isAccount:!!owner,isAdministrator:!!owner?.administrator,socket:c.socket,save:s,x:s.x,y:s.y,zone:s.zone,dir:2,lastMove:Date.now(),moveCredit:12,lastAttack:0,lastSpell:0,lastChat:0,lastUse:0,party:null,live:true};
   c.worldPlayer=p;c.socket._worldClient=c;this.players.set(p.id,p);
-  this.send(c.socket,{type:'welcome',room:c.worldRoom?{id:c.worldRoom.id,name:c.worldRoom.name}:null,self:this.ownStatus(p),zones:this.zoneInfo(),shop:GOODS,relics:RELICS,quests:QUESTS,achievements:ACHIEVEMENTS,portals:this.zonePortals(p.zone),npcs:NPCS.map(publicNpc),maxPlayers:60,online:this.players.size+this.getOnline(),monsterTotal:this.totalMonsters()});
+  this.send(c.socket,{type:'welcome',room:c.worldRoom?{id:c.worldRoom.id,name:c.worldRoom.name}:null,self:this.ownStatus(p),zones:this.zoneInfo(),shop:Object.fromEntries(Object.entries(GOODS).filter(([key,item])=>!item.storyOnly)),relics:RELICS,quests:QUESTS,achievements:ACHIEVEMENTS,portals:this.zonePortals(p.zone),npcs:NPCS.map(publicNpc),maxPlayers:60,online:this.players.size+this.getOnline(),monsterTotal:this.totalMonsters()});
   this.broadcast({type:'system',text:p.name+' chegou ao mundo.'},q=>q.id!==p.id);
   this.dirty=true;this.snapshotTo(p);
   this.send(p.socket,{type:'kingdomState',data:kingdoms.publicState(this,p)});
@@ -355,7 +366,7 @@ class World {
    case 'skill':this.attack(p,d.target,true);break;
    case 'class':this.chooseClass(p,d.role);break;
    case 'use':this.use(p,cap(d.item,30));break;
-   case 'buy':this.buy(p,cap(d.item,30));break;
+   case 'buy':this.buy(p,cap(d.item,30),cap(d.npc,64));break;
    case 'quest':this.claimQuests(p);break;
     case 'claimCrownKey':this.claimCrownKey(p);break;
    case 'chat':this.chat(p,d);break;
@@ -388,7 +399,9 @@ class World {
   const s=p.save.story,stage=s.stage;
   const base={type:'dialogue',id:npc.id,name:npc.name,title:npc.title,chapter:npc.chapter||null,mode:'lore'};
   if(npc.kind==='lore'){
-   this.send(p.socket,{...base,pages:npc.lines,choices:[]});return;
+   const stock=MERCHANT_STOCK[npc.id];
+   const merchant=stock?stock.map(id=>({id,name:GOODS[id].name,price:GOODS[id].price})):null;
+   this.send(p.socket,{...base,pages:npc.lines,choices:[],merchant});return;
   }
   if(npc.index<stage){
    const pages=npc.ending||[`${npc.name} sorri: Nossa conversa continua ecoando pelo reino.`, 'As palavras são sementes: nem sempre vemos quando brotam.'];
@@ -475,11 +488,15 @@ class World {
   if(enteringCrownDungeon&&(p.save.inventory[CROWN_DUNGEON_KEY]||0)<1){
    this.tell(p,'A Câmara da Aurora exige a Chave da Coroa Continental, reivindicada pelo líder do reino politicamente soberano.');return
   }
-  if(enteringOrdinaryDungeon&&(p.save.inventory.chave||0)<1){
-   this.tell(p,'Você precisa de uma Chave da masmorra comum (obtida na história ou na loja).');return
+  if(enteringOrdinaryDungeon){
+   const chapter=storyDungeonChapter(b);
+   // A chave só é liberada pela história; comprar e negociar não contorna o enredo.
+   // Reentrada permanente evita bloquear a campanha ao sair da masmorra.
+   if(chapter===null||p.save.story.stage<=chapter){
+    this.tell(p,'A chave desta masmorra é conquistada nas Crônicas. Complete a missão do NPC para abrir esta passagem.');return
+   }
   }
   if(enteringCrownDungeon)p.save.inventory[CROWN_DUNGEON_KEY]--;
-  if(enteringOrdinaryDungeon)p.save.inventory.chave--;
   p.zone=b;p.save.zone=b;
   const arrival=terrain.nearestWalkable(b,ZONE_W/2,ZONE_H/2,ZONES);
   p.x=arrival.x;p.y=arrival.y;p.save.x=p.x;p.save.y=p.y;if(!p.save.visited.includes(b))p.save.visited.push(b);
@@ -638,8 +655,22 @@ class World {
   this.send(p.socket,{type:'reward',xp,gold,boss});this.send(p.socket,this.ownStatus(p));this.dirty=true;
  }
  use(p,id){if(!['pocao','superpocao'].includes(id)||(p.save.inventory[id]||0)<=0)return;const now=Date.now();if(now-p.lastUse<600)return;p.lastUse=now;p.save.inventory[id]--;p.save.hp=clamp(p.save.hp+GOODS[id].heal,0,hpMax(p.save));this.send(p.socket,this.ownStatus(p));this.dirty=true}
- buy(p,id){const item=GOODS[id];if(!item||p.save.coins<item.price){this.tell(p,'Moedas insuficientes ou item desconhecido.');return}
-  p.save.coins-=item.price;p.save.inventory[id]=(p.save.inventory[id]||0)+1;this.send(p.socket,this.ownStatus(p));this.tell(p,item.name+' comprado!');this.dirty=true}
+ buy(p,id,npcId){
+  const npc=byId.get(npcId),stock=MERCHANT_STOCK[npcId];
+  const allowed=Boolean(stock&&npc&&stock.includes(id)&&npc.zone===p.zone&&
+   dist(p,npc)<=MERCHANT_INTERACT_DISTANCE&&p.talkId===npcId&&
+   Number.isFinite(p.lastTalk)&&Date.now()-p.lastTalk<=MERCHANT_SESSION_MS);
+  if(!allowed){
+   this.tell(p,'Compre pessoalmente: converse com um comerciante do mapa e permaneça próximo. Chaves de masmorra não são vendidas.');return false
+  }
+  const item=GOODS[id];
+  if(!item||item.storyOnly||!Number.isFinite(item.price)||p.save.coins<item.price){
+   this.tell(p,'Mercadoria indisponível ou moedas insuficientes.');return false
+  }
+  p.save.coins-=item.price;p.save.inventory[id]=(p.save.inventory[id]||0)+1;
+  this.send(p.socket,this.ownStatus(p));this.tell(p,item.name+' comprado com '+npc.name+'!');this.dirty=true;
+  return true
+ }
  claimQuests(p){let completed=0;for(const q of QUESTS){if(questProgress(p.save,q)>=q.target&&!p.save.quests.includes(q.id)){
   p.save.quests.push(q.id);p.save.xp+=q.reward;addCoins(p.save,q.coins);completed++;
   while(p.save.level<100&&p.save.xp>=xpNeed(p.save.level)){p.save.xp-=xpNeed(p.save.level);p.save.level++;p.save.hp=hpMax(p.save)}
@@ -718,13 +749,11 @@ class World {
  guild(p,d){const mode=cap(d.action,15),name=cap(d.name,30).trim(),key=name.toLocaleLowerCase('pt-BR');
   if(mode==='create'){
     if(!p.isAccount)return this.tell(p,'Para fundar uma guilda permanente é obrigatório entrar com uma conta cadastrada.');
-    const foundedBefore=p.save.guildFounded===true||this.saved.characters[p.uid]?.guildFounded===true||[...this.guilds.values()].some(g=>g?.founderUid===p.uid||g?.leader===p.uid);
-    if(foundedBefore)return this.tell(p,'Cada conta pode fundar apenas uma guilda. Mesmo ao sair dela, você não pode criar uma segunda; poderá entrar em outra guilda por convite.');
     if(p.save.guild||p.save.coins<250||!/^[\p{L}\p{N}][\p{L}\p{N} -]{2,23}$/u.test(name)||!inspectNickname(name).ok||this.guilds.has(key))
      return this.tell(p,'Guilda indisponível. Use um nome apropriado e exclusivo; são necessárias 250 moedas e você não pode pertencer a outra guilda.');
     p.save.coins-=250;p.save.guild=name;p.save.guildFounded=true;
     this.guilds.set(key,{name,leader:p.uid,founderUid:p.uid,members:[p.uid],invitations:[]});
-    this.tell(p,'Guilda criada: '+name+'. Sua conta não poderá fundar outra guilda.');this.dirty=true;
+    this.tell(p,'Guilda criada: '+name+'. Ao sair dela, você poderá fundar outra, mas nunca participar de duas guildas simultaneamente.');this.dirty=true;
     this.persist();
   } else if(mode==='invite'){const g=this.guilds.get(p.save.guild?.toLowerCase());if(!g||g.leader!==p.uid)return;const other=[...this.players.values()].find(o=>o.name.toLowerCase()===cap(d.target,20).toLowerCase());if(!other||other.save.guild)return;g.invitations.push(other.uid);this.send(other.socket,{type:'guildInvite',name:g.name,by:p.name});this.dirty=true;
   } else if(mode==='accept'){const g=this.guilds.get(key);if(!g||!g.invitations.includes(p.uid)||p.save.guild)return;g.invitations=g.invitations.filter(x=>x!==p.uid);g.members.push(p.uid);p.save.guild=g.name;this.dirty=true;
@@ -737,7 +766,7 @@ class World {
   const key=[p.id,other.id].sort().join(':');
   if(mode==='offer'){
    const item=cap(d.item,30),count=Math.floor(Number(d.count)),gold=Math.floor(Number(d.gold)||0);
-   if(!(GOODS[item]||RELICS[item])||!Number.isInteger(count)||count<1||count>10||!Number.isInteger(gold)||gold<0||gold>10000||p.save.inventory[item]<count||p.save.coins<gold)return this.tell(p,'Oferta inválida ou saldo insuficiente.');
+   if((!GOODS[item]&&!RELICS[item])||GOODS[item]?.storyOnly||item===CROWN_DUNGEON_KEY||!Number.isInteger(count)||count<1||count>10||!Number.isInteger(gold)||gold<0||gold>10000||p.save.inventory[item]<count||p.save.coins<gold)return this.tell(p,'Oferta inválida ou saldo insuficiente.');
    this.pendingTrades.set(key,{from:p.id,to:other.id,item,count,gold,expires:Date.now()+30000});
    this.send(other.socket,{type:'tradeOffer',from:p.name,item,count,gold});this.tell(p,'Oferta enviada a '+other.name+'.');
   } else if(mode==='accept'){
@@ -864,5 +893,5 @@ class World {
  status(){return {connected:this.count,monsters:this.totalMonsters(),regions:ZONES.length,guilds:this.guilds.size,kingdoms:kingdoms.publicState(this,{save:{guild:null}}).bases.length,version:'mmo-aurora-reinos-v1'}}
  stop(){clearInterval(this.saveTimer);for(const p of this.players.values())if(p.isAccount)this.saved.characters[p.uid]=safeSave(p.save);this.guestReconnect.clear();this.dirty=true;this.persist();try{this.db?.close()}catch{}}
 }
-module.exports={World,ZONES,ZONE_W,ZONE_H,GOODS,RELICS,BOSS_RELICS,QUESTS,questProgress,SPECIES,CLASSES,ACHIEVEMENTS,xpNeed,zoneDifficulty,autoAggroZone,dungeonDepth,
+module.exports={World,ZONES,ZONE_W,ZONE_H,GOODS,RELICS,BOSS_RELICS,MERCHANT_STOCK,MERCHANT_INTERACT_DISTANCE,storyDungeonChapter,QUESTS,questProgress,SPECIES,CLASSES,ACHIEVEMENTS,xpNeed,zoneDifficulty,autoAggroZone,dungeonDepth,
  CROWN_DUNGEON_ROOT,CROWN_DUNGEON_KEY,CROWN_KEY_COOLDOWN_MS,crownDungeonZone,requiresCrownKey};
