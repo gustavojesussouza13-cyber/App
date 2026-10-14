@@ -333,13 +333,13 @@
   function paint(){
    if(!dlg.open||!base)return;
    q('guild3dTitle').textContent='♜ '+base.name;
-   q('guild3dSubtitle').textContent='Fortaleza nível '+(base.level||1)+'/5'+(owns()?' · Seu reino':' · Reino visitante');
+   q('guild3dSubtitle').textContent='Fortaleza nível '+(base.level||1)+'/'+(state?.fortressMaxLevel||60)+(owns()?' · Seu reino':' · Reino visitante');
     const bounds=layout.bounds(base.level||1),cap=state?.stockCapacity||600;
     q('guild3dProgress').textContent='Área liberada: '+bounds.width+'×'+bounds.width+' · '+bounds.cells+' lotes. Estoque: '+cap+' por recurso.'+
-     ((base.level||1)<5?' Próximo nível: '+layout.bounds((base.level||1)+1).width+'×'+layout.bounds((base.level||1)+1).width+'.':' Nível máximo.');
+     ((base.level||1)<(state?.fortressMaxLevel||60)?' Próximo nível: '+layout.bounds((base.level||1)+1).width+'×'+layout.bounds((base.level||1)+1).width+' · estoque maior · novos espaços até '+(state?.maxBuildings||60)+'.':' Nível máximo.');
     const upgrade=q('guild3dUpgrade'),fortify=q('guild3dFortify'),siege=q('guild3dSiege');
-    upgrade.hidden=!owns();upgrade.disabled=!canBuild()||(base.level||1)>=5;
-    upgrade.textContent=(base.level||1)>=5?'♜ Fortaleza no nível máximo':'♜ Ampliar para nível '+((base.level||1)+1)+' · '+((base.level||1)+1)*500+' moedas';
+    upgrade.hidden=!owns();upgrade.disabled=!canBuild()||(base.level||1)>=(state?.fortressMaxLevel||60);
+    upgrade.textContent=(base.level||1)>=(state?.fortressMaxLevel||60)?'♜ Fortaleza no nível máximo':'♜ Ampliar para nível '+((base.level||1)+1)+' · '+((base.level||1)+1)*500+' moedas';
     const defense=state?.yourGuild?.fortressDefense;
     fortify.hidden=!owns();fortify.disabled=!canBuild()||(defense?.walls||0)>=(base.level||1);
     fortify.textContent='🛡 Muralhas '+(defense?.walls||0)+'/'+(base.level||1)+' · defesa '+(defense?.defense||0);
@@ -358,7 +358,7 @@
     const l=document.createElement('small');l.textContent=emoji+' '+label;
     d.append(n,l);stock.append(d);
    }
-   collect.hidden=!owns();collect.disabled=!owns()||state?.persistentAccount!==true;
+   collect.hidden=!owns();
    const visitorNote=q('guild3dVisitor');
    visitorNote.hidden=canBuild();
    visitorNote.textContent=!state?.persistentAccount?
@@ -366,7 +366,7 @@
     owns()?'Somente o líder pode construir e melhorar edifícios.':
      'Cidade de outra guilda: somente seu líder pode administrar a capital.';
    const buildingCount=buildWorks().length;
-   q('guild3dCityState').textContent=structures().length+' edifício(s) registrados no reino · '+
+   q('guild3dCityState').textContent=structures().length+' / '+(state?.maxBuildings||60)+' edifício(s) registrados no reino · '+
     completedCount()+' concluído(s) · '+buildingCount+' em construção · '+
     provisionals.size+' aguardando registro · '+awaitingDurable.size+' aguardando gravação';
    opts.replaceChildren();
@@ -375,7 +375,7 @@
     button.className='guild3d-building';button.disabled=!canBuild();
     button.setAttribute('aria-pressed',String(selected===id));
     const size=layout.footprints[id].join(' × ');
-    button.textContent=glyph+' '+label+' · '+size+' · '+cost+' moedas';
+    button.textContent=glyph+' '+label+' · '+size+' · '+cost+' moedas · ciclo '+prettyTime(state?.productionTimes?.[id]||0);
     button.onclick=()=>{selected=id;scene?.setSelection(id);say('Construindo '+label.toLowerCase()+'. Clique em um lote livre '+size+'.');paint()};
     opts.append(button);
    }
@@ -394,9 +394,9 @@
     q('guild3dEscortInfo').textContent='Guarnição: '+Object.entries(state?.yourGuild?.army||{}).map(([id,n])=>(labels[id]||id)+' '+n).join(' · ')+'. Sua escolta: '+Object.entries(state?.yourGuild?.escort||{}).filter(([,n])=>n>0).map(([id,n])=>(labels[id]||id)+' '+n).join(' · ')+'. Limite: '+(state?.maxEscort||60)+'.';
     q('guild3dRecall').disabled=!Object.values(state?.yourGuild?.escort||{}).some(n=>n>0);
     q('guild3dDeploy').disabled=!((state?.yourGuild?.army||{})[soldier.value]>0);
-   updateQueue();
-  }
-  function onCell({x,y}){
+   updateQueue();lastProductionPaint=0;updateProduction();
+   }
+   function onCell({x,y}){
    if(!canBuild()){
     say(!state?.persistentAccount?
      'Entre com uma conta cadastrada para construir e salvar edifícios permanentemente.':
@@ -429,8 +429,8 @@
     say('Moedas disponíveis insuficientes: '+coins.toLocaleString('pt-BR')+
      ' de '+price+' necessárias.','error');return;
    }
-   if(structuresWithPreviews().length>=60){
-    say('A cidade atingiu o limite de 60 edifícios.','error');return;
+   if(structuresWithPreviews().length>=(state?.maxBuildings||60)){
+    say('O nível atual permite '+(state?.maxBuildings||60)+' edifícios. Evolua a fortaleza.','error');return;
    }
    // Não há tempo de espera visual nem fila: cada clique desenha e envia
    // seu pedido próprio imediatamente, mesmo com outros ACKs pendentes.
