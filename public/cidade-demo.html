@@ -51,7 +51,7 @@ function current(){return {
  cities:[{name,buildings:buildings.map(b=>({...b}))}],
  serverNow:Date.now(),buildTimes:durations,
  walletCoins:localCoins,
- persistentAccount:true, // apenas a demonstração representa uma conta fictícia ativa
+ persistentAccount:true,demo:true, // conta fictícia: nenhuma gravação permanente na demonstração
  yourGuild:{name,leader:true,stock:{...stock},army:{...army}},
  trainingCosts:units,marches:[]
 }}
@@ -66,6 +66,7 @@ function result(request,ok,message){
  const respond=()=>{
   city.update(current());
   city.onActionResult?.({id:request.requestId,action:request.action,opKey:request.opKey,ok,message});
+  if(ok&&request.action==='construct')city.onDurableResult?.({id:request.requestId,opKey:request.opKey,ok:true});
  };
  const delay=Number(window.__guildDemoReplyDelayMs)||0;
  if(delay>0)setTimeout(respond,Math.min(5000,delay));
