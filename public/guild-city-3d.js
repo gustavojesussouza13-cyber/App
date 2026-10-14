@@ -87,7 +87,7 @@
     if(operation.attempts===1){
      clearPending();
      if(operation.action==='construct')clearProvisional();
-     say('Sem conexão para iniciar a construção. Reconecte e tente novamente.','error');
+     say('Não há conexão com o servidor. Reconecte para começar a construção.','error');
     }else say('Conexão interrompida; a cidade será sincronizada ao reconectar.','pending');
     return false;
    }
