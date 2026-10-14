@@ -120,5 +120,5 @@ test('portal público, história, guia e sobre divulgam números reais e salvame
  assert.match(guia,/Subsolo 3 de cada masmorra/);
  assert.match(privacy,/token temporário para cada abertura da página/);
  assert.match(world,/character-atelier16\.js\?v=vigilia-56-v1/);
- assert.match(world,/mmo\.js\?v=fortress60-production-v1/);
+ assert.match(world,/mmo\.js\?v=guild-coop-resources-v1/);
 });
