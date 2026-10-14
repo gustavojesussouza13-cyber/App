@@ -163,13 +163,13 @@
     pix(g,'#f7e3c0',8+left,18+by+pulse,1,11);
    }
    ATELIER?.hero(g,c,{role,dir,action,frame,by,step});
+   // Peles, cabelos e acessórios entram ANTES das insígnias específicas;
+   // o capuz, escudo, aljava e cajado de cada classe permanecem no topo.
+   if(appearance&&APPEARANCE)APPEARANCE.details(g,c,appearance,{dir,by,action,frame});
    // O acabamento final pertence apenas à classe escolhida. Não reutilizar
    // o capuz e a aljava do arqueiro para guardião nem curandeiro.
    ATELIER?.classIdentity?.(g,c,{role,dir,action,frame,by});
    POLISH?.hero(g,{role,dir,action,frame,by});
-   // Detalhes individuais no próprio quadro 40×52, sem aumentar pixels,
-   // apagar a silhueta da classe ou interpolar o sprite original.
-   if(appearance&&APPEARANCE)APPEARANCE.details(g,c,appearance,{dir,by,action,frame});
    // Golpe percebido por um contorno curto que não altera hitbox.
    if(action==='hurt'&&frame%3!==2){
     pix(g,'#fff0dc',10,17,24,2);
