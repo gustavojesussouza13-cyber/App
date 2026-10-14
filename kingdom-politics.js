@@ -12,7 +12,17 @@ const RELOCATE_COST=450;
 const RELOCATE_COOLDOWN=24*60*60*1000;
 const RAID_COOLDOWN=10*60*1000;
 const MARCH_DURATION=45*1000;
-const MAX_TROOPS=300;
+const MAX_TROOPS=1200;
+const TROOP_BASE_CAP=300;
+const militaryCapacity=level=>TROOP_BASE_CAP+Math.floor((fortressLevel(level)-1)*900/59);
+const UPKEEP_CYCLE_MS=30*60*1000;
+const MAX_UPKEEP_CYCLES=3;
+const SURRENDER_THRESHOLD=60;
+const SURRENDER_TRUCE_MS=30*60*1000;
+const SURRENDER_TRIBUTE_RATE=.10;
+const SIEGE_BONUS_PER_ENGINE=12;
+const ALLIANCE_LIMIT=3;
+const nearestFortress=(p,base,radius=200)=>p?.zone===base?.zone&&Math.hypot(p.x-base.x,p.y-base.y)<=radius;
 const CITY_BUILDINGS=Object.freeze({house:120,farm:160,barracks:280,tower:360,market:240});
 const CITY_LIMIT=120;
 const FORTRESS_MAX_LEVEL=60;
@@ -94,14 +104,17 @@ const integer=v=>typeof v==='number'&&Number.isSafeInteger(v);
 const troopCount=army=>Object.values(UNITS).reduce((n,u,i)=>n+Math.max(0,Number(army?.[Object.keys(UNITS)[i]])||0),0);
 const power=(army,field='power')=>Object.entries(UNITS).reduce((n,[id,unit])=>n+Math.max(0,Number(army?.[id])||0)*unit[field],0);
 const armyCopy=army=>Object.fromEntries(Object.keys(UNITS).map(id=>[id,Math.min(MAX_TROOPS,Math.max(0,Math.floor(Number(army?.[id])||0)))]));
+const fullArmyCount=g=>troopCount(armyCopy(g?.army))+escortTotal(g)+troopCount(armyCopy(g?.march?.units));
 const escortOf=(guild,uid)=>armyCopy(guild?.escorts?.[uid]);
 const escortTotal=guild=>Object.values(guild?.escorts||{}).reduce((n,v)=>n+troopCount(armyCopy(v)),0);
 function fortressDefense(g,now=Date.now()){
  const lv=fortressLevel(g?.base?.level);
  const walls=Math.max(0,Math.min(FORTRESS_MAX_LEVEL,Math.floor(Number(g?.base?.defenseLevel)||0)));
- const towers=(g?.city?.buildings||[]).filter(b=>b?.type==='tower'&&isComplete(b,now))
-  .reduce((sum,b)=>sum+8*buildingLevel(b.level),0);
- return {level:lv,walls,towers,defense:35*lv+25*walls+towers+power(g?.army,'defense')};
+ const towerLevels=(g?.city?.buildings||[]).filter(b=>b?.type==='tower'&&isComplete(b,now))
+  .reduce((sum,b)=>sum+buildingLevel(b.level),0);
+ // Diminishing returns: torres continuam úteis sem tornarem os cercos matematicamente impossíveis.
+ const towers=Math.round(24*Math.sqrt(towerLevels));
+ return {level:lv,walls,towers,defense:25*lv+12*walls+towers+power(g?.army,'defense')};
 }
 function escortStrike(g,uid){
  const escort=escortOf(g,uid);
@@ -209,6 +222,11 @@ function publicState(world,p){
    escort:escortOf(your.guild,p.uid),escortsTotal:escortTotal(your.guild),
    fortressDefense:fortressDefense(your.guild),
    march:your.guild.march||null,nextRaidAt:your.guild.nextRaidAt||0,
+    armyCapacity:militaryCapacity(your.guild.base?.level),currentTroops:fullArmyCount(your.guild),
+    upkeepAt:your.guild.upkeepAt||0,allies:(your.guild.allies||[]).map(k=>world.guilds.get(k)?.name||k),
+    allianceOffers:(your.guild.allianceOffers||[]).filter(k=>world.guilds.get(k)).map(k=>({key:k,name:world.guilds.get(k).name})),
+    crisis:your.guild.siegeCrisis?{...your.guild.siegeCrisis,canSurrender:your.guild.siegeCrisis.pressure>=SURRENDER_THRESHOLD}:null,
+    truce:your.guild.truce||null,surrenderHistory:(your.guild.surrenderHistory||[]).slice(-5),
    influence:your.guild.influence||{},stock:stockCopy(your.guild.city?.stock),lastCollectedAt:your.guild.city?.lastCollectedAt||0}:null,
   serverNow:Date.now(),
   buildTimes:CITY_BUILD_MS,stockCapacity:stockCapacity(your?.guild?.base?.level),
@@ -232,7 +250,8 @@ function publicState(world,p){
     }))
   })),
   marches:[...world.guilds.values()].filter(g=>g.march&&g.base).map(g=>({name:g.name,targetName:world.guilds.get(g.march.target)?.name||'',from:g.march.from,to:g.march.to,kind:g.march.kind||'attack',startedAt:g.march.startedAt,arrivesAt:g.march.arrivesAt,route:g.march.route||null,units:troopCount(g.march.units)})),
-  unitTypes:UNITS,trainingCosts:MILITARY_SUPPLIES,baseCost:BASE_COST,relocateCost:RELOCATE_COST,maxTroops:MAX_TROOPS};
+  unitTypes:UNITS,trainingCosts:MILITARY_SUPPLIES,baseCost:BASE_COST,relocateCost:RELOCATE_COST,maxTroops:militaryCapacity(your?.guild?.base?.level),absoluteMaxTroops:MAX_TROOPS,
+   upkeepCycleMs:UPKEEP_CYCLE_MS,surrenderThreshold:SURRENDER_THRESHOLD,activeTruceMs:SURRENDER_TRUCE_MS};
 }
 function response(world,p,text,notify=true){
  if(notify)world.tell(p,text);
@@ -246,14 +265,14 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
  // Uma chave aleatória por ação persiste nas tentativas de retransmissão da mesma operação.
  // A guilda guarda recibos de sucesso (incluídos no snapshot persistido da conta).
  const opKey=typeof d.opKey==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(d.opKey)?d.opKey:null;
- const replayable=['construct','buildingUpgrade','collect','train','escort','recall','fortify','siege','upgrade'].includes(op);
+ const replayable=['construct','buildingUpgrade','collect','train','escort','recall','fortify','siege','upgrade','surrender','surrenderVote','allyOffer','allyAccept','allyBreak'].includes(op);
  // "type" identifica o pacote WebSocket (kingdom); buildingType é o edifício.
  // Aceitar d.type legado permite que testes/chamadas diretas continuem válidos.
  const buildingType=typeof d.buildingType==='string'?d.buildingType:d.type;
  const operationParams=op==='construct'?JSON.stringify([buildingType,d.x,d.y]):
   op==='buildingUpgrade'?JSON.stringify([d.x,d.y]):
   op==='train'||op==='escort'?JSON.stringify([d.unit,d.count]):
-   op==='siege'?JSON.stringify([d.target]):'[]';
+   ['siege','surrender','surrenderVote','allyOffer','allyAccept','allyBreak'].includes(op)?JSON.stringify([d.target]):'[]';
  const owner=guildFor(world,p);
  const {guild:g,key} = owner||{};
  const canManage=Boolean(p.isAccount&&g?.base&&Array.isArray(g.members)&&g.members.includes(p.uid));
@@ -428,7 +447,7 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
   p.save.coins-=cost;g.base.level=level+1;
   g.influence=g.influence||{};
   g.influence[g.base.zone]=Math.min(1000,Math.max(0,Number(g.influence[g.base.zone])||0)+1);
-  world.dirty=true;accept('Capital ampliada! Nível '+g.base.level+' · '+cityLayout.bounds(g.base.level).cells+' terrenos úteis · estoque '+stockCapacity(g.base.level)+' por recurso · '+buildingSlots(g.base.level)+' espaços para edifícios.');
+  world.dirty=true;accept('Capital ampliada! Nível '+g.base.level+' · capacidade militar '+militaryCapacity(g.base.level)+' soldados · estoque '+stockCapacity(g.base.level)+' por recurso · '+buildingSlots(g.base.level)+' edifícios.');
   world.send(p.socket,world.ownStatus(p));return true;
  }
  // Recrutamento por moedas foi abolido. Clientes em cache não podem
@@ -452,8 +471,8 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
    reject('Escolha de 1 a 40 unidades militares válidas.');return false
   }
   const troops=armyCopy(g.army);
-  if(troopCount(troops)+escortTotal(g)+count>MAX_TROOPS){
-   reject('Capacidade máxima de 300 soldados atingida.');return false
+  if(fullArmyCount(g)+count>militaryCapacity(g.base.level)){
+   reject('Limite de '+militaryCapacity(g.base.level)+' soldados atingido. Amplie sua fortaleza para aumentar a capacidade militar.');return false
   }
   const cost=MILITARY_SUPPLIES[unit],stock=stockCopy(g.city.stock);
   if(Object.entries(cost).some(([id,fee])=>stock[id]<fee*count)){
@@ -473,7 +492,7 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
   if(stock.timber<timber||stock.stone<stone){reject('Necessários '+timber+' madeiras e '+stone+' pedras para reforçar as muralhas.');return false}
   stock.timber-=timber;stock.stone-=stone;
   g.city.stock=stock;g.base.defenseLevel=current+1;world.dirty=true;
-  accept('Muralhas reforçadas ao nível '+g.base.defenseLevel+' · defesa adicional de '+(g.base.defenseLevel*25)+' pontos.');
+  accept('Muralhas reforçadas ao nível '+g.base.defenseLevel+' · bônus defensivo de '+(g.base.defenseLevel*12)+' pontos.');
   return true;
  }
  if(op==='escort'){
