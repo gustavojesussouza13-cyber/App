@@ -484,7 +484,7 @@ class World {
   if(z===p.zone)return;const a=p.zone,b=z;const legal=this.zonePortals(a).some(g=>g.zone===b);
   if(!legal){this.tell(p,'Use uma passagem conectada a esta região.');return}
   const enteringCrownDungeon=requiresCrownKey(a,b);
-  const enteringOrdinaryDungeon=a<12&&b>=12&&b<CROWN_DUNGEON_ROOT;
+  const enteringOrdinaryDungeon=b>=12&&b<CROWN_DUNGEON_ROOT&&dungeonRoot(a)!==b;
   if(enteringCrownDungeon&&(p.save.inventory[CROWN_DUNGEON_KEY]||0)<1){
    this.tell(p,'A Câmara da Aurora exige a Chave da Coroa Continental, reivindicada pelo líder do reino politicamente soberano.');return
   }
