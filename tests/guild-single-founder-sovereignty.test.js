@@ -19,7 +19,7 @@ function fixture(t){
   return {p,c};
  };
  const establish=(name,zone=0)=>{
-  const {p,c}=player(name+'Fundador');
+  const {p,c}=player(name.replace(/\s/g,'').slice(0,13)+'Rei');
   p.zone=zone;p.save.zone=zone;
   world.guild(p,{action:'create',name});
   assert.equal(p.save.guild,name,'fundação efetiva');
