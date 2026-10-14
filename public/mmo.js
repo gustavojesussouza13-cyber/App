@@ -735,33 +735,34 @@ function drawTab(){const parent=$('tabContent');parent.replaceChildren();const s
      const recruit=document.createElement('button');recruit.type='button';recruit.textContent='⚔ Recrutar tropas';
      recruit.onclick=()=>send('kingdom',{action:'recruit',unit:unitSelect.value,count:Number(howMany.value)});
      kingdom.append(unitSelect,howMany,recruit);
-     if(k.leader){
-      const fortress=button('♜ Evoluir muralhas (nível '+(k.base.level||1)+'/5)','kingdom',{action:'upgrade'});
-      fortress.disabled=(k.base.level||1)>=5;
-      kingdom.append(fortress);
-      const patrolRow=document.createElement('div');patrolRow.className='entry-actions';
-      const patrolZone=document.createElement('select');
-      patrolZone.setAttribute('aria-label','Região de destino da patrulha');
-      for(let z=0;z<Math.min(12,session.zones.length);z++){
-       const option=document.createElement('option');option.value=String(z);
-       option.textContent=session.zones[z].name;patrolZone.append(option);
-      }
-      const patrolButton=document.createElement('button');patrolButton.type='button';
-      patrolButton.textContent='⚑ Enviar patrulha';
-      patrolButton.disabled=!!k.march;
-      patrolButton.onclick=()=>send('kingdom',{action:'patrol',zone:Number(patrolZone.value)});
-      patrolRow.append(patrolZone,patrolButton);kingdom.append(patrolRow);
-      const targets=kingdomState.bases.filter(b=>b.name!==k.name);
-      if(targets.length){
-       const targetSelect=document.createElement('select');
-       for(const b of targets){const opt=document.createElement('option');opt.value=b.name.toLocaleLowerCase('pt-BR');opt.textContent=b.name+' · '+(session.zones[b.zone]?.name||'Região');targetSelect.append(opt)}
-       const attack=document.createElement('button');attack.type='button';attack.textContent='⚑ Enviar exército (45s)';
-       attack.disabled=!!k.march||Date.now()<(k.nextRaidAt||0);
-       attack.onclick=()=>send('kingdom',{action:'attack',target:targetSelect.value});
-       kingdom.append(targetSelect,attack);
-      }
-      if(k.march)appendText(kingdom,'small','⚔ Tropas em marcha. Chegada estimada: '+new Date(k.march.arrivesAt).toLocaleTimeString('pt-BR'));
+     appendText(kingdom,'small','Escolta pessoal: '+Object.entries(k.escort||{}).map(([u,n])=>(kingdomState.unitTypes[u]?.name||u)+' '+n).join(' · ')+' · tropas requisitadas acompanham você imediatamente no mapa 2D.');
+     const escortInput=document.createElement('input');escortInput.type='number';escortInput.min='1';escortInput.max='40';escortInput.value='5';escortInput.setAttribute('aria-label','Soldados para acompanhar jogador');
+     const escortType=document.createElement('select');escortType.setAttribute('aria-label','Classe da escolta');
+     for(const [id,unit] of Object.entries(kingdomState.unitTypes||{})){
+      const option=document.createElement('option');option.value=id;option.textContent=unit.name+' · disponíveis '+(army[id]||0);escortType.append(option);
      }
+     const deploy=document.createElement('button');deploy.textContent='➤ Convocar escolta imediata';
+     deploy.onclick=()=>send('kingdom',{action:'escort',unit:escortType.value,count:Number(escortInput.value)});
+     const recall=document.createElement('button');recall.textContent='↩ Recolher escolta';
+     recall.disabled=!Object.values(k.escort||{}).some(v=>v>0);
+     recall.onclick=()=>send('kingdom',{action:'recall'});
+     kingdom.append(escortType,escortInput,deploy,recall);
+     if(k.leader){
+      const fortress=button('♜ Expandir fortaleza '+(k.base.level||1)+'/5 · '+(k.base.level+1)*500+' moedas','kingdom',{action:'upgrade'});
+      fortress.disabled=(k.base.level||1)>=5;kingdom.append(fortress);
+      const fortify=button('🛡 Melhorar defesa '+(k.fortressDefense?.walls||0)+'/'+(k.base.level||1)+' · força '+(k.fortressDefense?.defense||0),'kingdom',{action:'fortify'});
+      fortify.disabled=(k.fortressDefense?.walls||0)>=(k.base.level||1);kingdom.append(fortify);
+     }
+     appendText(kingdom,'small','Construção: '+(kingdomState.buildBounds?.width||14)+'×'+(kingdomState.buildBounds?.width||14)+' lotes · armazenamento '+(kingdomState.stockCapacity||600)+' por recurso. Casas geram moedas; fazendas, alimentos; mercados, materiais; quartéis, soldados; torres, defesa.');
+     const nearby=(kingdomState.bases||[]).filter(b=>b.name!==k.name&&b.zone===session.zone&&Math.hypot(b.x-session.x,b.y-session.y)<=170);
+     if(nearby.length){
+      const targets=document.createElement('select');targets.setAttribute('aria-label','Fortaleza rival próxima');
+      for(const b of nearby){const option=document.createElement('option');option.value=b.name.toLocaleLowerCase('pt-BR');option.textContent=b.name;targets.append(option)}
+      const siege=document.createElement('button');siege.type='button';siege.textContent='⚔ Atacar fortaleza rival agora';
+      siege.disabled=Object.values(k.escort||{}).reduce((n,v)=>n+(Number(v)||0),0)<5||Date.now()<(k.nextRaidAt||0);
+      siege.onclick=()=>send('kingdom',{action:'siege',target:targets.value});
+      kingdom.append(targets,siege);
+     }else appendText(kingdom,'small','Para atacar outra guilda, reúna ao menos cinco soldados e caminhe até a fortaleza inimiga. O cerco é resolvido imediatamente no local.');
     }
    }else appendText(kingdom,'small','Crie ou entre em uma guilda para participar da política dos reinos. Requer conta registrada.');
    const ranking=group(kingdom);appendText(ranking,'b','Classificação política de Auren');
