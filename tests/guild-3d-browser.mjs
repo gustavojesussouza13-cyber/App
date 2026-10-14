@@ -124,6 +124,26 @@ try{
  assert.equal(await canvas.getAttribute('data-pending-building'),null,'prévia offline precisa ser removida imediatamente');
  await page.evaluate(()=>{window.__guildDemoOffline=false});
 
+ // Reproduz o bug reportado: a construção FOI processada, mas nem o ACK
+ // nem o estado chegaram ao cliente na primeira tentativa.
+ const countBefore=await page.evaluate(()=>buildings.length);
+ await page.evaluate(()=>{
+  window.__guildDemoReplyDelayMs=0;
+  window.__guildDemoDropNextResponse=true;
+ });
+ const missingAck=await projectPoint(4,12);
+ await page.mouse.click(missingAck.x,missingAck.y);
+ const lostInstant=await page.evaluate(()=>window.__guildInstantEventLog.at(-1));
+ assert.equal(lostInstant?.pending,'house:4:12','a construção aparece no mesmo evento mesmo quando o primeiro ACK se perde');
+ await page.waitForFunction(()=>document.querySelector('#guild3dFeedback')?.textContent?.includes('Construção concluída'),null,{timeout:15000});
+ assert.equal(await page.locator('#guild3dFeedback').getAttribute('data-status'),'success');
+ assert.equal(await page.evaluate(()=>buildings.length),countBefore+1,'retry não cria prédio duplicado');
+ assert.equal(await page.evaluate(()=>buildings.filter(b=>b.type==='house'&&b.x===4&&b.y===12).length),1);
+ assert.match(await page.locator('.guild3d-wallet').innerText(),/8.260 moedas/,'retry não pode cobrar novamente');
+ assert.equal(await canvas.getAttribute('data-pending-building'),null,'prédio sincronizado deixa de ser provisório');
+ assert.doesNotMatch(await page.locator('#guild3dFeedback').innerText(),/prévia foi retirada|não confirmou/i);
+
+
  await page.screenshot({path:'/tmp/guild-3d-preview.png',fullPage:true,animations:'disabled'});
  await page.locator('#guild3dClose').click();
  assert.equal(await page.locator('.guild3d-dialog').evaluate(d=>d.open),false,'fechamento limpa a cena');
