@@ -126,7 +126,7 @@
    px(g,'#e2bd83',5,53+bounce,4,10);
    px(g,'#e6dcbd',12,24+bounce,2,39);
    if(action==='attack'){px(g,trim,11,47+bounce,37,2);px(g,'#f9f2d8',49,44+bounce,10,7);px(g,cloth,11,43+bounce,7,10)}
-   px(g,lit,19,33+bounce,7,4);
+   px(g,'#214532',19,33+bounce,7,4);
   }else if(role==='curandeiro'){
    // Capuz de marfim, bordados, insígnias e cajado com cristal.
    px(g,lit,20,11+bounce,27,8);
@@ -230,6 +230,14 @@
   // Cada NPC possui uma assinatura persistente e vestuário próprio.
   const kind=(id%6===0?'curandeiro':id%5===0?'guardiao':'peregrino');
   hero(g,{role:kind,dir,action,frame,colors,appearance:null});
+  // Insígnias heráldicas binárias: os 56 personagens narrativos mantêm
+  // padrões próprios, sem depender de valores aleatórios ou da classe.
+  const number=/^historia-(\d+)$/.exec(name);
+  const emblem=number?Number(number[1]):id%64;
+  for(let bit=0;bit<6;bit++){
+   const solid=(emblem>>bit)&1;
+   px(g,solid?colors.gem:colors.trim,18+bit*5,48+(bit%2)*4,4,4);
+  }
   for(let i=0;i<3;i++)px(g,i%2?colors.trim:colors.gem,21+(id%9)+i*5,44+i*5,3,2);
   if(id%7===0){px(g,colors.trim,20,11,28,3);px(g,colors.gem,31,9,4,5)}
   return true;
