@@ -57,13 +57,14 @@ test('combate cooperativo recompensa dois jogadores, monstros revivem após resp
  assert.ok(a.events().some(e=>e.type==='reward'));assert.ok(b.events().some(e=>e.type==='reward'));
  monster.deadUntil=Date.now()-1;w.server.tick();assert.equal(monster.hp,monster.maxHp);
 });
-test('guildas, equipes, missões e mercado funcionam sem cadastro',t=>{
+test('equipes, missões e mercado funcionam como Visitante; guilda permanente exige conta',t=>{
  const w=mk();t.after(w.cleanup);const a=w.add('LiaTeste'),b=w.add('LeoTeste');
  a.p.save.coins=500;a.p.x=b.p.x;a.p.y=b.p.y;
  w.server.party(a.p,{action:'create'});w.server.party(a.p,{action:'invite',target:'LeoTeste'});
  const invited=b.events().find(e=>e.type==='partyInvite');assert.ok(invited);w.server.party(b.p,{action:'accept',party:invited.party});assert.equal(a.p.party,b.p.party);
- w.server.guild(a.p,{action:'create',name:'Aurora Viva'});assert.equal(a.p.save.guild,'Aurora Viva');
- w.server.guild(a.p,{action:'invite',target:'LeoTeste'});w.server.guild(b.p,{action:'accept',name:'Aurora Viva'});assert.equal(b.p.save.guild,'Aurora Viva');
+ w.server.guild(a.p,{action:'create',name:'Aurora Viva'});
+ assert.equal(a.p.save.guild,null,'Visitante não funda guilda permanente');
+ assert.equal(w.server.guilds.has('aurora viva'),false);
  w.server.buy(a.p,'pocao');assert.ok(a.p.save.inventory.pocao>=4);
  a.p.save.kills=6;w.server.claimQuests(a.p);assert.ok(a.p.save.quests.includes('primeiro-passo'));
 });
