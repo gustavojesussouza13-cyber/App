@@ -88,7 +88,7 @@ try{
  const site=page.locator('.guild3d-site-label[data-site-key="house:8:12"]');
  await site.waitFor({timeout:5000});
  const initialClock=await site.locator('.guild3d-site-timer').innerText();
- assert.match(initialClock,/^00:\\d\\d$/,'timer visível no terreno');
+ assert.match(initialClock,/^00:\d\d$/,'timer visível no terreno');
  assert.match(await page.locator('#guild3dBuildQueue').innerText(),/Casario.*lote 9,13/s);
  assert.equal(await page.evaluate(()=>buildings.find(b=>b.type==='house'&&b.x===8&&b.y===12)?.durationMs),20000);
  await page.waitForTimeout(1250);
@@ -217,7 +217,7 @@ try{
  await page.waitForSelector('.guild3d-site-label[data-site-key="house:8:12"]',{timeout:12000});
  const storedAfter=await page.evaluate(()=>buildings.find(b=>b.x===8&&b.y===12)?.endsAt);
  assert.equal(storedAfter,storedBefore,'prazo da obra persiste após sair e entrar');
- assert.match(await page.locator('.guild3d-site-label[data-site-key="house:8:12"] .guild3d-site-timer').innerText(),/^00:\\d\\d$/);
+ assert.match(await page.locator('.guild3d-site-label[data-site-key="house:8:12"] .guild3d-site-timer').innerText(),/^00:\d\d$/);
  await page.locator('#guild3dClose').click();
  assert.deepEqual(pageErrors,[],'sem erros JS na cena 3D');
  console.log('BROWSER_3D_OK WebGL, cena visível, câmera, UI, terreno 26x26 e teardown.');
