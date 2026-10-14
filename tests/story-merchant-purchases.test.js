@@ -84,7 +84,8 @@ test('menu de comércio exibe NPCs; fundar outra guilda após sair não é bloqu
  assert.match(ui,/Comerciantes de Auren/);
  assert.match(ui,/dialogue\.merchant/);
  assert.doesNotMatch(ui,/button\('Comprar', 'buy'/);
- assert.match(ui,/createGuild\.disabled=Boolean\(s\.guild\)/);
+ const recruitment=fs.readFileSync(path.join(__dirname,'../public/guild-recruitment.js'),'utf8');
+ assert.match(recruitment,/create.disabled=Boolean\(character.guild\)/);
  assert.match(guide,/fundar outra guilda/);
  assert.match(guide,/Bento, o Mensageiro/);
  assert.doesNotMatch(guide,/comprada na loja/);
