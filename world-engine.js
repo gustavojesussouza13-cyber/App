@@ -242,7 +242,7 @@ class World {
   if(!gate||dist(p,gate)>96){this.tell(p,'Aproxime-se da passagem para atravessar.');return}
   this.travel(p,z);
  }
- ownStatus(p){const s=p.save,build=rpg.calculateAttributes(s);return {type:'character',rpg:build,energy:Math.floor(s.energy??build.stats.maxEnergy),maxEnergy:build.stats.maxEnergy,id:p.id,name:p.name,administrator:!!p.isAdministrator,level:s.level,xp:s.xp,nextXp:xpNeed(s.level),hp:s.hp,maxHp:hpMax(s),coins:s.coins,role:s.role,inventory:s.inventory,crownKeyIssuedAt:s.crownKeyIssuedAt||0,kills:s.kills,quests:s.quests,visited:s.visited,guild:s.guild,guildFounded:s.guildFounded===true,party:p.party||null,story:journal(s.story),achievements:s.achievements,bossRelics:s.bossRelics,blocked:s.blocked,zone:p.zone,x:p.x,y:p.y}}
+ ownStatus(p){const s=p.save,build=rpg.calculateAttributes(s);build.impacts=Object.fromEntries(rpg.ATTRIBUTE_KEYS.map(key=>[key,rpg.allocationPreview(s,key)]));return {type:'character',rpg:build,energy:Math.floor(s.energy??build.stats.maxEnergy),maxEnergy:build.stats.maxEnergy,id:p.id,name:p.name,administrator:!!p.isAdministrator,level:s.level,xp:s.xp,nextXp:xpNeed(s.level),hp:s.hp,maxHp:hpMax(s),coins:s.coins,role:s.role,inventory:s.inventory,crownKeyIssuedAt:s.crownKeyIssuedAt||0,kills:s.kills,quests:s.quests,visited:s.visited,guild:s.guild,guildFounded:s.guildFounded===true,party:p.party||null,story:journal(s.story),achievements:s.achievements,bossRelics:s.bossRelics,blocked:s.blocked,zone:p.zone,x:p.x,y:p.y}}
  tell(p,msg,type='notice'){this.send(p.socket,{type,text:msg})}
  unlockAchievement(p,id){
   const award=ACHIEVEMENTS[id],s=p.save;
@@ -478,7 +478,6 @@ class World {
   this.tell(p,'Classe alterada para '+CLASSES[role].name+'.')
  }
  allocateStat(p,key){
-  if(!p.isAccount){this.tell(p,'Entre com uma conta cadastrada para distribuir atributos permanentes.');return false}
   if(!rpg.ATTRIBUTE_KEYS.includes(key)){this.tell(p,'Atributo desconhecido.');return false}
   const state=rpg.calculateAttributes(p.save);
   if(state.availablePoints<1||state.allocations[key]>=rpg.ATTRIBUTE_CAP){
@@ -490,9 +489,10 @@ class World {
   p.save.hp=clamp(p.save.hp+(current.stats.maxHp-previousMax),1,current.stats.maxHp);
   p.save.energy=clamp((p.save.energy??previousEnergyMax)+(current.stats.maxEnergy-previousEnergyMax),0,current.stats.maxEnergy);
   this.dirty=true;
-  const stored=this.persist();
+  // Conta: pontos gravados no banco. Visitante: pontos mantidos em RAM/token desta sessão.
+  const stored=p.isAccount?this.persist():Promise.resolve(true);
   if(stored&&typeof stored.catch==='function')void stored.catch(e=>console.error('[atributos] armazenamento:',e.message));
-  this.send(p.socket,this.ownStatus(p));this.tell(p,'✦ '+rpg.ATTRIBUTE_LABELS[key]+' aumentado! Pontos restantes: '+current.availablePoints);
+  this.send(p.socket,this.ownStatus(p));this.tell(p,'✦ '+rpg.ATTRIBUTE_LABELS[key]+' aumentado! Pontos restantes: '+current.availablePoints+(p.isAccount?' · Progresso da conta salvo.':' · Modo Visitante: progresso temporário.'));
   return true
  }
  claimCrownKey(p){
