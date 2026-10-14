@@ -1,0 +1,23 @@
+/* Bestiário individual de Auren: compacto, contrastado e independente do painel do herói. */
+.monster-sheet-panel{border-color:rgba(179,127,90,.62);background:linear-gradient(160deg,#1a2521,#111c1b)}
+.monster-sheet-panel[hidden]{display:none!important}
+.monster-sheet-panel .panel-top{display:flex;justify-content:space-between;align-items:center}
+.monster-sheet-panel .panel-top button{background:transparent;color:#e8bd93;border:1px solid #614f40;border-radius:5px;font-size:.85rem;padding:5px 10px;cursor:pointer}
+.monster-sheet-panel h2{font-family:Georgia,serif;color:#f1d6af;margin:12px 0 3px;font-size:1.35rem;overflow-wrap:anywhere}
+.monster-sheet-subtitle{font-size:.81rem;color:#dfb17c;margin-bottom:13px}
+.monster-sheet-life{display:flex;justify-content:space-between;font-size:.78rem;font-weight:700;color:#d6c0a5;letter-spacing:.05em}
+.monster-sheet-health{height:10px;border:1px solid #585c51;background:#061713;margin:7px 0 12px}
+.monster-sheet-health div{height:100%;background:linear-gradient(90deg,#923d32,#de815b);transition:width .15s ease}
+.monster-sheet-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-bottom:12px}
+.monster-sheet-stat{padding:8px;border:1px solid rgba(205,161,119,.25);background:#0b2420}
+.monster-sheet-stat small,.monster-sheet-attributes small{font-size:.7rem;color:#c3b7a4;display:block}
+.monster-sheet-stat strong,.monster-sheet-attributes strong{color:#f6dfb8;font-size:1rem;font-variant-numeric:tabular-nums}
+.monster-sheet-panel details{border-top:1px solid rgba(207,167,117,.28);padding:9px 0}
+.monster-sheet-panel summary{color:#ebc797;font-size:.81rem;cursor:pointer;font-weight:700}
+.monster-sheet-attributes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:12px 0 4px}
+.monster-sheet-attributes>div{background:rgba(6,30,26,.8);padding:7px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:3px;align-items:center}
+.monster-sheet-items{display:grid;gap:8px;padding:12px 0 3px}
+.monster-sheet-items .monster-equipment-item{padding:9px;background:#0e2924;border:1px solid rgba(194,147,103,.26);color:#ebd3ae}
+.monster-equipment-item span{display:block;color:#aec3b7;font-size:.73rem;margin-top:4px}
+.monster-sheet-footnote{padding:10px 2px 0;border-top:1px solid rgba(207,167,117,.28);color:#b2c6b7;font-size:.75rem;line-height:1.5}
+@media(max-width:380px){.monster-sheet-attributes{grid-template-columns:1fr}.monster-sheet-grid{gap:4px}}
