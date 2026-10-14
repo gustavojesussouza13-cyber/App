@@ -405,6 +405,7 @@
       selectedBuilding=null;
      }
      scene?.setSelection(id);
+     scene?.focusLot?.(selectedLot);
      say(selectedLot?'Edifício escolhido: '+label+'. Confirme o lote '+selectedLot.id+' no painel.':'Sem lote livre para '+label+'. Evolua a fortaleza.');paint()
     };
     opts.append(button);
