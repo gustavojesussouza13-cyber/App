@@ -33,6 +33,9 @@ export function createGuildScene({mount,layout,onCell,onHover}){
  scene.add(sun);
  const root=new THREE.Group();scene.add(root);
  const structures=new THREE.Group();scene.add(structures);
+ const workMeshes=new THREE.Group();scene.add(workMeshes);
+ const labels=document.createElement('div');
+ labels.className='guild3d-construction-layer';mount.append(labels);
  const provisionalStructures=new THREE.Group();scene.add(provisionalStructures);
  const decor=new THREE.Group();scene.add(decor);
  const walkers=new THREE.Group();scene.add(walkers);
@@ -283,8 +286,53 @@ export function createGuildScene({mount,layout,onCell,onHover}){
   else if(b.type==='market')market(g,b);
   return g;
  }
+ const activeSites=new Map();
+ let serverOffset=0;
+ const keyFor=b=>b.type+':'+b.x+':'+b.y;
+ const timerText=ms=>{const sec=Math.ceil(Math.max(0,ms)/1000);return String(Math.floor(sec/60)).padStart(2,'0')+':'+String(sec%60).padStart(2,'0')};
+ function makeSite(building,key,local=false){
+  const [w,h]=layout.size(building),p=pos(building.x,building.y,w,h);
+  const group=new THREE.Group();workMeshes.add(group);
+  box(group,w*CELL-.18,.18,h*CELL-.18,'#b4a37d',p.x,.1,p.z,false);
+  const scaffold=new THREE.Group();group.add(scaffold);
+  const bw=w*CELL*.44,bh=h*CELL*.44;
+  for(const xx of [-bw,bw])for(const zz of [-bh,bh])
+   box(scaffold,.14,4.9,.14,'#9a7047',p.x+xx,2.45,p.z+zz);
+  for(const height of [1.2,2.9,4.5]){
+   for(const z of [-bh,bh])box(scaffold,2*bw+.18,.13,.13,'#c09965',p.x,height,p.z+z);
+   for(const x of [-bw,bw])box(scaffold,.13,.13,2*bh+.18,'#c09965',p.x+x,height,p.z);
+  }
+  const model=drawBuilding(building,group);model.visible=false;
+  const label=document.createElement('div');label.className='guild3d-site-label';label.dataset.siteKey=key;
+  const name=document.createElement('strong');
+  name.textContent=({house:'Casario',farm:'Fazenda',market:'Mercado',tower:'Torre',barracks:'Quartel'})[building.type]||'Obra';
+  const timer=document.createElement('span');timer.className='guild3d-site-timer';timer.textContent=local?'Confirmando…':'00:00';
+  const bar=document.createElement('div');bar.className='guild3d-site-rail';const fill=document.createElement('span');bar.append(fill);
+  const stage=document.createElement('small');stage.textContent=local?'Preparando obra':'Fundação';
+  label.append(name,timer,bar,stage);labels.append(label);
+  return {building,key,p,group,model,scaffold,label,timer,fill,stage,local,lastText:''};
+ }
+ function deleteSite(site){
+  site.label.remove();
+  disposeGroup(site.group);
+  workMeshes.remove(site.group);
+ }
+ function syncSites(buildings){
+  const valid=new Set();
+  for(const b of buildings){
+   if(!Number.isSafeInteger(b.endsAt)||b.endsAt<=Date.now()+serverOffset)continue;
+   const key=keyFor(b);valid.add(key);
+   if(activeSites.has(key)){activeSites.get(key).building=b;continue}
+   activeSites.set(key,makeSite(b,key));
+  }
+  for(const [key,site]of activeSites){
+   if(valid.has(key))continue;
+   deleteSite(site);activeSites.delete(key);
+  }
+ }
  let lastBuildingState=null;
- function updateBuildings(next=[],nextArmy={}){
+ function updateBuildings(next=[],nextArmy={},serverNow=null){
+  if(Number.isSafeInteger(serverNow))serverOffset=serverNow-Date.now();
   const nextBuildings=Array.isArray(next)?next.filter(b=>b&&layout.footprints[b.type]&&Number.isSafeInteger(b.x)&&Number.isSafeInteger(b.y)).slice(0,60):[];
   const nextArmyState=nextArmy||{};
   const fingerprint=JSON.stringify([nextBuildings,nextArmyState]);
@@ -294,7 +342,10 @@ export function createGuildScene({mount,layout,onCell,onHover}){
   buildings=nextBuildings;
   army=nextArmyState;
   disposeGroup(structures);
-  for(const b of buildings)drawBuilding(b,structures);
+  syncSites(buildings);
+  for(const b of buildings)
+   if(!Number.isSafeInteger(b.endsAt)||b.endsAt<=Date.now()+serverOffset)
+    drawBuilding(b,structures);
   freshDecor();rebuildWalkers();
  }
  // Cada construção possui sua própria instância. Não eliminar as anteriores
@@ -312,25 +363,16 @@ export function createGuildScene({mount,layout,onCell,onHover}){
  function showPendingBuilding(building,id='single'){
   if(!building||!layout.footprints[building.type])return;
   clearPendingBuilding(id,false);
-  const group=new THREE.Group();
-  provisionalStructures.add(group);
-  const [w,h]=layout.size(building),p=pos(building.x,building.y,w,h);
-  const foundation=box(group,w*CELL-.12,.13,h*CELL-.12,'#d9b66a',p.x,.10,p.z,false);
-  foundation.receiveShadow=false;
-  drawBuilding(building,group);
-  pendingVisuals.set(id,{group,building});
+  const site=makeSite(building,'pending:'+id,true);
+  pendingVisuals.set(id,{...site,building});
   setPendingDataset();
-  // Mostra no próprio clique, sem esperar renderização ou resposta pela rede.
   renderer.render(scene,camera);
  }
  function clearPendingBuilding(id,refresh=true){
-  const entries=id===undefined?[...pendingVisuals.keys()]:[id];
-  for(const key of entries){
-   const entry=pendingVisuals.get(key);
-   if(!entry)continue;
-   pendingVisuals.delete(key);
-   disposeGroup(entry.group);
-   provisionalStructures.remove(entry.group);
+  const keys=id===undefined?[...pendingVisuals.keys()]:[id];
+  for(const key of keys){
+   const site=pendingVisuals.get(key);if(!site)continue;
+   pendingVisuals.delete(key);deleteSite(site);
   }
   if(refresh)setPendingDataset();
  }
@@ -433,8 +475,35 @@ export function createGuildScene({mount,layout,onCell,onHover}){
  const ro=typeof ResizeObserver==='function'?new ResizeObserver(resize):null;
  ro?.observe(mount);if(!ro)window.addEventListener('resize',resize);
  resize();
+ let lastTimerPaint=0;
+ function animateSites(now){
+  const current=Date.now()+serverOffset;
+  const refresh=now-lastTimerPaint>150;
+  if(refresh)lastTimerPaint=now;
+  for(const site of [...activeSites.values(),...[...pendingVisuals.values()]]){
+   const b=site.building;
+   const pct=site.local?0:Math.max(0,Math.min(1,(current-b.startedAt)/Math.max(1,b.endsAt-b.startedAt)));
+   site.model.visible=!site.local&&pct>.12;
+   site.model.scale.y=Math.max(.04,Math.min(1,(pct-.12)/.88));
+   site.scaffold.visible=site.local||pct<.96;
+   site.scaffold.position.y=Math.sin(now*.0016+site.p.x)*.04;
+   if(refresh){
+    const text=site.local?'Confirmando…':timerText(b.endsAt-current);
+    if(text!==site.lastText){site.timer.textContent=text;site.lastText=text}
+    site.fill.style.width=Math.round(pct*100)+'%';
+    site.stage.textContent=site.local?'Preparando terreno':pct<.25?'Fundações':pct<.50?'Erguendo paredes':pct<.75?'Montando estrutura':pct<1?'Colocando telhado':'Finalizando';
+    site.label.dataset.progress=String(Math.round(pct*100));
+   }
+   const pt=site.p.clone().project(camera);
+   const x=(pt.x+1)*.5*renderer.domElement.clientWidth;
+   const y=(1-pt.y)*.5*renderer.domElement.clientHeight;
+   site.label.style.left=Math.round(x)+'px';site.label.style.top=Math.round(y+15)+'px';
+   site.label.hidden=pt.z< -1||pt.z>1||x<0||x>renderer.domElement.clientWidth||y<0||y>renderer.domElement.clientHeight-10;
+  }
+ }
  function frame(now){
   if(destroyed)return;
+  animateSites(now);
   const t=now*.0005;
   for(const p of people){
    const a=p.phase+t*p.speed;
@@ -462,6 +531,8 @@ export function createGuildScene({mount,layout,onCell,onHover}){
    }
   });
   clearPendingBuilding();
+  for(const site of activeSites.values())deleteSite(site);
+  activeSites.clear();labels.remove();
   highlight.geometry.dispose();ghost.material.dispose();highlight.material.dispose();
   for(const g of geometries.values())g.dispose();
   for(const m of mats.values())m.dispose();
