@@ -82,7 +82,7 @@ test('prévia usa a mesma animação detalhada sem simplificar classes ou cachê
  assert.match(source,/ATELIER\?\.classIdentity/);
  assert.match(source,/POLISH\?\.hero/);
  const draw=fs.readFileSync(path.join(__dirname,'../public/art16.js'),'utf8');
- assert.match(draw,/premiumPc\|\|Boolean\(p\.appearance\)/);
+ assert.match(draw,/studioHero=Boolean\(spriteStudio\?\.drawHero/);
  assert.match(draw,/character\(ctx,\{name,role,appearance,x,y,dir\}/);
 });
 test('editor e página de criação suportam visitante, conta e personalização posterior',()=>{
