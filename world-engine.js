@@ -8,6 +8,7 @@ const {MAX_GOLD}=require('./owner-benefits');
 const terrain=require('./world-terrain');
 const kingdoms=require('./kingdom-politics');
 const rpg=require('./rpg-attributes');
+const creatureRpg=require('./monster-progression');
 const {ChatGuard,inspectNickname}=require('./chat-safety');
 
 const ZONES=[
@@ -129,9 +130,9 @@ class World {
  constructor({send,getOnline,hasClassicName,dataFile,autosave=false,persistentStore=null}){
   this.send=send;this.getOnline=getOnline;this.hasClassicName=hasClassicName;
   this.players=new Map();this.guestReconnect=new Map();this.monsters=new Map();this.parties=new Map();this.guilds=new Map();this.pendingTrades=new Map();this.chatGuard=new ChatGuard();this.chatReceipts=new Map();this.chatReports=new Map();this.chatReportRate=new Map();
-  this.dirty=false;this.lastTick=Date.now();this.day=1;
+  this.dirty=false;this.lastTick=Date.now();this.day=1;this.monsterPersistenceEnabled=true;
   this.dataFile=dataFile||path.join(__dirname,'data','world.sqlite');
-  this.db=null;this.persistentStore=persistentStore;this.saved={version:3,characters:{},guilds:{},day:1};if(!persistentStore)this.load();
+  this.db=null;this.persistentStore=persistentStore;this.saved={version:3,characters:{},guilds:{},monsters:{},day:1};if(!persistentStore)this.load();
   this.initMonsters();
   if(autosave)this.saveTimer=setInterval(()=>this.persist(),30000).unref();
  }
@@ -142,9 +143,10 @@ class World {
     const {DatabaseSync}=require('node:sqlite');
     fs.mkdirSync(path.dirname(this.dataFile),{recursive:true});
     this.db=new DatabaseSync(this.dataFile);
-    this.db.exec('PRAGMA journal_mode=WAL; CREATE TABLE IF NOT EXISTS characters(uid TEXT PRIMARY KEY, data TEXT NOT NULL); CREATE TABLE IF NOT EXISTS guilds(key TEXT PRIMARY KEY, data TEXT NOT NULL); CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY, value TEXT NOT NULL);');
+    this.db.exec('PRAGMA journal_mode=WAL; CREATE TABLE IF NOT EXISTS characters(uid TEXT PRIMARY KEY, data TEXT NOT NULL); CREATE TABLE IF NOT EXISTS guilds(key TEXT PRIMARY KEY, data TEXT NOT NULL); CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY, value TEXT NOT NULL); CREATE TABLE IF NOT EXISTS monster_progress(key TEXT PRIMARY KEY,data TEXT NOT NULL);');
     this.saved.characters=Object.fromEntries(this.db.prepare('SELECT uid, data FROM characters').all().map(r=>[r.uid,JSON.parse(r.data)]));
     this.saved.guilds=Object.fromEntries(this.db.prepare('SELECT key, data FROM guilds').all().map(r=>[r.key,JSON.parse(r.data)]));
+    this.saved.monsters=Object.fromEntries(this.db.prepare('SELECT key, data FROM monster_progress').all().map(r=>[r.key,JSON.parse(r.data)]));
     this.day=Number(this.db.prepare("SELECT value FROM meta WHERE key='day'").get()?.value||1);
    }else{
     const o=JSON.parse(fs.readFileSync(this.dataFile,'utf8'));
@@ -152,6 +154,7 @@ class World {
     this.day=Number(this.saved.day||1);
    }
   }catch(e){if(e.code!=='ENOENT')console.error('[world] dados existentes ignorados:',e.message)}
+  this.saved.monsters=this.saved.monsters||{};
   this.guilds=new Map(Object.entries(this.saved.guilds||{}));
  }
  persist(){
@@ -176,6 +179,8 @@ class World {
      for(const [uid,value] of Object.entries(this.saved.characters))putChar.run(uid,JSON.stringify(value));
      this.db.exec('DELETE FROM guilds');const putGuild=this.db.prepare('INSERT INTO guilds(key,data) VALUES (?,?)');
      for(const [key,value] of Object.entries(this.saved.guilds))putGuild.run(key,JSON.stringify(value));
+     const putMonster=this.db.prepare('INSERT INTO monster_progress(key,data) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET data=excluded.data');
+     for(const [key,value] of Object.entries(this.saved.monsters||{}))putMonster.run(key,JSON.stringify(value));
      this.db.prepare("INSERT INTO meta(key,value) VALUES ('day',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").run(String(this.day));
      this.db.exec('COMMIT');
     }catch(e){this.db.exec('ROLLBACK');throw e}
@@ -198,10 +203,29 @@ class World {
     const name=boss&&zone>=16?'★ '+eliteNames[Math.floor((zone-16)/6)]+' · Piso '+dungeonDepth(zone):(boss?'★ ':'')+sp[0];
     const chosen={x:130+hash32(seed+1)%(ZONE_W-260),y:130+hash32(seed+2)%(ZONE_H-260)};
     const home=terrain.nearestWalkable(zone,chosen.x,chosen.y,ZONES);
-    mons.push({id:`m-${zone}-${i}`,zone,name,species:speciesId,boss,x:home.x,y:home.y,home,hp:Math.floor(sp[1]*mult*tier),maxHp:Math.floor(sp[1]*mult*tier),damage:Math.ceil(sp[2]*tier*(boss?2:1)*(crownDungeonZone(zone)?1.20:1)),xp:Math.ceil(sp[3]*tier*(boss?4:1)),coins:Math.ceil(sp[4]*tier*(boss?5:1)),lastAttack:0,windupUntil:0,deadUntil:0,damageFrom:new Map(),wander:0,wanderGoal:null,aggroTarget:null,aggroUntil:0});
+    const id=`m-${zone}-${i}`,baseHp=Math.floor(sp[1]*mult*tier);
+    const baseDamage=Math.ceil(sp[2]*tier*(boss?2:1)*(crownDungeonZone(zone)?1.20:1));
+    const monster={id,zone,name,species:speciesId,boss,x:home.x,y:home.y,home,
+     baseHp,baseDamage,hp:baseHp,maxHp:baseHp,damage:baseDamage,
+     xp:Math.ceil(sp[3]*tier*(boss?4:1)),coins:Math.ceil(sp[4]*tier*(boss?5:1)),
+     lastAttack:0,windupUntil:0,deadUntil:0,damageFrom:new Map(),wander:0,
+     wanderGoal:null,aggroTarget:null,aggroUntil:0,defeats:0};
+    creatureRpg.restoreMonster(monster,this.saved.monsters?.[id]);
+    mons.push(monster);
    }
    this.monsters.set(zone,mons);
   }}
+ restoreMonsterProfiles(){
+  for(const monsters of this.monsters.values())
+   for(const monster of monsters)creatureRpg.restoreMonster(monster,
+    this.monsterPersistenceEnabled?this.saved.monsters?.[monster.id]:null);
+ }
+ inspectMonster(p,id){
+  const m=(this.monsters.get(p.zone)||[]).find(mon=>mon.id===id);
+  if(!m||dist(p,m)>900){this.tell(p,'Aproxime-se para examinar a criatura.');return false}
+  this.send(p.socket,{type:'monsterSheet',sheet:creatureRpg.publicSheet(m)});
+  return true
+ }
  totalMonsters(){return [...this.monsters.values()].reduce((n,a)=>n+a.length,0)}
  publicPlayer(p){
    const guild=this.guilds.get(p.save.guild?.toLocaleLowerCase('pt-BR'));
@@ -209,7 +233,7 @@ class World {
    return {id:p.id,name:p.name,administrator:!!p.isAdministrator,zone:p.zone,x:Math.round(p.x),y:Math.round(p.y),dir:p.dir,level:p.save.level,role:p.save.role,hp:p.save.hp,maxHp:hpMax(p.save),guild:p.save.guild,party:p.party||null,
     escort:escort&&kingdoms.troopCount(escort)>0?escort:null};
   }
- publicMonster(m){return {id:m.id,name:m.name,species:m.species,zone:m.zone,x:Math.round(m.x),y:Math.round(m.y),hp:m.hp,maxHp:m.maxHp,boss:m.boss}}
+ publicMonster(m){return {id:m.id,name:m.name,species:m.species,zone:m.zone,x:Math.round(m.x),y:Math.round(m.y),hp:m.hp,maxHp:m.maxHp,boss:m.boss,level:m.level,rank:m.rank,victories:m.progress?.victories||0}}
  zoneInfo(){return ZONES.map((z,i)=>({id:i,name:z[0],biome:z[1],count:this.monsters.get(i).length}))}
  zonePortals(zone){
   if(!Number.isInteger(zone)||zone<0||zone>=ZONES.length)return [];
@@ -367,6 +391,7 @@ class World {
    }
    case 'travel':this.travel(p,d.zone);break;
    case 'portal':this.usePortal(p,d.zone);break;
+   case 'inspectMonster':this.inspectMonster(p,cap(d.monster,64));break;
    case 'attack':this.attack(p,d.target,false);break;
    case 'skill':this.attack(p,d.target,true);break;
    case 'class':this.chooseClass(p,d.role);break;
