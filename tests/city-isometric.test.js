@@ -145,7 +145,7 @@ test('retorno do servidor informa se construiu ou recusou e revela saldo pessoal
  assert.ok(notices.findIndex(x=>x.type==='kingdomActionResult'&&x.id===101)<notices.findIndex(x=>x.type==='kingdomState'),'confirmação prioritária deve chegar antes do estado pesado');
  assert.equal(first.action,'construct');
  assert.equal(first.ok,true);
- assert.match(first.message,/Obra iniciada e salva/);
+ assert.match(first.message,/Obra iniciada.*Aguardando gravação no banco/,'ACK não deve afirmar gravação antes do COMMIT');
  const state=politics.publicState(world,p);
  assert.equal(state.walletCoins,walletBefore-120);
  assert.equal(state.yourGuild.stock.coins,0,'tesouro da guilda não é a carteira do personagem');
