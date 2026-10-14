@@ -44,6 +44,17 @@
    '<div class="guild3d-label">DIÁRIO DA CAPITAL</div><p id="guild3dFeedback" class="guild3d-feedback" role="status" aria-live="polite">Escolha uma construção e selecione um terreno livre.</p>'+
    '<p id="guild3dVisitor" class="guild3d-note" hidden>Esta cidade pertence a outra guilda. Somente seu líder pode construir ou melhorar edifícios.</p>'+
    '</div></aside></div></div>';
+  dlg.insertAdjacentHTML('beforeend',
+   '<section id="guild3dUpgradeOverlay" class="guild3d-upgrade-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="guild3dUpgradeTitle">'+
+   '<div class="guild3d-upgrade-window">'+
+   '<div class="guild3d-upgrade-header"><div><small>CONSELHO DO REINO · PLANEJAMENTO</small><h2 id="guild3dUpgradeTitle">Confirmar evolução</h2></div><button id="guild3dPreviewClose" type="button" aria-label="Fechar prévia">✕</button></div>'+
+   '<p id="guild3dUpgradeDescription" class="guild3d-note"></p>'+
+   '<div class="guild3d-upgrade-columns"><div><strong>Estado atual</strong></div><div><strong>Após a evolução</strong></div></div>'+
+   '<div id="guild3dUpgradeRows" class="guild3d-upgrade-rows"></div>'+
+   '<p id="guild3dUpgradeCost" class="guild3d-upgrade-cost"></p>'+
+   '<p id="guild3dUpgradeWarning" class="guild3d-note" role="status"></p>'+
+   '<div class="guild3d-upgrade-footer"><button type="button" id="guild3dPreviewCancel">Cancelar</button><button type="button" id="guild3dPreviewConfirm" class="guild3d-action">Confirmar evolução</button></div>'+
+   '</div></section>');
   document.body.append(dlg);
   const q=id=>dlg.querySelector('#'+id);
   // Cada painel possui estado próprio. Recolher não remove os elementos nem
@@ -525,6 +536,103 @@
     lot.section+' · '+lot.id+' · '+(lot.unlockLevel>(base?.level||1)?'Exige nível '+lot.unlockLevel:types[lot.type][0]):
     'Ruas e praças · Capital '+layout.N+'×'+layout.N;
   }
+  // Prévia provida pelo próprio servidor, que também cobra os recursos e
+  // valida as condições ao confirmar. Nunca extrapolar fórmulas no navegador.
+  let upgradeIntent=null;
+  const upgradeOverlay=q('guild3dUpgradeOverlay');
+  const fmt=n=>Number(n||0).toLocaleString('pt-BR');
+  function currentUpgrade(){
+   if(!upgradeIntent||!canBuild())return null;
+   if(upgradeIntent.kind==='fortress')return state?.yourGuild?.fortressUpgradePreview||null;
+   return structures().find(b=>b.x===upgradeIntent.x&&b.y===upgradeIntent.y&&
+    b.type===upgradeIntent.type)?.upgradePreview||null;
+  }
+  function closeUpgradePreview(){
+   upgradeIntent=null;upgradeOverlay.hidden=true;
+  }
+  function showUpgradePreview(intent){
+   if(!canBuild()){say('Você não pode administrar este reino.','warning');return}
+   upgradeIntent=intent;
+   const preview=currentUpgrade();
+   if(!preview){closeUpgradePreview();say('Melhoria indisponível. Aguarde a atualização do servidor.','warning');return}
+   const fortress=preview.kind==='fortress',level=preview.levelBefore;
+   q('guild3dUpgradeTitle').textContent=(fortress?'Castelo e fortaleza':labels[intent.type]||intent.type)+
+    ' · nível '+level+' → '+preview.levelAfter;
+   q('guild3dUpgradeDescription').textContent=fortress?
+    'O castelo muda com a fortaleza. Compare defesa, capacidade militar, estoque e novos terrenos.':
+    'Esta evolução modifica a produção, o tempo de ciclo e, nas torres, a defesa do reino.';
+   const rows=q('guild3dUpgradeRows');rows.replaceChildren();
+   const before=preview.before||{},after=preview.after||{};
+   const add=(label,a,b,unit='')=>{
+    const line=document.createElement('div');line.className='guild3d-upgrade-row';
+    const name=document.createElement('span');name.textContent=label;
+    const left=document.createElement('strong');left.textContent=a;
+    const right=document.createElement('strong');right.textContent=b;
+    if(String(a)!==String(b))right.classList.add('guild3d-upgrade-changed');
+    line.append(name,left,right);rows.append(line);
+   };
+   add('Nível',fmt(preview.levelBefore),fmt(preview.levelAfter));
+   add('Defesa do reino',fmt(before.defense),fmt(after.defense));
+   add('Capacidade de tropas',fmt(before.armyCapacity),fmt(after.armyCapacity));
+   add('Capacidade de estoque',fmt(before.storage),fmt(after.storage));
+   add('Limite de edifícios',fmt(before.buildingSlots),fmt(after.buildingSlots));
+   if(fortress){
+    add('Lotes liberados',fmt(before.unlockedLots),fmt(after.unlockedLots));
+    add('Carteira · moedas',fmt(before.walletCoins),fmt(after.walletCoins));
+   }else{
+    add('Ciclo de produção',prettyTime(before.cycleMs),prettyTime(after.cycleMs));
+    for(const [id,name] of [['food','Alimento / ciclo'],['timber','Madeira / ciclo'],
+      ['stone','Pedra / ciclo'],['coins','Moedas / ciclo']]){
+     if((before.yields?.[id]||0)||(after.yields?.[id]||0))
+      add(name,fmt(before.yields?.[id]),fmt(after.yields?.[id]));
+    }
+   }
+   for(const [id,label]of [['food','Estoque · alimentos'],['timber','Estoque · madeira'],
+     ['stone','Estoque · pedra'],['coins','Tesouro do reino']])
+    add(label,fmt(before.stock?.[id]),fmt(after.stock?.[id]));
+   const cost=Object.entries(preview.cost||{}).map(([id,n])=>
+    fmt(n)+' '+({food:'alimentos',timber:'madeira',stone:'pedra',
+     walletCoins:'moedas da carteira',coins:'moedas'}[id]||id)).join(' · ');
+   q('guild3dUpgradeCost').textContent='Custo cobrado na confirmação: '+cost;
+   const okay=preview.affordable===true;
+   q('guild3dUpgradeWarning').textContent=okay?
+    'Os valores são uma prévia do servidor. A operação só é executada após a sua confirmação; mudanças de saldo serão validadas novamente.':
+    'Recursos insuficientes para esta melhoria. Consiga os materiais e tente novamente.';
+   const confirm=q('guild3dPreviewConfirm');
+   confirm.disabled=!okay;confirm.textContent=fortress?'Confirmar evolução do castelo':'Confirmar evolução do edifício';
+   upgradeOverlay.hidden=false;
+   q('guild3dPreviewCancel').focus();
+  }
+  q('guild3dPreviewCancel').onclick=closeUpgradePreview;
+  q('guild3dPreviewClose').onclick=closeUpgradePreview;
+  q('guild3dPreviewConfirm').onclick=()=>{
+   const intent=upgradeIntent,preview=currentUpgrade();
+   if(!intent||!preview||!canBuild()||!preview.affordable){
+    closeUpgradePreview();say('Os recursos ou permissões mudaram. Reabra a comparação.','warning');return;
+   }
+   if(preview.levelBefore!==intent.levelBefore){
+    closeUpgradePreview();say('O edifício evoluiu ou mudou de nível. Confira os novos valores.','warning');return;
+   }
+   if(intent.kind==='fortress'){
+    const latest=state?.yourGuild?.fortressUpgradePreview;
+    if(!latest||latest.levelBefore!==(base?.level||1)){
+     closeUpgradePreview();say('Dados da fortaleza mudaram. Atualize antes de confirmar.','warning');return;
+    }
+    closeUpgradePreview();sendOperation('upgrade',{});return;
+   }
+   const building=structures().find(b=>b.x===intent.x&&b.y===intent.y&&b.type===intent.type);
+   if(!building||building.status==='building'||(building.level||1)!==intent.levelBefore){
+    closeUpgradePreview();say('O estado do edifício mudou. Reabra a comparação.','warning');return;
+   }
+   if([...requests.values()].some(r=>r.action==='buildingUpgrade'&&
+      r.details.x===intent.x&&r.details.y===intent.y)){
+    closeUpgradePreview();say('Melhoria já em processamento.','info');return;
+   }
+   closeUpgradePreview();sendOperation('buildingUpgrade',{x:intent.x,y:intent.y});
+  };
+  dlg.addEventListener('cancel',event=>{
+   if(!upgradeOverlay.hidden){event.preventDefault();closeUpgradePreview()}
+  });
   q('guild3dLotAction').onclick=placeLot;
   q('guild3dLotUpgrade').onclick=()=>{
    const b=selectedBuilding;
@@ -533,7 +641,7 @@
    if([...requests.values()].some(r=>r.action==='buildingUpgrade'&&layout.at([b],r.details.x,r.details.y))){
     say('Esta melhoria já está em processamento.','info');return;
    }
-   sendOperation('buildingUpgrade',{x:b.x,y:b.y});
+   showUpgradePreview({kind:'building',type:b.type,x:b.x,y:b.y,levelBefore:b.level||1});
   };
   async function load(){
    if(scene||loading||!dlg.open)return;
@@ -559,6 +667,7 @@
    }
   }
   function cleanupCity(){
+   closeUpgradePreview();
    token++;
    // Fechar a cidade não cancela um pedido entregue ao servidor.
    // Preservar chaves idempotentes e prévias para retomar ao reabrir.
@@ -577,7 +686,7 @@
    if(!owns()||!soldier.value)return;
    sendOperation('train',{unit:soldier.value,count:Number(count.value)});
   };
-  q('guild3dUpgrade').onclick=()=>sendOperation('upgrade',{});
+  q('guild3dUpgrade').onclick=()=>showUpgradePreview({kind:'fortress',levelBefore:base?.level||1});
    q('guild3dFortify').onclick=()=>sendOperation('fortify',{});
    q('guild3dSurrenderVote').onclick=()=>sendOperation('surrenderVote',{});
    q('guild3dSurrender').onclick=()=>{
@@ -599,6 +708,7 @@
    const sameGuild=base?.name===b?.name&&state?.persistentAccount===kingdom?.persistentAccount;
    // Nunca levar pendências de uma guilda ou sessão visitante a outra.
    if(!sameGuild)resetOperations();
+   closeUpgradePreview();
    base=b;state=kingdom;selected=null;selectedLot=null;selectedBuilding=null;
    if(Number.isSafeInteger(kingdom?.serverNow))clockOffset=kingdom.serverNow-Date.now();
    say('Escolha um terreno emoldurado para construir. Cada bairro tem uma função própria.');
