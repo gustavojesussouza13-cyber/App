@@ -26,7 +26,7 @@
   }
  };
  function appearance(input){
-  const app=typeof module==='object'&&module.exports?require('./appearance16'):root.PeregrinosAppearance16;
+  const app=typeof module==='object'&&module.exports?require('./appearance16'):globalThis.PeregrinosAppearance16;
   return {a:app?.normalize(input),lib:app};
  }
  function hero(g,{role='peregrino',dir=2,action='idle',frame=0,colors={},appearance:input=null}={}){
