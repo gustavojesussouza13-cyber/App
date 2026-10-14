@@ -294,7 +294,19 @@
   function paint(){
    if(!dlg.open||!base)return;
    q('guild3dTitle').textContent='♜ '+base.name;
-   q('guild3dSubtitle').textContent='Fortaleza nível '+(base.level||1)+(owns()?' · Seu reino':' · Reino visitante');
+   q('guild3dSubtitle').textContent='Fortaleza nível '+(base.level||1)+'/5'+(owns()?' · Seu reino':' · Reino visitante');
+    const bounds=layout.bounds(base.level||1),cap=state?.stockCapacity||600;
+    q('guild3dProgress').textContent='Área liberada: '+bounds.width+'×'+bounds.width+' · '+bounds.cells+' lotes. Estoque: '+cap+' por recurso.'+
+     ((base.level||1)<5?' Próximo nível: '+layout.bounds((base.level||1)+1).width+'×'+layout.bounds((base.level||1)+1).width+'.':' Nível máximo.');
+    const upgrade=q('guild3dUpgrade'),fortify=q('guild3dFortify'),siege=q('guild3dSiege');
+    upgrade.hidden=!owns();upgrade.disabled=!canBuild()||(base.level||1)>=5;
+    upgrade.textContent=(base.level||1)>=5?'♜ Fortaleza no nível máximo':'♜ Ampliar para nível '+((base.level||1)+1)+' · '+((base.level||1)+1)*500+' moedas';
+    const defense=state?.yourGuild?.fortressDefense;
+    fortify.hidden=!owns();fortify.disabled=!canBuild()||(defense?.walls||0)>=(base.level||1);
+    fortify.textContent='🛡 Muralhas '+(defense?.walls||0)+'/'+(base.level||1)+' · defesa '+(defense?.defense||0);
+    siege.hidden=owns()||!state?.yourGuild?.base;
+    siege.disabled=!state?.persistentAccount||Object.values(state?.yourGuild?.escort||{}).reduce((n,v)=>n+(Number(v)||0),0)<5||
+     Date.now()<(state?.yourGuild?.nextRaidAt||0);
    const resources=owns()?state?.yourGuild?.stock||{}:{};
    stock.replaceChildren();
    const wallet=document.createElement('div');wallet.className='guild3d-stock guild3d-wallet';
@@ -303,7 +315,7 @@
    wallet.append(balance,balanceLabel);stock.append(wallet);
    for(const [label,id,emoji]of [['Alimentos','food','🌾'],['Madeira','timber','🪵'],['Pedra','stone','🪨'],['Tesouro','coins','◆']]){
     const d=document.createElement('div');d.className='guild3d-stock';
-    const n=document.createElement('strong');n.textContent=(resources[id]||0).toLocaleString('pt-BR');
+    const n=document.createElement('strong');n.textContent=(resources[id]||0).toLocaleString('pt-BR')+' / '+cap.toLocaleString('pt-BR');
     const l=document.createElement('small');l.textContent=emoji+' '+label;
     d.append(n,l);stock.append(d);
    }
@@ -338,7 +350,11 @@
     soldier.append(option);
    }
    if(costs[prior])soldier.value=prior;
-   trained.hidden=!owns()||state?.persistentAccount!==true||!structures().some(b=>b.type==='barracks'&&(!Number.isSafeInteger(b.endsAt)||b.endsAt<=nowServer()));
+   trained.hidden=!owns()||state?.persistentAccount!==true;
+    q('guild3dTrain').disabled=!structures().some(b=>b.type==='barracks'&&b.status!=='building');
+    q('guild3dEscortInfo').textContent='Guarnição: '+Object.entries(state?.yourGuild?.army||{}).map(([id,n])=>(labels[id]||id)+' '+n).join(' · ')+'. Sua escolta: '+Object.entries(state?.yourGuild?.escort||{}).filter(([,n])=>n>0).map(([id,n])=>(labels[id]||id)+' '+n).join(' · ')+'. Limite: '+(state?.maxEscort||60)+'.';
+    q('guild3dRecall').disabled=!Object.values(state?.yourGuild?.escort||{}).some(n=>n>0);
+    q('guild3dDeploy').disabled=!((state?.yourGuild?.army||{})[soldier.value]>0);
    updateQueue();
   }
   function onCell({x,y}){
