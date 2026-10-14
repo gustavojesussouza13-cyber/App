@@ -41,7 +41,7 @@ test('bosques e clareiras têm solo próprio e nunca ocupam os locais de obras',
    plan.lotCells.size+layout.CORE.w*layout.CORE.h,layout.N*layout.N);
 });
 test('cena medieval usa tons terrosos, mato, carroças, mata perimetral e clareiras',()=>{
- assert.match(scene,/import \{planGuildLandscape\} from '\/guild-landscape\.mjs'/);
+ assert.match(scene,/import \{planGuildLandscape,nextRoadCell\} from '\/guild-landscape\.mjs'/);
  assert.match(scene,/landscape\.isRoad\(x,y\)/);
  assert.match(scene,/landscape\.isForest\(x,y\)/);
  assert.match(scene,/const earthy=\[/);
