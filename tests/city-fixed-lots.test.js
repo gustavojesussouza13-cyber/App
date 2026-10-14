@@ -52,9 +52,9 @@ test('obra nova é autorizada somente em lote real e edifício antigo permanece 
  assert.equal(p.save.coins,initial-120);
  assert.equal(politics.action(world,p,{action:'construct',buildingType:'house',x:6,y:9,slotId:lot.id},opts),false);
  assert.equal(g.city.buildings.length,1);
- const historic={type:'farm',x:1,y:2,w:1,h:1,level:17,status:'complete'};
+ const historic={type:'farm',x:1,y:1,w:1,h:1,level:17,status:'complete'};
  g.city.buildings.push(historic);
- assert.equal(layout.at(g.city.buildings,1,2),historic);
+ assert.equal(layout.at(g.city.buildings,1,1),historic);
  assert.equal(layout.canPlaceInLot(g.city.buildings,'house',0,0,60),false,'prédios antigos ainda ocupam terreno');
  assert.equal(historic.level,17,'progressos antigos são mantidos');
 });
