@@ -34,7 +34,7 @@ async function join({name,roomId='auren-publica',password='',token=guest()}={}){
   socket.addEventListener('error',()=>{clearTimeout(timer);reject(new Error('WebSocket indisponível'))});
  });
 }
-test('salas criadas pelos jogadores: senha, lotação, isolamento e contagem global',{timeout:25000},async()=>{
+test('salas públicas: lotação, isolamento, entrada sem senha e contagem global',{timeout:25000},async()=>{
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'os-rooms-e2e-'));
  const worker=spawn(process.execPath,['server.js'],{cwd:path.resolve(__dirname,'..'),
   env:{...process.env,PORT:String(PORT),DATABASE_URL:'',DATA_FILE:path.join(dir,'world.sqlite')},
@@ -50,27 +50,31 @@ test('salas criadas pelos jogadores: senha, lotação, isolamento e contagem glo
   assert.equal(listing.capacityPerRoom,60);
   const publicRoom=await createRoom('Arvore de Auren','',owner);
   assert.equal(publicRoom.status,201,publicRoom.error);
-  const privateRoom=await createRoom('Fortaleza Verde','CajadoVerde!2026',otherOwner);
-  assert.equal(privateRoom.status,201,privateRoom.error);
-  assert.equal(privateRoom.room.locked,true);
+  const secondRoom=await createRoom('Fortaleza Verde','CajadoVerde!2026',otherOwner);
+  assert.equal(secondRoom.status,201,secondRoom.error);
+  assert.equal(secondRoom.room.locked,false,'mesmo pedido com senha cria sala pública');
   assert.equal(publicRoom.room.locked,false);
-  assert.equal(privateRoom.room.capacity,60);
+  assert.equal(secondRoom.room.capacity,60);
   listing=await(await fetch(BASE+'/api/rooms')).json();
   assert.equal(listing.rooms.length,1,'salas ainda não ocupadas não aparecem para outros jogadores');
-  assert.equal(JSON.stringify(listing).includes('CajadoVerde!2026'),false);
+  assert.equal(JSON.stringify(listing).includes('CajadoVerde!2026'),false,'servidor não registra senhas em catálogo');
   assert.equal(JSON.stringify(listing).includes(owner),false);
   assert.equal((await createRoom('Outra Sala','',owner)).status,409,'dono não pode criar salas ilimitadas');
 
-  const beforeOwner=await join({name:'IntrusoVerde',roomId:privateRoom.room.id,password:'CajadoVerde!2026'});
+  // Não existe mais senha: qualquer jogador pode ocupar a sala recém-criada.
+  const beforeOwner=await join({name:'IntrusoVerde',roomId:secondRoom.room.id,password:'totalmente-errada'});
   clients.push(beforeOwner.socket);
-  assert.equal(beforeOwner.result.code,'room_pending','apenas o criador pode ativar a sala inicialmente');
-  const invitee=await join({name:'GuardiaoVerde',roomId:privateRoom.room.id,password:'CajadoVerde!2026',token:otherOwner});
+  assert.equal(beforeOwner.result.type,'welcome');
+  assert.equal(beforeOwner.result.online,1);
+  const invitee=await join({name:'GuardiaoVerde',roomId:secondRoom.room.id,token:otherOwner});
   clients.push(invitee.socket);assert.equal(invitee.result.type,'welcome');
-  assert.equal(invitee.result.room.id,privateRoom.room.id);
-  assert.equal(invitee.result.online,1);
-  const bad=await join({name:'IntrusoVerde',roomId:privateRoom.room.id,password:'incorreta'});
-  clients.push(bad.socket);
-  assert.equal(bad.result.code,'wrong_room_password');
+  assert.equal(invitee.result.online,2);
+  const staleClient=await join({name:'LegadoVerde',roomId:secondRoom.room.id,password:'incorreta'});
+  clients.push(staleClient.socket);
+  assert.equal(staleClient.result.type,'welcome','cliente legado enviando senha errada ainda entra normalmente');
+  assert.equal(staleClient.result.online,3);
+  beforeOwner.socket.close();staleClient.socket.close();
+  await delay(180); // Volta a ficar apenas o proprietário para conferir contagem posterior.
   const publicPlayer=await join({name:'ExploradorVerde',roomId:publicRoom.room.id,token:owner});
   clients.push(publicPlayer.socket);assert.equal(publicPlayer.result.type,'welcome');
   assert.equal(publicPlayer.result.online,1);
@@ -84,7 +88,7 @@ test('salas criadas pelos jogadores: senha, lotação, isolamento e contagem glo
   listing=await(await fetch(BASE+'/api/rooms')).json();
   assert.equal(listing.totalOnline,2);
   assert.equal(listing.rooms.find(x=>x.id===publicRoom.room.id).online,1);
-  assert.equal(listing.rooms.find(x=>x.id===privateRoom.room.id).online,1);
+  assert.equal(listing.rooms.find(x=>x.id===secondRoom.room.id).online,1);
 
   const roomMembers=[publicPlayer];
   for(let i=0;i<59;i++){
@@ -95,9 +99,9 @@ test('salas criadas pelos jogadores: senha, lotação, isolamento e contagem glo
   const tooMany=await join({name:'JogadorExtra',roomId:publicRoom.room.id});
   clients.push(tooMany.socket);
   assert.equal(tooMany.result.code,'room_full');
-  const another=await join({name:'NovoMembro',roomId:privateRoom.room.id,password:'CajadoVerde!2026'});
+  const another=await join({name:'NovoMembro',roomId:secondRoom.room.id,password:'CajadoVerde!2026'});
   clients.push(another.socket);
-  assert.equal(another.result.type,'welcome','outra sala mantém vagas livres');
+  assert.equal(another.result.type,'welcome','outra sala pública mantém vagas livres');
   const status=await(await fetch(BASE+'/api/status')).json();
   assert.equal(status.online,62);
   assert.equal(status.rooms,3);
