@@ -66,7 +66,7 @@ test('concluir a história libera entrada e reentrada; subsolos não gastam a ch
 });
 test('pacotes falsos não pulam cinco subsolos nem burlam a distância',t=>{
  const {world,p,client}=setup(t);
- world.travel(p,1);p.save.inventory.chave=2;
+ world.travel(p,1);p.save.inventory.chave=2;p.save.story.stage=2;
  const gate=world.zonePortals(1).find(g=>g.zone===12);
  p.x=gate.x;p.y=gate.y;
  world.receive(client,{type:'portal',zone:12});
@@ -150,6 +150,9 @@ test('porta final não permite pular masmorras nem teleportar de longe',t=>{
  world.receive(client,{type:'portal',zone:13});
  assert.equal(p.zone,21,'acesso remoto a portal não deve funcionar');
  p.x=end.x;p.y=end.y;
+ world.receive(client,{type:'portal',zone:13});
+ assert.equal(p.zone,21,'o portal também respeita o capítulo da segunda masmorra');
+ p.save.story.stage=5;
  world.receive(client,{type:'portal',zone:13});
  assert.equal(p.zone,13);
 });
