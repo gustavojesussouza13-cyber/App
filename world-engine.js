@@ -156,6 +156,7 @@ class World {
   }catch(e){if(e.code!=='ENOENT')console.error('[world] dados existentes ignorados:',e.message)}
   this.saved.monsters=this.saved.monsters||{};
   this.guilds=new Map(Object.entries(this.saved.guilds||{}));
+  this.reconcileGuilds();
  }
  persist(){
   // Reenvia instantâneos pendentes mesmo sem novas ações do jogador.
@@ -345,6 +346,7 @@ class World {
   this.broadcast({type:'system',text:p.name+' chegou ao mundo.'},q=>q.id!==p.id);
   this.dirty=true;this.snapshotTo(p);
   this.send(p.socket,{type:'kingdomState',data:kingdoms.publicState(this,p)});
+  this.send(p.socket,{type:'guildDirectory',data:this.guildDirectory(p)});
  }
  leave(c){const p=c.worldPlayer;if(!p||!p.live)return;p.live=false;
   if(p.isAccount){this.saved.characters[p.uid]=safeSave(p.save);this.dirty=true}
@@ -832,21 +834,204 @@ class World {
  }
  partyLeave(p,notify){const id=p.party,pt=this.parties.get(id);p.party=null;if(!pt)return;pt.members=pt.members.filter(x=>x!==p.id);if(pt.leader===p.id)pt.leader=pt.members[0];if(!pt.members.length)this.parties.delete(id);else this.partyUpdate(id);if(notify)this.send(p.socket,this.ownStatus(p))}
  partyUpdate(id){const pt=this.parties.get(id);if(!pt)return;const names=pt.members.map(pid=>this.players.get(pid)?.name).filter(Boolean);for(const pid of pt.members){const p=this.players.get(pid);if(p){this.send(p.socket,{type:'partyInfo',leader:this.players.get(pt.leader)?.name,members:names,id});this.send(p.socket,this.ownStatus(p));}}}
- guild(p,d){const mode=cap(d.action,15),name=cap(d.name,30).trim(),key=name.toLocaleLowerCase('pt-BR');
-  if(mode==='create'){
-    if(!p.isAccount)return this.tell(p,'Para fundar uma guilda permanente é obrigatório entrar com uma conta cadastrada.');
-    if(p.save.guild||p.save.coins<250||!/^[\p{L}\p{N}][\p{L}\p{N} -]{2,23}$/u.test(name)||!inspectNickname(name).ok||this.guilds.has(key))
-     return this.tell(p,'Guilda indisponível. Use um nome apropriado e exclusivo; são necessárias 250 moedas e você não pode pertencer a outra guilda.');
-    p.save.coins-=250;p.save.guild=name;p.save.guildFounded=true;
-    this.guilds.set(key,{name,leader:p.uid,founderUid:p.uid,members:[p.uid],invitations:[]});
-    this.tell(p,'Guilda criada: '+name+'. Ao sair dela, você poderá fundar outra, mas nunca participar de duas guildas simultaneamente.');this.dirty=true;
-    this.persist();
-  } else if(mode==='invite'){const g=this.guilds.get(p.save.guild?.toLowerCase());if(!g||g.leader!==p.uid)return;const other=[...this.players.values()].find(o=>o.name.toLowerCase()===cap(d.target,20).toLowerCase());if(!other||other.save.guild)return;g.invitations.push(other.uid);this.send(other.socket,{type:'guildInvite',name:g.name,by:p.name});this.dirty=true;
-  } else if(mode==='accept'){const g=this.guilds.get(key);if(!g||!g.invitations.includes(p.uid)||p.save.guild)return;g.invitations=g.invitations.filter(x=>x!==p.uid);g.members.push(p.uid);p.save.guild=g.name;this.dirty=true;
-  } else if(mode==='leave'){const g=this.guilds.get(p.save.guild?.toLowerCase());if(g){const escort=kingdoms.escortOf(g,p.uid);if(kingdoms.troopCount(escort)){g.army=kingdoms.armyCopy(g.army);for(const unit of Object.keys(escort))g.army[unit]+=escort[unit];g.escorts={...(g.escorts||{})};delete g.escorts[p.uid]}g.members=g.members.filter(x=>x!==p.uid);if(g.leader===p.uid)g.leader=g.members[0]||null;if(!g.members.length)this.guilds.delete(p.save.guild.toLowerCase())}p.save.guild=null;this.dirty=true}
-  this.send(p.socket,this.ownStatus(p));
-  this.send(p.socket,{type:'kingdomState',data:kingdoms.publicState(this,p)});
+ // Cadastro público de guildas. O diretório nunca expõe UIDs ou pedidos de
+ // outras guildas; líderes e moderadores recebem somente os próprios candidatos.
+ guildWorlds(){return typeof this.sharedGuildWorlds==='function'?this.sharedGuildWorlds():[this]}
+ guildPlayer(uid){for(const w of this.guildWorlds())for(const p of w.players.values())if(p.uid===uid&&p.live!==false)return p;return null}
+ guildName(g,uid){
+  return g.memberNames?.[uid]||g.applications?.find(a=>a.uid===uid)?.name||
+   this.guildPlayer(uid)?.name||String(uid).replace(/^account:/,'').slice(0,18);
  }
+ guildDirectory(p){
+  const current=p.save.guild?.toLocaleLowerCase('pt-BR')||null;
+  const result=[...this.guilds.entries()].filter(([,g])=>g&&Array.isArray(g.members)&&g.members.length)
+   .map(([key,g])=>{
+    const staff=g.leader===p.uid||g.moderators?.includes(p.uid);
+    const member=g.members.includes(p.uid);
+    const applications=Array.isArray(g.applications)?g.applications:[];
+    return {key,name:g.name,description:typeof g.description==='string'?g.description:'',
+     members:g.members.length,maxMembers:60,leaderName:this.guildName(g,g.leader),
+     level:g.base?.level||0,region:Number.isInteger(g.base?.zone)?ZONES[g.base.zone]?.[0]||'Auren':'Sem fortaleza',
+     hasApplied:applications.some(a=>a.uid===p.uid),
+     isMember:member,isLeader:g.leader===p.uid,isModerator:!!g.moderators?.includes(p.uid),
+     canReview:staff,applicationCount:staff?applications.length:undefined,
+     applications:staff?applications.map(a=>({id:a.id,name:a.name,level:a.level||1,at:a.at})):undefined,
+     roster:member?g.members.map(uid=>({id:uid,name:this.guildName(g,uid),
+      role:uid===g.leader?'Líder':g.moderators?.includes(uid)?'Moderador':'Membro'})):undefined};
+   }).sort((a,b)=>b.members-a.members||a.name.localeCompare(b.name,'pt-BR'));
+  return {guilds:result,current,canApply:!!p.isAccount&&!p.save.guild};
+ }
+ guildChanged(){
+  for(const w of this.guildWorlds()){
+   w.dirty=true;
+   for(const p of w.players.values()){
+    if(p.live===false)continue;
+    w.send(p.socket,{type:'guildDirectory',data:w.guildDirectory(p)});
+    w.send(p.socket,{type:'kingdomState',data:kingdoms.publicState(w,p)});
+    w.send(p.socket,w.ownStatus(p));
+   }
+  }
+  this.dirty=true;
+  void this.persist();
+ }
+ // Exclui somente registros sem membros; personagens offline continuam
+ // pertencendo às suas guildas e NUNCA são removidos por estarem desconectados.
+ reconcileGuilds(){
+  let changed=false;
+  for(const [key,g]of [...this.guilds]){
+   if(!g||!Array.isArray(g.members)||g.members.length===0){this.guilds.delete(key);changed=true;continue}
+   const unique=[...new Set(g.members.filter(uid=>typeof uid==='string'&&uid))];
+   if(unique.length!==g.members.length){g.members=unique;changed=true}
+   if(!g.leader||!unique.includes(g.leader)){g.leader=unique[0];changed=true}
+   const mods=[...new Set((g.moderators||[]).filter(uid=>unique.includes(uid)&&uid!==g.leader))];
+   if(JSON.stringify(mods)!==JSON.stringify(g.moderators||[])){g.moderators=mods;changed=true}
+   const apps=(Array.isArray(g.applications)?g.applications:[]).filter(a=>
+    a&&typeof a.uid==='string'&&!unique.includes(a.uid)&&typeof a.name==='string');
+   if(apps.length!==(g.applications?.length||0)){g.applications=apps;changed=true}
+  }
+  if(changed)this.dirty=true;
+  return changed;
+ }
+ guild(p,d){
+  const mode=cap(d.action,22),name=cap(d.name,30).trim(),key=name.toLocaleLowerCase('pt-BR');
+  const currentKey=p.save.guild?.toLocaleLowerCase('pt-BR'),current=this.guilds.get(currentKey);
+  const guild=current?.members?.includes(p.uid)?current:null;
+  const officer=g=>!!g&&(g.leader===p.uid||g.moderators?.includes(p.uid));
+  const persist=()=>this.guildChanged();
+  const inform=(message)=>this.tell(p,message);
+  if(mode==='list'){
+   this.send(p.socket,{type:'guildDirectory',data:this.guildDirectory(p)});return;
+  }
+  if(mode==='create'){
+   if(!p.isAccount)return inform('Para criar uma guilda, entre com uma conta cadastrada.');
+   if(p.save.guild||p.save.coins<250||!/^[\\p{L}\\p{N}][\\p{L}\\p{N} -]{2,23}$/u.test(name)||
+    !inspectNickname(name).ok||this.guilds.has(key))
+    return inform('Nome de guilda indisponível. Custo: 250 moedas; não é possível pertencer a duas guildas.');
+   p.save.coins-=250;p.save.guild=name;p.save.guildFounded=true;
+   this.guilds.set(key,{name,leader:p.uid,founderUid:p.uid,members:[p.uid],
+    memberNames:{[p.uid]:p.name},moderators:[],applications:[],invitations:[],description:''});
+   inform('Guilda fundada: '+name+'. Agora você pode administrar solicitações no diretório.');
+  }else if(mode==='describe'){
+   if(!guild||guild.leader!==p.uid)return inform('Somente o líder pode alterar a apresentação da guilda.');
+   const description=cap(d.description,180).trim();
+   if(description.includes('<')||description.includes('>'))return inform('Descrição inválida.');
+   guild.description=description;inform('Descrição pública atualizada.');
+  }else if(mode==='apply'){
+   if(!p.isAccount||p.save.guild)return inform('Use uma conta sem guilda para solicitar entrada.');
+   const g=this.guilds.get(key);
+   if(!g||!g.members?.length)return inform('Guilda não encontrada.');
+   if(g.members.length>=60)return inform('Esta guilda atingiu o limite de 60 membros.');
+   if(!Array.isArray(g.applications))g.applications=[];
+   if(g.applications.some(a=>a.uid===p.uid))return inform('Sua candidatura já está aguardando análise.');
+   if([...this.guilds.values()].reduce((n,x)=>n+(x.applications||[]).some(a=>a.uid===p.uid),0)>=4)
+    return inform('Limite de quatro candidaturas em aberto. Cancele uma antes de solicitar outra.');
+   g.applications.push({id:crypto.randomUUID(),uid:p.uid,name:p.name,level:p.save.level||1,at:Date.now()});
+   inform('Candidatura enviada à guilda '+g.name+'. Aguarde a decisão do líder ou de um moderador.');
+  }else if(mode==='withdraw'){
+   const g=this.guilds.get(key),old=g?.applications?.length||0;
+   if(!g||!old)return inform('Nenhuma candidatura encontrada.');
+   g.applications=g.applications.filter(a=>a.uid!==p.uid);
+   if(g.applications.length===old)return inform('Você não possui candidatura nesta guilda.');
+   inform('Candidatura cancelada.');
+  }else if(mode==='approve'||mode==='reject'){
+   if(!officer(guild))return inform('Apenas líder e moderadores podem analisar candidaturas.');
+   const id=cap(d.applicationId,64);
+   const entry=guild.applications?.find(a=>a.id===id);
+   if(!entry)return inform('Candidatura não encontrada ou já processada.');
+   if(mode==='approve'){
+    const existing=[...this.guilds.values()].some(g=>g.members?.includes(entry.uid));
+    const saved=this.saved.characters?.[entry.uid],online=this.guildPlayer(entry.uid);
+    if(guild.members.length>=60)return inform('Guilda lotada.');
+    if(existing||online?.save.guild||saved?.guild){
+     guild.applications=guild.applications.filter(a=>a.id!==id);
+     inform('Solicitação removida: jogador já pertence a uma guilda.');persist();return;
+    }
+    guild.members.push(entry.uid);guild.memberNames={...(guild.memberNames||{}),[entry.uid]:entry.name};
+    if(saved)saved.guild=guild.name;
+    for(const w of this.guildWorlds())for(const member of w.players.values())
+     if(member.uid===entry.uid){member.save.guild=guild.name;w.dirty=true;
+      w.tell(member,'Sua candidatura foi aprovada! Você entrou na guilda '+guild.name+'.')}
+    inform(entry.name+' foi aceito em '+guild.name+'.');
+    for(const g of this.guilds.values())if(g.applications)g.applications=g.applications.filter(a=>a.uid!==entry.uid);
+   }else{
+    guild.applications=guild.applications.filter(a=>a.id!==id);
+    const applicant=this.guildPlayer(entry.uid);if(applicant)inform('Candidatura recusada.'); 
+    if(applicant)for(const w of this.guildWorlds())if([...w.players.values()].includes(applicant))
+     w.tell(applicant,'Sua candidatura à guilda '+guild.name+' foi recusada.');
+    inform('Candidatura recusada: '+entry.name+'.');
+   }
+  }else if(mode==='promote'||mode==='demote'||mode==='kick'){
+   if(!guild)return inform('Você não pertence a uma guilda.');
+   const uid=cap(d.memberId,128);
+   if(!guild.members.includes(uid)||uid===guild.leader)return inform('Membro inválido ou líder protegido.');
+   const isModerator=guild.moderators?.includes(uid);
+   if(mode!=='kick'&&guild.leader!==p.uid)return inform('Somente o líder nomeia ou remove moderadores.');
+   if(mode==='kick'&&(!officer(guild)||(isModerator&&guild.leader!==p.uid)))
+    return inform('Somente o líder pode remover moderadores; moderadores removem apenas membros comuns.');
+   if(mode==='promote'){
+    if(!Array.isArray(guild.moderators))guild.moderators=[];
+    if(!isModerator)guild.moderators.push(uid);
+   }else if(mode==='demote')guild.moderators=guild.moderators.filter(v=>v!==uid);
+   else{
+    const escort=kingdoms.escortOf(guild,uid);
+    if(kingdoms.troopCount(escort)){
+     guild.army=kingdoms.armyCopy(guild.army);
+     for(const unit of Object.keys(escort))guild.army[unit]+=escort[unit];
+     guild.escorts={...(guild.escorts||{})};delete guild.escorts[uid];
+    }
+    guild.members=guild.members.filter(v=>v!==uid);
+    guild.moderators=(guild.moderators||[]).filter(v=>v!==uid);
+    if(this.saved.characters?.[uid])this.saved.characters[uid].guild=null;
+    for(const w of this.guildWorlds())for(const member of w.players.values())if(member.uid===uid){
+     member.save.guild=null;w.dirty=true;w.tell(member,'Você foi removido da guilda '+guild.name+'.');
+    }
+   }
+   inform('Permissões atualizadas para '+this.guildName(guild,uid)+'.');
+  }else if(mode==='invite'){
+   if(!officer(guild))return inform('Apenas líder e moderadores podem convidar jogadores.');
+   const other=[...this.guildWorlds()].flatMap(w=>[...w.players.values()]).find(o=>
+    o.name.toLocaleLowerCase('pt-BR')===cap(d.target,20).toLocaleLowerCase('pt-BR'));
+   if(!other||!other.isAccount||other.save.guild)return inform('Jogador não encontrado, não cadastrado ou já vinculado.');
+   if(guild.members.length>=60)return inform('Guilda lotada.');
+   guild.invitations=[...new Set([...(guild.invitations||[]),other.uid])].slice(-60);
+   for(const w of this.guildWorlds())if([...w.players.values()].includes(other))
+    w.send(other.socket,{type:'guildInvite',name:guild.name,by:p.name});
+   inform('Convite enviado para '+other.name+'.');
+  }else if(mode==='accept'){
+   const g=this.guilds.get(key);
+   if(!g||!g.invitations?.includes(p.uid)||p.save.guild||!p.isAccount)return inform('Convite indisponível.');
+   if(g.members.length>=60)return inform('A guilda está lotada.');
+   g.invitations=g.invitations.filter(uid=>uid!==p.uid);g.members.push(p.uid);
+   g.memberNames={...(g.memberNames||{}),[p.uid]:p.name};p.save.guild=g.name;
+   if(this.saved.characters?.[p.uid])this.saved.characters[p.uid].guild=g.name;
+   for(const other of this.guilds.values())if(other.applications)other.applications=other.applications.filter(a=>a.uid!==p.uid);
+   inform('Você entrou na guilda '+g.name+'.');
+  }else if(mode==='leave'){
+   if(!guild){p.save.guild=null;inform('Sua vinculação antiga foi corrigida.');}
+   else{
+    const escort=kingdoms.escortOf(guild,p.uid);
+    if(kingdoms.troopCount(escort)){
+     guild.army=kingdoms.armyCopy(guild.army);
+     for(const unit of Object.keys(escort))guild.army[unit]+=escort[unit];
+     guild.escorts={...(guild.escorts||{})};delete guild.escorts[p.uid];
+    }
+    guild.members=guild.members.filter(uid=>uid!==p.uid);
+    guild.moderators=(guild.moderators||[]).filter(uid=>uid!==p.uid);
+    delete guild.memberNames?.[p.uid];
+    p.save.guild=null;
+    if(this.saved.characters?.[p.uid])this.saved.characters[p.uid].guild=null;
+    if(guild.leader===p.uid)guild.leader=guild.members[0]||null;
+    if(guild.members.length===0){
+     // Remove fortaleza, marca no mapa, ranking e influência junto com a guilda.
+     this.guilds.delete(currentKey);
+     inform('Você saiu. A última pessoa deixou a guilda, que foi dissolvida.');
+    }else inform('Você saiu da guilda '+guild.name+'.');
+   }
+  }else return;
+  this.reconcileGuilds();
+  persist();
+ }
+
  trade(p,d){const mode=cap(d.action,15),other=[...this.players.values()].find(o=>o.name.toLowerCase()===cap(d.target,20).toLowerCase());
   if(!other||other.id===p.id||other.zone!==p.zone||dist(p,other)>200)return this.tell(p,'O outro jogador precisa estar perto de você.');
   const key=[p.id,other.id].sort().join(':');
