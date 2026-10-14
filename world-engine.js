@@ -868,6 +868,7 @@ class World {
    w.dirty=true;
    for(const p of w.players.values()){
     if(p.live===false)continue;
+    if(p.isAccount)this.saved.characters[p.uid]=safeSave(p.save);
     w.send(p.socket,{type:'guildDirectory',data:w.guildDirectory(p)});
     w.send(p.socket,{type:'kingdomState',data:kingdoms.publicState(w,p)});
     w.send(p.socket,w.ownStatus(p));
