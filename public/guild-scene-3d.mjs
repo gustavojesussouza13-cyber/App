@@ -1,8 +1,9 @@
 'use strict';
 /* Os Peregrinos — cena 3D original e isolada das fortalezas.
-   Renderização WebGL/Three.js em origem própria, terreno totalmente edificável. */
+   Renderização WebGL/Three.js em origem própria, com estradas de terra e bosques. */
 import * as THREE from '/vendor/three.module.js';
 import {architectureAt} from '/guild-architecture.mjs';
+import {planGuildLandscape} from '/guild-landscape.mjs';
 
 export function createGuildScene({mount,layout,onCell,onHover}){
  const N=layout.N,CELL=2.85,HALF=N*CELL/2;
@@ -10,8 +11,8 @@ export function createGuildScene({mount,layout,onCell,onHover}){
  const material=(c,roughness=0.93)=>{const k=c+':'+roughness;if(!mats.has(k))mats.set(k,new THREE.MeshStandardMaterial({color:c,roughness,metalness:0.04}));return mats.get(k)};
  const geom=(w,h,d)=>{const k=[w,h,d].join('/');if(!geometries.has(k))geometries.set(k,new THREE.BoxGeometry(w,h,d));return geometries.get(k)};
  const scene=new THREE.Scene();
- scene.background=new THREE.Color('#c5d6cb');
- scene.fog=new THREE.FogExp2('#c5d6cb',0.008);
+ scene.background=new THREE.Color('#bdc9ac');
+ scene.fog=new THREE.FogExp2('#bdc9ac',0.006);
  const camera=new THREE.PerspectiveCamera(47,1,0.1,450);
  const renderer=new THREE.WebGLRenderer({antialias:true,alpha:false,powerPreference:'high-performance'});
  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.6));
@@ -19,13 +20,13 @@ export function createGuildScene({mount,layout,onCell,onHover}){
  renderer.shadowMap.type=THREE.PCFSoftShadowMap;
  renderer.outputColorSpace=THREE.SRGBColorSpace;
  renderer.toneMapping=THREE.ACESFilmicToneMapping;
- renderer.toneMappingExposure=1.45;
+ renderer.toneMappingExposure=1.13;
  renderer.domElement.className='guild3d-canvas';
  renderer.domElement.setAttribute('aria-label','Fortaleza tridimensional: arraste para girar, use a roda para zoom e clique para construir');
  renderer.domElement.style.touchAction='none';
  mount.append(renderer.domElement);
- const ambient=new THREE.HemisphereLight('#e6edee','#425743',2.3);scene.add(ambient);
- const sun=new THREE.DirectionalLight('#fff4d5',3.1);
+ const ambient=new THREE.HemisphereLight('#f7efda','#496047',1.45);scene.add(ambient);
+ const sun=new THREE.DirectionalLight('#fff0c8',2.30);
  sun.position.set(-25,48,22);sun.castShadow=true;
  sun.shadow.mapSize.set(2048,2048);
  sun.shadow.camera.left=-63;sun.shadow.camera.right=63;
@@ -41,27 +42,62 @@ export function createGuildScene({mount,layout,onCell,onHover}){
  const decor=new THREE.Group();scene.add(decor);
  const lotsGroup=new THREE.Group();scene.add(lotsGroup);
  const streets=new THREE.Group();root.add(streets);
- const lotCells=new Set(layout.slots.flatMap(lot=>layout.cells(lot).map(([x,y])=>x+':'+y)));
+ const landscape=planGuildLandscape(layout);
+ const lotCells=landscape.lotCells;
  const pickPlane=new THREE.Mesh(new THREE.PlaneGeometry(N*CELL,N*CELL),new THREE.MeshBasicMaterial({visible:false,side:THREE.DoubleSide}));
  pickPlane.rotation.x=-Math.PI/2;pickPlane.position.y=0.03;scene.add(pickPlane);
- const ground=new THREE.Mesh(new THREE.PlaneGeometry(N*CELL,N*CELL),material('#71995b'));
+ const ground=new THREE.Mesh(new THREE.PlaneGeometry(N*CELL,N*CELL),material('#75945b'));
  ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;root.add(ground);
  // Bordas naturais fora da área edificável; nenhuma árvore fixa bloqueia células.
- const exterior=new THREE.Mesh(new THREE.PlaneGeometry(N*CELL+170,N*CELL+170),material('#52784f'));
+ const exterior=new THREE.Mesh(new THREE.PlaneGeometry(N*CELL+170,N*CELL+170),material('#507448'));
  exterior.rotation.x=-Math.PI/2;exterior.position.y=-0.13;exterior.receiveShadow=true;root.add(exterior);
  function box(parent,w,h,d,c,x=0,y=0,z=0,cast=true){
   const m=new THREE.Mesh(geom(w,h,d),material(c));m.position.set(x,y,z);
   m.castShadow=cast;m.receiveShadow=true;parent.add(m);return m;
  }
  const pos=(x,y,w=1,h=1)=>new THREE.Vector3((x+w/2)*CELL-HALF,0,(y+h/2)*CELL-HALF);
+
+ const grasses=new THREE.Group();root.add(grasses);
+ const earthy=['#94704b','#98724c','#9e7950','#a17c53','#8b6747'];
  for(let y=0;y<N;y++)for(let x=0;x<N;x++){
-  if(layout.isCore(x,y)||lotCells.has(x+':'+y))continue;
-  const p=pos(x,y);
-  const road=box(streets,CELL*.97,.055,CELL*.97,(x+y)%4===0?'#96896e':'#b3a58a',p.x,.04,p.z,false);
-  road.receiveShadow=true;
-  if((x+y)%5===0){
-   box(streets,CELL*.28,.025,.12,'#c9bfa4',p.x-CELL*.23,.077,p.z-.36,false);
-   box(streets,CELL*.22,.025,.11,'#8a806e',p.x+CELL*.23,.078,p.z+.28,false);
+  const p=pos(x,y),seed=landscape.hash(x,y,13),isRoad=landscape.isRoad(x,y);
+  if(isRoad){
+   // Fundo escuro e terra batida de bordas contínuas, substituindo a malha clara.
+   box(streets,CELL*1.035,.075,CELL*1.035,'#775a3d',p.x,.053,p.z,false);
+   box(streets,CELL*.975,.055,CELL*.975,
+    landscape.plaza.has(landscape.key(x,y))?'#ad9269':earthy[Math.floor(seed*earthy.length)],
+    p.x,.103,p.z,false);
+   const east=landscape.isRoad(x+1,y),west=landscape.isRoad(x-1,y);
+   const north=landscape.isRoad(x,y-1),south=landscape.isRoad(x,y+1);
+   const horizontal=(east||west)&&!(north&&south),vertical=(north||south)&&!(east&&west);
+   if(horizontal||vertical)for(const side of [-1,1]){
+    const offset=side*CELL*.29;
+    box(streets,horizontal?CELL*.99:.095,.012,horizontal?.095:CELL*.99,
+     '#7b5939',p.x+(horizontal?0:offset),.140,p.z+(horizontal?offset:0),false);
+   }
+   for(let i=0;i<3;i++){
+    const rx=(landscape.hash(x,y,21+i)-.5)*CELL*.82;
+    const rz=(landscape.hash(x,y,31+i)-.5)*CELL*.78;
+    const width=.18+landscape.hash(x,y,43+i)*.48;
+    box(streets,width,.015,.15,i%2?'#b69568':'#785a41',
+     p.x+rx,.143,p.z+rz,false);
+   }
+  }else if(!layout.isCore(x,y)&&!lotCells.has(landscape.key(x,y))){
+   if(seed>.31){
+    const a=landscape.hash(x,y,9),b=landscape.hash(x,y,12);
+    const green=landscape.isForest(x,y)?'#4c7645':(seed>.70?'#91a667':'#719257');
+    cylinder(grasses,.26+seed*.44,.027,green,
+     p.x+(a-.5)*CELL*.65,.035,p.z+(b-.5)*CELL*.65,8);
+   }
+   if(landscape.isForest(x,y)){
+    cylinder(grasses,CELL*.44,.018,'#62834c',p.x,.023,p.z,9);
+    for(let i=0;i<3;i++){
+     const dx=(landscape.hash(x,y,i+45)-.5)*CELL;
+     const dz=(landscape.hash(x,y,i+51)-.5)*CELL;
+     box(grasses,.18,.16,.23,i%2?'#647f45':'#8e9857',
+      p.x+dx,.095,p.z+dz,false);
+    }
+   }
   }
  }
  const walkers=new THREE.Group();scene.add(walkers);
@@ -418,13 +454,7 @@ export function createGuildScene({mount,layout,onCell,onHover}){
   globe.position.set(x,1.91,z);parent.add(globe);
  }
  const coreGroup=new THREE.Group();coreGroup.position.copy(pos(layout.CORE.x,layout.CORE.y,layout.CORE.w,layout.CORE.h));root.add(coreGroup);castle(coreGroup,1);
- // Caminhos são decoração transparente sobre o terreno, jamais células bloqueadas.
- for(let i=-7;i<=7;i++)for(let side=0;side<4;side++){
-  const shift=i*CELL*.93,v=(layout.CORE.w*.5+Math.abs(i)/8)*CELL;
-  const p=side===0?[shift,v]:side===1?[shift,-v]:side===2?[v,shift]:[-v,shift];
-  const t=box(root,CELL*.93,.018,CELL*.93,i%3?'#a99b7b':'#b5a787',p[0],.022,p[1],false);
-  t.receiveShadow=true;
- }
+ // A antiga malha de pedra foi substituída pela rede de caminhos de terra.
  const ghost=new THREE.Mesh(geom(CELL,.11,CELL),new THREE.MeshBasicMaterial({color:'#67db88',transparent:true,opacity:.34,depthWrite:false}));
  ghost.visible=false;ghost.position.y=.12;scene.add(ghost);
  const highlight=new THREE.LineSegments(new THREE.EdgesGeometry(geom(CELL,.11,CELL)),new THREE.LineBasicMaterial({color:'#eff9df'}));
