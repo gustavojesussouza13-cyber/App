@@ -51,10 +51,10 @@ test('Peregrino: K isolado recupera vida e emite aura vermelha dourada; HP máxi
  const h=setup(t),p=h.add('peregrino');
  p.p.save.hp=52;
  h.world.receive(p.c,{type:'skill',target:null});
- assert.equal(p.p.save.hp,66);
+ assert.ok(p.p.save.hp>66,'a cura evolui com Espírito/Intelecto');
  assert.ok(p.p.messages===undefined);
  assert.ok(p.messages().some(e=>e.type==='skillEffect'&&e.kind==='pilgrim-renewal'));
- assert.equal(p.messages().filter(e=>e.type==='character').at(-1).hp,66);
+ assert.equal(p.messages().filter(e=>e.type==='character').at(-1).hp,p.p.save.hp);
  p.p.lastSpell=Date.now()-5000;p.p.save.hp=CLASSES.peregrino.hp;
  h.world.receive(p.c,{type:'skill',target:null});
  assert.ok(p.p.lastSpell<Date.now()-4000,'K não é desperdiçado com HP cheio');
@@ -63,7 +63,7 @@ test('Peregrino: K com criatura combina golpe especial e autocura uma única vez
  const h=setup(t),p=h.add('peregrino'),m=h.world.monsters.get(0)[0];
  p.p.x=m.x+42;p.p.y=m.y;p.p.save.hp=20;m.hp=m.maxHp=900;
  h.world.receive(p.c,{type:'skill',target:m.id});
- assert.equal(p.p.save.hp,34);
+ assert.ok(p.p.save.hp>34,'a cura híbrida cresce com atributos RPG');
  assert.ok(m.hp<900);
  assert.ok(p.messages().some(e=>e.type==='hit'&&e.skill===true));
  assert.equal(p.messages().filter(e=>e.type==='skillEffect'&&e.kind==='pilgrim-renewal').length,1);
@@ -91,11 +91,11 @@ test('Curandeiro: habilidade cura equipe sem alvo e envia confirmação visual p
  cleric.p.x=500;cleric.p.y=500;ally.p.x=530;ally.p.y=510;other.p.x=530;other.p.y=510;
  cleric.p.save.hp=80;ally.p.save.hp=40;other.p.save.hp=40;
  h.world.receive(cleric.c,{type:'skill'});
- assert.equal(cleric.p.save.hp,112);
- assert.equal(ally.p.save.hp,72);
+ assert.ok(cleric.p.save.hp>=112&&cleric.p.save.hp<=CLASSES.curandeiro.hp,'curandeiro restaura mais vida com atributos, sem exceder o máximo');
+ assert.ok(ally.p.save.hp>72,'a cura do aliado evolui com Espírito');
  assert.equal(other.p.save.hp,40);
  const packets=ally.messages().filter(x=>x.type==='healed');
- assert.ok(packets.some(x=>x.target===ally.p.id&&x.amount===32));
+ assert.ok(packets.some(x=>x.target===ally.p.id&&x.amount===ally.p.save.hp-40));
  assert.ok(cleric.messages().some(x=>x.type==='healed'&&x.target===cleric.p.id));
 });
 test('Efeitos 16-bit aceitam apenas eventos autorizados e pixels válidos no PC',()=>{
