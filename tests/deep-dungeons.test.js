@@ -110,6 +110,7 @@ test('jogador atravessa os 24 subsolos das quatro masmorras por portais reais',t
   const entrance=world.zonePortals(p.zone).find(g=>g.zone===root);
   assert.ok(entrance,`entrada da masmorra ${root} ausente vindo de ${p.zone}`);
   p.x=entrance.x;p.y=entrance.y;
+  if(root===15)p.save.inventory.chave_coroa_aurora=1; // A quarta masmorra exige a chave soberana.
   world.receive(client,{type:'portal',zone:root});
   assert.equal(p.zone,root);
   for(let depth=1;depth<=6;depth++){
