@@ -43,11 +43,11 @@ window.PeregrinosCity=Object.freeze({create({send}){
   if(myCity()){
    const stock=state?.yourGuild?.stock||{};
    const overview=document.createElement('p');
-   overview.textContent='FORTALEZA '+(base.level||1)+'/5 · ÁREA '+layout.bounds(base.level||1).width+'×'+layout.bounds(base.level||1).width+' · LIMITE '+(state?.stockCapacity||600)+' · Alimentos '+(stock.food||0)+' · Madeira '+(stock.timber||0)+' · Pedra '+(stock.stone||0)+' · Tesouro '+(stock.coins||0);
+   overview.textContent='FORTALEZA '+(base.level||1)+'/'+(state?.fortressMaxLevel||60)+' · ÁREA '+layout.bounds(base.level||1).width+'×'+layout.bounds(base.level||1).width+' · LIMITE '+(state?.stockCapacity||600)+' · Alimentos '+(stock.food||0)+' · Madeira '+(stock.timber||0)+' · Pedra '+(stock.stone||0)+' · Tesouro '+(stock.coins||0);
    choices.append(overview);
-    if(canBuild()){const expand=document.createElement('button');expand.textContent='♜ Evoluir fortaleza';expand.onclick=()=>send('kingdom',{action:'upgrade'});expand.disabled=(base.level||1)>=5;choices.append(expand);
+    if(canBuild()){const expand=document.createElement('button');expand.textContent='♜ Evoluir fortaleza';expand.onclick=()=>send('kingdom',{action:'upgrade'});expand.disabled=(base.level||1)>=(state?.fortressMaxLevel||60);choices.append(expand);
      const fortify=document.createElement('button');fortify.textContent='🛡 Reforçar muralhas';fortify.onclick=()=>send('kingdom',{action:'fortify'});choices.append(fortify)}
-   const collect=document.createElement('button');collect.type='button';collect.textContent='✦ Coletar produção (15 min)';
+   const collect=document.createElement('button');collect.type='button';collect.textContent='✦ Coletar recursos prontos';
    collect.onclick=()=>send('kingdom',{action:'collect'});choices.append(collect);
    if(structures().some(b=>b.type==='barracks')){
     const group=document.createElement('div');
@@ -68,7 +68,16 @@ window.PeregrinosCity=Object.freeze({create({send}){
      const escort=document.createElement('button');escort.textContent='➤ Escolta imediata';escort.onclick=()=>send('kingdom',{action:'escort',unit:soldier.value,count:Number(count.value)});choices.append(escort);
      const recall=document.createElement('button');recall.textContent='↩ Recolher escolta';recall.onclick=()=>send('kingdom',{action:'recall'});choices.append(recall);
    }
-   const instruction=document.createElement('p');instruction.textContent='Cada edifício produz recursos. Clique em um prédio construído para evoluí-lo com alimentos, madeira e pedra (até nível 5).';choices.append(instruction);
+   for(const building of structures()){
+    if(building.status==='building'||!building.production?.cycleMs)continue;
+    const clock=document.createElement('p'),prod=building.production;
+    const remaining=Math.max(0,prod.nextAt-Date.now());
+    clock.textContent=(types[building.type]?.label||building.type)+' Lv.'+building.level+
+      ' · '+(remaining===0?'PRONTO PARA COLETAR':Math.ceil(remaining/60000)+' minutos restantes')+
+      ' · '+Object.entries(prod.yields||{}).filter(([,n])=>n>0).map(([k,n])=>n+' '+k).join(', ');
+    choices.append(clock);
+   }
+   const instruction=document.createElement('p');instruction.textContent='Cada edifício produz recursos. Clique em um prédio construído para evoluí-lo com alimentos, madeira e pedra (até nível 60).';choices.append(instruction);
    for(const [id,t] of Object.entries(types)){const b=document.createElement('button');b.disabled=!canBuild();b.type='button';b.style.display='block';b.style.width='100%';b.style.marginBottom='6px';b.textContent=t.label+' ('+layout.footprints[id].join('×')+') · '+t.cost+' moedas';b.setAttribute('aria-pressed',String(selected===id));b.onclick=()=>{selected=id;feedback.textContent='Clique em um terreno disponível para construir '+t.label.toLowerCase()+'.';refresh()};choices.append(b)}
   }else{const p=document.createElement('p');p.textContent='Você está visitando a capital de outra guilda. Somente a liderança do reino pode construir aqui.';choices.append(p)}
   draw();
