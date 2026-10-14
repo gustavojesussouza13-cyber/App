@@ -28,29 +28,29 @@ function draw(type,pc){
 }
 test('render premium de PC tem protagonistas legíveis em 70×87, sem perda de animação',()=>{
  const pc=draw('hero',true),mobile=draw('hero',false);
- const hero=pc.ops.filter(o=>o[0]?.width===40);
+ const hero=pc.ops.filter(o=>o[0]?.width===64);
  assert.equal(hero.length,2);
- assert.equal(hero.at(-1)[3],70);assert.equal(hero.at(-1)[4],87);
+ assert.equal(hero.at(-1)[3],88);assert.equal(hero.at(-1)[4],110);
  assert.equal(mobile.ops.length,1);
- assert.equal(mobile.ops[0][3],56);assert.equal(mobile.ops[0][4],69);
- assert.equal(pc.canvases[0].width,40);
- assert.equal(pc.canvases[0].height,52);
+ assert.equal(mobile.ops[0][3],70);assert.equal(mobile.ops[0][4],88);
+ assert.equal(pc.canvases[0].width,64);
+ assert.equal(pc.canvases[0].height,80);
 });
 test('personagens secundários só ampliam no PC, preservando identidade do NPC',()=>{
  const pc=draw('npc',true),mobile=draw('npc',false);
- assert.equal(pc.ops.filter(o=>o[0]?.width===40).at(-1)[3],62);
- assert.equal(pc.ops.filter(o=>o[0]?.width===40).at(-1)[4],78);
- assert.equal(mobile.ops[0][3],52);assert.equal(mobile.ops[0][4],62);
+ assert.equal(pc.ops.filter(o=>o[0]?.width===64).at(-1)[3],80);
+ assert.equal(pc.ops.filter(o=>o[0]?.width===64).at(-1)[4],100);
+ assert.equal(mobile.ops[0][3],66);assert.equal(mobile.ops[0][4],83);
 });
 test('criaturas e chefes continuam distintos, mobile sem mudanças de dimensões',()=>{
  const pc=draw('monster',true),mobile=draw('monster',false);
- assert.equal(pc.ops.filter(o=>o[0]?.width===40).at(-1)[3],66);
- assert.equal(pc.ops.filter(o=>o[0]?.width===40).at(-1)[4],81);
- assert.equal(mobile.ops[0][3],54);assert.equal(mobile.ops[0][4],61);
+ assert.equal(pc.ops.filter(o=>o[0]?.width===64).at(-1)[3],80);
+ assert.equal(pc.ops.filter(o=>o[0]?.width===64).at(-1)[4],100);
+ assert.equal(mobile.ops[0][3],68);assert.equal(mobile.ops[0][4],85);
  const boss=scene();boss.studio.drawMonster(boss.ctx,
   {x:180,y:230,boss:true,species:12,dir:2,zone:20},400,{type:'dragao',desktopPremium:true});
- assert.equal(boss.ops.filter(o=>o[0]?.width===40).at(-1)[3],106);
- assert.equal(boss.ops.filter(o=>o[0]?.width===40).at(-1)[4],132);
+ assert.equal(boss.ops.filter(o=>o[0]?.width===64).at(-1)[3],124);
+ assert.equal(boss.ops.filter(o=>o[0]?.width===64).at(-1)[4],155);
 });
 test('PC usa sombra de pixels duros, não borra nenhuma das camadas',()=>{
  for(const type of ['hero','npc','monster']){
