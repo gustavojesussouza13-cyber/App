@@ -47,6 +47,7 @@ test('caminhantes percorrem apenas trechos ortogonais de ruas reais',async()=>{
 test('a prévia de fazenda é igual à evolução confirmada, incluindo custos e ciclo',t=>{
  const f=fixture(t);
  assert.equal(f.act({action:'construct',buildingType:'farm',x:8,y:15}),true);
+ f.g.city.buildings[0].status='complete';
  f.g.city.stock={food:800,timber:600,stone:400,coins:30};
  let snapshot=f.snapshot(),building=snapshot.cities.find(c=>c.name===f.g.name).buildings[0];
  const preview=building.upgradePreview;
@@ -70,6 +71,7 @@ test('a prévia de fazenda é igual à evolução confirmada, incluindo custos e
 test('prévia de torre reproduz a defesa do reino após o upgrade',t=>{
  const f=fixture(t);
  assert.equal(f.act({action:'construct',buildingType:'tower',x:8,y:9}),true);
+ f.g.city.buildings[0].status='complete';
  f.g.city.stock={food:100,timber:100,stone:100,coins:0};
  const before=f.snapshot().cities.find(c=>c.name===f.g.name).buildings[0].upgradePreview;
  assert.ok(before.after.defense>before.before.defense);
@@ -94,7 +96,7 @@ test('prévia de ampliação de fortaleza reproduz defesa, capacidade, lotes e m
 test('insuficiência de material e nível máximo impedem confirmar melhorias',t=>{
  const f=fixture(t);
  assert.equal(f.act({action:'construct',buildingType:'house',x:6,y:9}),true);
- const b=f.g.city.buildings[0];
+ const b=f.g.city.buildings[0];b.status='complete';
  f.g.city.stock={food:0,timber:0,stone:0,coins:0};
  const prev=f.snapshot().cities.find(c=>c.name===f.g.name).buildings[0].upgradePreview;
  assert.equal(prev.affordable,false);
