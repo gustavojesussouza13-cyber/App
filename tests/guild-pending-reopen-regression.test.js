@@ -34,3 +34,10 @@ test('obra no estado do servidor continua consultando COMMIT, sem compras repeti
  assert.match(source,/:'Validando…'\)/,
   'contagem provisória vencida não deve ficar visualmente presa em 00:00*');
 });
+
+test('páginas da capital carregam nova versão do script sem reutilizar cache antigo',()=>{
+ const world=fs.readFileSync(path.join(__dirname,'../public/mundo.html'),'utf8');
+ const demo=fs.readFileSync(path.join(__dirname,'../public/cidade-demo.html'),'utf8');
+ assert.match(world,/\/guild-city-3d\\.js\\?v=guild-restore-v11/);
+ assert.match(demo,/\/guild-city-3d\\.js\\?v=guild-restore-v11/);
+});
