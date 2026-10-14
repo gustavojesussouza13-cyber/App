@@ -22,11 +22,17 @@
  function at(buildings,x,y){return (buildings||[]).find(b=>cells(b).some(p=>p[0]===x&&p[1]===y))}
  function isCore(x,y){return x>=CORE.x&&x<CORE.x+CORE.w&&y>=CORE.y&&y<CORE.y+CORE.h}
  function plan(type,x,y){const shape=footprints[type];return shape?{type,x,y,w:shape[0],h:shape[1]}:null}
- function canPlace(buildings,type,x,y){
+ const areas=Object.freeze([null,[6,19],[4,21],[2,23],[1,24],[0,25]]);
+ function bounds(level=5){
+  const value=Number.isSafeInteger(level)?Math.max(1,Math.min(5,level)):5;
+  const [min,max]=areas[value];
+  return {min,max,width:max-min+1,cells:(max-min+1)**2-CORE.w*CORE.h};
+ }
+ function canPlace(buildings,type,x,y,level=5){
   if(!Number.isSafeInteger(x)||!Number.isSafeInteger(y))return false;
   const b=plan(type,x,y);if(!b)return false;
   const {min,max}=bounds(level);
-   return cells(b).every(([cx,cy])=>cx>=min&&cy>=min&&cx<=max&&cy<=max&&!isCore(cx,cy)&&!at(buildings,cx,cy));
+  return cells(b).every(([cx,cy])=>cx>=min&&cy>=min&&cx<=max&&cy<=max&&!isCore(cx,cy)&&!at(buildings,cx,cy));
  }
  return Object.freeze({N,CORE,footprints,size,cells,at,isCore,plan,bounds,canPlace});
 });
