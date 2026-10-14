@@ -498,3 +498,24 @@ body.world-fullscreen{overflow:hidden!important}
 .guild-entry-content button{white-space:normal}
 @media(min-width:1100px){.social-section-nav{grid-template-columns:repeat(4,minmax(0,1fr))}}
 @media(max-width:470px){.guild-entry-summary{align-items:flex-start;flex-direction:column}.guild-person{gap:4px}}
+
+/* Atelier original de personagens: controles reduzidos e imagem pixel-perfect */
+.appearance-create-panel{border:1px solid #987d4a;border-radius:9px;background:#203329c9;margin:10px 0;max-width:100%}
+.appearance-create-panel>details>summary{cursor:pointer;padding:12px;color:#f5dba4;font:700 14px Georgia,serif}
+.appearance-create-panel>details>summary small{display:block;font:400 11px system-ui;color:#c9d8b7;padding-top:4px}
+.atelier-custom{display:grid;grid-template-columns:142px minmax(0,1fr);gap:16px;padding:12px;max-width:100%}
+.atelier-custom-preview{display:flex;flex-direction:column;gap:8px;align-items:center;justify-content:start}
+.atelier-custom-preview strong{color:#f0d6a0;font-size:10px;text-align:center}
+.atelier-preview-canvas{image-rendering:pixelated;image-rendering:crisp-edges;background:linear-gradient(#536952,#24382f);width:120px;height:156px;border:3px ridge #b79864;box-shadow:inset 0 0 0 2px #1b291f,0 9px 20px #0006}
+.atelier-custom-preview small{font-size:10px;text-align:center;color:#b6cbb8;line-height:1.4}
+.atelier-custom-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.atelier-custom-fields label{display:flex;flex-direction:column;gap:4px;font-size:11px;color:#e8d1a3;min-width:0}
+.atelier-custom-fields select{min-width:0;max-width:100%;width:100%;color:#f9e5bf;background:#263c32;border:1px solid #937c54;border-radius:5px;font-size:12px;padding:7px}
+.appearance-change-btn{font-size:11px;color:#ffe1a6;border:1px solid #8b754c;border-radius:5px;background:#314539;padding:7px 11px;margin:6px 0 9px}
+.appearance-edit-dialog{width:min(680px,calc(100% - 30px));max-height:90dvh;overflow-y:auto}
+.appearance-edit-dialog .atelier-custom{padding:12px 0}
+.appearance-edit-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:16px}
+.appearance-edit-actions button{min-width:125px}
+@media(max-width:640px){.atelier-custom{grid-template-columns:1fr;gap:10px}.atelier-custom-preview{flex-direction:row;flex-wrap:wrap;justify-content:center}
+.atelier-custom-preview strong{flex-basis:100%}.atelier-custom-preview small{max-width:115px}.atelier-custom-fields{grid-template-columns:repeat(2,minmax(0,1fr))}.appearance-edit-dialog{width:calc(100% - 20px)}}
+@media(max-width:370px){.atelier-custom-fields{grid-template-columns:1fr}}
