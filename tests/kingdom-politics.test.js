@@ -91,7 +91,8 @@ test('rei pode erguer muralhas até nível cinco; a defesa aumenta sem gerar our
  assert.equal(policy.politicalMap(h.world)[0].ruler,'Torres da Esperanca');
  for(let i=3;i<=5;i++){p.save.coins=100000;assert.equal(h.action(p,{action:'upgrade'}),true)}
  assert.equal(g.base.level,5);
- assert.equal(h.action(p,{action:'upgrade'}),false);
+ assert.equal(h.action(p,{action:'upgrade'}),true,'fortaleza agora evolui além do nível cinco');
+ assert.equal(g.base.level,6);
 });
 test('recrutamento cobra moedas, exige capital próxima e limita exércitos a 300',t=>{
  const h=setup(t),a=h.player('Comandante'),g=h.guild(a,'Forca das Torres');
