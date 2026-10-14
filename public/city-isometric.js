@@ -32,7 +32,7 @@ window.PeregrinosCity=Object.freeze({create({send}){
  function structures(){return (state?.cities||[]).find(c=>c.name===base?.name)?.buildings||[]}
  function draw(){
   if(!dlg.open)return;
-  art.render(ctx,{buildings:structures(),name:base?.name||'Cidadela de Auren',now:Date.now()});
+  art.render(ctx,{buildings:structures(),fortressLevel:base?.level||1,name:base?.name||'Cidadela de Auren',now:Date.now()});
  }
 
  function refresh(){
