@@ -108,7 +108,7 @@ test('bônus de exploração é concedido uma única vez ao visitar regiões',t=
  h.world.travel(a.p,7);
  assert.ok(a.p.save.achievements.includes('explorar-8'));
  a.p.save.visited=Array.from({length:15},(_,i)=>i);
- a.p.zone=11;a.p.save.zone=11;a.p.save.inventory.chave=1;
+ a.p.zone=11;a.p.save.zone=11;a.p.save.inventory.chave_coroa_aurora=1;
  h.world.travel(a.p,15);
  assert.ok(a.p.save.achievements.includes('explorar-16'));
  assert.equal(a.p.save.achievements.filter(id=>id==='explorar-8').length,1);
