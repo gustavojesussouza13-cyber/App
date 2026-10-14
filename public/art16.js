@@ -395,9 +395,10 @@ function create({ctx,W,H}){
    seed:local?0:(p.name?.length||0)*107};
   // Qualidade PC V5: o Atelier tem rostos, classe e animações completas.
   // O atlas clássico truncava rosto/cachecol/armas, e o V3 usava blocos.
-  // NÃO tocar no pipeline touch: o Studio continua nas dimensões originais.
+  // Mesmo sprite autoral de 64×80 nos aparelhos móveis e no PC.
+  // Ajustamos somente a apresentação na tela, nunca colisão ou hitbox.
   const premiumPc=Boolean(desktopCharactersV3?.enabled);
-  const studioHero=(premiumPc||Boolean(p.appearance))&&Boolean(spriteStudio?.drawHero(g,p,now,{...state,desktopPremium:premiumPc}));
+  const studioHero=Boolean(spriteStudio?.drawHero(g,p,now,{...state,desktopPremium:premiumPc}));
   const pngSprite=!studioHero&&Boolean(desktopSprites?.drawHero(g,p,now,state));
   const illustratedV3=!studioHero&&!pngSprite&&Boolean(desktopCharactersV3?.drawHero(g,p,now,state));
   const detailed=pngSprite||illustratedV3;
@@ -415,25 +416,25 @@ function create({ctx,W,H}){
    illustratedV3?desktopCharactersV3.normalizeRole(p.role):
    animated?spriteStudio.normalizeRole(p.role):drawClassIdentity(g,p,dir,now,moved);
   g.save();g.textAlign='center';g.font=(local?'bold 15px':'bold 13px')+' monospace';
-  g.shadowColor='#000b';g.shadowBlur=5;g.lineWidth=3;g.strokeStyle='#0e271e';
+  g.shadowColor='#000b';g.shadowBlur=0;g.lineWidth=3;g.strokeStyle='#0e271e';
   const roleName={guardiao:'Guardião',curandeiro:'Curandeiro',arqueiro:'Arqueiro',peregrino:'Peregrino'}[finalRole];
   const label=(p.name||'Peregrino')+(local?' · '+roleName:' · Lv.'+(p.level||1));
-  const labelY=p.y-(studioHero?(premiumPc?87:69):pngSprite?80:illustratedV3?94:h)-5;
+  const labelY=p.y-(studioHero?(premiumPc?110:88):pngSprite?80:illustratedV3?94:h)-5;
   g.strokeText(label,p.x,labelY);g.fillStyle=local?'#ffe4a3':'#f1edd4';g.fillText(label,p.x,labelY);g.restore();
  }
  function npcActor(g,n,active,finished,now){
   const x=n.x,y=n.y;drawShadow(g,x,y,42);
   const premiumPc=Boolean(desktopCharactersV3?.enabled);
-  const studioNpc=premiumPc&&Boolean(spriteStudio?.drawNpc(g,n,now,{desktopPremium:true}));
+  const studioNpc=Boolean(spriteStudio?.drawNpc(g,n,now,{desktopPremium:premiumPc}));
   const pngNpc=!studioNpc&&Boolean(desktopSprites?.drawNpc(g,n,now));
   const illustratedNpcV3=!studioNpc&&!pngNpc&&Boolean(desktopCharactersV3?.drawNpc(g,n,now));
   const detailed=studioNpc||pngNpc||illustratedNpcV3;
   if(!detailed&&!spriteStudio?.drawNpc(g,n,now))
    frameSprite(g,heroSheets[n.role]||'viajante_andar',2,Math.floor(now/500+(n.index||0))%2,x,y,47,59);
-  g.save();g.textAlign='center';g.shadowColor='#000e';g.shadowBlur=5;
+  g.save();g.textAlign='center';g.shadowColor='#000e';g.shadowBlur=0;
   const primary=n.kind==='chapter';
   g.font='bold 12px monospace';g.lineWidth=3;g.strokeStyle='#0c2118';
-  const nameY=y-(studioNpc?91:pngNpc?82:illustratedNpcV3?97:65);
+  const nameY=y-(studioNpc?(premiumPc?113:96):pngNpc?82:illustratedNpcV3?97:65);
   g.strokeText(n.name,x,nameY);g.fillStyle=primary?'#ffe6a7':'#ccebd7';g.fillText(n.name,x,nameY);
   const indicator=primary?(finished?'✓':active?'!':'◆'):'✦';
   g.fillStyle=active?'#fff3ae':finished?'#a3d8a0':'#aee3ce';
@@ -451,7 +452,7 @@ function create({ctx,W,H}){
   const state={type:ty,moving:m.moving===true,attacking:acting,hurt,dead,
    elapsed:pose?Math.max(0,now-pose.at):0};
   const premiumPc=Boolean(desktopCharactersV3?.enabled);
-  const studioMonster=premiumPc&&Boolean(spriteStudio?.drawMonster(g,{...m,x,y},now,{...state,desktopPremium:true}));
+  const studioMonster=Boolean(spriteStudio?.drawMonster(g,{...m,x,y},now,{...state,desktopPremium:premiumPc}));
   const detailedBoss=!studioMonster&&Boolean(desktopSprites?.drawMonster(g,{...m,x,y},now,state));
   const illustrated=!studioMonster&&!detailedBoss&&Boolean(desktopBestiary?.drawMonster(g,{...m,x,y},now,state));
   const animated=studioMonster||detailedBoss||illustrated||Boolean(spriteStudio?.drawMonster(g,{...m,x,y},now,state));
@@ -467,12 +468,12 @@ function create({ctx,W,H}){
    if(pixelDetail)pixelDetail.drawMonster(g,m,now);
   }
   if(dead)return;
-  const top=studioMonster?(m.boss?132:81):detailedBoss?121:illustrated?(m.boss?137:83):m.boss?90:56;
-  const width=studioMonster?(m.boss?106:66):detailedBoss?90:illustrated?(m.boss?110:62):m.boss?61:45;
+  const top=studioMonster?(m.boss?(premiumPc?155:123):(premiumPc?100:85)):detailedBoss?121:illustrated?(m.boss?137:83):m.boss?90:56;
+  const width=studioMonster?(m.boss?(premiumPc?124:98):(premiumPc?80:68)):detailedBoss?90:illustrated?(m.boss?110:62):m.boss?61:45;
   g.fillStyle='#231d1b';g.fillRect(x-width/2,y-top,width,7);
   g.fillStyle=m.boss?'#f6b66d':'#b1d976';g.fillRect(x-width/2+1,y-top+1,Math.max(0,(width-2)*m.hp/Math.max(1,m.maxHp)),5);
-  if(selected){g.strokeStyle='#ffe29d';g.lineWidth=2;g.strokeRect(x-width/2-6,y-top-1,width+12,studioMonster?(m.boss?144:96):detailedBoss?132:illustrated?(m.boss?149:97):m.boss?101:70)}
-  if(selected||m.boss){g.save();g.fillStyle='#ffefc8';g.font='bold 12px monospace';g.textAlign='center';g.shadowColor='#000';g.shadowBlur=6;g.fillText(m.name,x,y-top-9);g.restore()}
+  if(selected){g.strokeStyle='#ffe29d';g.lineWidth=2;g.strokeRect(x-width/2-6,y-top-1,width+12,studioMonster?(m.boss?(premiumPc?165:132):(premiumPc?110:95)):detailedBoss?132:illustrated?(m.boss?149:97):m.boss?101:70)}
+  if(selected||m.boss){g.save();g.fillStyle='#ffefc8';g.font='bold 12px monospace';g.textAlign='center';g.shadowColor='#000';g.shadowBlur=0;g.fillText(m.name,x,y-top-9);g.restore()}
  }
  function prop(g,o){
   const size=o.w;drawShadow(g,o.x,o.y,size*.63);
@@ -557,7 +558,7 @@ function create({ctx,W,H}){
   const banner=['#6ac0a8','#e7ba65','#c39add','#ec937a'][(b.name.length||0)%4];
   g.fillStyle=banner;g.fillRect(1,-92,24,16+Math.round(pulse));
   g.fillStyle='#e8d196';g.font='bold 11px monospace';g.textAlign='center';
-  g.shadowColor='#071613';g.shadowBlur=6;
+  g.shadowColor='#071613';g.shadowBlur=0;
   g.fillText('♜ '+b.name.slice(0,19),0,-103);
   g.restore();
  }
@@ -586,7 +587,7 @@ function create({ctx,W,H}){
   ctx.drawImage(cache.canvas,cameraX,cameraY,W,H,0,0,W,H);
   // Só no PC: reduzir concorrência visual do terreno sem apagar textura.
   // O tratamento é ANTERIOR aos atores; sprites, HUD e minimapa ficam vivos.
-  if(desktopSprites?.enabled){ctx.fillStyle='#0d202019';ctx.fillRect(0,0,W,H)}
+  if(desktopSprites?.enabled){ctx.fillStyle='#0d20200d';ctx.fillRect(0,0,W,H)}
   if(pixelDetail)pixelDetail.drawAtmosphere(ctx,{z:zone,biome,cameraX,cameraY,W,H,now});
   ctx.save();ctx.translate(-cameraX,-cameraY);
   const actors=[];
