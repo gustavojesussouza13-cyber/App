@@ -229,32 +229,39 @@
    trained.hidden=!owns()||!structures().some(b=>b.type==='barracks');
   }
   function onCell({x,y}){
-   if(!canBuild()){say('Somente o líder pode construir ou melhorar edifícios.');return}
-   const old=layout.at(structures(),x,y);
-   if(old){
-    sendOperation('buildingUpgrade',{x,y},'Solicitando melhoria de '+(types[old.type]?.[0]||'edifício')+'…');
+   if(!canBuild()){
+    say('Somente o líder pode construir ou melhorar edifícios.','error');return;
+   }
+   const occupied=layout.at(structures(),x,y);
+   if(occupied){
+    // Melhorias continuam independentes de outras construções em andamento.
+    if([...requests.values()].some(r=>r.action==='buildingUpgrade'&&
+     layout.at([occupied],r.details.x,r.details.y))){
+     say('Este edifício já recebeu uma melhoria. Selecione outro terreno.','info');return;
+    }
+    sendOperation('buildingUpgrade',{x,y});
     return;
    }
    if(!selected){say('Selecione um edifício no painel para começar.');return}
-   if(!layout.canPlace(structures(),selected,x,y)){
-    say('Lote '+x+','+y+' indisponível: outra construção ou castelo ocupa parte do terreno.');
-    return;
+   const occupiedPreview=layout.at([...provisionals.values()].map(v=>v.building),x,y);
+   if(occupiedPreview){
+    say('Este lote já está ocupado. Escolha outro espaço.','info');return;
    }
-   const price=types[selected][1],wallet=Number(state?.walletCoins);
-   if(Number.isFinite(wallet)&&wallet<price){
-    say('Moedas pessoais insuficientes: você possui '+wallet.toLocaleString('pt-BR')+' e a construção custa '+price+'. Consiga moedas no continente para construir.','error');
-    return;
+   if(!layout.canPlace(structuresWithPreviews(),selected,x,y)){
+    say('Lote indisponível: existem construções ou o castelo neste terreno.','info');return;
    }
-   if(pending||provisional){
-    say('Aguarde a sincronização da construção anterior.','pending');
-    return;
+   const price=types[selected][1],coins=spendableCoins();
+   if(coins<price){
+    say('Moedas disponíveis insuficientes: '+coins.toLocaleString('pt-BR')+
+     ' de '+price+' necessárias.','error');return;
    }
-   // Atualização visual local, síncrona: o próximo frame já mostra o edifício.
-   // Apenas o servidor pode salvar e debitar moedas; recusas desfazem a prévia.
+   if(structuresWithPreviews().length>=60){
+    say('A cidade atingiu o limite de 60 edifícios.','error');return;
+   }
+   // Não há tempo de espera visual nem fila: cada clique desenha e envia
+   // seu pedido próprio imediatamente, mesmo com outros ACKs pendentes.
    const building={...layout.plan(selected,x,y),level:1};
-   showProvisional(building);
-   sendOperation('construct',{type:selected,x,y,target:base.name},
-    types[selected][0]+' posicionado imediatamente. Confirmando o salvamento…');
+   sendOperation('construct',{type:selected,x,y,target:base.name},{building,price});
   }
   function onHover(cell){
    q('guild3dCoords').textContent=cell?'Lote '+(cell.x+1)+' / '+(cell.y+1)+' · '+layout.N+'×'+layout.N:'Terreno '+layout.N+'×'+layout.N;
@@ -268,6 +275,7 @@
     scene=engine.createGuildScene({mount:viewport,layout,onCell,onHover});
     q('guild3dLoading')?.remove();
     scene.updateBuildings(structures(),state?.yourGuild?.army||{});
+    for(const [key,v]of provisionals)scene.showPendingBuilding?.(v.building,key);
     scene.setSelection(selected);
     say('Cidade 3D pronta. Gire a câmera, explore e construa em todo o terreno livre.');
    }catch(err){
@@ -278,15 +286,15 @@
   }
   q('guild3dClose').onclick=()=>dlg.close();
   q('guild3dFocus').onclick=()=>scene?.focus();
-  collect.onclick=()=>sendOperation('collect',{},'Consultando produção acumulada…');
+  collect.onclick=()=>sendOperation('collect',{});
   q('guild3dTrain').onclick=()=>{
    if(!owns()||!soldier.value)return;
-   sendOperation('train',{unit:soldier.value,count:Number(count.value)},'Enviando treinamento para validação…');
+   sendOperation('train',{unit:soldier.value,count:Number(count.value)});
   };
-  dlg.addEventListener('close',()=>{token++;clearPending();clearProvisional();scene?.destroy();scene=null;selected=null;viewport.querySelector('canvas')?.remove()});
+  dlg.addEventListener('close',()=>{token++;resetOperations();scene?.destroy();scene=null;selected=null;viewport.querySelector('canvas')?.remove()});
   function open(b,kingdom){
    if(dlg.open)dlg.close();
-   base=b;state=kingdom;selected=null;clearPending();clearProvisional();say('Selecione um edifício ou explore o terreno com a câmera.');
+   base=b;state=kingdom;selected=null;resetOperations();say('Selecione um edifício ou explore o terreno com a câmera.');
    if(!dlg.open)dlg.showModal();
    paint();void load();
    send('kingdom',{action:'inspect'});
@@ -296,13 +304,7 @@
    if(dlg.open){
     const next=(kingdom?.bases||[]).find(b=>b.name===base?.name);
     if(next)base=next;
-    if(provisional&&isPersisted(provisional)){
-     clearProvisional();
-     if(pending?.action==='construct'){
-      clearPending();
-      say('Construção concluída e confirmada pelo servidor.','success');
-     }
-    }
+    settleFromState();
     // Recursos e saldo são prioritários; redesenhar modelos Three.js é caro
     // e não pode impedir a atualização financeira quando ocorrer erro de WebGL.
     paint();
