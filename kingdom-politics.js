@@ -809,6 +809,9 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
   }
   const totalUnits=participants.reduce((n,v)=>n+troopCount(v.escort),0);
   if(totalUnits<5){reject('Reúna ao menos cinco soldados nas escoltas próximas.');return false}
+  // Apenas o comandante que EFETIVAMENTE disparou um cerco válido recebe
+  // a marca de agressor, dando à guilda atacada direito de contra-atacar.
+  world.declareGuildAggressor?.(enemyKey,p,now);
   const defense=fortressDefense(defender,now);
   const formationBonus=1+Math.min(.18,Math.max(0,participants.length-1)*.03);
   const attackPower=Math.round(participants.reduce((n,v)=>n+v.attack,0)*formationBonus);
