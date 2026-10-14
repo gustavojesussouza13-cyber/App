@@ -336,7 +336,7 @@
   function paint(){
    if(!dlg.open||!base)return;
    q('guild3dTitle').textContent='♜ '+base.name;
-   q('guild3dSubtitle').textContent='Fortaleza nível '+(base.level||1)+'/'+(state?.fortressMaxLevel||60)+(owns()?' · Seu reino':' · Reino visitante');
+   q('guild3dSubtitle').textContent='Fortaleza nível '+(base.level||1)+'/'+(state?.fortressMaxLevel||60)+' · '+['Povoado','Vila fortificada','Burgo de pedra','Cidadela nobre','Capital imperial','Fortaleza lendária'][Math.min(5,Math.floor((Math.max(1,base.level||1)-1)/10))]+(owns()?' · Seu reino':' · Reino visitante');
     const bounds=layout.bounds(base.level||1),cap=state?.stockCapacity||600;
     q('guild3dProgress').textContent='Área liberada: '+bounds.width+'×'+bounds.width+' · '+bounds.cells+' lotes. Estoque: '+cap+' por recurso.'+
      ((base.level||1)<(state?.fortressMaxLevel||60)?' Próximo nível: '+layout.bounds((base.level||1)+1).width+'×'+layout.bounds((base.level||1)+1).width+' · estoque maior · novos espaços até '+(state?.maxBuildings||60)+'.':' Nível máximo.');
@@ -466,7 +466,7 @@
    if(scene||loading||!dlg.open)return;
    loading=true;const seq=++token;
    try{
-    const engine=await import('/guild-scene-3d.mjs?v=fortress60-production-v1');
+    const engine=await import('/guild-scene-3d.mjs?v=architecture60-v1');
     if(!dlg.open||seq!==token)return;
     scene=engine.createGuildScene({mount:viewport,layout,onCell,onHover});
     q('guild3dLoading')?.remove();
