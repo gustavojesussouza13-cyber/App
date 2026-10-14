@@ -88,7 +88,7 @@ const touchUI=$('touchControls');
 const joystick=window.OsPeregrinosTouchControls.create({pad:$('touchPad'),knob:$('touchKnob')});
 let socket=null,reconnectMs=1000,reconnectTimer=null,movingAt=0,lastDraw=0,fx=[],toastTimer=0,lastAction=0,lastActionWasSkill=false,tab='inventory',authed=false;
 let progressToken=null,accountMode=false,accountReady=false,emailRecoveryAvailable=false;
-let selectedRoomId='auren-publica',selectedRoomPassword='',roomCatalog=[],roomName='Praça Pública',pendingRoom=null,pendingRoomUntil=0;
+let selectedRoomId='auren-publica',roomCatalog=[],roomName='Praça Pública',pendingRoom=null,pendingRoomUntil=0;
 let roomSwitchPending=false,roomSwitchTarget=null;
 let kingdomState=null,visibleKingdomBases=[];
 const cityUI=window.PeregrinosCity.create({send:(type,data)=>send(type,data)});
@@ -365,7 +365,7 @@ function dispatch(msg){
  }else if(msg.type==='dialogue'){openDialogue(msg);
  }else if(msg.type==='storyResolved'){if(typeof desktopAudio!=='undefined')desktopAudio.play('victory');closeDialogue();say('',msg.message,'sys');alert(msg.complete?'✦ O SINO DA AURORA VOLTOU A TOCAR!':msg.reward?'✦ Novo capítulo! +'+msg.reward.xp+' EXP · +'+msg.reward.coins+' moedas':msg.message);if(msg.epilogue)showEpilogue(msg);
  }else if(msg.type==='error'){say('','Servidor: '+msg.message,'sys');$('connectionError').textContent=msg.message||'Erro de conexão';
-  if(['full','name_taken','invalid_name','login_required','name_reserved','auth_unavailable','room_missing','room_full','wrong_room_password','rate_limited'].includes(msg.code)){authed=false;$('welcomeOverlay').hidden=false;clearTimeout(reconnectTimer);socket?.close();if(msg.code==='login_required')setAuthTab('login');}
+  if(['full','name_taken','invalid_name','login_required','name_reserved','auth_unavailable','room_missing','room_full','rate_limited'].includes(msg.code)){authed=false;$('welcomeOverlay').hidden=false;clearTimeout(reconnectTimer);socket?.close();if(msg.code==='login_required')setAuthTab('login');}
  }}
 function connect(){
  if(!progressToken){alert('Não foi possível iniciar a jornada. Atualize a página.');return}
@@ -377,7 +377,7 @@ function connect(){
   sock.onopen=()=>{
    if(socket!==sock)return;
    reconnectMs=1000;
-   sock.send(JSON.stringify({type:'hello',name:session.name,role:session.formClass,token:progressToken,mode:accountMode?'account':'guest',roomId:selectedRoomId,roomPassword:selectedRoomPassword}));
+   sock.send(JSON.stringify({type:'hello',name:session.name,role:session.formClass,token:progressToken,mode:accountMode?'account':'guest',roomId:selectedRoomId}));
   };
   sock.onmessage=e=>{
    if(socket!==sock)return;
@@ -408,20 +408,16 @@ function updateRoomSelection(){
  const select=$('roomSelect'),room=roomCatalog.find(r=>r.id===selectedRoomId);
  const found=room||roomCatalog.find(r=>r.id==='auren-publica')||roomCatalog[0];
  if(!found)return;
- if(!room){selectedRoomId=found.id;selectedRoomPassword=''}
+ if(!room)selectedRoomId=found.id
  select.replaceChildren();
  for(const r of roomCatalog){
   const option=document.createElement('option');option.value=r.id;
-  option.textContent=(r.locked?'🔒 ':'✦ ')+r.name+' ('+r.online+'/'+r.capacity+')';
+  option.textContent='✦ '+r.name+' ('+r.online+'/'+r.capacity+')';
   option.disabled=r.online>=r.capacity;select.append(option);
  }
  select.value=selectedRoomId;
  const chosen=roomCatalog.find(r=>r.id===selectedRoomId)||found;
- const locked=chosen.locked===true;
- $('roomJoinPassword').hidden=!locked;
- $('roomJoinPasswordLabel').hidden=!locked;
- if(!locked){$('roomJoinPassword').value='';selectedRoomPassword=''}
- $('roomSummary').textContent=chosen.online+'/'+chosen.capacity+' jogadores · '+(locked?'Sala privada: informe a senha.':'Sala pública: entrada livre.');
+ $('roomSummary').textContent=chosen.online+'/'+chosen.capacity+' jogadores · Sala pública: entrada livre.';
 }
 async function loadRooms(){
  try{
@@ -441,24 +437,22 @@ async function loadRooms(){
  }catch{$('roomSummary').textContent='Não foi possível atualizar a lista de salas.'}
 }
 $('roomSelect').addEventListener('change',()=>{
- selectedRoomId=$('roomSelect').value;selectedRoomPassword='';$('roomJoinPassword').value='';updateRoomSelection();
+ selectedRoomId=$('roomSelect').value;updateRoomSelection();
 });
-$('roomJoinPassword').addEventListener('input',()=>{selectedRoomPassword=$('roomJoinPassword').value});
 $('createRoomForm').addEventListener('submit',async e=>{
  e.preventDefault();const submit=e.currentTarget.querySelector('[type=submit]');
  submit.disabled=true;$('roomError').textContent='';
  try{
   const response=await fetch('/api/rooms',{
    method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},
-   body:JSON.stringify({name:$('newRoomName').value.trim(),password:$('newRoomPassword').value,guestToken:progressToken})
+   body:JSON.stringify({name:$('newRoomName').value.trim(),guestToken:progressToken})
   });
   const data=await response.json();
   if(!response.ok)throw Error(data.error||'Não foi possível criar a sala.');
   pendingRoom=data.room;pendingRoomUntil=Date.now()+60000;
   roomCatalog.push(data.room);selectedRoomId=data.room.id;
-  selectedRoomPassword=$('newRoomPassword').value;updateRoomSelection();
-  if(data.room.locked)$('roomJoinPassword').value=selectedRoomPassword;
-  $('newRoomName').value='';$('newRoomPassword').value='';
+  updateRoomSelection();
+  $('newRoomName').value='';
   $('createRoomForm').parentElement.open=false;
   $('roomSummary').textContent='Sala criada! Entre como Visitante ou com sua conta.';
  }catch(err){$('roomError').textContent=err.message||'Não foi possível criar a sala.'}
@@ -468,10 +462,7 @@ $('createRoomForm').addEventListener('submit',async e=>{
 function updateSwitchChoice(){
  const id=$('roomSwitchSelect').value,room=roomCatalog.find(r=>r.id===id);
  const same=id===selectedRoomId,full=room&&room.online>=room.capacity;
- const locked=Boolean(room?.locked);
- $('roomSwitchPassword').hidden=!locked;
- $('roomSwitchPasswordLabel').hidden=!locked;
- const suffix=same?'Esta é a sala atual.':full?'Esta sala está cheia.':locked?'Sala privada: informe a senha.':'Sala pública: entrada livre.';
+ const suffix=same?'Esta é a sala atual.':full?'Esta sala está cheia.':'Sala pública: entrada livre.';
  $('roomSwitchInfo').textContent=room?room.online+'/'+room.capacity+' jogadores · '+suffix:'Sala indisponível.';
  $('roomSwitchConfirm').disabled=roomSwitchPending||!room||same||full||!session.connected;
 }
@@ -480,7 +471,7 @@ function renderSwitchRooms(){
  selector.replaceChildren();
  for(const r of roomCatalog){
   const option=document.createElement('option');
-  option.value=r.id;option.textContent=(r.locked?'🔒 ':'✦ ')+r.name+' · '+r.online+'/'+r.capacity;
+  option.value=r.id;option.textContent='✦ '+r.name+' · '+r.online+'/'+r.capacity;
   option.disabled=r.id!==selectedRoomId&&r.online>=r.capacity;
   selector.append(option);
  }
@@ -488,7 +479,7 @@ function renderSwitchRooms(){
  updateSwitchChoice();
 }
 $('roomSwitchSelect').addEventListener('change',()=>{
- $('roomSwitchPassword').value='';$('roomSwitchError').textContent='';
+ $('roomSwitchError').textContent='';
  updateSwitchChoice();
 });
 $('roomSwitchCancel').addEventListener('click',()=>{
@@ -503,7 +494,6 @@ $('roomSwitchBtn').addEventListener('click',async()=>{
  const dialog=$('roomSwitchDialog');
  $('roomSwitchCurrent').textContent=roomName+' · '+session.online+'/60 jogadores';
  $('roomSwitchError').textContent='';
- $('roomSwitchPassword').value='';
  $('roomSwitchInfo').textContent='Consultando salas disponíveis…';
  $('roomSwitchSelect').replaceChildren();
  $('roomSwitchConfirm').disabled=true;
@@ -521,19 +511,17 @@ $('roomSwitchCreateForm').addEventListener('submit',async event=>{
  const form=$('roomSwitchCreateForm'),button=form.querySelector('[type=submit]');
  button.disabled=true;$('roomSwitchError').textContent='';
  try{
-  const password=$('roomSwitchNewPassword').value;
   const result=await fetch('/api/rooms',{
    method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},
-   body:JSON.stringify({name:$('roomSwitchNewName').value.trim(),password,guestToken:progressToken})
+   body:JSON.stringify({name:$('roomSwitchNewName').value.trim(),guestToken:progressToken})
   });
   const data=await result.json();
   if(!result.ok)throw new Error(data.error||'Falha ao criar sala.');
   pendingRoom=data.room;pendingRoomUntil=Date.now()+60000;
   roomCatalog.push(data.room);renderSwitchRooms();
   $('roomSwitchSelect').value=data.room.id;
-  $('roomSwitchPassword').value=password;
   updateSwitchChoice();
-  $('roomSwitchNewName').value='';$('roomSwitchNewPassword').value='';
+  $('roomSwitchNewName').value='';
   form.parentElement.open=false;
   $('roomSwitchInfo').textContent='Sala criada! Confirme a troca para entrar.';
  }catch(err){$('roomSwitchError').textContent=err.message||'Não foi possível criar a sala.'}
@@ -546,16 +534,12 @@ $('roomSwitchConfirm').addEventListener('click',()=>{
  if(chosen.online>=chosen.capacity){
   $('roomSwitchError').textContent='Esta sala já está cheia. Escolha outra.';return;
  }
- const password=chosen.locked?$('roomSwitchPassword').value:'';
- if(chosen.locked&&(!password||password.length>64)){
-  $('roomSwitchError').textContent='Informe a senha da sala privada.';return;
- }
  roomSwitchPending=true;roomSwitchTarget=chosen.id;
  $('roomSwitchError').textContent='';
  $('roomSwitchInfo').textContent='Conectando à nova sala…';
  $('roomSwitchConfirm').disabled=true;$('roomSwitchCancel').disabled=true;
  $('roomSwitchBtn').disabled=true;
- send('switchRoom',{roomId:chosen.id,password});
+ send('switchRoom',{roomId:chosen.id});
 });
 
 const requestedRoom=new URLSearchParams(location.search).get('room');
