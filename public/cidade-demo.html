@@ -49,6 +49,7 @@ function current(){return {
  bases:[{...base}],
  cities:[{name,buildings:buildings.map(b=>({...b}))}],
  walletCoins:localCoins,
+ persistentAccount:true, // apenas a demonstração representa uma conta fictícia ativa
  yourGuild:{name,leader:true,stock:{...stock},army:{...army}},
  trainingCosts:units,marches:[]
 }}
