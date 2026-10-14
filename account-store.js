@@ -69,7 +69,7 @@ class AccountStore{
   world.saved.characters=Object.fromEntries(chars.rows.map(r=>[r.uid,r.data]));
   world.saved.guilds=Object.fromEntries(guilds.rows.map(r=>[r.key,r.data]));
   world.saved.monsters=Object.fromEntries(monsters.rows.map(r=>[r.key,r.data]));
-  world.restoreMonsterProfiles();
+  world.restoreMonsterProfiles?.();
   world.guilds=new Map(Object.entries(world.saved.guilds));
   world.day=Number(day.rows[0]?.value||1);
   this.world=world;this.ready=true;
