@@ -246,7 +246,7 @@ export function createGuildScene({mount,layout,onCell,onHover}){
  ghost.visible=false;ghost.position.y=.12;scene.add(ghost);
  const highlight=new THREE.LineSegments(new THREE.EdgesGeometry(geom(CELL,.11,CELL)),new THREE.LineBasicMaterial({color:'#eff9df'}));
  highlight.visible=false;scene.add(highlight);
- let buildings=[],selection=null,army={},raf=0,destroyed=false,hover=null;
+ let buildings=[],selection=null,army={},buildLevel=1,raf=0,destroyed=false,hover=null;
  function disposeGroup(group){
   for(const o of [...group.children]){group.remove(o);o.traverse(n=>{
    if(n.userData.ownGeometry)n.geometry?.dispose();
@@ -333,14 +333,34 @@ export function createGuildScene({mount,layout,onCell,onHover}){
   }
  }
  let lastBuildingState=null;
- function updateBuildings(next=[],nextArmy={},serverNow=null){
+ const lockedGroup=new THREE.Group();scene.add(lockedGroup);
+  const lockedMaterial=new THREE.MeshBasicMaterial({color:'#384347',transparent:true,opacity:.26,depthWrite:false});
+  let previousLevel=0;
+  function displayUnlockedLand(level){
+   if(previousLevel===level)return;previousLevel=level;
+   for(const child of [...lockedGroup.children]){lockedGroup.remove(child);child.geometry.dispose()}
+   const bounds=layout.bounds(level),min=bounds.min,max=bounds.max+1;
+   const sections=[[0,0,N,min],[0,max,N,N-max],[0,min,min,max-min],[max,min,N-max,max-min]];
+   for(const [x,y,w,h]of sections){
+    if(w<=0||h<=0)continue;
+    const tile=new THREE.Mesh(new THREE.PlaneGeometry(w*CELL,h*CELL),lockedMaterial);
+    tile.rotation.x=-Math.PI/2;
+    tile.position.set((x+w/2)*CELL-HALF,.043,(y+h/2)*CELL-HALF);
+    lockedGroup.add(tile);
+   }
+   renderer.domElement.dataset.buildBounds=bounds.min+':'+bounds.max;
+   renderer.domElement.dataset.fortressLevel=String(level);
+  }
+ function updateBuildings(next=[],nextArmy={},serverNow=null,level=1){
   if(Number.isSafeInteger(serverNow))serverOffset=serverNow-Date.now();
   const nextBuildings=Array.isArray(next)?next.filter(b=>b&&layout.footprints[b.type]&&Number.isSafeInteger(b.x)&&Number.isSafeInteger(b.y)).slice(0,60):[];
   const nextArmyState=nextArmy||{};
-  const fingerprint=JSON.stringify([nextBuildings,nextArmyState]);
+  const nextLevel=Math.max(1,Math.min(5,Math.floor(Number(level)||1)));
+  const fingerprint=JSON.stringify([nextBuildings,nextArmyState,nextLevel]);
   // Evitar recriar dezenas de modelos 3D a cada snapshot do servidor.
   if(fingerprint===lastBuildingState)return;
   lastBuildingState=fingerprint;
+  buildLevel=nextLevel;displayUnlockedLand(buildLevel);
   buildings=nextBuildings;
   army=nextArmyState;
   disposeGroup(structures);
@@ -419,7 +439,7 @@ export function createGuildScene({mount,layout,onCell,onHover}){
  function showHover(cell){
   hover=cell;
   if(!cell||!selection||!layout.footprints[selection]){ghost.visible=false;highlight.visible=false;return}
-  const [w,h]=layout.footprints[selection],valid=layout.canPlace([...buildings,...[...pendingVisuals.values()].map(p=>p.building)],selection,cell.x,cell.y);
+  const [w,h]=layout.footprints[selection],valid=layout.canPlace([...buildings,...[...pendingVisuals.values()].map(p=>p.building)],selection,cell.x,cell.y,buildLevel);
   const p=pos(cell.x,cell.y,w,h);
   const g=geom(w*CELL,.11,h*CELL);
   ghost.geometry=g;highlight.geometry.dispose();
@@ -525,6 +545,7 @@ export function createGuildScene({mount,layout,onCell,onHover}){
  function destroy(){
   if(destroyed)return;destroyed=true;cancelAnimationFrame(raf);
   ro?.disconnect();if(!ro)window.removeEventListener('resize',resize);
+   for(const child of lockedGroup.children)child.geometry.dispose();lockedMaterial.dispose();
   canvas.removeEventListener('pointerdown',pointerDown);
   canvas.removeEventListener('pointermove',pointerMove);
   canvas.removeEventListener('pointerup',pointerUp);
