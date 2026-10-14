@@ -49,7 +49,7 @@ test('distância do portal é validada no servidor contra tentativas de teletran
  assert.equal(p.zone,gate.zone);
  assert.ok(messages.some(m=>m.type==='travel'&&m.portals.length>0));
 });
-test('portal para masmorra exige chave e não consome chave quando está longe',t=>{
+test('portal exige capítulo narrativo e não consome chave ao retornar',t=>{
  const {world,p,c,messages}=make(t);
  world.travel(p,1);assert.equal(p.zone,1);
  const gate=world.zonePortals(1).find(g=>g.zone===12);
@@ -60,7 +60,10 @@ test('portal para masmorra exige chave e não consome chave quando está longe',
  assert.equal(p.zone,1);assert.equal(p.save.inventory.chave,1);
  p.x=gate.x;p.y=gate.y;
  world.receive(c,{type:'portal',zone:12});
- assert.equal(p.zone,12);assert.equal(p.save.inventory.chave,0);
+ assert.equal(p.zone,1,'possuir uma chave não substitui o capítulo da história');
+ p.save.story.stage=2;
+ world.receive(c,{type:'portal',zone:12});
+ assert.equal(p.zone,12);assert.equal(p.save.inventory.chave,1);
  const returnGate=world.zonePortals(12)[0];
  assert.equal(returnGate.zone,1);
  p.x=returnGate.x;p.y=returnGate.y;
