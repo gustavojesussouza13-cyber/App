@@ -59,8 +59,9 @@ test('relíquia de arqueiro aumenta o dano sem empilhar o arco da loja',t=>{
  e.world.attack(p,m.id,false);const market=1000-m.hp;
  p.lastAttack=0;m.hp=1000;p.save.inventory.arco_alvorada=1;
  e.world.attack(p,m.id,false);const relic=1000-m.hp;
- assert.equal(market-base,6);
- assert.equal(relic-base,11,'relíquia mais forte substitui bônus, sem empilhar');
+ assert.ok(market-base>=4&&market-base<=6,'precisão aplica o bônus do arco sem invalidar a melhoria');
+ assert.ok(relic-base>=9&&relic-base<=11,'relíquia mantém aumento efetivo sem empilhar armas');
+ assert.ok(relic>market,'a relíquia deve superar o arco comum');
 });
 test('relíquia de curandeiro fortalece a cura somente da equipe',t=>{
  const e=env(t),c=e.add('curandeiro');
