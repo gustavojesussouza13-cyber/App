@@ -173,7 +173,6 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
  const {guild:g,key} = owner||{};
  const receipt=()=>opKey&&g&&Array.isArray(g.recentCityActions)?
   g.recentCityActions.find(entry=>entry?.key===opKey):null;
- const result=message=>({type:'kingdomActionResult',id:requestId,action:op,opKey,ok:message.ok,message:message.message});
  const report=(message,ok)=>{
   // Registra operações confirmadas antes do ACK. É persistido com a guilda
   // e protege também contra cobrança duplicada após reconexão/redeploy.
@@ -184,7 +183,9 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
    world.dirty=true;
   }
   if(requestId!==null)world.send(p.socket,{type:'kingdomActionResult',id:requestId,action:op,opKey,ok,message});
-  response(world,p,message);
+  // A capital mostra a mensagem no próprio diário: não abrir alert() bloqueante
+  // do mundo 2D, que pode congelar a tela e simular timeout de construção.
+  response(world,p,message,requestId===null);
  };
  const reject=message=>report(message,false);
  const accept=message=>report(message,true);
