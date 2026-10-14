@@ -85,10 +85,10 @@ function collectCity(g,now){
  return {cycles:readyBuildings,yielded,readyBuildings};
 }
 const UNITS=Object.freeze({
- militia:{name:'Milícia',cost:22,power:2,defense:2},
- archer:{name:'Arqueiros',cost:48,power:6,defense:3},
- knight:{name:'Cavaleiros',cost:95,power:13,defense:7},
- siege:{name:'Máquinas de cerco',cost:190,power:30,defense:5}
+ militia:{name:'Milícia',power:2,defense:2},
+ archer:{name:'Arqueiros',power:6,defense:3},
+ knight:{name:'Cavaleiros',power:13,defense:7},
+ siege:{name:'Máquinas de cerco',power:30,defense:5}
 });
 const integer=v=>typeof v==='number'&&Number.isSafeInteger(v);
 const troopCount=army=>Object.values(UNITS).reduce((n,u,i)=>n+Math.max(0,Number(army?.[Object.keys(UNITS)[i]])||0),0);
@@ -204,6 +204,7 @@ function publicState(world,p){
    level:b.level,defenseLevel:world.guilds.get(b.key)?.base?.defenseLevel||0,realm:b.name})),
   ranking:rank(world).slice(0,30),
   yourGuild:your?{name:your.guild.name,leader:your.guild.leader===p.uid,
+    canManage:Boolean(p.isAccount&&your.guild.base),
    base:your.guild.base||null,army:armyCopy(your.guild.army),
    escort:escortOf(your.guild,p.uid),escortsTotal:escortTotal(your.guild),
    fortressDefense:fortressDefense(your.guild),
@@ -255,6 +256,7 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
    op==='siege'?JSON.stringify([d.target]):'[]';
  const owner=guildFor(world,p);
  const {guild:g,key} = owner||{};
+ const canManage=Boolean(p.isAccount&&g?.base&&Array.isArray(g.members)&&g.members.includes(p.uid));
  const receipt=()=>opKey&&g&&Array.isArray(g.recentCityActions)?
   g.recentCityActions.find(entry=>entry?.key===opKey):null;
  const confirmSaved=(promise,id=requestId)=>{
@@ -286,6 +288,11 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
   if(ok&&replayable)confirmSaved(durable);
   // A capital mostra a mensagem no próprio diário; nenhum alert bloqueante.
   response(world,p,message,requestId===null);
+  // Refrescar os dados compartilhados também para os demais integrantes conectados.
+  if(ok&&g)for(const member of world.players.values()){
+   if(member!==p&&g.members?.includes(member.uid))
+    world.send(member.socket,{type:'kingdomState',data:publicState(world,member)});
+  }
  };
  const reject=message=>report(message,false);
  const accept=message=>report(message,true);
@@ -354,7 +361,7 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
   return true;
  }
  if(op==='construct'){
-  if(g.leader!==p.uid||!g.base){reject('Somente o líder de uma guilda com fortaleza pode construir.');return false}
+  if(!canManage){reject('Somente integrantes cadastrados da guilda podem construir em sua fortaleza.');return false}
   const {x,y}=d,type=buildingType,cost=Object.hasOwn(CITY_BUILDINGS,type)?CITY_BUILDINGS[type]:null;
   if(!cost||!integer(x)||!integer(y)||!// Chamadas legadas internas usam d.type; pacotes WebSocket reais sempre
    // chegam com d.type='kingdom' e buildingType explícito, sem contornar desbloqueios.
@@ -380,7 +387,7 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
   world.send(p.socket,world.ownStatus(p));return true;
  }
  if(op==='collect'){
-  if(!g.base||!g.city||!Array.isArray(g.city.buildings)||!g.city.buildings.length){
+  if(!canManage||!g.city||!Array.isArray(g.city.buildings)||!g.city.buildings.length){
    reject('Seu reino ainda não tem edifícios. Inicie uma obra para começar.');return false
   }
   if(!g.city.buildings.some(b=>Object.values(CITY_YIELDS[b.type]||{}).some(y=>y>0)&&isComplete(b,now))){
@@ -394,7 +401,7 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
   return true;
  }
  if(op==='buildingUpgrade'){
-  if(g.leader!==p.uid||!g.base||!g.city){reject('Somente o líder pode ampliar edifícios da sua cidade.');return false}
+  if(!canManage||!g.city){reject('Somente integrantes da guilda podem melhorar os edifícios.');return false}
   const {x,y}=d;
   if(!integer(x)||!integer(y)){reject('Edifício inválido.');return false}
   const b=cityLayout.at(g.city.buildings,x,y);
@@ -411,7 +418,7 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
   accept('Edifício aprimorado para nível '+b.level+'. A produção será mais rápida e renderá mais recursos.');return true;
  }
  if(op==='upgrade'){
-  if(g.leader!==p.uid||!g.base){response(world,p,'Somente o líder pode ampliar as muralhas de sua capital.');return false}
+  if(!canManage){reject('Somente integrantes da guilda podem evoluir a fortaleza.');return false}
   if(p.zone!==g.base.zone||Math.hypot(p.x-g.base.x,p.y-g.base.y)>180){
    response(world,p,'Visite a sua fortaleza para melhorar as defesas.');return false}
   const level=Math.max(1,Math.floor(Number(g.base.level)||1));
@@ -424,25 +431,14 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
   world.dirty=true;accept('Capital ampliada! Nível '+g.base.level+' · '+cityLayout.bounds(g.base.level).cells+' terrenos úteis · estoque '+stockCapacity(g.base.level)+' por recurso · '+buildingSlots(g.base.level)+' espaços para edifícios.');
   world.send(p.socket,world.ownStatus(p));return true;
  }
+ // Recrutamento por moedas foi abolido. Clientes em cache não podem
+ // contornar a economia de recursos ou criar tropas sem quartel.
  if(op==='recruit'){
-  if(!g.base){response(world,p,'Sua guilda precisa construir uma fortaleza antes de recrutar.');return false}
-  if(p.zone!==g.base.zone||Math.hypot(p.x-g.base.x,p.y-g.base.y)>180){
-   response(world,p,'Aproxime-se da fortaleza da sua guilda para recrutar unidades.');return false}
-  const unit=UNITS[d.unit],count=d.count;
-  if(!unit||!integer(count)||count<1||count>40){
-   response(world,p,'Escolha de 1 a 40 unidades por recrutamento.');return false
-  }
-  const troops=armyCopy(g.army),total=troopCount(troops),fee=unit.cost*count;
-  if(total+escortTotal(g)+count>MAX_TROOPS||p.save.coins<fee){
-   response(world,p,'O exército comporta até '+MAX_TROOPS+' unidades. Verifique também suas moedas.');return false
-  }
-  p.save.coins-=fee;troops[d.unit]+=count;g.army=troops;world.dirty=true;
-  response(world,p,count+' '+unit.name.toLowerCase()+' recrutados para o reino.');
-  world.send(p.socket,world.ownStatus(p));
-  return true;
+  reject('Compra de soldados com moedas desativada. Treine tropas no quartel usando os recursos da guilda.');
+  return false;
  }
  if(op==='train'){
-  if(!g.base||!g.city||!Array.isArray(g.city.buildings)){
+  if(!canManage||!g.city||!Array.isArray(g.city.buildings)){
    reject('Construa uma cidade e um quartel para treinar tropas com materiais.');return false
   }
   if(!g.city.buildings.some(b=>b.type==='barracks'&&isComplete(b,now))){
@@ -470,8 +466,8 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
  }
 
  if(op==='fortify'){
-  if(g.leader!==p.uid||!g.base||!g.city){reject('Somente o líder pode reforçar as defesas da capital.');return false}
-  const current=Math.max(0,Math.min(5,Number(g.base.defenseLevel)||0));
+  if(!canManage||!g.city){reject('Somente integrantes da guilda podem reforçar as defesas da capital.');return false}
+  const current=Math.max(0,Math.min(FORTRESS_MAX_LEVEL,Math.floor(Number(g.base.defenseLevel)||0)));
   if(current>=g.base.level){reject('As muralhas já estão no limite deste nível da fortaleza.');return false}
   const stock=stockCopy(g.city.stock),timber=(current+1)*10,stone=(current+1)*16;
   if(stock.timber<timber||stock.stone<stone){reject('Necessários '+timber+' madeiras e '+stone+' pedras para reforçar as muralhas.');return false}
@@ -544,14 +540,14 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
   return true;
  }
  if(op==='patrol'){
-  if(g.leader!==p.uid||!g.base){response(world,p,'Apenas o líder de um reino pode mobilizar patrulhas.');return false}
+  if(!canManage){reject('Somente integrantes da guilda podem mobilizar patrulhas.');return false}
   if(g.march){response(world,p,'Já existe um exército mobilizado.');return false}
   const destination=d.zone;
   if(!integer(destination)||destination<0||destination>=BUILDABLE_REGIONS){
    response(world,p,'Patrulhas só podem visitar as 12 regiões de superfície.');return false
   }
   const units=armyCopy(g.army);
-  if(troopCount(units)<1){response(world,p,'Recrute tropas antes de enviar uma patrulha.');return false}
+  if(troopCount(units)<1){response(world,p,'Treine tropas no quartel antes de enviar uma patrulha.');return false}
   const route=marchRoute(world,g.base,{zone:destination,x:768,y:512});
   if(!route){response(world,p,'Não existe rota terrestre até essa região.');return false}
   g.army=armyCopy({});
@@ -561,7 +557,7 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
   return true;
  }
  if(op==='attack'){
-  if(g.leader!==p.uid){response(world,p,'Somente o líder pode declarar uma campanha militar.');return false}
+  if(!canManage){reject('Somente integrantes da guilda podem declarar campanhas militares.');return false}
   if(!g.base||p.zone!==g.base.zone||Math.hypot(p.x-g.base.x,p.y-g.base.y)>180){
    response(world,p,'Declare campanhas perto da sua capital.');return false}
   if(g.march){response(world,p,'Seu exército já está em marcha.');return false}
@@ -569,7 +565,7 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
   const defender=forts(world).find(b=>b.key===d.target);
   if(!defender||defender.key===key){response(world,p,'Selecione a fortaleza de uma guilda rival.');return false}
   const attacking=armyCopy(g.army);
-  if(troopCount(attacking)<5){response(world,p,'Recrute pelo menos 5 soldados antes da campanha.');return false}
+  if(troopCount(attacking)<5){response(world,p,'Treine pelo menos 5 soldados no quartel antes da campanha.');return false}
   const route=marchRoute(world,g.base,defender);
   if(!route){response(world,p,'Não existe uma passagem terrestre válida até esse reino.');return false}
   // Reservar tropas na partida impede lançar vários ataques com o mesmo exército.
