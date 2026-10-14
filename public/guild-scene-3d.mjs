@@ -297,25 +297,44 @@ export function createGuildScene({mount,layout,onCell,onHover}){
   for(const b of buildings)drawBuilding(b,structures);
   freshDecor();rebuildWalkers();
  }
- function showPendingBuilding(building){
-  disposeGroup(provisionalStructures);
-  if(!building||!layout.footprints[building.type]){
-   delete renderer.domElement.dataset.pendingBuilding;
-   return;
-  }
+ // Cada construção possui sua própria instância. Não eliminar as anteriores
+ // quando o jogador posiciona outro prédio antes do ACK do servidor.
+ const pendingVisuals=new Map();
+ function setPendingDataset(){
+  const buildings=[...pendingVisuals.values()].map(entry=>entry.building);
+  renderer.domElement.dataset.pendingCount=String(buildings.length);
+  if(buildings.length){
+   const latest=buildings[buildings.length-1];
+   renderer.domElement.dataset.pendingBuilding=latest.type+':'+latest.x+':'+latest.y;
+  }else delete renderer.domElement.dataset.pendingBuilding;
+  showHover(hover);
+ }
+ function showPendingBuilding(building,id='single'){
+  if(!building||!layout.footprints[building.type])return;
+  clearPendingBuilding(id,false);
+  const group=new THREE.Group();
+  provisionalStructures.add(group);
   const [w,h]=layout.size(building),p=pos(building.x,building.y,w,h);
-  // Edifício completo surge no instante do clique; o servidor permanece autoritativo.
-  const foundation=box(provisionalStructures,w*CELL-.12,.13,h*CELL-.12,'#d9b66a',p.x,.10,p.z,false);
+  const foundation=box(group,w*CELL-.12,.13,h*CELL-.12,'#d9b66a',p.x,.10,p.z,false);
   foundation.receiveShadow=false;
-  drawBuilding(building,provisionalStructures);
-  renderer.domElement.dataset.pendingBuilding=building.type+':'+building.x+':'+building.y;
-  // Sem aguardar próximo requestAnimationFrame: pinta durante o próprio clique.
+  drawBuilding(building,group);
+  pendingVisuals.set(id,{group,building});
+  setPendingDataset();
+  // Mostra no próprio clique, sem esperar renderização ou resposta pela rede.
   renderer.render(scene,camera);
  }
- function clearPendingBuilding(){
-  disposeGroup(provisionalStructures);
-  delete renderer.domElement.dataset.pendingBuilding;
+ function clearPendingBuilding(id,refresh=true){
+  const entries=id===undefined?[...pendingVisuals.keys()]:[id];
+  for(const key of entries){
+   const entry=pendingVisuals.get(key);
+   if(!entry)continue;
+   pendingVisuals.delete(key);
+   disposeGroup(entry.group);
+   provisionalStructures.remove(entry.group);
+  }
+  if(refresh)setPendingDataset();
  }
+
  const people=[];
  function figure(parent,color,x,z,isSoldier){
   const g=new THREE.Group();g.position.set(x,0,z);parent.add(g);
@@ -356,7 +375,7 @@ export function createGuildScene({mount,layout,onCell,onHover}){
  function showHover(cell){
   hover=cell;
   if(!cell||!selection||!layout.footprints[selection]){ghost.visible=false;highlight.visible=false;return}
-  const [w,h]=layout.footprints[selection],valid=layout.canPlace(buildings,selection,cell.x,cell.y);
+  const [w,h]=layout.footprints[selection],valid=layout.canPlace([...buildings,...[...pendingVisuals.values()].map(p=>p.building)],selection,cell.x,cell.y);
   const p=pos(cell.x,cell.y,w,h);
   const g=geom(w*CELL,.11,h*CELL);
   ghost.geometry=g;highlight.geometry.dispose();
