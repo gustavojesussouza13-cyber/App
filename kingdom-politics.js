@@ -195,22 +195,56 @@ function forts(world){
   .map(([key,g])=>({key,name:g.name,leader:g.leader,zone:g.base.zone,x:g.base.x,y:g.base.y,
    level:Math.max(1,Math.floor(Number(g.base.level)||1)),army:armyCopy(g.army),influence:g.influence||{}}));
 }
+// Uma única guilda com fortaleza representa a autoridade do continente
+// sem precisar construir capitais artificiais em sete regiões diferentes.
+// Quando houver rivais, somente território efetivamente disputado conta.
+function eligibleKingdoms(world){
+ return [...world.guilds.entries()].filter(([key,g])=>
+  g?.base&&Number.isInteger(g.base.zone)&&g.base.zone>=0&&g.base.zone<BUILDABLE_REGIONS&&
+  Array.isArray(g.members)&&g.members.length>0&&g.leader&&g.members.includes(g.leader));
+}
 function politicalMap(world){
- const bases=forts(world);
+ const eligible=eligibleKingdoms(world);
+ const only=eligible.length===1?eligible[0][1]:null;
  return Array.from({length:CONTINENT_REGIONS},(_,zone)=>{
-  const contenders=zone>=BUILDABLE_REGIONS?[]:
-   [...world.guilds.entries()].filter(([key,g])=>g?.base&&
-    g.base.zone<BUILDABLE_REGIONS&&
-    (g.base.zone===zone||Number(g.influence?.[zone])>0))
-   .map(([key,g])=>({key,name:g.name,influence:Math.max(0,Number(g.influence?.[zone])||(g.base.zone===zone?1:0))}))
+  if(zone>=BUILDABLE_REGIONS)
+   return {zone,buildable:false,ruler:null,influence:0,contested:false};
+  const contenders=eligible.filter(([key,g])=>g.base.zone===zone||Number(g.influence?.[zone])>0)
+   .map(([key,g])=>({key,name:g.name,
+    influence:Math.max(0,Number(g.influence?.[zone])||(g.base.zone===zone?1:0))}))
    .filter(c=>c.influence>0)
    .sort((a,b)=>b.influence-a.influence||a.name.localeCompare(b.name,'pt-BR'));
-  return {zone,buildable:zone<BUILDABLE_REGIONS,ruler:contenders[0]?.name||null,
-   influence:contenders[0]?.influence||0,contested:contenders.length>1};
+  // Empates não são vitórias. Um reino só deve mandar numa região
+  // disputada se de fato superar seus concorrentes em influência.
+  const tied=contenders.length>1&&contenders[0].influence===contenders[1].influence;
+  const unopposed=only&&contenders.length===0;
+  return {zone,buildable:true,
+   ruler:tied?null:(contenders[0]?.name||only?.name||null),
+   influence:contenders[0]?.influence||0,
+   uncontestedClaim:Boolean(unopposed),contested:contenders.length>1};
  });
+}
+function crownCandidate(world,zones=politicalMap(world)){
+ const eligible=eligibleKingdoms(world);
+ if(eligible.length===0)return null;
+ if(eligible.length===1)return eligible[0][0];
+ const occupied=zones.filter(zone=>zone.buildable&&zone.ruler);
+ if(!occupied.length)return null;
+ const counts=new Map();
+ for(const zone of occupied){
+  const k=zone.ruler.toLocaleLowerCase('pt-BR');
+  counts.set(k,(counts.get(k)||0)+1);
+ }
+ const scores=[...counts.entries()].sort((a,b)=>b[1]-a[1]);
+ // Maioria ABSOLUTA das regiões sob governos existentes, não uma
+ // quantidade fixa de sete bases ou regiões desocupadas.
+ if(!scores.length||scores[0][1]<=occupied.length/2)return null;
+ const key=scores[0][0];
+ return eligible.some(([id])=>id===key)?key:null;
 }
 function rank(world){
  const territories=politicalMap(world);
+ const crownKey=crownCandidate(world,territories);
  return [...world.guilds.entries()].filter(([k,g])=>Array.isArray(g.members)&&g.members.length)
   .map(([key,g])=>{
    const regions=territories.filter(t=>t.ruler===g.name).length;
@@ -219,20 +253,22 @@ function rank(world){
    const diplomaticWins=Math.max(0,Math.floor(Number(g.diplomaticWins)||0));
    const members=Math.max(0,g.members.length);
    const score=regions*100+Math.floor(influence)+diplomaticWins*20+allies*8+Math.min(50,members*4);
+   const title=key===crownKey?'Coroa Continental':
+    !g.base?'Guilda sem Fortaleza':
+    regions>=4?'Alta Realeza':regions>=2?'Reino Soberano':regions>=1?'Senhorio Regional':'Reino em Disputa';
    return {key,name:g.name,territories:regions,influence:Math.floor(influence),score,
-    diplomaticWins,alliances:allies,members,
-    title:regions>=7?'Coroa Continental':regions>=4?'Alta Realeza':regions>=2?'Reino Soberano':regions>=1?'Senhorio Regional':'Guilda sem Território'};
+    diplomaticWins,alliances:allies,members,title,
+    sovereign:key===crownKey};
   }).sort((a,b)=>b.score-a.score||a.name.localeCompare(b.name,'pt-BR'));
 }
-// A chave exclusiva da última masmorra pertence apenas ao soberano
-// legitimamente eleito pelas 12 regiões de superfície. Alianças e moedas
-// não substituem sete territórios de domínio efetivo.
 function continentalSovereign(world){
- const king=rank(world).find(item=>item.territories>=7&&item.title==='Coroa Continental');
- if(!king)return null;
- const guild=world.guilds.get(king.key);
- if(!guild?.base||!guild.leader||!guild.members?.includes(guild.leader))return null;
- return {guildKey:king.key,guildName:king.name,leaderUid:guild.leader,territories:king.territories};
+ const key=crownCandidate(world);
+ if(!key)return null;
+ const g=world.guilds.get(key);
+ if(!g?.base||!g.leader||!g.members?.includes(g.leader))return null;
+ const territories=politicalMap(world).filter(zone=>zone.ruler===g.name).length;
+ return {guildKey:key,guildName:g.name,leaderUid:g.leader,territories,
+  uncontested:eligibleKingdoms(world).length===1};
 }
 // Planejamento de rota baseado nas mesmas passagens permitidas aos jogadores.
 // Nunca passa pelas masmorras e não aceita destinos fornecidos pelo navegador.
@@ -294,7 +330,8 @@ function publicState(world,p){
   zones:politicalMap(world),bases:forts(world).map(b=>({name:b.name,zone:b.zone,x:b.x,y:b.y,
    level:b.level,defenseLevel:world.guilds.get(b.key)?.base?.defenseLevel||0,realm:b.name})),
   ranking:rank(world).slice(0,30),
-   continentalCrown:(()=>{const ruler=continentalSovereign(world);return ruler?{guild:ruler.guildName,territories:ruler.territories,holder:ruler.leaderUid===p?.uid}:null})(),
+   sovereigntyRule:'Coroa automática para único reino com fortaleza; havendo rivais, maioria absoluta das regiões governadas.',
+   continentalCrown:(()=>{const ruler=continentalSovereign(world);return ruler?{guild:ruler.guildName,territories:ruler.territories,holder:ruler.leaderUid===p?.uid,uncontested:ruler.uncontested}:null})(),
   yourGuild:your?{name:your.guild.name,leader:your.guild.leader===p.uid,
     canManage:Boolean(p.isAccount&&your.guild.base),membersCount:your.guild.members?.length||1,
    base:your.guild.base||null,army:armyCopy(your.guild.army),
@@ -919,5 +956,5 @@ function resolve(world,now=Date.now()){
 module.exports={CONTINENT_REGIONS,BUILDABLE_REGIONS,BASE_COST,RELOCATE_COST,MAX_TROOPS,UNITS,
  armyCopy,troopCount,power,publicState,politicalMap,rank,marchRoute,marchPosition,collectCity,
  FORTRESS_MAX_LEVEL,BUILDING_MAX_LEVEL,CITY_PRODUCTION_MS,productionCycleMs,productionState,buildingSlots,MILITARY_SUPPLIES,CITY_BUILD_MS,stockCapacity,fortressDefense,escortOf,escortTotal,escortStrike,ESCORT_LIMIT,SIEGE_COOLDOWN,
- militaryCapacity,fullArmyCount,applyArmyUpkeep,completeSurrender,SURRENDER_THRESHOLD,SURRENDER_TRUCE_MS,UPKEEP_CYCLE_MS,continentalSovereign,
+ militaryCapacity,fullArmyCount,applyArmyUpkeep,completeSurrender,SURRENDER_THRESHOLD,SURRENDER_TRUCE_MS,UPKEEP_CYCLE_MS,continentalSovereign,eligibleKingdoms,crownCandidate,
  isComplete,resolveCityConstructions,action,resolve};
