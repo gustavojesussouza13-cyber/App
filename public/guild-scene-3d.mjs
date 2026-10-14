@@ -466,25 +466,82 @@ export function createGuildScene({mount,layout,onCell,onHover}){
    if(n.userData.ownMaterial)n.material?.dispose();
   })}
  }
+ function littleShrub(parent,x,z,seed){
+  const group=new THREE.Group();group.position.set(x,0,z);parent.add(group);
+  const foliage=['#395f35','#4d7944','#6d8a48'];
+  for(let i=0;i<3;i++){
+   const mesh=new THREE.Mesh(new THREE.IcosahedronGeometry(.31+seed*.24,0),material(foliage[i]));
+   mesh.position.set((i-1)*.31,.35+(i%2)*.12,((i+1)%3-1)*.30);
+   mesh.castShadow=true;mesh.userData.ownGeometry=true;group.add(mesh);
+  }
+ }
+ function townWell(parent,x,z){
+  const well=new THREE.Group();well.position.set(x,0,z);parent.add(well);
+  cylinder(well,.75,.72,'#978875',0,.39,0,10);
+  cylinder(well,.61,.10,'#c1b5a0',0,.78,0,10);
+  cylinder(well,.42,.035,'#394f54',0,.83,0,10);
+  for(const dx of [-.64,.64])box(well,.12,2.25,.14,'#705139',dx,1.78,0);
+  gable(well,1.8,1.70,2.70,.72,'#995c3f');
+ }
+ function cart(parent,x,z,seed){
+  const g=new THREE.Group();g.position.set(x,.15,z);g.rotation.y=seed*6.2;parent.add(g);
+  box(g,1.5,.38,.93,'#9b6239',0,.62,0);
+  box(g,1.34,.2,.75,'#bb8750',0,.84,0);
+  for(const x of [-.53,.53])for(const z of [-.56,.56]){
+   cylinder(g,.24,.1,'#4c3f2e',x,.32,z,10).rotation.x=Math.PI/2;
+  }
+  box(g,.14,.13,1.16,'#644c34',0,.58,1.10);
+  for(let i=0;i<3;i++)box(g,.34,.4,.31,i%2?'#b8a075':'#90754d',
+   -.4+i*.39,1.16,-.11,false);
+ }
  function freshDecor(){
   disposeGroup(decor);
+  // Construções antigas preservam suas coordenadas e também ganham solo limpo.
+  const free=(x,y)=>!layout.isCore(x,y)&&!layout.lotAt(x,y)&&
+   !layout.at(buildings,x,y)&&!landscape.isRoad(x,y);
   for(let y=0;y<N;y++)for(let x=0;x<N;x++){
-   if(layout.isCore(x,y)||layout.lotAt(x,y)||layout.at(buildings,x,y))continue;
-   const seed=hash(x,y,3),p=pos(x,y);
-   if(seed>.91&&x>0&&y>0){
-    littleTree(decor,p.x+CELL*.15,p.z+CELL*.18,seed);
-   }else if(seed<.045){box(decor,.9,.2,.7,'#9c9f8c',p.x,.1,p.z)}
-   else if(seed>.85&&seed<.88){
-    box(decor,.7,.15,.65,'#c4b15d',p.x,.08,p.z,false);
-   }
+   if(!free(x,y))continue;
+   const seed=landscape.hash(x,y,3),p=pos(x,y);
+   if(landscape.isForest(x,y)){
+    if(seed>.49)littleTree(decor,p.x+(landscape.hash(x,y,6)-.5)*CELL*.58,
+     p.z+(landscape.hash(x,y,7)-.5)*CELL*.58,seed);
+    else if(seed>.18)littleShrub(decor,p.x,p.z,seed);
+    if(seed<.18)box(decor,.70,.27,.60,'#817e64',p.x,.16,p.z);
+   }else if(seed>.78)littleShrub(decor,p.x,p.z,seed*.75);
   }
-  for(let i=0;i<65;i++){
-   const a=i*2.399,rr=HALF+4+(i%6)*2.7;
-   littleTree(decor,Math.cos(a)*rr,Math.sin(a)*rr,hash(i,47),0);
+  // Bosques densos circundam a cidade, fora da malha 26×26 de construções.
+  // A mata externa cria profundidade sem jamais cobrir um lote.
+  for(let ring=0;ring<3;ring++)for(let i=0;i<88;i++){
+   const edge=i%4,along=(Math.floor(i/4)+landscape.hash(i,ring,4)*.7)/22*2*HALF-HALF;
+   const outward=HALF+2+ring*3.35+landscape.hash(i,ring,6)*2.3;
+   const x=edge===0?-outward:edge===1?outward:along;
+   const z=edge===2?-outward:edge===3?outward:along;
+   const value=landscape.hash(i,ring,13);
+   if(value>.13)littleTree(decor,x,z,value);
+   else littleShrub(decor,x,z,value+.45);
   }
-  for(let i=0;i<14;i++){
-   const p=pos(7+i%7,9+Math.floor(i/7)*6);
-   if(!layout.at(buildings,7+i%7,9+Math.floor(i/7)*6))lamp(decor,p.x,p.z);
+  // Mobiliário urbano em pontos da praça e caminhos, sem ocupar parcelas.
+  const square=[...landscape.plaza].map(k=>k.split(':').map(Number))
+   .filter(([x,y])=>!layout.at(buildings,x,y));
+  const wellSpot=square.find(([x,y])=>x===layout.CORE.x-1&&y===layout.CORE.y+2);
+  if(wellSpot){
+   const p=pos(...wellSpot);townWell(decor,p.x,p.z);
+  }
+  for(let i=0;i<square.length;i++){
+   if(i%5!==1)continue;
+   const [x,y]=square[i];
+   if(wellSpot&&x===wellSpot[0]&&y===wellSpot[1])continue;
+   const p=pos(x,y);lamp(decor,p.x+CELL*.34,p.z+CELL*.32);
+  }
+  let placed=0;
+  for(const k of landscape.road){
+   if(placed>=9)break;
+   const [x,y]=k.split(':').map(Number),seed=landscape.hash(x,y,29);
+   if(seed<.93||landscape.plaza.has(k)||layout.at(buildings,x,y))continue;
+   const p=pos(x,y);
+   if(seed>.985)cart(decor,p.x,p.z,seed);
+   else lamp(decor,p.x+CELL*.32,p.z+CELL*.33);
+   placed++;
   }
  }
  function drawBuilding(b,parent){
@@ -557,19 +614,36 @@ export function createGuildScene({mount,layout,onCell,onHover}){
   for(const lot of layout.slots){
    if(layout.lotStatus(lot,all,buildLevel)==='occupied')continue;
    const locked=lot.unlockLevel>buildLevel;
-   const p=pos(lot.x,lot.y,lot.w,lot.h),w=lot.w*CELL-.13,d=lot.h*CELL-.13;
+   const p=pos(lot.x,lot.y,lot.w,lot.h),w=lot.w*CELL-.30,d=lot.h*CELL-.30;
    const group=new THREE.Group();group.position.copy(p);lotsGroup.add(group);
    group.userData.lot=lot;
-   box(group,w,.09,d,locked?'#606d62':'#bbb091',0,.09,0,false);
-   const tone=locked?'#626c66':lot.type==='farm'?'#95c17c':lot.type==='barracks'||lot.type==='tower'?'#b7a7a1':lot.type==='market'?'#d3ba76':'#bcd6aa';
-   for(const z of [-d*.47,d*.47])box(group,w*.94,.055,.11,tone,0,.17,z,false);
-   for(const x of [-w*.47,w*.47])box(group,.11,.055,d*.9,tone,x,.17,0,false);
+   // Clareiras terrosas e canteiros, substituindo o concreto em xadrez.
+   const soil=locked?'#6f8d5b':
+    lot.type==='farm'?'#836b43':lot.type==='barracks'||lot.type==='tower'?'#83775d':
+    lot.type==='market'?'#a08a61':'#8b7859';
+   box(group,w,.055,d,soil,0,.045,0,false);
+   const tone=locked?'#82966b':
+    lot.type==='farm'?'#bcaf72':lot.type==='barracks'||lot.type==='tower'?'#b0a08a':
+    lot.type==='market'?'#d7b77c':'#bea97e';
+   // Pequenas estacas nos vértices delimitam o espaço sem ocultar a paisagem.
+   for(const x of [-w*.48,w*.48])for(const z of [-d*.48,d*.48]){
+    box(group,.17,.43,.17,locked?'#657450':'#8b704b',x,.27,z,false);
+    box(group,.26,.09,.26,tone,x,.50,z,false);
+   }
+   for(const z of [-d*.49,d*.49])box(group,w*.94,.045,.07,tone,0,.14,z,false);
+   for(const x of [-w*.49,w*.49])box(group,.07,.045,d*.92,tone,x,.14,0,false);
    if(!locked){
-    const glyph=box(group,.67,.055,.67,tone,0,.19,0,false);
-    glyph.rotation.y=Math.PI/4;
-   }else box(group,.62,.17,.62,'#797967',0,.18,0,false);
+    // O símbolo discreto marca o terreno livre, mas não parece uma construção.
+    const sign=box(group,.56,.055,.56,tone,0,.14,0,false);
+    sign.rotation.y=Math.PI/4;
+    if(lot.type==='farm')for(let row=0;row<3;row++){
+     const z=-d*.25+row*d*.24;
+     box(group,w*.52,.040,.15,row%2?'#b18c51':'#9d7840',0,.13,z,false);
+    }
+   }
   }
-  renderer.domElement.dataset.availableLots=String(layout.availableLots(buildLevel).filter(l=>layout.lotStatus(l,all,buildLevel)==='empty').length);
+  renderer.domElement.dataset.availableLots=String(layout.availableLots(buildLevel)
+   .filter(l=>layout.lotStatus(l,all,buildLevel)==='empty').length);
  }
 
  const lockedGroup=new THREE.Group();scene.add(lockedGroup);
@@ -695,7 +769,7 @@ export function createGuildScene({mount,layout,onCell,onHover}){
   ghost.visible=true;highlight.visible=true;
  }
  const target=new THREE.Vector3(0,0,0);
- let distance=81,azimuth=Math.PI/4,elevation=.74;
+ let distance=74,azimuth=Math.PI/4,elevation=.88;
  function focusLot(lot){
   if(!lot)return;
   const p=pos(lot.x,lot.y,lot.w,lot.h);
