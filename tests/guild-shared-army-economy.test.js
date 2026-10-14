@@ -82,7 +82,7 @@ test('quartel produz exército apenas com recursos do reino, sem reduzir moedas 
 });
 test('estranhos ou falsos membros não podem gastar estoques ou editar as muralhas',t=>{
  const f=fixture(t),{outsider,guild:g,act}=f;
- g.city.stock={food:100,timber:100,stone:100,coins:0};
+ g.city={buildings:[],stock:{food:100,timber:100,stone:100,coins:0},lastCollectedAt:Date.now()};
  const before=structuredClone(g.city);
  for(const action of [
   {action:'construct',buildingType:'house',x:18,y:13},
