@@ -589,6 +589,14 @@ const start=async()=>{
     (grant.status==='granted'?' · nível '+grant.level+' · moedas '+grant.coins:''));
   }
   else console.warn('[contas] DATABASE_URL ausente: visitantes podem jogar, mas cadastro durável está indisponível');
+  // Recuperação autoritativa no boot: obras cujo prazo venceu durante a queda
+  // do Render devem ser concluídas e confirmadas em disco ANTES de servir jogadores.
+  const recovered=require('./kingdom-politics').resolveCityConstructions(world,Date.now());
+  if(recovered.length){
+   const durable=await world.persist();
+   if(durable!==true)throw new Error('Obras recuperadas, mas a persistência não foi confirmada pelo banco');
+   console.info('[reinos] '+recovered.length+' obra(s) concluída(s) após reinicialização');
+  }
   httpServer.listen(PORT,HOST,()=>console.log(`Os Peregrinos online em http://localhost:${PORT}`));
  }catch(err){console.error('[contas] Não foi possível iniciar com segurança o banco:',err.message);process.exitCode=1;await accountStore?.pool.end().catch(()=>{});}
 };
