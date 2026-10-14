@@ -43,8 +43,10 @@ window.PeregrinosCity=Object.freeze({create({send}){
   if(myCity()){
    const stock=state?.yourGuild?.stock||{};
    const overview=document.createElement('p');
-   overview.textContent='ESTOQUE DO REINO · Alimentos '+(stock.food||0)+' · Madeira '+(stock.timber||0)+' · Pedra '+(stock.stone||0)+' · Tesouro '+(stock.coins||0);
+   overview.textContent='FORTALEZA '+(base.level||1)+'/5 · ÁREA '+layout.bounds(base.level||1).width+'×'+layout.bounds(base.level||1).width+' · LIMITE '+(state?.stockCapacity||600)+' · Alimentos '+(stock.food||0)+' · Madeira '+(stock.timber||0)+' · Pedra '+(stock.stone||0)+' · Tesouro '+(stock.coins||0);
    choices.append(overview);
+    if(canBuild()){const expand=document.createElement('button');expand.textContent='♜ Evoluir fortaleza';expand.onclick=()=>send('kingdom',{action:'upgrade'});expand.disabled=(base.level||1)>=5;choices.append(expand);
+     const fortify=document.createElement('button');fortify.textContent='🛡 Reforçar muralhas';fortify.onclick=()=>send('kingdom',{action:'fortify'});choices.append(fortify)}
    const collect=document.createElement('button');collect.type='button';collect.textContent='✦ Coletar produção (15 min)';
    collect.onclick=()=>send('kingdom',{action:'collect'});choices.append(collect);
    if(structures().some(b=>b.type==='barracks')){
@@ -63,6 +65,8 @@ window.PeregrinosCity=Object.freeze({create({send}){
     const train=document.createElement('button');train.type='button';train.textContent='⚔ Treinar com recursos';
     train.onclick=()=>send('kingdom',{action:'train',unit:soldier.value,count:Number(count.value)});
     group.append(soldier,count,train);choices.append(group);
+     const escort=document.createElement('button');escort.textContent='➤ Escolta imediata';escort.onclick=()=>send('kingdom',{action:'escort',unit:soldier.value,count:Number(count.value)});choices.append(escort);
+     const recall=document.createElement('button');recall.textContent='↩ Recolher escolta';recall.onclick=()=>send('kingdom',{action:'recall'});choices.append(recall);
    }
    const instruction=document.createElement('p');instruction.textContent='Cada edifício produz recursos. Clique em um prédio construído para evoluí-lo com alimentos, madeira e pedra (até nível 5).';choices.append(instruction);
    for(const [id,t] of Object.entries(types)){const b=document.createElement('button');b.disabled=!canBuild();b.type='button';b.style.display='block';b.style.width='100%';b.style.marginBottom='6px';b.textContent=t.label+' ('+layout.footprints[id].join('×')+') · '+t.cost+' moedas';b.setAttribute('aria-pressed',String(selected===id));b.onclick=()=>{selected=id;feedback.textContent='Clique em um terreno disponível para construir '+t.label.toLowerCase()+'.';refresh()};choices.append(b)}
@@ -76,7 +80,7 @@ window.PeregrinosCity=Object.freeze({create({send}){
   const existing=layout.at(structures(),x,y);
   if(existing){feedback.textContent='Solicitando melhoria do edifício…';send('kingdom',{action:'buildingUpgrade',x,y});return}
   if(!selected){feedback.textContent='Selecione um edifício na lista para construir.';return}
-  if(!layout.canPlace(structures(),selected,x,y)){feedback.textContent='É necessário um lote livre de '+layout.footprints[selected].join(' × ')+' terrenos, sem ruas nem construções.';return}
+  if(!layout.canPlace(structures(),selected,x,y,base?.level||1)){feedback.textContent='É necessário um lote livre de '+layout.footprints[selected].join(' × ')+' terrenos, sem ruas nem construções.';return}
   feedback.textContent='Enviando construção para validação do servidor…';
   send('kingdom',{action:'construct',buildingType:selected,x,y,target:base.name});
  });
@@ -105,19 +109,13 @@ window.PeregrinosCity=Object.freeze({create({send}){
    const px=Math.round(pos.x-cameraX),py=Math.round(pos.y-cameraY);
    if(px<-60||py<-60||px>1020||py>636)continue;
    const walkers=Math.min(7,Math.max(3,Math.ceil((m.units||5)/25)));
-   mainCtx.save();
-   mainCtx.imageSmoothingEnabled=false;
-   mainCtx.fillStyle='#282b24';mainCtx.fillRect(px-26,py-1,55,7);
-   for(let i=0;i<walkers;i++){
-    const column=i%4,row=Math.floor(i/4),sx=px-18+column*12,sy=py-11-row*13;
-    const stride=Math.sin(now/130+i*2)*2;
-    mainCtx.fillStyle='#3b3430';mainCtx.fillRect(sx-3,sy+9,3,6+stride);mainCtx.fillRect(sx+2,sy+9,3,6-stride);
-    mainCtx.fillStyle='#bba073';mainCtx.fillRect(sx-5,sy,10,11);
-    mainCtx.fillStyle='#a9c5bb';mainCtx.fillRect(sx-5,sy-5,10,6);
-    mainCtx.fillStyle='#f0db99';mainCtx.fillRect(sx+4,sy+2,2,8);
+   if(window.PeregrinosArmyPixel16){
+    window.PeregrinosArmyPixel16.drawFormation(mainCtx,{militia:m.units},px,py,now,{label:false});
+   }else{
+    mainCtx.fillStyle='#c1a679';mainCtx.fillRect(px-10,py-19,20,14);
    }
-   mainCtx.font='bold 11px monospace';mainCtx.textAlign='center';mainCtx.fillStyle='#ffe4a6';
-   mainCtx.fillText('⚔ '+m.name+' · '+(m.units||0),px,py-38);
+   mainCtx.save();mainCtx.font='bold 11px monospace';mainCtx.textAlign='center';mainCtx.fillStyle='#ffe4a6';
+   mainCtx.fillText('⚔ '+m.name+' · '+(m.units||0),px,py-40);
    mainCtx.restore();
   }
  }
