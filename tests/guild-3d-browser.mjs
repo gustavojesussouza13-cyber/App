@@ -252,6 +252,14 @@ try{
  assert.equal(storedAfter,storedBefore,'prazo da obra persiste após sair e entrar');
  assert.match(await page.locator('.guild3d-site-label[data-site-key="house:8:15"] .guild3d-site-timer').innerText(),/^00:\d\d$/);
  await page.locator('#guild3dClose').click();
+ // O botão de voltar seguido de reentrada imediata não pode apagar
+ // edifícios nem destruir a nova cena por um evento close antigo.
+ await page.locator('#openDemo').click();
+ await page.waitForSelector('.guild3d-canvas',{timeout:13000});
+ await page.waitForFunction(()=>document.querySelector('.guild3d-site-label[data-site-key="house:8:15"]')!==null,null,{timeout:6000});
+ assert.ok(await page.locator('.guild3d-canvas').isVisible());
+ assert.equal(await page.evaluate(()=>buildings.find(b=>b.x===8&&b.y===15)?.endsAt),storedBefore);
+ await page.locator('#guild3dClose').click();
  assert.deepEqual(pageErrors,[],'sem erros JS na cena 3D');
  console.log('BROWSER_3D_OK WebGL, cena visível, câmera, UI, terreno 26x26 e teardown.');
  await page.close();
