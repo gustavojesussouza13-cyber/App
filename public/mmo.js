@@ -104,20 +104,29 @@ const rpgAttributeHelp={
 function renderRpgPanel(c){
  const details=$('rpgAttributeDetails');
  if(!details||!c?.rpg)return;
- const {attributes={},allocations={},availablePoints=0,stats={}}=c.rpg;
+ const {attributes={},allocations={},availablePoints=0,stats={},impacts={}}=c.rpg;
  const points=$('rpgAvailablePoints');
  points.textContent=availablePoints+' ponto'+(availablePoints===1?' livre':'s livres');
+ const intro=document.querySelector('.rpg-attribute-intro');
+ if(intro)intro.textContent='Você recebe 2 pontos por nível após o primeiro. Evolução natural e especialização se somam no combate. '+
+  (accountMode?'Seus investimentos são salvos na conta.':'No modo Visitante, seus investimentos valem durante esta jornada; para salvá-los entre visitas, crie uma conta.');
  const rows=$('rpgAttributeRows');rows.replaceChildren();
  for(const [key,name]of Object.entries(rpgAttributeNames)){
   const entry=document.createElement('div');entry.className='rpg-stat-entry';
   const label=document.createElement('div');label.className='rpg-stat-label';label.textContent=name;
   const info=document.createElement('span');info.textContent=rpgAttributeHelp[key];label.append(info);
+  if(impacts[key]){
+   const preview=document.createElement('span');preview.className='rpg-investment-preview';
+   preview.textContent='Se investir 1 ponto: '+impacts[key];label.append(preview);
+  }
   const value=document.createElement('span');value.className='rpg-stat-value';
   value.textContent=String(attributes[key]||0)+(allocations[key]?' (+'+allocations[key]+')':'');
   const plus=document.createElement('button');plus.type='button';plus.textContent='+';
   plus.setAttribute('aria-label','Aumentar '+name);
-  plus.title='Gastar um ponto de atributo em '+name+'.';
-  plus.disabled=availablePoints<1||allocations[key]>=50||!accountMode;
+  plus.title='Investir 1 ponto em '+name+(impacts[key]?' — '+impacts[key]:'');
+  // Tanto visitantes quanto contas registradas têm direito aos atributos.
+  // Apenas o servidor decide se há pontos suficientes e valida cada compra.
+  plus.disabled=availablePoints<1||allocations[key]>=70;
   plus.onclick=()=>send('allocateStat',{attribute:key});
   entry.append(label,value,plus);rows.append(entry);
  }
