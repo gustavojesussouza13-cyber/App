@@ -729,7 +729,7 @@ function drawTab(force=false){const parent=$('tabContent');
   if(session.guildInvite)g.append(button('Aceitar guilda '+session.guildInvite.name,'guild',{action:'accept',name:session.guildInvite.name}));
   const kingdom=group(parent);kingdom.classList.add('kingdom-panel');
   appendText(kingdom,'h3','✦ Reinos e política continental');
-  appendText(kingdom,'small','Auren possui 12 regiões de superfície para a política e 4 masmorras sem fortalezas. Cada guilda possui apenas uma capital. Um único reino estabelecido já governa o continente; com rivais, o poder depende da maioria das regiões efetivamente controladas.');
+  appendText(kingdom,'small','Auren possui 12 regiões de superfície para a política e 4 masmorras sem fortalezas. Cada guilda possui apenas uma capital. Uma única guilda já recebe a Coroa Continental, mesmo sem várias bases; havendo rivais, o poder depende da maioria das regiões efetivamente controladas.');
   if(!kingdomState){kingdom.append(button('Consultar reinos','kingdom',{action:'inspect'}))}
   else{
    const k=kingdomState.yourGuild;
@@ -738,7 +738,7 @@ function drawTab(force=false){const parent=$('tabContent');
     const crownBox=group(kingdom);
     appendText(crownBox,'b','♛ Câmara da Aurora — Masmorra da Coroa Continental');
     appendText(crownBox,'small',crown?
-     'Coroa Continental: '+crown.guild+' · '+(crown.uncontested?'único reino com fortaleza, domínio incontestado de Auren.':
+     'Coroa Continental: '+crown.guild+' · '+(crown.uncontested?'única guilda existente, domínio incontestado de Auren.':
       'maioria das regiões governadas ('+crown.territories+'/12).')+
       ' A Chave da Câmara da Aurora é exclusiva do líder soberano.':
      'Coroa Continental em disputa. Com vários reinos, a chave pertence ao líder de quem obtiver maioria das regiões sob governo; não são necessárias sete bases.');
