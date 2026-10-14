@@ -90,7 +90,7 @@ test('editor e página de criação suportam visitante, conta e personalização
  const js=fs.readFileSync(path.join(__dirname,'../public/mmo.js'),'utf8');
  for(const id of ['appearanceCreator','appearanceEditDialog','appearanceEditorBody','appearanceEditSave','appearanceChangeBtn'])
   assert.ok(html.includes('id="'+id+'"'),id);
- assert.match(html,/appearance-editor\.js\?v=atelier-custom-v1/);
+ assert.match(html,/appearance-editor\.js\?v=retro-world-v1/);
  assert.match(js,/formAppearance=appearanceCreator\.read\(\)/);
  assert.match(js,/type:'hello',name:session\.name,role:session\.formClass,appearance:session\.formAppearance/);
  assert.match(js,/send\('appearance',\{appearance:appearanceEditor\.read\(\)\}\)/);
