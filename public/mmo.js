@@ -91,6 +91,7 @@ let progressToken=null,accountMode=false,accountReady=false,emailRecoveryAvailab
 let selectedRoomId='auren-publica',roomCatalog=[],roomName='Praça Pública',pendingRoom=null,pendingRoomUntil=0;
 let roomSwitchPending=false,roomSwitchTarget=null;
 let kingdomState=null,visibleKingdomBases=[];
+let guildDirectory=null,socialSection='guilds';
 const cityUI=window.PeregrinosCity.create({send:(type,data)=>send(type,data)});
 // Cada abertura do site cria uma nova jornada Visitante. O token existe
 // somente nesta execução da página; queda da conexão reutiliza o token.
@@ -237,6 +238,9 @@ function dispatch(msg){
   cityUI.onDurableResult?.(msg);
   return;
  }
+ if(msg.type==='guildDirectory'){
+  guildDirectory=msg.data||null;if(tab==='social')drawTab();return;
+ }
  if(msg.type==='kingdomState'){
   kingdomState=msg.data||null;
   visibleKingdomBases=(kingdomState?.bases||[]).filter(b=>b.zone===session.zone);
@@ -254,7 +258,7 @@ function dispatch(msg){
   session.monsters.clear();monsterMotion.clear();playerMotion.clear();combatFx.clear();if(typeof clearMonsterSheet==='function')clearMonsterSheet();
   session.players.clear();spriteActions.monsters.clear();spriteActions.players.clear();
   spriteActions.fallen.length=0;
-  visibleKingdomBases=[];kingdomState=null;
+  visibleKingdomBases=[];kingdomState=null;guildDirectory=null;
   session.partyInvite=null;session.tradeOffer=null;
  }
  // Os portais são autoritativos em TODOS os welcomes (login ou troca de
@@ -742,7 +746,9 @@ cvs.addEventListener('click',e=>{if(!session.connected)return;const rect=cvs.get
  const npc=session.npcs.filter(n=>n.zone===session.zone).find(n=>Math.hypot(n.x-wx,n.y-wy)<npcRadius);
  if(npc){tryTalk(npc);return}
  if(candidate){session.target=candidate.id;send('inspectMonster',{monster:candidate.id});alert('Alvo: '+candidate.name+' · Nível '+candidate.level+' · '+candidate.rank+(touchDevice?' · Toque em Atacar':' · J para atacar'))}});
-function selectTab(next){tab=next;document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));drawTab(true)}
+function selectTab(next){tab=next;document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
+ if(next==='social'&&session.connected)send('guild',{action:'list'});
+ drawTab(true)}
 document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>selectTab(b.dataset.tab));
 $('tabContent').addEventListener('focusout',()=>{
  setTimeout(()=>{
@@ -827,20 +833,29 @@ function drawTab(force=false){const parent=$('tabContent');
     talk.disabled=!near;talk.onclick=()=>send('talk',{npc:merchant.id});block.append(talk);
    }
  }else if(tab==='social'){
-  appendText(parent,'h3','Amigos e guildas');appendText(parent,'small','Grupo: até cinco peregrinos · Fundar guilda custa 250 moedas · Você pode criar outra depois de sair da anterior · Comércio entre jogadores próximos').className='muted';
-  const p=group(parent);appendText(p,'b','Equipe');const n=field(p,'inviteName','Nome do convidado',18);const actions=document.createElement('div');actions.className='entry-actions';
-  const create=button('Criar equipe','party',{action:'create'});const inv=document.createElement('button');inv.textContent='Convidar';inv.onclick=()=>send('party',{action:'invite',target:n.value.trim()});actions.append(create,inv,button('Sair','party',{action:'leave'}));p.append(actions);
-  if(session.partyInvite)p.append(button('Aceitar equipe de '+session.partyInvite.by,'party',{action:'accept',party:session.partyInvite.party}));
-  const g=group(parent);appendText(g,'b','Guildas');appendText(g,'small',s.guild?'Guilda atual: '+s.guild:'Nenhuma guilda');const gn=field(g,'guildName','Nome da guilda / convite',24);const target=field(g,'guildTarget','Convidar jogador',18);const gactions=document.createElement('div');gactions.className='entry-actions';
-  const createGuild=document.createElement('button');
-   createGuild.textContent='Fundar guilda (250 moedas)';
-   createGuild.disabled=Boolean(s.guild)||kingdomState?.persistentAccount===false;
-   createGuild.title=s.guild?'Saia da guilda atual antes de fundar outra.':
-    'Uma conta cadastrada pode fundar outra guilda depois de sair da anterior.';
-   createGuild.onclick=()=>send('guild',{action:'create',name:gn.value.trim()});
-  const inviteGuild=document.createElement('button');inviteGuild.textContent='Convidar';inviteGuild.onclick=()=>send('guild',{action:'invite',target:target.value.trim()});gactions.append(createGuild,inviteGuild,button('Sair','guild',{action:'leave'}));g.append(gactions);
-   appendText(g,'small','Você pode fundar outra guilda depois de sair da atual, pagando novamente 250 moedas. Não pode participar de duas guildas ao mesmo tempo.');
-  if(session.guildInvite)g.append(button('Aceitar guilda '+session.guildInvite.name,'guild',{action:'accept',name:session.guildInvite.name}));
+  appendText(parent,'h3','Vida social de Auren');
+  const nav=document.createElement('div');nav.className='social-section-nav';
+  for(const [id,label] of [['guilds','⚑ Guildas'],['party','⚔ Equipe'],['politics','♛ Política'],['safety','☷ Proteção']]){
+   const control=document.createElement('button');control.type='button';
+   control.textContent=label;control.classList.toggle('active',socialSection===id);
+   control.setAttribute('aria-pressed',String(socialSection===id));
+   control.onclick=()=>{socialSection=id;drawTab(true)};nav.append(control);
+  }
+  parent.append(nav);
+  if(socialSection==='party'){
+   const p=group(parent);appendText(p,'b','Equipe de aventureiros');
+   const n=field(p,'inviteName','Nome do convidado',18),actions=document.createElement('div');
+   actions.className='entry-actions';
+   const create=button('Criar equipe','party',{action:'create'});
+   const inv=document.createElement('button');inv.type='button';inv.textContent='Convidar';
+   inv.onclick=()=>send('party',{action:'invite',target:n.value.trim()});
+   actions.append(create,inv,button('Sair','party',{action:'leave'}));p.append(actions);
+   if(session.partyInvite)p.append(button('Aceitar equipe de '+session.partyInvite.by,'party',{action:'accept',party:session.partyInvite.party}));
+  }
+  if(socialSection==='guilds')window.PeregrinosGuildRecruitment.render(parent,{
+   directory:guildDirectory,character:s,invite:session.guildInvite,send
+  });
+  if(socialSection==='politics'){
   const kingdom=group(parent);kingdom.classList.add('kingdom-panel');
   appendText(kingdom,'h3','✦ Reinos e política continental');
   appendText(kingdom,'small','Auren possui 12 regiões de superfície para a política e 4 masmorras sem fortalezas. Cada guilda possui apenas uma capital. Uma única guilda já recebe a Coroa Continental, mesmo sem várias bases; havendo rivais, o poder depende da maioria das regiões efetivamente controladas.');
@@ -990,6 +1005,8 @@ appendText(kingdom,'small','Construção: '+(kingdomState.buildBounds?.width||14
     appendText(ranking,'small',(i+1)+'º '+entry.name+' · '+entry.title+' · '+entry.territories+' regiões');
    kingdom.append(button('Atualizar o conselho','kingdom',{action:'inspect'}));
   }
+  }
+  if(socialSection==='safety'){
   const silence=group(parent);appendText(silence,'b','Proteção do chat');
   appendText(silence,'small','Silencie mensagens de outros jogadores. O bloqueio acompanha seu personagem.');
   const muted=field(silence,'mutedName','Nome para silenciar ou liberar',18);
@@ -1008,6 +1025,7 @@ appendText(kingdom,'small','Construção: '+(kingdomState.buildBounds?.width||14
   const count=field(t,'tradeCount','Quantidade de itens',2);count.value='1';const gold=field(t,'tradeGold','Moedas junto',5);gold.value='0';t.append(item);
   const offer=document.createElement('button');offer.textContent='Enviar oferta';offer.onclick=()=>send('trade',{action:'offer',target:to.value.trim(),item:item.value,count:Number(count.value),gold:Number(gold.value)});t.append(offer);
   if(session.tradeOffer){const o=session.tradeOffer;appendText(t,'small',`Oferta de ${o.from}: ${o.count}× ${(session.shop[o.item]||session.relics[o.item])?.name||o.item} + ${o.gold} moedas`);t.append(button('Aceitar oferta','trade',{action:'accept',target:o.from}));t.append(button('Recusar','trade',{action:'reject',target:o.from}))}
+  }
  }
 }
 // Diálogos do servidor: páginas, escolhas e progresso são validados no servidor.
