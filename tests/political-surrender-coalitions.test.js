@@ -123,6 +123,7 @@ test('pressão crítica permite rendição voluntária, tributo real e 30 minuto
  assert.equal(f.act(b.p,{action:'surrender'},now+5),false,'primeiro cerco insuficiente');
  assert.equal(f.act(a.p,{action:'siege',target:b.key},now+61000),true);
  assert.ok(b.g.siegeCrisis.pressure>=60);
+ a.g.city.stock.coins=0; // Tesouro vencedor tem espaço para receber o tributo legítimo.
  const beforeA=a.g.city.stock.coins,beforeB=b.g.city.stock.coins;
  assert.equal(f.act(b.p,{action:'surrender'},now+62000),true);
  assert.equal(b.g.siegeCrisis,undefined);
