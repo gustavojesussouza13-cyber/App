@@ -120,6 +120,10 @@ function dispatch(msg){
   cityUI.onActionResult?.(msg);
   return;
  }
+ if(msg.type==='kingdomDurable'){
+  cityUI.onDurableResult?.(msg);
+  return;
+ }
  if(msg.type==='kingdomState'){
   kingdomState=msg.data||null;
   visibleKingdomBases=(kingdomState?.bases||[]).filter(b=>b.zone===session.zone);
