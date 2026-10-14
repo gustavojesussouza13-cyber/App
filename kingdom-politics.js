@@ -501,9 +501,9 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
   const {x,y}=d,type=buildingType,cost=Object.hasOwn(CITY_BUILDINGS,type)?CITY_BUILDINGS[type]:null;
   if(!cost||!integer(x)||!integer(y)||!// Chamadas legadas internas usam d.type; pacotes WebSocket reais sempre
    // chegam com d.type='kingdom' e buildingType explícito, sem contornar desbloqueios.
-   cityLayout.canPlace(Array.isArray(g.city?.buildings)?g.city.buildings:[],type,x,y,
-    typeof d.buildingType==='string'?g.base.level:5)){
-   reject('Terreno ou edifício inválido.');return false
+   cityLayout.canPlaceInLot(Array.isArray(g.city?.buildings)?g.city.buildings:[],type,x,y,g.base.level)&&
+   (!d.slotId||d.slotId===cityLayout.lotFor(type,x,y)?.id)){
+   reject('Lote não autorizado, bloqueado ou ocupado. Selecione um terreno pré-definido disponível.');return false
   }
   const buildings=Array.isArray(g.city?.buildings)?g.city.buildings:[];
   if(buildings.length>=buildingSlots(g.base.level)){
@@ -514,7 +514,7 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
   const city=g.city||{buildings:[],stock:stockCopy({}),lastCollectedAt:now};
   const durationMs=CITY_BUILD_MS[type];
   city.buildings=[...buildings,{
-   ...cityLayout.plan(type,x,y),level:1,
+   ...cityLayout.plan(type,x,y),slotId:cityLayout.lotFor(type,x,y).id,level:1,
    status:'building',startedAt:now,endsAt:now+durationMs,durationMs
   }];
   if(!Number.isSafeInteger(city.lastCollectedAt)||city.lastCollectedAt<=0)city.lastCollectedAt=now;
