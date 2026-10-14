@@ -62,3 +62,26 @@
  .guild3d-dialog .guild3d-building{min-height:43px;font-size:10px;padding:8px}
 }
 @media(prefers-reduced-motion:reduce){.guild3d-dialog button{transition:none}}
+
+/* Obras reais, ancoradas sob o edifício 3D e atualizadas em tempo real. */
+.guild3d-viewport{position:relative}
+.guild3d-construction-layer{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:4}
+.guild3d-site-label{position:absolute;display:flex;flex-direction:column;align-items:center;gap:3px;
+ min-width:103px;max-width:150px;transform:translate(-50%,0);padding:6px 8px;
+ border:1px solid #d5b773;border-radius:8px;background:#14251fe8;color:#fff0ce;
+ box-shadow:0 4px 15px #07100c91;text-shadow:0 1px 2px #0008;
+ font:700 11px system-ui,sans-serif;white-space:nowrap}
+.guild3d-site-label[hidden]{display:none!important}
+.guild3d-site-label strong{font:700 12px Georgia,serif;color:#fbe3a1}
+.guild3d-site-timer{font:800 14px ui-monospace,Consolas,monospace;color:#fff;letter-spacing:.5px}
+.guild3d-site-rail{width:100%;height:7px;overflow:hidden;border-radius:10px;background:#172b24;border:1px solid #52684a}
+.guild3d-site-rail span{display:block;height:100%;width:0%;background:linear-gradient(90deg,#77c795,#f8d17c);transition:width .16s linear}
+.guild3d-site-label small{font:600 9px system-ui;color:#c4d6bb}
+.guild3d-build-queue{display:flex;flex-direction:column;gap:7px}
+.guild3d-queue-item{background:#20382d;border:1px solid #526c4f;border-radius:7px;padding:8px;display:grid;gap:5px}
+.guild3d-queue-head{display:flex;align-items:center;justify-content:space-between;gap:8px;font:600 11px system-ui}
+.guild3d-queue-head strong{color:#ffe3a0}
+.guild3d-queue-time{font:700 12px ui-monospace,monospace;color:#fff5cc}
+.guild3d-queue-track{height:7px;overflow:hidden;border-radius:10px;background:#10271e}
+.guild3d-queue-track span{display:block;height:100%;background:linear-gradient(90deg,#69b589,#f0c474);transition:width .2s}
+@media(max-width:850px){.guild3d-site-label{min-width:76px;padding:4px 5px;font-size:9px;gap:2px}.guild3d-site-timer{font-size:11px}.guild3d-site-label strong{font-size:10px}}
