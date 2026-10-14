@@ -92,7 +92,7 @@ test('servidor valida gastos de pontos, mantém progressão salva e atualiza PV/
 });
 test('visitantes não gastam pontos permanentes nem recebem poder por dados do cliente',t=>{
  const f=fixture(t);
- const client={socket:{},worldPlayer:null};f.world.join(client,{name:'VisitanteAtributos'});
+ const client={socket:{},worldPlayer:null};f.world.join(client,{name:'VisitAtributos'});
  const p=client.worldPlayer;p.save.level=100;
  assert.equal(f.world.allocateStat(p,'forca'),false);
  assert.equal(rpg.calculateAttributes(p.save).allocations.forca,0);
