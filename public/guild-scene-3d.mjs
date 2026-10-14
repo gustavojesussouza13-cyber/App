@@ -2,6 +2,7 @@
 /* Os Peregrinos — cena 3D original e isolada das fortalezas.
    Renderização WebGL/Three.js em origem própria, terreno totalmente edificável. */
 import * as THREE from '/vendor/three.module.js';
+import {architectureAt} from '/guild-architecture.mjs';
 
 export function createGuildScene({mount,layout,onCell,onHover}){
  const N=layout.N,CELL=2.85,HALF=N*CELL/2;
@@ -84,7 +85,7 @@ export function createGuildScene({mount,layout,onCell,onHover}){
  }
  function timberHouse(g,b){
   const [bw,bh]=layout.size(b),w=Math.max(2,bw*CELL-.52),d=Math.max(2,bh*CELL-.52);
-  const lv=Math.max(1,Math.min(5,b.level||1)),seed=hash(b.x,b.y);
+  const lv=architectureAt(b.level).tier,seed=hash(b.x,b.y);
   const height=2.6+Math.min(1.8,lv*.28)+(seed>.66?.6:0);
   const walls=seed>.62?'#ddd0af':seed>.3?'#ddc6a0':'#bfb5a0';
   box(g,w,height,d,walls,0,height/2,0);
@@ -153,8 +154,8 @@ export function createGuildScene({mount,layout,onCell,onHover}){
   square.receiveShadow=true;
  }
  function tower(g,b){
-  const lv=Math.max(1,Math.min(5,b.level||1)),r=Math.min(...layout.size(b))*CELL*.37;
-  const h=5+lv*.7;
+  const age=architectureAt(b.level),lv=age.tier,r=Math.min(...layout.size(b))*CELL*.37;
+  const h=5+lv*.7+age.growth*1.1;
   cylinder(g,r,h,'#a7aa9d',0,h/2,0,12);
   cylinder(g,r+0.14,.24,'#c2c4b2',0,h+.09,0,12);
   for(let i=0;i<12;i++){
@@ -185,37 +186,206 @@ export function createGuildScene({mount,layout,onCell,onHover}){
   }
   box(g,1.1,.55,.9,'#795938',0,.3,0);
  }
- function castle(g){
+
+ // Ornamentos de evolução: cada ramo possui silhueta própria.
+ // Adicionais não alteram footprint, colisão nem posição salva do lote.
+ function evolveBuilding(g,b){
+  const age=architectureAt(b.level),tier=age.stage;
+  const [fw,fh]=layout.size(b),w=fw*CELL-.5,d=fh*CELL-.5;
+  const c=age.palette,front=d/2+.06;
+  if(tier===0)return;
+  // Pedra lavrada na fundação distingue a primeira ampliação.
+  for(const x of [-w*.36,w*.36])box(g,.36,.27,.36,c.trim,x,.24,front);
+  if(b.type==='house'){
+   box(g,w*.68,.16,.22,c.trim,0,2.25,front+.04);
+   if(tier>=2){
+    for(const x of [-w*.29,w*.29]){
+     box(g,.7,.80,.22,'#554739',x,3.20,front+.07);
+     box(g,.49,.57,.24,'#b4d4d5',x,3.20,front+.17);
+    }
+   }
+   if(tier>=3){
+    cylinder(g,.33,1.65,c.stone,w*.27,4.75,-d*.17,8);
+    cone(g,.51,.85,8,c.roof,w*.27,6.0,-d*.17);
+   }
+   if(tier>=4){
+    for(const x of [-w*.42,w*.42]){
+     box(g,.12,2,.12,c.metal,x,4.65,front-.15);
+     box(g,.62,.72,.09,c.banner,x+.26,5.05,front-.15);
+    }
+   }
+   if(tier>=5){box(g,.84,.36,.3,c.metal,0,5.20,front);cone(g,.40,.65,8,c.metal,0,5.74,front);}
+  }else if(b.type==='farm'){
+   const x=w*.28,z=-d*.26;
+   cylinder(g,.52,2.8,c.stone,x,1.4,z,10);
+   cone(g,.69,.9,10,c.roof,x,3.25,z);
+   if(tier>=2){
+    box(g,w*.32,.17,d*.40,c.trim,-w*.20,.22,d*.26);
+    for(let n=0;n<4;n++)box(g,.12,.92,.12,'#d8bc72',-w*.33+n*.3,.64,d*.26);
+   }
+   if(tier>=3){
+    box(g,.20,3,.20,c.metal,-w*.27,3.45,-d*.25);
+    for(let n=0;n<4;n++){
+     const blade=box(g,.16,1.3,.13,'#c3aa7d',-w*.27,4.95,-d*.25,false);
+     blade.rotation.z=n*Math.PI/2;blade.position.x+=Math.sin(n*Math.PI/2)*.60;
+     blade.position.y+=Math.cos(n*Math.PI/2)*.60;
+    }
+   }
+   if(tier>=4){box(g,w*.33,1.45,.24,c.stone,0,.8,front-.08);box(g,w*.35,.2,.34,c.roof,0,1.61,front);}
+   if(tier>=5)cone(g,.55,.8,8,c.metal,x,3.97,z);
+  }else if(b.type==='barracks'){
+   for(const x of [-w*.38,w*.38]){
+    cylinder(g,.35,2.7,c.stone,x,1.38,front,8);
+    box(g,.9,.28,.7,c.trim,x,2.8,front);
+   }
+   if(tier>=2){
+    for(const x of [-w*.43,w*.43]){
+     cylinder(g,.54,4.05,c.stone,x,2.03,-d*.34,8);
+     cone(g,.67,1.2,8,c.roof,x,4.70,-d*.34);
+    }
+   }
+   if(tier>=3){
+    for(const x of [-w*.24,w*.24]){
+     box(g,.13,2.6,.13,c.metal,x,5.06,front-.16);
+     box(g,.9,.85,.1,c.banner,x+.42,5.65,front-.16);
+    }
+   }
+   if(tier>=4){
+    box(g,w*.55,.38,.28,c.trim,0,3.42,front);
+    for(let i=-2;i<=2;i++)box(g,.4,.5,.3,c.metal,i*w*.09,3.87,front);
+   }
+   if(tier>=5){cone(g,.67,1.15,8,c.metal,0,5.3,-d*.28);box(g,.11,1.3,.11,c.metal,0,6.45,-d*.28);}
+  }else if(b.type==='tower'){
+   const h=5+age.tier*.7+age.growth*1.1;
+   for(const y of [h*.28,h*.48,h*.68])cylinder(g,Math.min(fw,fh)*CELL*.38,.17,c.trim,0,y,0,12);
+   if(tier>=2){
+    for(let a=0;a<4;a++){
+     const angle=a*Math.PI/2,r=Math.min(fw,fh)*CELL*.37;
+     box(g,.7,1.25,.20,c.metal,Math.sin(angle)*r,h*.75,Math.cos(angle)*r);
+    }
+   }
+   if(tier>=3){
+    for(const x of [-.73,.73]){
+     cylinder(g,.27,1.3,c.stone,x,h+.46,0,8);
+     cone(g,.40,.75,8,c.roof,x,h+1.51,0);
+    }
+   }
+   if(tier>=4){
+    box(g,.11,2.5,.11,c.metal,0,h+3,0);
+    box(g,.85,.77,.12,c.banner,.43,h+3.55,0);
+   }
+   if(tier>=5){cone(g,.34,.95,8,c.metal,0,h+4.5,0);}
+  }else if(b.type==='market'){
+   for(const x of [-w*.35,w*.35])for(const z of [-d*.34,d*.34]){
+    cylinder(g,.18,2.6,c.stone,x,1.35,z,8);
+    box(g,.65,.20,.65,c.trim,x,2.75,z);
+   }
+   if(tier>=2){
+    box(g,w*.80,.19,d*.60,c.roof,0,2.89,0);
+    box(g,w*.72,.11,d*.52,c.trim,0,3.06,0);
+   }
+   if(tier>=3){
+    cylinder(g,.39,1.4,c.stone,0,3.78,0,10);
+    cone(g,.58,1.3,10,c.roof,0,5.13,0);
+   }
+   if(tier>=4){
+    for(const x of [-w*.25,w*.25]){
+     box(g,.12,1.6,.12,c.metal,x,3.86,front-.2);
+     box(g,.60,.60,.09,c.banner,x+.28,4.27,front-.2);
+    }
+   }
+   if(tier>=5){cone(g,.32,.70,8,c.metal,0,6.05,0);}
+  }
+ }
+
+ function castle(g,level=1){
+  const age=architectureAt(level),tier=age.stage,c=age.palette;
   const w=layout.CORE.w*CELL,d=layout.CORE.h*CELL;
-  box(g,w,.26,d,'#b9b09b',0,.13,0);
-  box(g,w*.53,7.2,d*.52,'#adaca2',0,3.72,-.35);
-  gable(g,w*.54,d*.54,7.3,2.45,'#924b36');
+  const keepH=7.2+tier*.8+age.growth*.7;
+  const towerH=8.5+tier*.85+age.growth*.55;
+  const wallH=3.4+tier*.32;
+  g.userData.architectureTier=age.tier;
+  // Mesmo footprint central 4x4; a evolução acontece verticalmente.
+  box(g,w,.26,d,c.trim,0,.13,0);
+  box(g,w*.53,keepH,d*.52,c.stone,0,keepH/2+.12,-.35);
+  gable(g,w*.54,d*.54,keepH+.12,2.45+tier*.13,c.roof);
   for(let i=0;i<4;i++)for(const xx of [-w*.31,w*.31]){
-   box(g,.9,1.28,.16,'#515b59',xx,2+i*1.45,d*.265);
-   box(g,.68,1.02,.18,'#c5c29b',xx,2+i*1.45,d*.274);
+   const y=2+i*(keepH-1.8)/4;
+   box(g,.92,1.28,.16,'#4a535a',xx,y,d*.265);
+   box(g,.68,1.01,.19,tier>=3?'#c9e0e7':'#c5c29b',xx,y,d*.275);
   }
   const off=w*.43;
   for(const [x,z]of [[-off,-off],[-off,off],[off,-off],[off,off]]){
-   cylinder(g,1.46,8.5,'#999e96',x,4.28,z,12);
-   cylinder(g,1.73,.36,'#c3c5b8',x,8.64,z,12);
-   for(let i=0;i<10;i++){const a=i*Math.PI/5;box(g,.57,.72,.45,'#c6c5b7',x+Math.cos(a)*1.45,9.1,z+Math.sin(a)*1.45)}
-   cone(g,1.86,2.3,12,'#884939',x,10.2,z);
+   cylinder(g,1.46,towerH,c.stone,x,towerH/2+.03,z,12);
+   cylinder(g,1.72,.38,c.trim,x,towerH+.12,z,12);
+   for(let i=0;i<10;i++){
+    const a=i*Math.PI/5;
+    box(g,.57,.74,.45,c.trim,x+Math.cos(a)*1.45,towerH+.58,z+Math.sin(a)*1.45);
+   }
+   cone(g,1.84,2.3+tier*.15,12,c.roof,x,towerH+1.68+tier*.075,z);
+   if(tier>=3){
+    cylinder(g,.13,1.1,c.metal,x,towerH+3.12+tier*.18,z,8);
+    cone(g,.24,.49,8,c.metal,x,towerH+3.87+tier*.18,z);
+   }
   }
   for(const z of [-d*.43,d*.43]){
-   box(g,w*.78,3.4,.46,'#a7a69c',0,1.7,z);
-   for(let i=-4;i<=4;i++)box(g,.6,.64,.54,'#bfc0b5',i*w*.075,3.7,z);
+   box(g,w*.78,wallH,.46,c.stone,0,wallH/2,z);
+   for(let i=-4;i<=4;i++)box(g,.6,.62,.54,c.trim,i*w*.075,wallH+.30,z);
   }
   for(const x of [-w*.43,w*.43]){
-   box(g,.46,3.4,d*.80,'#aaa99e',x,1.7,0);
-   for(let i=-4;i<=4;i++)box(g,.54,.64,.6,'#c1c2b7',x,3.7,i*d*.075);
+   box(g,.46,wallH,d*.80,c.stone,x,wallH/2,0);
+   for(let i=-4;i<=4;i++)box(g,.54,.63,.60,c.trim,x,wallH+.30,i*d*.075);
   }
-  // Portão e bandeiras distinguem o núcleo político da capital.
+  // Portão principal permanece no mesmo local, sem modificar a célula do castelo.
   box(g,2.55,3.1,.6,'#593e30',0,1.55,d*.44);
   for(const x of [-2.6,2.6]){
-   box(g,.12,5,.12,'#65513f',x,8.8,-d*.16);
-   box(g,1.2,.84,.12,'#bfa05a',x+.56,10.6,-d*.16);
+   box(g,.12,4.2+tier*.2,.12,c.metal,x,keepH+.95,-d*.16);
+   box(g,1.2,.84,.12,c.banner,x+.56,keepH+2.25+tier*.1,-d*.16);
   }
-  box(g,3,.4,2.9,'#aaa08b',0,.3,d*.47);
+  box(g,3,.4,2.9,c.trim,0,.3,d*.47);
+  if(tier>=1){
+   // Torres do portão e arco defensivo.
+   for(const x of [-1.65,1.65]){
+    cylinder(g,.76,4+tier*.30,c.stone,x,2+tier*.15,d*.39,10);
+    cone(g,.88,1.10,10,c.roof,x,4.65+tier*.3,d*.39);
+   }
+   box(g,3.65,.37,.55,c.trim,0,4.0+tier*.2,d*.4);
+  }
+  if(tier>=2){
+   // Contrafortes e frisos de pedra; domínio militar estabelecido.
+   for(const x of [-w*.23,w*.23]){
+    box(g,.56,keepH*.70,.61,c.trim,x,keepH*.36,-d*.26);
+    box(g,.78,.32,.72,c.metal,x,keepH*.73,-d*.26);
+   }
+   for(let i=-3;i<=3;i++)box(g,.49,.4,.27,c.trim,i*w*.065,wallH+.82,d*.43);
+  }
+  if(tier>=3){
+   // Salões elevados com vitrais, escadaria e um corpo central mais nobre.
+   box(g,w*.25,2.05,d*.30,c.stone,0,keepH+.18,-.35);
+   gable(g,w*.28,d*.34,keepH+1.24,1.05,c.roof);
+   for(const x of [-1.10,0,1.10]){
+    box(g,.56,1.1,.18,'#455769',x,keepH*.72,d*.276);
+    box(g,.35,.85,.20,'#84c7d5',x,keepH*.72,d*.29);
+   }
+  }
+  if(tier>=4){
+   // Torre do estandarte e ornamentos da capital imperial.
+   const y=keepH+3.6;
+   cylinder(g,.58,3.05,c.trim,0,y-1.28,-.35,12);
+   cone(g,.86,1.75,12,c.roof,0,y+.97,-.35);
+   cylinder(g,.11,1.65,c.metal,0,y+2.63,-.35,8);
+   box(g,1.15,.84,.1,c.banner,.55,y+3.10,-.35);
+   for(const x of [-w*.18,w*.18])box(g,.36,.30,.43,c.metal,x,wallH+.33,d*.44);
+  }
+  if(tier>=5){
+   // Coroa lendária: pináculos de ouro e uma ponte ornamentada.
+   for(const x of [-w*.20,0,w*.20]){
+    cone(g,.32,1.10,8,c.metal,x,keepH+3.24,-d*.18);
+    box(g,.14,.78,.14,c.metal,x,keepH+4.05,-d*.18);
+   }
+   for(const x of [-1.05,1.05])box(g,.18,1.8,.18,c.metal,x,2.5,d*.47);
+   box(g,3.15,.22,1.1,c.metal,0,.52,d*.46);
+  }
  }
  function littleTree(parent,x,z,seed){
   const t=new THREE.Group();t.position.set(x,0,z);parent.add(t);
@@ -234,7 +404,7 @@ export function createGuildScene({mount,layout,onCell,onHover}){
   const globe=new THREE.Mesh(new THREE.SphereGeometry(.22,8,7),new THREE.MeshStandardMaterial({color:'#fff0b1',emissive:'#ffd18a',emissiveIntensity:.55}));
   globe.position.set(x,1.91,z);parent.add(globe);
  }
- const coreGroup=new THREE.Group();coreGroup.position.copy(pos(layout.CORE.x,layout.CORE.y,layout.CORE.w,layout.CORE.h));root.add(coreGroup);castle(coreGroup);
+ const coreGroup=new THREE.Group();coreGroup.position.copy(pos(layout.CORE.x,layout.CORE.y,layout.CORE.w,layout.CORE.h));root.add(coreGroup);castle(coreGroup,1);
  // Caminhos são decoração transparente sobre o terreno, jamais células bloqueadas.
  for(let i=-7;i<=7;i++)for(let side=0;side<4;side++){
   const shift=i*CELL*.93,v=(layout.CORE.w*.5+Math.abs(i)/8)*CELL;
@@ -278,12 +448,17 @@ export function createGuildScene({mount,layout,onCell,onHover}){
   const [w,h]=layout.size(b),g=new THREE.Group();
   g.position.copy(pos(b.x,b.y,w,h));
   g.userData.building=b;
+  const age=architectureAt(b.level);
+  g.userData.architectureTier=age.tier;
+  g.userData.completedHeightScale=1+age.growth*.28;
+  g.scale.y=g.userData.completedHeightScale;
   parent.add(g);
   if(b.type==='house')timberHouse(g,b);
   else if(b.type==='farm')farm(g,b);
   else if(b.type==='barracks')barracks(g,b);
   else if(b.type==='tower')tower(g,b);
   else if(b.type==='market')market(g,b);
+  evolveBuilding(g,b);
   return g;
  }
  const activeSites=new Map();
@@ -355,12 +530,16 @@ export function createGuildScene({mount,layout,onCell,onHover}){
   if(Number.isSafeInteger(serverNow))serverOffset=serverNow-Date.now();
   const nextBuildings=Array.isArray(next)?next.filter(b=>b&&layout.footprints[b.type]&&Number.isSafeInteger(b.x)&&Number.isSafeInteger(b.y)).slice(0,120):[];
   const nextArmyState=nextArmy||{};
-  const nextLevel=Math.max(1,Math.min(5,Math.floor(Number(level)||1)));
+  const nextLevel=architectureAt(level).level;
   const fingerprint=JSON.stringify([nextBuildings,nextArmyState,nextLevel]);
   // Evitar recriar dezenas de modelos 3D a cada snapshot do servidor.
   if(fingerprint===lastBuildingState)return;
   lastBuildingState=fingerprint;
   buildLevel=nextLevel;displayUnlockedLand(buildLevel);
+  // O castelo central precisa ser reconstruído quando o nível da fortaleza muda.
+  disposeGroup(coreGroup);coreGroup.scale.y=1+architectureAt(buildLevel).growth*.14;
+  castle(coreGroup,buildLevel);
+  renderer.domElement.dataset.architectureTier=String(architectureAt(buildLevel).tier);
   buildings=nextBuildings;
   army=nextArmyState;
   disposeGroup(structures);
@@ -506,7 +685,7 @@ export function createGuildScene({mount,layout,onCell,onHover}){
    const b=site.building;
    const pct=Number.isSafeInteger(b.startedAt)&&Number.isSafeInteger(b.endsAt)?Math.max(0,Math.min(1,(current-b.startedAt)/Math.max(1,b.endsAt-b.startedAt))):0;
    site.model.visible=pct>.12;
-   site.model.scale.y=Math.max(.04,Math.min(1,(pct-.12)/.88));
+   site.model.scale.y=(site.model.userData.completedHeightScale||1)*Math.max(.04,Math.min(1,(pct-.12)/.88));
    site.scaffold.visible=pct<.96;
    site.scaffold.position.y=Math.sin(now*.0016+site.p.x)*.04;
    if(refresh){
