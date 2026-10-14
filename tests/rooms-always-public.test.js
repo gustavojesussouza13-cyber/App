@@ -59,5 +59,5 @@ test('interface e documentação não oferecem criação ou entrada de sala priv
  assert.match(html,/Todas as salas são públicas e não possuem senha/);
  assert.match(guide,/Todas as salas são públicas e não possuem senha/);
  assert.match(home,/salas totalmente públicas, sem senha/);
- assert.match(html,/mmo\.js\?v=salas-publicas-v1/);
+ assert.match(html,/mmo\.js\?v=guild-applications-v1/);
 });
