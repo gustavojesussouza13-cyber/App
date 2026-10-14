@@ -46,7 +46,40 @@ export function createGuildScene({mount,layout,onCell,onHover}){
  const lotCells=landscape.lotCells;
  const pickPlane=new THREE.Mesh(new THREE.PlaneGeometry(N*CELL,N*CELL),new THREE.MeshBasicMaterial({visible:false,side:THREE.DoubleSide}));
  pickPlane.rotation.x=-Math.PI/2;pickPlane.position.y=0.03;scene.add(pickPlane);
- const ground=new THREE.Mesh(new THREE.PlaneGeometry(N*CELL,N*CELL),material('#75945b'));
+ // Materiais orgânicos originais gerados localmente, sem imagens de terceiros:
+ // grama pontilhada, terra arenosa e marcas sutis de uso nos caminhos.
+ function terrainTexture(kind){
+  const size=256,cv=document.createElement('canvas');cv.width=cv.height=size;
+  const c=cv.getContext('2d'),dirt=kind==='earth';
+  c.fillStyle=dirt?'#98754e':'#77945a';c.fillRect(0,0,size,size);
+  let n=dirt?41957:81923;
+  const rand=()=>{n=(Math.imul(n,1664525)+1013904223)>>>0;return n/4294967296};
+  for(let i=0;i<2800;i++){
+   const x=rand()*size,y=rand()*size,r=(dirt?.7:1)+rand()*(dirt?2:3);
+   c.globalAlpha=(dirt?.08:.10)+rand()*.20;
+   c.fillStyle=dirt?(rand()>.42?'#e1c18a':'#56412a'):
+    (rand()>.5?'#365c34':'#d0b876');
+   c.fillRect(x,y,r,r*.55);
+  }
+  c.globalAlpha=1;
+  if(dirt){
+   for(let i=0;i<32;i++){
+    const x=rand()*size,y=rand()*size;
+    c.fillStyle=rand()>.6?'#c4af85':'#6e583e';
+    c.beginPath();c.ellipse(x,y,1.5+rand()*2,.7+rand()*1.8,rand()*3,0,Math.PI*2);c.fill();
+   }
+  }
+  const tex=new THREE.CanvasTexture(cv);
+  tex.wrapS=tex.wrapT=THREE.RepeatWrapping;
+  tex.colorSpace=THREE.SRGBColorSpace;
+  tex.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());
+  tex.repeat.set(dirt?1:10,dirt?1:10);
+  return tex;
+ }
+ const grassTexture=terrainTexture('grass'),earthTexture=terrainTexture('earth');
+ const grassSurface=new THREE.MeshStandardMaterial({map:grassTexture,roughness:1});
+ const dirtSurface=new THREE.MeshStandardMaterial({map:earthTexture,roughness:1});
+ const ground=new THREE.Mesh(new THREE.PlaneGeometry(N*CELL,N*CELL),grassSurface);
  ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;root.add(ground);
  // Bordas naturais fora da área edificável; nenhuma árvore fixa bloqueia células.
  const exterior=new THREE.Mesh(new THREE.PlaneGeometry(N*CELL+170,N*CELL+170),material('#507448'));
@@ -64,9 +97,10 @@ export function createGuildScene({mount,layout,onCell,onHover}){
   if(isRoad){
    // Fundo escuro e terra batida de bordas contínuas, substituindo a malha clara.
    box(streets,CELL*1.035,.075,CELL*1.035,'#775a3d',p.x,.053,p.z,false);
-   box(streets,CELL*.975,.055,CELL*.975,
+   const earthTile=box(streets,CELL*.975,.055,CELL*.975,
     landscape.plaza.has(landscape.key(x,y))?'#ad9269':earthy[Math.floor(seed*earthy.length)],
     p.x,.103,p.z,false);
+   earthTile.material=dirtSurface;
    const east=landscape.isRoad(x+1,y),west=landscape.isRoad(x-1,y);
    const north=landscape.isRoad(x,y-1),south=landscape.isRoad(x,y+1);
    const horizontal=(east||west)&&!(north&&south),vertical=(north||south)&&!(east&&west);
@@ -124,6 +158,18 @@ export function createGuildScene({mount,layout,onCell,onHover}){
   const mat=new THREE.MeshStandardMaterial({color:c,roughness:0.86,side:THREE.DoubleSide});
   const roof=new THREE.Mesh(shape,mat);roof.castShadow=true;roof.receiveShadow=true;roof.userData.ownGeometry=true;roof.userData.ownMaterial=true;parent.add(roof);
   box(parent,0.13,0.12,d+0.24,'#ddad74',0,eaves+rise,0);
+  // Telhas de barro sobre a inclinação do telhado e testeiras esculpidas.
+  for(let row=0;row<5;row++){
+   const z=-d*.42+row*d*.21;
+   for(const side of [-1,1]){
+    const beam=box(parent,w*.43,.055,.08,row%2?'#be8762':'#d29a73',
+     side*w*.24,eaves+rise*(.52-row*.018),z,false);
+    beam.rotation.z=side*-Math.atan2(rise,w/2);
+   }
+  }
+  for(const z of [-d*.48,d*.48]){
+   box(parent,w*.97,.10,.14,'#6d4830',0,eaves-.06,z);
+  }
   for(let i=1;i<6;i++){
    const zz=-d/2+i*d/6;
    for(const side of [-1,1]){
@@ -916,6 +962,7 @@ export function createGuildScene({mount,layout,onCell,onHover}){
   for(const g of geometries.values())g.dispose();
   for(const m of mats.values())m.dispose();
   ground.geometry.dispose();exterior.geometry.dispose();pickPlane.geometry.dispose();
+  grassSurface.dispose();dirtSurface.dispose();grassTexture.dispose();earthTexture.dispose();
   pickPlane.material.dispose();
   renderer.dispose();canvas.remove();
  }
