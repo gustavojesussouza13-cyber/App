@@ -26,7 +26,7 @@ function cleanRecord(input){
  const victories=cap(Math.floor(num(input?.victories)),0,10000);
  const xp=cap(Math.floor(num(input?.xp)),0,10000000);
  const adaptations={};
- for(const key of ROLES)adaptations[key]=cap(Math.floor(num(input?.adaptations?.[key])),0,10000);
+ for(const key of ROLES)adaptations[key]=cap(Math.floor(num(input?.adaptations?.[key])),0,MAX_VICTORIES);
  return {victories,xp,adaptations};
 }
 function speciesArchetype(species,boss){
@@ -109,7 +109,7 @@ function evolveOnVictory(monster,victim){
  state.victories=Math.min(10000,state.victories+1);
  state.xp=Math.min(10000000,state.xp+40+victimLevel*5);
  state.adaptations[role]=Math.min(10000,(state.adaptations[role]||0)+1);
- const old=initialMonsterProfile(monster,state.victories?monster.progress:null);
+ const old=initialMonsterProfile(monster,monster.progress);
  const next=initialMonsterProfile(monster,state);
  monster.progress=state;
  monster.level=next.level;
