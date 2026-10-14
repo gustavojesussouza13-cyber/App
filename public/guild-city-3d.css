@@ -149,3 +149,148 @@
  .guild3d-dialog .guild3d-lot-actions .guild3d-action{font-size:10px;padding:6px}
  .guild3d-hud{bottom:4px;left:5px;right:5px;font-size:9px}
 }
+
+/* v2.1 — DOCKS DA FORTALEZA: painéis empilhados, sem sobreposição,
+   cada um com sua lingueta de recolher para fora da área do mapa. */
+.guild3d-main{transition:grid-template-columns .22s ease}
+.guild3d-main[data-sidebar-collapsed="true"]{grid-template-columns:minmax(0,1fr) 42px}
+.guild3d-left-dock{
+ position:absolute;z-index:8;top:9px;bottom:48px;left:0;
+ width:min(266px,calc(100% - 12px));display:flex;flex-direction:column;
+ align-items:flex-start;gap:9px;min-height:0;
+ overflow-x:hidden;overflow-y:auto;scrollbar-width:none;
+ pointer-events:none;overscroll-behavior:contain;
+}
+.guild3d-left-dock::-webkit-scrollbar{display:none}
+.guild3d-left-dock .guild3d-dock-panel{
+ position:relative;inset:auto;left:auto;right:auto;top:auto;bottom:auto;
+ box-sizing:border-box;width:250px;max-width:calc(100% - 6px);
+ min-height:0;margin:0;flex:0 0 auto;z-index:auto;
+ display:flex;flex-direction:column;overflow:hidden;pointer-events:auto;
+ transition:transform .22s ease,background .2s ease;
+}
+.guild3d-left-dock .guild3d-build-panel{max-height:54%}
+.guild3d-left-dock .guild3d-lot-panel{max-height:39%;padding-bottom:0}
+.guild3d-dock-panel .guild3d-panel-heading{
+ display:flex;flex-direction:row;align-items:center;justify-content:space-between;
+ gap:7px;padding:7px 8px;flex:0 0 auto;min-height:34px;
+}
+.guild3d-panel-caption{display:flex;flex-direction:column;min-width:0;gap:3px;overflow:hidden}
+.guild3d-panel-caption strong{
+ display:block;font:700 12px Georgia,serif;color:#f6db9b;
+ white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:.35px;
+}
+.guild3d-panel-caption small{
+ display:block;font-size:10px;color:#e1d4b9;
+ white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.guild3d-dialog .guild3d-panel-toggle{
+ flex:0 0 28px;display:flex;align-items:center;justify-content:center;
+ width:28px;height:28px;min-height:28px;padding:0;
+ border:1px solid #d5ae66;border-radius:4px;
+ background:linear-gradient(#77603a,#463523);color:#fff0c4;
+ box-shadow:inset 0 1px #f5dca04d;line-height:1;font-size:14px;
+}
+.guild3d-dialog .guild3d-panel-toggle:hover:not(:disabled){background:#896739;border-color:#ffe0a4}
+.guild3d-dock-panel .guild3d-panel-body{
+ min-height:0;max-height:100%;overflow-y:auto;overflow-x:hidden;
+ scrollbar-width:thin;scrollbar-color:#bda371 #1a271e;
+}
+.guild3d-build-panel .guild3d-panel-body{padding:0}
+.guild3d-build-panel .guild3d-choices{
+ margin:0;max-height:none;min-height:0;overflow:visible;
+ padding:7px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;
+}
+.guild3d-lot-panel .guild3d-panel-body{padding:7px}
+.guild3d-lot-panel .guild3d-note{padding:3px 2px 8px;line-height:1.45;overflow-wrap:anywhere}
+.guild3d-lot-panel .guild3d-lot-actions{padding:0}
+.guild3d-left-dock .guild3d-dock-panel[data-collapsed="true"]{
+ flex:0 0 34px;height:34px;max-height:34px;
+ transform:translateX(calc(-100% + 36px));
+}
+.guild3d-dock-panel[data-collapsed="true"] .guild3d-panel-heading{
+ flex:0 0 32px;min-height:32px;padding:2px;justify-content:flex-end;
+}
+.guild3d-dock-panel[data-collapsed="true"] .guild3d-panel-caption,
+.guild3d-dock-panel[data-collapsed="true"] .guild3d-panel-body{display:none}
+.guild3d-dock-panel[data-collapsed="true"] .guild3d-panel-toggle{
+ flex-basis:28px;max-width:28px;
+}
+/* O painel direito possui uma coluna exclusiva no grid: quando fecha,
+   devolve largura ao mapa, mantendo a seta visível no extremo direito. */
+.guild3d-sidebar{min-width:0;min-height:0;padding:0;overflow:hidden;gap:0}
+.guild3d-sidebar-bar{
+ flex:0 0 auto;min-height:42px;padding:7px 8px;
+ display:flex;align-items:center;justify-content:space-between;gap:6px;
+ color:#edd39b;letter-spacing:1px;font:800 10px system-ui;
+ background:linear-gradient(90deg,#56402a,#2b3328);
+ border-bottom:1px solid #9b8053;
+}
+.guild3d-sidebar-bar strong{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.guild3d-sidebar-body{
+ display:flex;flex:1;flex-direction:column;gap:9px;min-height:0;
+ padding:9px 13px 18px;overflow-x:hidden;overflow-y:auto;
+ scrollbar-width:thin;scrollbar-color:#7c7853 transparent;
+}
+.guild3d-sidebar-body>.guild3d-label{
+ padding:6px 4px;border-bottom:1px solid #806e4f;color:#eed6a0;
+}
+.guild3d-sidebar[data-collapsed="true"]{min-width:42px;border-left:2px ridge #a88e58}
+.guild3d-sidebar[data-collapsed="true"] .guild3d-sidebar-body{display:none}
+.guild3d-sidebar[data-collapsed="true"] .guild3d-sidebar-bar{
+ flex-direction:column;justify-content:flex-start;gap:11px;
+ height:100%;min-height:100%;padding:6px 3px;
+}
+.guild3d-sidebar[data-collapsed="true"] .guild3d-sidebar-bar strong{
+ writing-mode:vertical-rl;white-space:nowrap;max-height:180px;
+ font-size:10px;letter-spacing:1.3px;overflow:hidden;
+}
+.guild3d-sidebar[data-collapsed="true"] .guild3d-sidebar-bar button{order:-1}
+@media(max-width:1100px){
+ .guild3d-left-dock{width:min(222px,calc(100% - 8px))}
+ .guild3d-left-dock .guild3d-dock-panel{width:207px;max-width:calc(100% - 5px)}
+ .guild3d-panel-caption strong{font-size:11px}
+ .guild3d-left-dock .guild3d-build-panel{max-height:54%}
+ .guild3d-left-dock .guild3d-lot-panel{max-height:39%}
+}
+@media(max-width:850px){
+ .guild3d-left-dock{
+  top:6px;bottom:35px;width:min(180px,calc(100% - 8px));
+  gap:6px;
+ }
+ .guild3d-left-dock .guild3d-dock-panel{
+  width:171px;max-width:calc(100% - 4px);
+ }
+ .guild3d-left-dock .guild3d-build-panel{max-height:52%}
+ .guild3d-left-dock .guild3d-lot-panel{max-height:39%}
+ .guild3d-dock-panel .guild3d-panel-heading{min-height:30px;padding:4px;gap:3px}
+ .guild3d-panel-caption strong{font-size:9px}
+ .guild3d-panel-caption small{font-size:9px}
+ .guild3d-dialog .guild3d-panel-toggle{
+  min-height:24px;height:24px;width:24px;flex-basis:24px;font-size:12px;
+ }
+ .guild3d-left-dock .guild3d-dock-panel[data-collapsed="true"]{
+  height:30px;max-height:30px;flex-basis:30px;
+  transform:translateX(calc(-100% + 31px));
+ }
+ .guild3d-dock-panel[data-collapsed="true"] .guild3d-panel-heading{min-height:28px;flex-basis:28px}
+ .guild3d-dock-panel[data-collapsed="true"] .guild3d-panel-toggle{flex-basis:24px;max-width:24px}
+ .guild3d-build-panel .guild3d-choices{grid-template-columns:repeat(2,minmax(0,1fr));gap:4px;padding:4px}
+ .guild3d-lot-panel .guild3d-panel-body{padding:5px}
+ .guild3d-sidebar{max-height:25vh;min-height:0}
+ .guild3d-sidebar[data-collapsed="true"]{
+  min-height:36px;max-height:36px;width:100%;border-left:0;
+  border-top:2px ridge #98764b;
+ }
+ .guild3d-sidebar[data-collapsed="true"] .guild3d-sidebar-bar{
+  flex-direction:row;height:34px;min-height:34px;justify-content:flex-start;padding:3px 8px;
+ }
+ .guild3d-sidebar[data-collapsed="true"] .guild3d-sidebar-bar strong{
+  writing-mode:horizontal-tb;max-height:none;order:2;
+ }
+ .guild3d-sidebar[data-collapsed="true"] .guild3d-sidebar-bar button{order:0}
+ .guild3d-sidebar-body{padding:8px}
+}
+@media(prefers-reduced-motion:reduce){
+ .guild3d-main,.guild3d-left-dock .guild3d-dock-panel{transition:none}
+}
