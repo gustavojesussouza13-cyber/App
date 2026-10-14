@@ -760,12 +760,12 @@ function drawTab(force=false){const parent=$('tabContent');
      recall.onclick=()=>send('kingdom',{action:'recall'});
      kingdom.append(escortType,escortInput,deploy,recall);
      if(k.leader){
-      const fortress=button('♜ Expandir fortaleza '+(k.base.level||1)+'/5 · '+(k.base.level+1)*500+' moedas','kingdom',{action:'upgrade'});
-      fortress.disabled=(k.base.level||1)>=5;kingdom.append(fortress);
+      const fortress=button('♜ Expandir fortaleza '+(k.base.level||1)+'/'+(kingdomState.fortressMaxLevel||60)+' · '+(k.base.level+1)*500+' moedas','kingdom',{action:'upgrade'});
+      fortress.disabled=(k.base.level||1)>=(kingdomState.fortressMaxLevel||60);kingdom.append(fortress);
       const fortify=button('🛡 Melhorar defesa '+(k.fortressDefense?.walls||0)+'/'+(k.base.level||1)+' · força '+(k.fortressDefense?.defense||0),'kingdom',{action:'fortify'});
       fortify.disabled=(k.fortressDefense?.walls||0)>=(k.base.level||1);kingdom.append(fortify);
      }
-     appendText(kingdom,'small','Construção: '+(kingdomState.buildBounds?.width||14)+'×'+(kingdomState.buildBounds?.width||14)+' lotes · armazenamento '+(kingdomState.stockCapacity||600)+' por recurso. Casas geram moedas; fazendas, alimentos; mercados, materiais; quartéis, soldados; torres, defesa.');
+     appendText(kingdom,'small','Construção: '+(kingdomState.buildBounds?.width||14)+'×'+(kingdomState.buildBounds?.width||14)+' lotes · armazenamento '+(kingdomState.stockCapacity||600)+' por recurso. Cada prédio tem relógio próprio: melhore-o para aumentar o rendimento e acelerar o ciclo. Casas geram moedas, fazendas alimentos, mercados materiais; quartéis e torres fornecem recursos e defesas.');
      const nearby=(kingdomState.bases||[]).filter(b=>b.name!==k.name&&b.zone===session.zone&&Math.hypot(b.x-session.x,b.y-session.y)<=170);
      if(nearby.length){
       const targets=document.createElement('select');targets.setAttribute('aria-label','Fortaleza rival próxima');
