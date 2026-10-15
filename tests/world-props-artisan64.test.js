@@ -18,9 +18,9 @@ function ctx(){
   }
  };
 }
-test('sete tipos de objeto do mundo são feitos na grade nativa 64x80',()=>{
+test('dezesseis objetos do mundo são pintados na grade nativa 64x80',()=>{
  assert.equal(ART.WIDTH,64);assert.equal(ART.HEIGHT,80);
- assert.equal(ART.KINDS.length,7);
+ assert.equal(ART.KINDS.length,16);
  const signatures=new Set();
  for(const kind of ART.KINDS){
   const g=ctx();
@@ -30,8 +30,20 @@ test('sete tipos de objeto do mundo são feitos na grade nativa 64x80',()=>{
   assert.ok(colors.size>=6,'materiais sem volume '+kind);
   signatures.add(JSON.stringify(g.pixels));
  }
- assert.equal(signatures.size,7,'objetos não devem reutilizar uma silhueta genérica');
+ assert.equal(signatures.size,16,'objetos não devem reutilizar uma silhueta genérica');
  assert.equal(ART.paint(ctx(),{kind:'portal_fechado'}),false,'sem portal decorativo falso');
+});
+test('cada um dos nove biomas tem silhueta própria e textura material',()=>{
+ const zones=['meadow','forest','river','desert','mountain',
+  'ruins','swamp','coast','city'];
+ const scenes=new Set();
+ for(const biome of zones){
+  const g=ctx();
+  assert.equal(ART.paint(g,{kind:'biome-'+biome,variant:1}),true);
+  assert.ok(g.pixels.length>=50,'bioma precisa de desenhos detalhados: '+biome);
+  scenes.add(JSON.stringify(g.pixels));
+ }
+ assert.equal(scenes.size,9,'as nove regiões não podem reutilizar o mesmo bloco');
 });
 test('estandartes, castelo no mapa e portais possuem variantes; fogo anima em 4 fases',()=>{
  for(const kind of ['estandarte','reino','portal']){
