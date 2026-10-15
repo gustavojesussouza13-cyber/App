@@ -175,7 +175,7 @@ test('pipeline do site usa eventos reais, versions de cache e áudio opcional',(
  assert.match(client,/msg\.projectile==='holy-bolt'\?'magic'/);
  assert.match(sounds,/magic:\[\[/);
  for(const name of ['pixel-detail.js','art16.js','combat-effects.js','mmo.js','sounds-desktop.js']){
-  assert.ok(html.includes('/'+name+'?v='+(name==='mmo.js'?'infinite-frontiers-v1':name==='art16.js'?'infinite-frontiers-v1':'holy-v1')),name+' sem versão nova');
+  assert.ok(html.includes('/'+name+'?v='+(name==='mmo.js'?'surface16-v1':name==='art16.js'?'surface16-v1':'holy-v1')),name+' sem versão nova');
  }
  assert.ok(html.indexOf('/combat-effects.js')<html.indexOf('/mmo.js'));
  assert.ok(html.indexOf('/pixel-detail.js')<html.indexOf('/art16.js'));
