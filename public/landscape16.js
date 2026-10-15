@@ -21,6 +21,7 @@
   ruins:['#707866','#959788','#bec0a4','#dcd8bf','#48534f','#af9e86','#847569','#dbceb0']
  });
  const SHADE=typeof module==='object'&&module.exports?require('./shading16'):globalThis.OsPeregrinosShade16;
+ const HAND=typeof module==='object'&&module.exports?require('./pixel-atelier-v1'):globalThis.OsPeregrinosHandPixels;
  const TILE=32,variantCount=4;
  const hash=(a,b,c,d=0)=>{
   let n=Math.imul(a+517,73856093)^Math.imul(b+89,19349663)^Math.imul(c+11,83492791)^Math.imul(d+47,374761393);
@@ -35,6 +36,29 @@
  function polygonRows(g,rows,x,y,color){
   for(let i=0;i<rows.length;i++){
    const [left,width]=rows[i];px(g,color,x+left,y+i*3,width,3);
+  }
+ }
+ // Copas, folhas e moitas não usam retângulos como silhueta.
+ // Cada ponto é materializado na grade nativa, uma vez no prop em cache.
+ // Borda serrilhada irregular, direção de luz e pequenas lacunas internas.
+ function leafLobe(g,p,x,y,w,h,variant){
+  const rx=w/2,ry=h/2,mid=x+rx;
+  for(let row=0;row<h;row++){
+   const ny=(row+.5-ry)/Math.max(1,ry);
+   const extent=Math.sqrt(Math.max(0,1-ny*ny))*rx;
+   const jitter=Math.floor(hash(Math.round(x),row,variant,141)*3)-1;
+   const left=Math.max(0,Math.round(mid-extent+jitter));
+   const right=Math.round(mid+extent+jitter);
+   for(let col=left;col<=right;col++){
+    const dx=Math.abs(col-mid)/Math.max(1,rx),dy=Math.abs(ny);
+    const edge=dy>.87||dx>.83;
+    const grain=hash(col,row,variant,143);
+    const lit=row<h*.48&&col<mid+rx*.25;
+    const color=edge?p[4]:lit?
+     grain>.77?p[3]:grain>.36?p[2]:p[1]:
+     grain>.87?p[2]:grain>.58?p[1]:p[0];
+    px(g,color,col,y+row);
+   }
   }
  }
  function terrainTile(g,tx,ty,z,biome,kind,neighbor){
@@ -69,6 +93,7 @@
     px(g,'#b8e1dd',rx+2,ry,5,1);
     px(g,'#e8f5e7',rx+4,ry,2,1);
    }
+   HAND?.terrain(g,{x,y,biome,kind,seed:Math.floor(seed*65535)});
    SHADE?.ground(g,tx,ty,z,kind,p,hash);
    return;
   }
@@ -176,6 +201,7 @@
   }
   // Luz de cima à esquerda: grupos de pixels mais claros, occlusão à direita.
   SHADE?.ground(g,tx,ty,z,kind,p,hash);
+  HAND?.terrain(g,{x,y,biome,kind,seed:Math.floor(seed*65535)});
   if(typeof neighbor!=='function')return;
   // Transições desenhadas sobre o tile, sem adulterar a classificação
   // de terreno autoritativa; bordas em degraus de 2-4 px.
@@ -243,10 +269,7 @@
    ];
    for(let i=0;i<slices.length;i++){
     const [left,width]=slices[i],yy=baseY+6+i*4;
-    px(g,p[4],baseX+left-2,yy-2,width+4,6);
-    px(g,p[i<4?1:0],baseX+left,yy,width,4);
-    // Bordas sombreadas do lado direito da copa.
-    px(g,p[4],baseX+left+width-3,yy+2,3,3);
+    leafLobe(g,p,baseX+left-2,yy-2,width+4,6,v*73+i);
    }
    // Grandes aglomerados de folhagem com volume, sem gradientes.
    const lobes=[
@@ -255,11 +278,7 @@
    ];
    for(let i=0;i<lobes.length;i++){
     const [x,y,w,h]=lobes[i],shift=(v+i)%3*2;
-    px(g,p[4],x-2+shift,y-2,w+3,h+4);
-    px(g,p[1],x+shift,y,w,h);
-    px(g,p[2],x+2+shift,y+2,w-6,Math.max(3,Math.floor(h*.47)));
-    px(g,p[3],x+5+shift,y+4,Math.max(4,Math.floor(w*.37)),3);
-    px(g,p[0],x+shift+3,y+h-5,w-7,3);
+    leafLobe(g,p,x-2+shift,y-2,w+3,h+4,v*89+i+7);
    }
    // Raminhos em curvas discretizadas, texturas com clusters grandes.
    for(let j=0;j<18;j++){
@@ -293,6 +312,7 @@
      px(g,p[2],bx+2,by+3,5,2);
     }
    }
+   HAND?.prop(g,{kind:'tree',biome,variant:v});
    SHADE?.tree(g,p,v);
   }
   function shrub(g,biome,variant){
@@ -301,11 +321,7 @@
    const lobes=[[3,16,17,19],[13,6,25,23],[29,9,24,23],[40,18,16,15]];
    for(let i=0;i<lobes.length;i++){
     const [x,y,w,h]=lobes[i],a=(i+v)%3;
-    px(g,p[4],x+a,y-2,w+3,h+4);
-    px(g,p[0],x+2+a,y,w-1,h);
-    px(g,p[1],x+4+a,y+2,w-5,Math.floor(h*.6));
-    px(g,p[2],x+5+a,y+3,w-10,3);
-    px(g,p[4],x+2+a,y+h-5,w-2,3);
+    leafLobe(g,p,x+a,y-2,w+3,h+4,v*101+i+30);
    }
    for(let j=0;j<6;j++){
     const x=8+Math.floor(hash(j,v,biome.length,3)*42),y=12+Math.floor(hash(j,v,biome.length,9)*14);
@@ -318,6 +334,7 @@
     px(g,p[2],bx,by,7,2);
     px(g,p[3],bx+2,by,3,1);
    }
+   HAND?.prop(g,{kind:'bush',biome,variant:v});
    SHADE?.bush(g,p,v);
   }
   function rock(g,biome,variant){
@@ -341,6 +358,7 @@
     px(g,'#ddd6bc',bx+1,by,5,1);
     px(g,p[2],bx+3,by+1,3,2);
    }
+   HAND?.prop(g,{kind:'rock',biome,variant});
    SHADE?.rock(g,p,variant);
   }
   function sprite(kind,biome,variant=0){
