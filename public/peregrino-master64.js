@@ -192,6 +192,44 @@
    p('#6d4c3b',x,y+bob,3,2);p(c.trim,x+1,y+bob,2,1);
    p('#fff4cf',x+1,y+bob,1,1);
   }
+  // Vistas desenhadas separadamente: peito só na frente; nas costas,
+  // o equipamento de viagem e as costuras do gibão substituem esse peitoral.
+  if(back){
+   runs(c.ink,[[36,23,22,8],[43,21,26,9],[52,23,22,5]],0,bob);
+   runs(c.coat,[[37,24,19,8],[45,23,22,7],[53,25,18,3]],0,bob);
+   p(c.leatherShade,24,38+bob,4,15);p(c.leatherLight,26,39+bob,2,11);
+   p(c.leatherShade,41,38+bob,4,16);p(c.leatherLight,41,39+bob,2,11);
+   // Correias cruzadas da mochila e bolsa do aventureiro.
+   for(let i=0;i<11;i++){
+    p(c.ink,26+i,38+i+bob,4,3);
+    p('#86613c',27+i,39+i+bob,3,2);
+    p(c.trim,28+i,40+i+bob,1,1);
+    p(c.ink,40-i,38+i+bob,4,3);
+    p('#b1875b',41-i,39+i+bob,2,2);
+   }
+   p(c.ink,28,46+bob,15,13);p('#725037',29,47+bob,13,10);
+   p('#c39a64',30,48+bob,11,3);p('#4c3634',30,52+bob,11,4);
+   p(c.trim,34,51+bob,5,3);p('#fff1bc',36,51+bob,2,1);
+   p('#c99d6d',31,56+bob,10,1);
+  }else if(side){
+   // Ombro próximo sombreado, manga distante e bolsa à mostra.
+   runs(c.leatherShade,[[37,43,4,11],[48,43,4,7],
+    [56,40,5,6]],0,bob);
+   runs(c.coat,[[39,41,3,11],[48,41,3,6]],0,bob);
+   p(c.leatherLight,43,37+bob,3,9);
+   p(c.ivory,29,37+bob,8,3);
+   p('#4b3634',45,52+bob,9,8);
+   p('#ad7d4f',47,53+bob,8,3);
+   p(c.trim,49,56+bob,4,2);
+  }
+  if(walking){
+   // Contrapeso dos ombros em relação às pernas: cada braço tem ritmo próprio.
+   const swing=[0,2,3,1,-2,-3][n%6];
+   p(c.leatherShade,12,48+bob-swing,4,5);
+   p(c.leatherLight,13,48+bob-swing,2,3);
+   p(c.ink,52,48+bob+swing,3,5);
+   p(c.trim,53,49+bob+swing,1,2);
+  }
   // Pescoço e pescoceira; scarf vermelho sobre a armadura.
   p(c.ink,26,28+bob,15,10);
   p(c.skin,29,28+bob,10,7);
