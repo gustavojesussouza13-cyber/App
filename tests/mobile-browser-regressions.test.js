@@ -23,7 +23,7 @@ test('mensagens de dano e recompensa continuam acessíveis fora do aviso de mons
  assert.ok(start>0&&end>start);
  const ctx={
   session:{zone:0,characters:{hp:135},monsters:new Map(),players:new Map()},
-  fx:[],performance:{now:()=>500},say:()=>{},alert:()=>{},
+  fx:[],performance:{now:()=>500},say:()=>{},alert:()=>{},noteChatUnread:()=>{},
   spriteActions:{monsters:new Map(),players:new Map(),fallen:[],localHurtAt:0},
   $:()=>({hidden:true,textContent:''}),console,
  };
