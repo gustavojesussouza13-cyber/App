@@ -16,6 +16,7 @@
  const APPEARANCE=typeof module==='object'&&module.exports?require('./appearance16'):globalThis.PeregrinosAppearance16;
  const RETRO=typeof module==='object'&&module.exports?require('./retro-atlas64'):globalThis.OsPeregrinosRetro64;
  const PILGRIM_MASTER=typeof module==='object'&&module.exports?require('./peregrino-master64'):globalThis.OsPeregrinosPilgrimMaster64;
+ const PILGRIM_ARTISAN=typeof module==='object'&&module.exports?require('./peregrino-artisan64'):globalThis.OsPeregrinosArtisan64;
  const HEROES_MASTER=typeof module==='object'&&module.exports?require('./heroes-master64'):globalThis.OsPeregrinosHeroesMaster64;
  const W=RETRO?.WIDTH||40,H=RETRO?.HEIGHT||52;
  const ROLES=Object.freeze({
@@ -314,7 +315,9 @@
    const g=canvas.getContext('2d');
    if(!g)return null;
    g.imageSmoothingEnabled=false;
-   if(kind==='hero'&&name==='peregrino'&&PILGRIM_MASTER?.draw)
+   if(kind==='hero'&&name==='peregrino'&&PILGRIM_ARTISAN?.draw)
+    PILGRIM_ARTISAN.draw(g,{role:name,dir,action,frame,colors:ROLES.peregrino,appearance});
+   else if(kind==='hero'&&name==='peregrino'&&PILGRIM_MASTER?.draw)
     PILGRIM_MASTER.draw(g,{role:name,dir,action,frame,colors:ROLES.peregrino,appearance});
    else if(kind==='hero'&&HEROES_MASTER?.draw&&Object.hasOwn(HEROES_MASTER.ROLES,name))
     HEROES_MASTER.draw(g,{role:name,dir,action,frame,colors:ROLES[name],appearance});
