@@ -23,7 +23,7 @@ function paint(role,dir=2,action='idle',frame=0,appearance=APP.DEFAULT){
  return {ops,transforms,surface,signature:JSON.stringify(ops)};
 }
 test('três classes possuem contornos faciais rasterizados, não máscaras quadradas',()=>{
- assert.equal(ART.VERSION,'heroes-master64-v4');
+ assert.equal(ART.VERSION,'heroes-master64-v5');
  assert.equal(ART.WIDTH,64);assert.equal(ART.HEIGHT,80);
  const roles=['guardiao','arqueiro','curandeiro'];
  for(const role of roles){
@@ -86,7 +86,7 @@ test('a roupa e a capa personalizadas mudam o visual, sem alterar o save',()=>{
 });
 test('site usa versão V4; todos os outros renderizadores e fortalezas 3D são preservados',()=>{
  const html=fs.readFileSync(path.join(__dirname,'../public/mundo.html'),'utf8');
- assert.match(html,/heroes-master64\.js\?v=heroes-master64-v4/);
+ assert.match(html,/heroes-master64\.js\?v=heroes-master64-v5/);
  assert.match(html,/world-art-master64\.js\?v=world-art-master64-v2/);
  assert.match(html,/guild-city-3d\.js/);
  assert.ok(html.indexOf('/heroes-master64.js')<html.indexOf('/sprite-studio.js'));
@@ -95,6 +95,6 @@ test('site usa versão V4; todos os outros renderizadores e fortalezas 3D são p
  vm.createContext(sandbox);vm.runInContext(src,sandbox);
  const g={fillRect(){},save(){},restore(){},translate(){},scale(){}};
  assert.equal(sandbox.OsPeregrinosHeroesMaster64.draw(g,{role:'curandeiro'}),true);
- assert.equal(sandbox.OsPeregrinosHeroesMaster64.VERSION,'heroes-master64-v4');
+ assert.equal(sandbox.OsPeregrinosHeroesMaster64.VERSION,'heroes-master64-v5');
  assert.doesNotMatch(src,/requestAnimationFrame|setInterval|fetch\(|WebSocket/);
 });
