@@ -435,7 +435,15 @@ function create({ctx,W,H}){
     x:p.x,y:p.y,dir,appearance:p.appearance,now,moving:moved,
     action:moved?'walk':'idle',glow:local,scale:.73
    }));
-  if(runwayHero||(useAurora25d&&
+  // As três artes aprovadas só substituem a aparência padrão no 2.5D.
+  // Sem o arquivo PNG ou durante ataque/dano, usa os heróis atuais.
+  const approvedHero=Boolean(useAurora25d&&p.role!=='peregrino'&&
+    !state.hurt&&!attacking&&!state.dead&&
+    window.OsPeregrinosApprovedClasses25D?.draw(g,{
+      role:p.role,x:p.x,y:p.y,dir,appearance:p.appearance,now,
+      action:moved?'walk':'idle',glow:local,scale:1.45
+    }));
+  if(runwayHero||approvedHero||(useAurora25d&&
    window.OsPeregrinosHeroesAurora25D?.draw(g,{
     role:p.role,x:p.x,y:p.y,dir,appearance:p.appearance,
     action:state.hurt?'hurt':attacking?'attack':moved?'walk':'idle',
