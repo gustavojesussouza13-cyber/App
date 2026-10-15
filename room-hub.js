@@ -22,6 +22,7 @@ class RoomHub{
   this.now=now;this.createWorld=createWorld;
   this.maxRooms=Math.max(2,Math.min(24,maxRooms));
   this.rooms=new Map();
+  mainWorld.roomId=MAIN_ID;
   this.rooms.set(MAIN_ID,{id:MAIN_ID,name:'Auren — Praça Pública',
    ownerId:null,locked:false,world:mainWorld,createdAt:now(),emptySince:null,primary:true});
  }
@@ -50,6 +51,7 @@ class RoomHub{
   // Todas as salas criadas pelos jogadores são públicas, sem senha ou chave de acesso.
   const room={id:idFor(),name:title,ownerId:owner,locked:false,createdAt:this.now(),
    world:this.createWorld(),emptySince:this.now(),pending:true,primary:false};
+  room.world.roomId=room.id;
   this.rooms.set(room.id,room);
   return this.publicInfo(room);
  }
