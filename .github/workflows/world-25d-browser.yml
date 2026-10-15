@@ -4,6 +4,9 @@ on:
     branches: [os-peregrinos-online]
     paths:
       - 'public/world-25d.mjs'
+      - 'public/peregrino-aurora25d.js'
+      - 'public/peregrino-artisan64.js'
+      - 'public/peregrino-atlas25d.html'
       - 'public/visual-25d.html'
       - 'public/mmo.js'
       - 'public/art16.js'
@@ -31,5 +34,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: mundo-aberto-25d-chromium
-          path: /tmp/os-peregrinos-25d-browser.png
+          path: |
+            /tmp/os-peregrinos-25d-browser.png
+            /tmp/os-peregrinos-peregrino-atlas.png
           if-no-files-found: ignore
