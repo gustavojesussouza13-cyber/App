@@ -50,7 +50,7 @@ button{cursor:pointer}button:hover{background:#365951}button:focus-visible{outli
  <button id="classic" type="button">Ver apenas Canvas 2D</button>
  <div id="status" role="status">Preparando renderizador WebGL…</div>
  <p><b>Controles:</b> WASD ou setas para andar. No celular, arraste o dedo sobre a área do jogo.</p>
- <p>O Peregrino usa seu sprite autoral com 64 × 80 pixels nativos, quatro direções e animação de caminhada. O cenário mantém iluminação WebGL e câmera ortográfica.</p>
+ <p>As quatro classes utilizam seus sprites autorais de 64 × 80 pixels nativos, com silhuetas e equipamentos próprios, quatro direções e caminhada animada. O cenário mantém iluminação WebGL e câmera ortográfica.</p>
  <a style="color:#f1dca3;font-size:13px" href="/peregrino-atlas25d.html">Ver folha de sprites do Peregrino →</a>
 </aside></section>
 <footer>Protótipo experimental de renderização, não a versão publicada do MMORPG. Sem alterações em combate, progressão, saves ou fortalezas.</footer>
@@ -59,6 +59,9 @@ button{cursor:pointer}button:hover{background:#365951}button:focus-visible{outli
 <script src="/appearance16.js"></script>
 <script src="/peregrino-artisan64.js"></script>
 <script src="/peregrino-aurora25d.js"></script>
+<script src="/pixel-atelier-v1.js"></script>
+<script src="/heroes-master64.js"></script>
+<script src="/aurora-heroes25d.js"></script>
 <script type="module">
 const $=id=>document.getElementById(id),canvas=$('game'),ctx=canvas.getContext('2d',{alpha:true}),mini=$('mini'),mctx=mini.getContext('2d');
 const W=canvas.width,H=canvas.height,WIDTH=1536,HEIGHT=1024;
@@ -85,16 +88,16 @@ function pixelActor(kind) {
 const actors=[{x:663,y:442,name:'Lia',role:'curandeiro'},{x:910,y:560,name:'Thalor',role:'guardiao'},{x:780,y:700,name:'Lunara',role:'arqueiro'}];
 function drawActor(a,camX,camY,now){
  const sx=Math.round(a.x-camX),sy=Math.round(a.y-camY);
- const moving=a===player && [...keys].length;
+ const moving=a===player && (keys.size>0||Boolean(drag));
  const lift=moving?Math.round(Math.sin(now/100)*2):0;
  ctx.fillStyle='#13282071';ctx.beginPath();ctx.ellipse(sx,sy+4,18,7,0,0,Math.PI*2);ctx.fill();
  const role=a===player?$('role').value:a.role;
- const premium=role==='peregrino'&&Boolean(window.OsPeregrinosAurora25D?.draw(ctx,{
-  x:sx,y:sy,dir:a.dir??2,action:moving?'walk':'idle',
-  frame:Math.floor(now/125),glow:a===player,scale:1.5
+ const premium=Boolean(window.OsPeregrinosHeroesAurora25D?.draw(ctx,{
+  role,x:sx,y:sy,dir:a.dir??2,action:moving?'walk':'idle',
+  frame:Math.floor(now/130),glow:a===player,scale:1.32
  }));
  if(!premium){ctx.imageSmoothingEnabled=false;ctx.drawImage(pixelActor(role),sx-24,sy-60+lift,48,64);}
- const textY=premium?sy-126:sy-69+lift;
+ const textY=premium?sy-115:sy-69+lift;
  ctx.textAlign='center';ctx.font='bold 14px system-ui,Arial';ctx.lineWidth=3;ctx.strokeStyle='#101b23';
  ctx.strokeText(a.name||labels[$('role').value],sx,textY);
  ctx.fillStyle=a===player?'#ffe4a0':'#e9f2d9';ctx.fillText(a.name||labels[$('role').value],sx,textY);
