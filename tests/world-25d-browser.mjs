@@ -65,6 +65,24 @@ try{
   await page.locator('#role').selectOption(role);
   assert.match(await page.locator('#heroName').innerText(),new RegExp(role==='guardiao'?'Guardião':role==='arqueiro'?'Arqueiro':role==='curandeiro'?'Curandeiro':'Peregrino'));
  }
+ await page.waitForFunction(()=>window.OsPeregrinosRunway25D?.isReady(),null,{timeout:12000});
+ const genuine=await page.evaluate(()=>{
+  const api=window.OsPeregrinosRunway25D;
+  const canvas=document.createElement('canvas');canvas.width=192;canvas.height=192;
+  const c=canvas.getContext('2d');
+  const directions=[0,1,2,3].map(dir=>api.frameRect(dir,0));
+  const drawn=api.draw(c,{x:96,y:186,dir:2,action:'walk',frame:2,scale:1});
+  const data=c.getImageData(0,0,192,192).data;
+  let visible=0;for(let i=3;i<data.length;i+=4)if(data[i]>128)visible++;
+  return {version:api.VERSION,directions,drawn,visible,skipCombat:api.draw(c,{x:90,y:190,action:'attack'}),
+   source:api.SOURCE};
+ });
+ assert.match(genuine.version,/runway-original-peregrino/);
+ assert.equal(genuine.drawn,true,'sprite original Runway precisa renderizar');
+ assert.ok(genuine.visible>400,'quadros reais precisam ter área visível');
+ assert.equal(genuine.skipCombat,false,'ataques usam as animações anteriores');
+ assert.deepEqual(genuine.directions.map(d=>d.sy),[160,320,0,480],'ordem das quatro direções');
+ assert.match(genuine.source,/peregrino-runway-walk\.png/);
  await page.waitForFunction(()=>Boolean(window.OsPeregrinosAurora25D?.VERSION),null,{timeout:5000});
  const version=await page.evaluate(()=>window.OsPeregrinosAurora25D.VERSION);
  assert.match(version,/peregrino-aurora-25d/);
@@ -83,5 +101,12 @@ try{
  assert.ok(atlas.visible>18000,'folha de 24 quadros deve conter pixels visíveis');
  await page.screenshot({path:'/tmp/os-peregrinos-peregrino-atlas.png',fullPage:true});
 
+ const runwayPreview=url.replace('visual-25d.html','peregrino-runway-preview.html');
+ const runwayResult=await page.goto(runwayPreview,{waitUntil:'domcontentloaded'});
+ assert.equal(runwayResult?.status(),200,'ateliê dos sprites reais deve ser público na prévia');
+ await page.waitForFunction(()=>document.querySelector('#status')?.textContent?.includes('16 quadros carregados'),null,{timeout:12000});
+ const frameAtlas=await page.locator('#atlas').evaluate(img=>({w:img.naturalWidth,h:img.naturalHeight}));
+ assert.deepEqual(frameAtlas,{w:512,h:640});
+ await page.screenshot({path:'/tmp/peregrino-runway-16-quadros-reais.png',fullPage:true});
  console.log('WORLD_25D_BROWSER_OK',JSON.stringify({url,classes:4,biomes:6,canvas:'webgl'}));
 }finally{await browser.close()}
