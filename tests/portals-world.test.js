@@ -4,6 +4,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs'),os=require('node:os'),path=require('node:path');
 const crypto=require('node:crypto');
 const {World,ZONES,ZONE_W,ZONE_H}=require('../world-engine');
+const frontier=require('../frontier-world');
 function make(t){
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'peregrinos-portal-')),messages=[];
  const world=new World({send:(_s,m)=>messages.push(m),getOnline:()=>0,hasClassicName:()=>false,dataFile:path.join(dir,'world.json')});
@@ -22,7 +23,7 @@ test('as regiões antigas mantêm os acessos, e todas as quarenta têm portais l
   for(const gate of gates){
    assert.ok(gate.x>100&&gate.x<ZONE_W-100);
    assert.ok(gate.y>300&&gate.y<700);
-   assert.ok(gate.zone>=0&&gate.zone<ZONES.length);
+   assert.ok(frontier.isZone(gate.zone));
    if(zone>=16){
     const final=(zone-16)%6===5;
     const root=12+Math.floor((zone-16)/6);
@@ -31,6 +32,7 @@ test('as regiões antigas mantêm os acessos, e todas as quarenta têm portais l
     if(gate.gateway)assert.ok(final&&gate.zone===forward,'passagem entre masmorras só na sala final');
    }
    else if(zone>=12&&zone<16)assert.ok(gate.zone===[1,3,5,11][zone-12]||gate.zone===16+(zone-12)*6);
+   else if(frontier.isFrontier(gate.zone))assert.ok(zone===11&&gate.zone===40,'saída histórica para as fronteiras somente na Terra da Última Luz');
    else if(gate.zone>=12)assert.equal([1,3,5,11][gate.zone-12],zone);
    else assert.ok(Math.abs(gate.zone-zone)<=2&&gate.zone!==zone);
   }
