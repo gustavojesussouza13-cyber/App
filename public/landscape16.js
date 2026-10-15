@@ -21,6 +21,7 @@
   ruins:['#707866','#959788','#bec0a4','#dcd8bf','#48534f','#af9e86','#847569','#dbceb0']
  });
  const SHADE=typeof module==='object'&&module.exports?require('./shading16'):globalThis.OsPeregrinosShade16;
+ const HAND=typeof module==='object'&&module.exports?require('./pixel-atelier-v1'):globalThis.OsPeregrinosHandPixels;
  const TILE=32,variantCount=4;
  const hash=(a,b,c,d=0)=>{
   let n=Math.imul(a+517,73856093)^Math.imul(b+89,19349663)^Math.imul(c+11,83492791)^Math.imul(d+47,374761393);
@@ -69,6 +70,7 @@
     px(g,'#b8e1dd',rx+2,ry,5,1);
     px(g,'#e8f5e7',rx+4,ry,2,1);
    }
+   HAND?.terrain(g,{x,y,biome,kind,seed:Math.floor(seed*65535)});
    SHADE?.ground(g,tx,ty,z,kind,p,hash);
    return;
   }
@@ -176,6 +178,7 @@
   }
   // Luz de cima à esquerda: grupos de pixels mais claros, occlusão à direita.
   SHADE?.ground(g,tx,ty,z,kind,p,hash);
+  HAND?.terrain(g,{x,y,biome,kind,seed:Math.floor(seed*65535)});
   if(typeof neighbor!=='function')return;
   // Transições desenhadas sobre o tile, sem adulterar a classificação
   // de terreno autoritativa; bordas em degraus de 2-4 px.
@@ -293,6 +296,7 @@
      px(g,p[2],bx+2,by+3,5,2);
     }
    }
+   HAND?.prop(g,{kind:'tree',biome,variant:v});
    SHADE?.tree(g,p,v);
   }
   function shrub(g,biome,variant){
@@ -318,6 +322,7 @@
     px(g,p[2],bx,by,7,2);
     px(g,p[3],bx+2,by,3,1);
    }
+   HAND?.prop(g,{kind:'bush',biome,variant:v});
    SHADE?.bush(g,p,v);
   }
   function rock(g,biome,variant){
@@ -341,6 +346,7 @@
     px(g,'#ddd6bc',bx+1,by,5,1);
     px(g,p[2],bx+3,by+1,3,2);
    }
+   HAND?.prop(g,{kind:'rock',biome,variant});
    SHADE?.rock(g,p,variant);
   }
   function sprite(kind,biome,variant=0){
