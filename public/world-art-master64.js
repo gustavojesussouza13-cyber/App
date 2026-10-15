@@ -213,6 +213,88 @@
     poly('#8c6447',[[7,46+off],[16,46+off],[18,57+off],[14,62+off],[7,60+off]]);
     p(trim,9,49+off,7,3);
    }
+   // Kit de rosto/cabelo e leitura de silhueta por profissão, como nos heróis.
+   if(back){
+    // Costas não repetem rosto nem decoração frontal; correias cruzadas,
+    // mochila e ornamentos seguem os mesmos pixels das peças da frente.
+    line(ink,25,36+off,42,53+off,5);
+    line(trim,25,36+off,42,53+off,2);
+    line(ink,42,36+off,26,53+off,5);
+    line(light,42,36+off,26,53+off,2);
+    poly(ink,[[28,45+off],[42,45+off],[47,54+off],
+     [43,65+off],[28,65+off],[23,56+off]]);
+    poly(robeShade,[[29,47+off],[41,47+off],[44,54+off],
+     [41,62+off],[29,62+off],[26,55+off]]);
+    p(trim,32,49+off,8,3);p(PAPER,35,49+off,2,1);
+   }else if(side){
+    // Perfil recebe uma sobreposição de pescoço e nuca.
+    p(ink,24,23+off,3,8);p(hair,24,23+off,2,7);
+    p(skin,42,27+off,4,2);
+    p(hexMix(skin,PAPER,.32),43,27+off,2,1);
+   }
+   // Profissões cerimoniais: chapéus e emblemas diferentes dos aventureiros.
+   if(profession==='guard'){
+    poly(ink,[[22,15+off],[25,8+off],[38,8+off],
+     [44,16+off],[43,20+off],[23,20+off]]);
+    poly('#557d9f',[[25,15+off],[27,10+off],
+     [37,10+off],[41,16+off],[40,18+off],[26,18+off]]);
+    p(trim,30,11+off,7,2);p(PAPER,33,11+off,2,1);
+    p('#e9e1bd',7,16+off,2,30);
+   }else if(profession==='forge'){
+    // Óculos de forja e marcas de fuligem na testa.
+    p(ink,25,23+off,18,5);
+    p('#94aaae',27,24+off,6,3);p('#94aaae',36,24+off,5,3);
+    p(PAPER,28,24+off,2,1);
+    p('#553d3b',29,30+off,7,2);
+    p(trim,24,41+off,4,2);
+   }else if(profession==='healer'){
+    // Véu estreito, bordados e halo simples em pixel art.
+    line(light,24,10+off,42,10+off,2);
+    line(trim,27,8+off,39,8+off,1);
+    p(PAPER,31,7+off,5,2);
+    for(let k=0;k<4;k++){
+     p(light,22+k*7,56+off+(k%2)*2,3,2);
+     p(trim,23+k*7,56+off+(k%2)*2,1,1);
+    }
+   }else if(profession==='scholar'){
+    // Gola alta e tecido na lateral do rosto.
+    poly(ink,[[22,31+off],[27,31+off],[30,40+off],
+     [25,43+off],[20,38+off]]);
+    poly(light,[[23,33+off],[26,33+off],
+     [27,38+off],[23,40+off]]);
+    p(trim,29,43+off,3,4);
+    p(ink,12,49+off,2,10);p('#ad8b62',13,50+off,1,6);
+   }else if(profession==='trader'){
+    p(trim,54,47+off,3,2);p(PAPER,55,47+off,1,1);
+    p('#e2bb70',50,58+off,3,3);p(ink,51,59+off,2,1);
+    p('#f7d391',22,40+off,3,2);
+   }else{
+    // Capuz de viajante e lenço, mas sem apagar olhos e expressão.
+    line(ink,23,19+off,23,31+off,3);
+    line(hexMix(robe,PAPER,.2),22,18+off,22,29+off,2);
+    p(trim,24,34+off,4,2);
+   }
+   // Adereços narrativos exclusivos: diferenciar sineiros, cartógrafos,
+   // marinheiros e jardineiros além da paleta de cada profissão.
+   if(/sineir|sineira/.test(style)){
+    poly('#9d7a47',[[48,44+off],[59,44+off],[61,53+off],
+     [56,57+off],[51,56+off]]);
+    p(PAPER,54,55+off,4,2);p('#d5bb77',53,43+off,3,1);
+   }else if(/cartogra|escrib|copista|relator/.test(style)){
+    p(PAPER,6,44+off,9,12);p('#bd9765',7,46+off,7,2);
+    p('#9a725b',9,49+off,3,1);p('#9a725b',9,52+off,4,1);
+   }else if(/barque|marinheir|pesc/.test(style)){
+    line(ink,56,36+off,56,69+off,3);
+    line(PAPER,56,57+off,49,64+off,2);
+    line(PAPER,56,57+off,63,64+off,2);
+    p(trim,54,53+off,5,3);
+   }else if(/jardin|sementeira|colhed|tecel/.test(style)){
+    line('#4e6d4a',52,42+off,57,58+off,3);
+    for(let j=0;j<3;j++){
+     p('#9fce85',50+j*3,45+j*4+off,4,3);
+     p('#e7dca9',51+j*3,45+j*4+off,1,1);
+    }
+   }
    // Símbolos individuais determinísticos, consistentes a cada sessão.
    for(let bit=0;bit<6;bit++){
     const lit=(id>>>bit)&1;
