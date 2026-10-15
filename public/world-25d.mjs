@@ -127,6 +127,60 @@ function addWater(group,zone,mode) {
     }
   }
 }
+
+/** Vegetação ornamental em instâncias: dezenas de tufos com poucas draw calls. */
+function addMeadowDetails(group,zone,biome,rand) {
+ if(biome==='dungeon'||biome==='desert')return;
+ const count=biome==='city'?90:biome==='forest'?240:180;
+ const material=new THREE.MeshStandardMaterial({
+  color:biome==='forest'?'#9cae72':'#b2c68b',roughness:1,flatShading:true,
+  side:THREE.DoubleSide
+ });
+ const geometry=new THREE.ConeGeometry(2.9,10,3);
+ const tufts=new THREE.InstancedMesh(geometry,material,count);
+ const dummy=new THREE.Object3D();
+ let placed=0,tries=0;
+ while(placed<count&&tries<count*5){
+  tries++;
+  const x=20+rand()*(ZONE_WIDTH-40),z=20+rand()*(ZONE_HEIGHT-40);
+  if(Math.abs(z-roadY(x,zone))<56)continue;
+  if(biome==='coast'&&z>700)continue;
+  if(biome==='river'&&Math.abs(x-(420+92*Math.sin(z/150+zone)))<80)continue;
+  dummy.position.set(x,4.2,z);
+  dummy.scale.set(.55+rand()*1.25,.35+rand()*.65,.55+rand()*1.25);
+  dummy.rotation.set(0,rand()*Math.PI*2,0);
+  dummy.updateMatrix();
+  tufts.setMatrixAt(placed++,dummy.matrix);
+ }
+ tufts.count=placed;
+ tufts.instanceMatrix.needsUpdate=true;
+ group.add(tufts);
+}
+/** O marco da Aurora só é ilustrativo: nenhum objeto altera hitboxes. */
+function addAuroraShrine(group) {
+ const x=768,z=335;
+ const limestone=new THREE.MeshStandardMaterial({color:'#c5c7ac',roughness:.92});
+ const metal=new THREE.MeshStandardMaterial({color:'#aa956e',roughness:.53,metalness:.34});
+ const magic=new THREE.MeshStandardMaterial({
+  color:'#7ce5e2',roughness:.22,metalness:.12,
+  emissive:'#269da5',emissiveIntensity:1.4,flatShading:true
+ });
+ const disk=new THREE.Mesh(new THREE.CylinderGeometry(53,55,5,36),limestone);
+ disk.position.set(x,2.7,z);group.add(disk);
+ const inner=new THREE.Mesh(new THREE.TorusGeometry(41,3,7,52),metal);
+ inner.rotation.x=-Math.PI/2;inner.position.set(x,5.8,z);group.add(inner);
+ const motifs=new THREE.Mesh(new THREE.TorusGeometry(32,1.5,6,48),magic);
+ motifs.rotation.x=-Math.PI/2;motifs.position.set(x,6,z);group.add(motifs);
+ addBox(group,18,19,18,x,16,z,'#b2b6ae');
+ const crystal=new THREE.Mesh(new THREE.OctahedronGeometry(14,0),magic.clone());
+ crystal.position.set(x,39,z);group.add(crystal);
+ const halo=new THREE.Mesh(new THREE.TorusGeometry(17,1.7,7,36),magic.clone());
+ halo.rotation.x=-Math.PI/2;halo.position.set(x,39,z);group.add(halo);
+ const light=new THREE.PointLight('#6affed',2.1,175,2);
+ light.position.set(x,50,z);group.add(light);
+ return {crystal,halo,light};
+}
+
 export function createWorld25D({shell,canvas,width=960,height=576}) {
   if (!shell || !canvas) throw Error('O Canvas 2D e seu contêiner são obrigatórios.');
   const renderer = new THREE.WebGLRenderer({
@@ -157,7 +211,7 @@ export function createWorld25D({shell,canvas,width=960,height=576}) {
   const sun=new THREE.DirectionalLight('#ffe9bd',1.8);
   sun.position.set(-240,600,190);
   scene.add(ambient,sun);
-  let layer=null,activeZone=NaN,activeBiome='',disposed=false,night=false;
+  let layer=null,activeZone=NaN,activeBiome='',disposed=false,night=false,shrine=null;
   function rebuild(zone,biome) {
     if(layer){
       scene.remove(layer);
@@ -173,6 +227,7 @@ export function createWorld25D({shell,canvas,width=960,height=576}) {
     }
     layer=new THREE.Group();
     scene.add(layer);
+    shrine=null;
     const colors=palette[biome]||palette.meadow;
     scene.background=new THREE.Color(biome==='dungeon'?'#333941':'#71918c');
     const ground=new THREE.Mesh(
@@ -201,6 +256,8 @@ export function createWorld25D({shell,canvas,width=960,height=576}) {
           biome==='desert'?'#a99370':'#687271');
       } else addTree(layer,x,z,random,colors);
     }
+    addMeadowDetails(layer,zone,biome,random);
+    if(zone===0&&(biome==='meadow'||biome==='city'))shrine=addAuroraShrine(layer);
     activeZone=zone;
     activeBiome=biome;
   }
@@ -211,6 +268,13 @@ export function createWorld25D({shell,canvas,width=960,height=576}) {
     const cx=cameraX+width/2,cz=cameraY+height/2;
     camera.position.set(cx,1350,cz);
     camera.lookAt(cx,0,cz);
+    if(shrine){
+      shrine.crystal.rotation.y=now*.00047;
+      shrine.crystal.position.y=39+Math.sin(now*.0022)*2.2;
+      shrine.halo.rotation.z=now*.00025;
+      shrine.halo.position.y=39+Math.sin(now*.0022)*2.2;
+      shrine.light.intensity=(night?2.7:1.6)+Math.sin(now*.003)*.28;
+    }
     const pulse=Math.sin(now/10000)*.09;
     ambient.intensity=night?.77:1.8+pulse;
     sun.intensity=night?.42:1.6+pulse;
