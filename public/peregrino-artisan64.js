@@ -256,6 +256,13 @@
   poly(RED,[[42,36+bob],[46,37+bob],[46,44+bob],
    [44,47+bob],[42,44+bob]]);
   p(RED_LIGHT,43,37+bob,2,6);
+  // Tecido em três planos: a dobra recebe luz, a ponta tem peso e vento.
+  stroke(RED_DARK,26,36+bob,39,36+bob,2);
+  stroke(RED_LIGHT,25,33+bob,39,32+bob,1);
+  p('#f79578',29,32+bob,6,1);
+  p(RED_DARK,43+flutter,43+bob,3,3);
+  p(RED,44+flutter,44+bob,2,5);
+  p(RED_LIGHT,45+flutter,45+bob,1,3);
   p('#ba6050',27,33+bob,6,2);
   p('#9e4350',44,40+bob,2,5);
   // 7. Face com crânio recortado, maçãs do rosto, pálpebra e boca.
@@ -353,17 +360,50 @@
   // Costura da nuca/amarração do lenço.
   p(RED_DARK,27,31+bob,11,3);
   p(RED_LIGHT,29,31+bob,6,1);
+  // Costas: alças cruzadas e mochila de viagem, sem repetir o peitoral frontal.
+  if(back){
+   poly(INK,[[26,38+bob],[45,38+bob],[47,53+bob],
+    [42,61+bob],[29,61+bob],[24,52+bob]]);
+   poly(c.leatherShade,[[28,40+bob],[43,40+bob],[45,52+bob],
+    [41,59+bob],[30,59+bob],[26,51+bob]]);
+   poly(c.leather,[[29,42+bob],[42,42+bob],[44,51+bob],
+    [40,57+bob],[30,57+bob],[28,50+bob]]);
+   stroke(INK,28,41+bob,43,55+bob,4);
+   stroke(c.leatherLight,28,41+bob,43,55+bob,2);
+   stroke(INK,43,41+bob,28,55+bob,4);
+   stroke(c.leatherLight,43,41+bob,28,55+bob,2);
+   p(c.trim,33,46+bob,5,5);p(INK,34,47+bob,3,3);
+   p(WHITE,35,47+bob,1,1);
+  }
+  // Acessórios fazem parte do save, mas antes não eram desenhados.
+  if(a.accessory==='tiara'){
+   stroke(c.trim,26,16+bob,42,15+bob,2);
+   p(c.gem,32,13+bob,5,4);p(WHITE,34,13+bob,1,1);
+  }else if(a.accessory==='brinco'&&!back){
+   p(c.trim,43,27+bob,2,4);p(WHITE,44,29+bob,1,1);
+  }else if(a.accessory==='amuleto'&&!back){
+   stroke(c.trim,31,37+bob,37,39+bob,1);
+   p(c.trim,34,38+bob,5,5);p(c.gem,35,39+bob,3,3);
+   p(WHITE,36,39+bob,1,1);
+  }
   // 8. Espada: lâmina diagonal com largura e ponta em triângulo.
   // Nunca deixar haste vertical no idle como na versão anterior.
   const poses=[
-   [[17,52],[2,73]],   // repouso com lâmina diagonal
-   [[22,45],[9,15]],   // antecipação
+   [[21,45],[6,19]],   // antecipação imediata, nunca igual ao idle
+   [[22,45],[9,15]],   // prepara o braço acima do ombro
    [[30,38],[8,12]],   // corte ascendente
    [[35,41],[60,22]],  // impacto à frente
    [[25,49],[55,49]]   // recuperação horizontal
   ];
-  const hand=attack?poses[frameIndex]:poses[0];
+  const hand=attack?poses[frameIndex]:[[17,52],[2,73]];
   const [[hx,hy],[tx,ty]]=hand;
+  // A mão não flutua longe do corpo: a braçadeira segue o punho.
+  if(attack){
+   stroke(INK,19,44+bob,hx,hy,10);
+   stroke(c.leatherShade,19,44+bob,hx,hy,7);
+   stroke(c.leatherLight,19,44+bob,hx,hy,3);
+   p(c.trim,21,42+bob,3,2);
+  }
   const vx=tx-hx,vy=ty-hy,length=Math.max(1,Math.hypot(vx,vy));
   const nx=-vy/length,ny=vx/length;
   // Ponta triangular no sentido do movimento e guarda perpendicular.
@@ -412,5 +452,5 @@
   if(dir===3)g.restore();
   return true;
  }
- return Object.freeze({WIDTH,HEIGHT,VERSION:'peregrino-artisan64-v3',draw});
+ return Object.freeze({WIDTH,HEIGHT,VERSION:'peregrino-artisan64-v4',draw});
 });
