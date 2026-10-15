@@ -31,8 +31,10 @@
    skin:custom.skin||COLORS.skin,skinLight:custom.skinHighlight||COLORS.skinLight,
    skinShadow:APP?.SKIN?.[a?.skin]?.[2]||COLORS.skinShadow,
    eye:custom.eyeColor||COLORS.eye,trim:custom.trim||COLORS.trim,
-   steel:custom.metal||COLORS.steel,
-   gem:custom.gem||'#a9e6ca',metal:custom.metal||COLORS.metal};
+   // Metal tem paleta de material própria: antes o cinza simples do estúdio
+   // eliminava o brilho do fio e deixava a espada indistinta do couro.
+   steel:COLORS.steel,metalShadow:COLORS.metalShadow,
+   gem:custom.gem||'#a9e6ca',metal:COLORS.metal};
   const c=palette,back=dir===0,side=dir===1||dir===3,front=dir===2;
   const n=Number.isInteger(frame)?Math.max(0,frame):0;
   const walking=action==='walk',attacking=action==='attack';
