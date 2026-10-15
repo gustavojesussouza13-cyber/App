@@ -27,6 +27,22 @@ try{
  await page.locator('#classic').click();
  assert.equal(await layer.evaluate(c=>c.style.display),'block','WebGL deve ser reativável');
  await page.waitForTimeout(500);
+ const checkAlignment=async()=>{
+  const bounds=await page.evaluate(()=>{
+   const source=document.querySelector('#game').getBoundingClientRect();
+   const backdrop=document.querySelector('#world25dBackdrop').getBoundingClientRect();
+   return {dx:Math.abs(source.x-backdrop.x),dy:Math.abs(source.y-backdrop.y),
+    dw:Math.abs(source.width-backdrop.width),dh:Math.abs(source.height-backdrop.height)};
+  });
+  assert.ok(Object.values(bounds).every(n=>n<=1.5),'WebGL deve acompanhar exatamente o Canvas 2D: '+JSON.stringify(bounds));
+ };
+ await checkAlignment();
+ await page.setViewportSize({width:780,height:900});
+ await page.waitForTimeout(250);
+ await checkAlignment();
+ await page.setViewportSize({width:1365,height:900});
+ await page.waitForTimeout(250);
+ await checkAlignment();
  assert.deepEqual(pageErrors,[],'não pode haver erros JavaScript durante o teste');
  await page.waitForFunction(()=>Boolean(window.OsPeregrinosAurora25D?.VERSION),null,{timeout:5000});
  const version=await page.evaluate(()=>window.OsPeregrinosAurora25D.VERSION);
