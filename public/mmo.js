@@ -135,6 +135,40 @@ const esc=s=>String(s).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
 const rand=n=>{n=Math.imul(n^n>>>16,0x7feb352d);n=Math.imul(n^n>>>15,0x846ca68b);return(n^n>>>16)>>>0};
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+// O chat continua recebendo mensagens mesmo recolhido; a setinha mostra
+// quantas mensagens novas chegaram sem interceptar os controles do mapa.
+const chatDrawer=$('chatDrawer'),chatDrawerToggle=$('chatDrawerToggle');
+const chatDrawerContent=$('chatDrawerContent'),chatUnread=$('chatUnread');
+let chatUnreadCount=0;
+function setChatDrawerOpen(open,{focusInput=false}={}){
+ const expanded=Boolean(open);
+ chatDrawer.dataset.collapsed=String(!expanded);
+ chatDrawerToggle.setAttribute('aria-expanded',String(expanded));
+ chatDrawerToggle.setAttribute('aria-label',expanded?'Recolher chat':'Abrir chat');
+ chatDrawerToggle.title=expanded?'Recolher chat':'Abrir chat';
+ chatDrawerToggle.textContent=expanded?'▶':'◀';
+ chatDrawerContent.inert=!expanded;
+ chatDrawerContent.setAttribute('aria-hidden',String(!expanded));
+ if(expanded){
+  chatUnreadCount=0;chatUnread.hidden=true;chatUnread.textContent='';
+  $('chatLog').scrollTop=$('chatLog').scrollHeight;
+  if(focusInput)$('chatInput').focus();
+ }
+}
+function noteChatUnread(){
+ if(chatDrawer.dataset.collapsed!=='true')return;
+ chatUnreadCount=Math.min(99,chatUnreadCount+1);
+ chatUnread.textContent=chatUnreadCount===99?'99+':String(chatUnreadCount);
+ chatUnread.hidden=false;
+}
+chatDrawerToggle.addEventListener('click',()=>setChatDrawerOpen(chatDrawer.dataset.collapsed==='true'));
+chatDrawer.addEventListener('keydown',event=>{
+ if(event.key==='Escape'){
+  event.preventDefault();event.stopPropagation();
+  setChatDrawerOpen(false);$('game').focus();
+ }
+});
+setChatDrawerOpen(false);
 function say(sender,text,kind='',reportId=null){const line=document.createElement('div');line.className='chat-row '+kind;
  if(sender){let strong=document.createElement('b');strong.textContent=sender+': ';line.appendChild(strong)}
  const span=document.createElement('span');span.textContent=String(text);line.appendChild(span);
@@ -413,6 +447,7 @@ function dispatch(msg){
  }else if(msg.type==='reward'){alert('+'+msg.xp+' EXP  ·  +'+msg.gold+' moedas'+(msg.boss?' ★ CHEFE':''));
  }else if(msg.type==='chat'){
   say('['+msg.channel+'] '+msg.name,msg.text,msg.channel,msg.name===session.name?null:msg.id);
+  if(msg.name!==session.name)noteChatUnread();
   // O evento do servidor já foi moderado e filtrado por canal e bloqueios.
   if(msg.zone===session.zone)chatBubbles.show(msg,Date.now());
  }else if(msg.type==='notice'||msg.type==='system'){say('',msg.text,'sys');if(msg.type==='notice')alert(msg.text);
@@ -732,7 +767,7 @@ document.addEventListener('keydown',e=>{
  if(e.key==='Escape'&&expandedFullscreen)setExpandedFullscreen(false);
 });
 updateFullscreenButton();
-const keyAction=e=>{if(!$('npcDialogue').hidden){if(e.code==='Escape'){closeDialogue();e.preventDefault()}else if(e.code==='Enter'||e.code==='Space'){advanceDialogue();e.preventDefault()}return}if(e.target.matches('input,textarea,select'))return;
+const keyAction=e=>{if(!$('npcDialogue').hidden){if(e.code==='Escape'){closeDialogue();e.preventDefault()}else if(e.code==='Enter'||e.code==='Space'){advanceDialogue();e.preventDefault()}return}if(e.target.matches('input,textarea,select,button,a,[contenteditable="true"]'))return;
  if(['ArrowDown','ArrowUp','ArrowLeft','ArrowRight','Space'].includes(e.code))e.preventDefault();keys.add(e.code);
  if(e.repeat)return;
  if(e.code==='KeyJ'||e.code==='Space'){attack(false);e.preventDefault()}
@@ -745,7 +780,7 @@ const keyAction=e=>{if(!$('npcDialogue').hidden){if(e.code==='Escape'){closeDial
  else if(e.code==='KeyQ'){selectTab('quests');e.preventDefault()}
  else if(e.code==='KeyE'){talkToNearest();e.preventDefault()}
  else if(e.code==='KeyL'){selectTab('story');e.preventDefault()}
- else if(e.code==='Enter'){$('chatInput').focus();e.preventDefault()}
+ else if(e.code==='Enter'){setChatDrawerOpen(true,{focusInput:true});e.preventDefault()}
 };
 window.addEventListener('keydown',keyAction);window.addEventListener('keyup',e=>keys.delete(e.code));
 window.addEventListener('blur',()=>{keys.clear();joystick.release()});
@@ -793,7 +828,7 @@ function attack(skill){
  }
  send(skill?'skill':'attack',{target:session.target});lastActionWasSkill=Boolean(skill);lastAction=performance.now();
 }
-$('talkBtn').onclick=talkToNearest;$('attackBtn').onclick=()=>attack(false);$('skillBtn').onclick=()=>attack(true);$('potionBtn').onclick=()=>send('use',{item:'pocao'});$('questBtn').onclick=()=>selectTab('quests');$('mapBtn').onclick=showWorldMap;$('chatFocusBtn').onclick=()=>$('chatInput').focus();
+$('talkBtn').onclick=talkToNearest;$('attackBtn').onclick=()=>attack(false);$('skillBtn').onclick=()=>attack(true);$('potionBtn').onclick=()=>send('use',{item:'pocao'});$('questBtn').onclick=()=>selectTab('quests');$('mapBtn').onclick=showWorldMap;$('chatFocusBtn').onclick=()=>setChatDrawerOpen(true,{focusInput:true});
 cvs.addEventListener('click',e=>{if(!session.connected)return;const rect=cvs.getBoundingClientRect(),wx=(e.clientX-rect.left)*W/rect.width+session.cameraX,wy=(e.clientY-rect.top)*H/rect.height+session.cameraY;
  // O sprite real tem 92px de altura, portanto toda a porta é clicável,
  // não apenas a posição dos pés; o servidor ainda valida proximidade do jogador.

@@ -23,7 +23,7 @@ test('mensagens de dano e recompensa continuam acessíveis fora do aviso de mons
  assert.ok(start>0&&end>start);
  const ctx={
   session:{zone:0,characters:{hp:135},monsters:new Map(),players:new Map()},
-  fx:[],performance:{now:()=>500},say:()=>{},alert:()=>{},
+  fx:[],performance:{now:()=>500},say:()=>{},alert:()=>{},noteChatUnread:()=>{},
   spriteActions:{monsters:new Map(),players:new Map(),fallen:[],localHurtAt:0},
   $:()=>({hidden:true,textContent:''}),console,
  };
@@ -104,8 +104,8 @@ test('estilos responsivos e URLs novas do cliente são publicados',()=>{
  assert.match(styles,/#canvasShell\.is-expanded/);
  assert.match(styles,/@media\(max-width:850px\)/);
  assert.match(styles,/\.canvas-shell:has\(#welcomeOverlay:not\(\[hidden\]\)\)/);
- assert.match(html,/href="\/mmo\.css\?v=surface16-v1"/);
- assert.match(html,/src="\/mmo\.js\?v=performance-world-v1"/);
+ assert.match(html,/href="\/mmo\.css\?v=chat-drawer-v1"/);
+ assert.match(html,/src="\/mmo\.js\?v=chat-drawer-v1"/);
  assert.ok(html.indexOf('/sprite-studio.js')<html.indexOf('/art16.js'));
  assert.ok(html.indexOf('/character-atelier16.js')<html.indexOf('/sprite-studio.js'));
  assert.ok(html.indexOf('/landscape16.js')<html.indexOf('/art16.js'));
