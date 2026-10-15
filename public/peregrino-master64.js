@@ -69,6 +69,30 @@
    p(c.scarfLight,13,35+bob,19,2);
    p(c.scarfLight,12,40+bob,3,12);
   }
+  // Cachecol é uma assinatura de classe, com ponta solta animada
+  // independentemente do tronco; capas customizadas recebem dobras próprias.
+  const flutter=walking?[0,2,3,1,-1,-2][n%6]:
+   attacking?[0,-1,-3,3,5][n%5]:[0,0,1,0][n%4];
+  if(!capeColor){
+   runs(c.ink,[[39,9,7,4],[43,7,8,7],[49,5,8,5],
+    [54,7,6,5],[58,10,4,3]],flutter,bob);
+   runs(c.scarfShadow,[[40,10,7,5],[46,8,6,8],
+    [53,7,6,3]],flutter,bob);
+   runs(c.scarf,[[40,12,6,5],[45,10,6,7],
+    [51,8,4,4]],flutter,bob);
+   p(c.scarfLight,12+flutter,41+bob,2,8);
+   p(c.scarfLight,10+flutter,48+bob,2,4);
+   p('#f5a17c',12+flutter,54+bob,2,1);
+   p(c.ink,9+flutter,57+bob,3,2);
+  }else{
+   // Camadas de tecido com bainha irregular nas capas personalizadas.
+   runs('#302c36',[[51,16,5,7],[61,14,3,7],
+    [65,39,3,7],[70,46,4,6]],flutter,bob);
+   runs(capeColor,[[52,16,5,8],[63,14,3,7],
+    [67,40,3,6],[72,46,3,4]],flutter,bob);
+   p(c.leatherLight,18+flutter,42+bob,2,16);
+   p('#d6bd92',20+flutter,62+bob,3,1);
+  }
   // Botas com biqueiras e joelheiras; passada legível em 6 quadros.
   const leftStride=Math.max(0,step),rightStride=Math.max(0,-step);
   for(const [baseX,stride]of [[22,leftStride],[35,rightStride]]){
@@ -244,6 +268,56 @@
     }
    }
   }
+  // Segunda passada manual de rosto e cabelo. Silhueta assimétrica:
+  // mechas recortadas e dentes de luz em vez de uma chapa de cabelo.
+  const hairWind=walking?[0,1,-1,0,1,-1][n%6]:
+   attacking?[0,-1,-2,2,1][n%5]:0;
+  if(!back){
+   if(a?.hairStyle!=='raspado'){
+    runs(c.ink,[[7,30,8,3],[9,25,6,2],[11,21,4,6],
+     [18,20,4,8],[15,41,6,7]],hairWind,bob);
+    runs(c.hair,[[8,30,8,3],[10,25,7,4],
+     [13,22,5,6],[18,21,3,6],[16,41,5,7]],hairWind,bob);
+    runs(c.hairLight,[[9,32,7,2],[12,27,5,2],
+     [14,23,3,3],[17,42,2,5]],hairWind,bob);
+    p(c.hair,26+hairWind,15+bob,7,3);
+    p(c.hair,31+hairWind,16+bob,5,5);
+    p(c.hair,38+hairWind,16+bob,5,6);
+    p(c.hairLight,29+hairWind,12+bob,3,2);
+    p(c.hairLight,38+hairWind,13+bob,2,3);
+    p(c.ink,22+hairWind,22+bob,2,5);
+    p(c.hairLight,43+hairWind,19+bob,1,4);
+   }
+   // Maçãs do rosto, testa, sobrancelha e nariz em quatro valores.
+   // As tonalidades dependem do tom de pele selecionado na conta.
+   p(c.skinShadow,25,26+bob,3,3);
+   p(c.skinLight,28,27+bob,3,1);
+   p(c.skinLight,33,25+bob,2,1);
+   p(c.skinShadow,35,28+bob,3,1);
+   p(c.skin,38,29+bob,3,2);
+   p(c.skinLight,32,30+bob,4,1);
+   if(front){
+    p(c.ink,26,21+bob,5,1);
+    p(c.ink,36,20+bob,5,1);
+    p(c.eye,29,24+bob,2,2);p(c.eye,38,24+bob,2,2);
+    p('#ffffff',28,23+bob,1,1);p('#ffffff',38,23+bob,1,1);
+    p(c.skinShadow,34,27+bob,2,1);
+    p(c.ink,31,29+bob,7,1);
+    p(c.skinLight,33,30+bob,5,1);
+    if(hurt)p(c.ink,33,30+bob,4,2);
+   }else if(side){
+    p(c.skinLight,44,25+bob,3,2);p(c.skinShadow,44,27+bob,3,1);
+    p(c.eye,41,24+bob,2,2);p('#fff9ed',41,23+bob,1,1);
+    p(c.ink,38,29+bob,6,1);
+   }
+  }else{
+   // Nuca e mechas posteriores mantêm cor e estilo personalizados.
+   for(const [x,y]of [[24,18],[26,24],[31,17],[34,23],[40,20],[42,27]]){
+    p(c.hairLight,x,y+bob,3,2);
+    p(c.hair,x+1,y+2+bob,3,2);
+   }
+   p(c.ink,24,30+bob,19,2);
+  }
   // Acessórios permanecem ligados às escolhas do perfil.
   if(a?.accessory==='tiara'){
    p(c.trim,23,16+bob,21,2);p(c.gem,31,14+bob,5,4);
@@ -341,5 +415,5 @@
   if(dir===3)g.restore();
   return true;
  }
- return Object.freeze({WIDTH:W,HEIGHT:H,draw,VERSION:'peregrino-master64-v1'});
+ return Object.freeze({WIDTH:W,HEIGHT:H,draw,VERSION:'peregrino-master64-v2'});
 });
