@@ -122,6 +122,16 @@
   // Assinatura do indivíduo: escolha de ponto fixo, nunca partículas aleatórias.
   const token=['flower','rune','fern','shale'][offset];
   total+=PAINT(g,token,34,59+y,colors);
+  // Bordado de identidade pessoal: 56 assinaturas estáveis e discretas,
+  // nunca a mesma gravura repetida somente com recoloração.
+  const id=Math.abs(identity)|0;
+  const thread=MATERIALS[colors];
+  for(let i=0;i<6;i++){
+   const x=25+i*2+((id>>i)&1),row=68+(id%3)+(i%2);
+   g.fillStyle=thread[(id+i)%4];
+   g.fillRect(x,row,1,1);
+   total++;
+  }
   return total;
  }
  function creature(g,{type='limo',boss=false,action='idle',frame=0,species=0}={}){
@@ -140,6 +150,17 @@
   else if(key==='golem'||key==='sentinela')n+=PAINT(g,'rune',34,56+bump,MATERIALS.arcane);
   else if(key==='aranha'||key==='escorpiao')n+=PAINT(g,'chitin',29,55+bump,MATERIALS.chitin);
   else if(key==='lobo'||key==='fera')n+=PAINT(g,'wolf',33,55+bump,MATERIALS.leather);
+  // Segundo motivo anatômico: placas, pelos ou fluido orgânico variam
+  // por espécie; mantém detalhes suficientes inclusive nos insetos menores.
+  const secondary=['morcego','vespa'].includes(key)?'twig':
+   ['esqueleto','cavaleiro','chefe'].includes(key)?'shale':
+   ['fantasma'].includes(key)?'ripple':
+   ['serpente'].includes(key)?'fern':
+   ['limo'].includes(key)?'moss':
+   ['aranha','escorpiao'].includes(key)?'chitin':
+   ['golem','sentinela'].includes(key)?'crack':
+   ['dragao'].includes(key)?'ember':'roots';
+  n+=PAINT(g,secondary==='ember'?'crack':secondary,35,61+bump,material);
   if(boss){
    // Quatro chefes têm assinaturas distintas, não o mesmo decalque.
    const signature=key==='dragao'?'ember':key==='aranha'?'chitin':
@@ -163,6 +184,12 @@
    biome==='desert'?'leather':biome==='mountain'?'stone':'leaf';
   const sx=x+4+(seed%12),sy=y+4+((seed>>>4)%11);
   let n=PAINT(g,k,sx,sy,material);
+  if(kind!=='grass'){
+   // Segunda marca na diagonal oposta evita o vazio em areia e estradas.
+   n+=PAINT(g,kind==='water'?'ripple':kind==='paving'?'paving':
+    kind==='rock'?'crack':kind==='sand'?'dune':'twig',
+    x+18,y+19,material);
+  }
   if(kind==='grass'){
    n+=PAINT(g,biome==='ruins'?'crack':'flower',x+20,y+19,
     biome==='ruins'?'stone':'leaf');
