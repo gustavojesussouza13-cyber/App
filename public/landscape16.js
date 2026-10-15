@@ -253,13 +253,35 @@
   function tree(g,biome,variant){
    const p=PALETTES[biome]||PALETTES.meadow;
    const v=variant%variantCount;
-   // Sombra fixa e tronco encaixado no solo.
-   px(g,'#213e3266',17,69,65,11);
-   px(g,'#413b32',41,44,18,31);px(g,'#6b5239',44,49,12,26);
-   px(g,'#9c7850',46,48,5,23);
-   px(g,'#3c3b32',33,67,13,6);px(g,'#886a48',33,68,14,3);
-   px(g,'#3e3b32',56,67,13,6);px(g,'#83694b',56,68,11,3);
-   px(g,'#513f2f',48,57,2,14);px(g,'#ba9867',51,49,2,13);
+   // Tronco irregular por linhas nativas: raízes e ramos têm silhueta orgânica.
+   px(g,'#213e3266',17,73,65,8);
+   const bark=['#302f2c','#4d4032','#73583c','#9b7850','#b99462'];
+   for(let yy=42;yy<=76;yy++){
+    const fork=yy<57?Math.round((57-yy)*.27):0;
+    const taper=yy>65?Math.round((yy-65)*.36):0;
+    const bend=Math.round(Math.sin((yy+v*6)/8)*2);
+    const left=42-fork-taper+bend,right=59+fork+taper+bend;
+    px(g,bark[0],left,yy,right-left,1);
+    px(g,bark[1],left+2,yy,right-left-4,1);
+    px(g,bark[2],left+4,yy,4+Math.floor((yy+v)%4),1);
+    px(g,bark[3],left+9,yy,2+(yy%3),1);
+    px(g,bark[4],left+10,yy,1,1);
+    if(yy%7===0)px(g,bark[0],right-8,yy,3,1);
+   }
+   for(const [x,up,sign]of [[44,36,-1],[56,33,1]]){
+    for(let k=0;k<12;k++){
+     const yy=44-k,xx=x+sign*Math.floor(k*.85+Math.sin(k/3)*1.2);
+     px(g,bark[0],xx,yy,5,2);
+     px(g,bark[2],xx+1,yy,2,1);
+    }
+    px(g,bark[4],x+sign*7,up,3,2);
+   }
+   for(const [x,sign]of [[43,-1],[57,1]]){
+    for(let k=0;k<8;k++)
+     px(g,k%3?bark[1]:bark[0],x+sign*k,70+(k/3|0)+(k%3),
+      Math.max(1,6-(k/2|0)),2);
+    px(g,bark[3],x+sign*4,71,4,1);
+   }
    const baseX=v===1?0:v===3?3:-1,baseY=v===2?3:0;
    // Copa em degraus de 3 px, recortada e com lobos circulares.
    const slices=[
@@ -347,6 +369,21 @@
    // Musgo, poeira ou sal conforme o bioma, para não repetir a mesma rocha.
    px(g,p[2],12,24,8,3);px(g,p[4],20,14,3,10);
    if(variant%2){px(g,p[2],12,25,5,3);px(g,p[4],20,21,3,9)}
+   // Veios diagonais e musgo pontilhado com clusters nativos.
+   for(let seam=0;seam<3;seam++){
+    const sx=14+seam*11+(variant%2)*2,sy=13+seam*4;
+    for(let i=0;i<7;i++){
+     const xx=sx+i,yy=sy+Math.floor(i*.58)+((variant+seam)%2);
+     px(g,'#354d4a',xx,yy,2,1);
+     if(i<3)px(g,'#e4dbbd',xx,yy-2,2,1);
+    }
+   }
+   if(biome==='forest'||biome==='swamp'){
+    for(let k=0;k<5;k++){
+     const xx=14+((variant*7+k*9)%27),yy=23+k%3;
+     px(g,p[4],xx,yy,3,2);px(g,p[2],xx+1,yy-1,2,1);
+    }
+   }
    // Veios e quinas naturais desenhados como degraus de pixels.
    for(let j=0;j<4;j++){
     const xx=13+j*8,yy=19+(j%2)*4;
