@@ -60,7 +60,8 @@ function create({ctx,W,H}){
      // Tiles de solo, grama e água consistentes com a colisão do servidor.
      // O microclima modifica somente a paleta: água, estradas e colisões permanecem intactas.
      const tileBiome=procedural?.biomeAt(z,tx,ty,biome)||biome;
-     landscape.terrainTile(g,tx,ty,z,tileBiome,k,(cx,cy)=>kind(cx,cy,z,biome));
+     if(tileBiome===biome)landscape.terrainTile(g,tx,ty,z,biome,k,(cx,cy)=>kind(cx,cy,z,biome));
+     else landscape.terrainTile(g,tx,ty,z,tileBiome,k,(cx,cy)=>kind(cx,cy,z,biome));
     }else if(biome==='dungeon'&&pixelDetail)pixelDetail.drawDungeonTile(g,tx,ty,z,k);
     else{
      cut(g,key,tx*TILE,ty*TILE,TILE,TILE);
@@ -603,6 +604,15 @@ function create({ctx,W,H}){
   g.fillStyle='#c9ebeb';for(const p of players)g.fillRect(mx+5+p.x/ZW*(mw-10),my+5+p.y/ZH*(mh-10),4,4);
   g.fillStyle='#ffe0a3';g.fillRect(mx+5+x/ZW*(mw-10)-2,my+5+y/ZH*(mh-10)-2,6,6);g.restore();
   g.font='bold 11px monospace';g.fillStyle='#ead4a2';g.textAlign='left';g.fillText(zone>=16?'SUBSOLO '+(1+(zone-16)%6)+' · MASMORRA '+(1+Math.floor((zone-16)/6)):'REGIÃO '+(zone+1)+'/40',mx+7,my+mh+15);
+  if(procedural){
+   const ctx=g;
+   const biome=biomeThemes[opt.zones?.[zone]?.biome]||'meadow';
+   const piece=procedural.chunk(zone,Math.floor(x/procedural.CHUNK_SIZE),Math.floor(y/procedural.CHUNK_SIZE),biome);
+   ctx.save();ctx.fillStyle='#081b17d9';ctx.fillRect(13,H-35,252,22);
+   ctx.font='bold 12px monospace';ctx.fillStyle='#d8e9bb';ctx.textAlign='left';
+   ctx.fillText('✦ '+piece.name+' · setor '+(piece.cx+1)+','+(piece.cy+1),21,H-20);
+   ctx.restore();
+  }
  }
  function render(opt){
   const {zone,zones,x,y,dir,appearance,monsters,players,projectiles=[],npcs=[],portals=[],kingdomBases=[],storyStage=0,cameraX,cameraY,name,role,target,now,fx,lastAction,lastActionWasSkill=false,skillEffects=[],drawSkillEffects=null,moving,monsterActions=new Map(),playerActions=new Map(),fallen=[],heroPose=null}=opt;
@@ -642,13 +652,6 @@ function create({ctx,W,H}){
     ctx.beginPath();ctx.arc(x+dx*19,y-30+dy*14,31,-Math.PI*.7,Math.PI*.18);ctx.stroke();ctx.restore();}
   for(const f of fx){const t=(now-f.t)/1100;ctx.save();ctx.font='bold 18px monospace';ctx.fillStyle=f.color;ctx.textAlign='center';ctx.shadowColor='#000';ctx.shadowBlur=5;ctx.fillText(f.text,f.x,f.y-45-30*t);ctx.restore()}
   ctx.restore();displayMap(ctx,opt);
-  if(procedural){
-   const piece=procedural.chunk(zone,Math.floor(x/procedural.CHUNK_SIZE),Math.floor(y/procedural.CHUNK_SIZE),biome);
-   ctx.save();ctx.fillStyle='#081b17d9';ctx.fillRect(13,H-35,252,22);
-   ctx.font='bold 12px monospace';ctx.fillStyle='#d8e9bb';ctx.textAlign='left';
-   ctx.fillText('✦ '+piece.name+' · setor '+(piece.cx+1)+','+(piece.cy+1),21,H-20);
-   ctx.restore();
-  }
   // Última camada visível, sem depender da profundidade do portal no mapa.
   portalInteractionHud(ctx,portals,{x,y});
  }
