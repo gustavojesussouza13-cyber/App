@@ -125,11 +125,12 @@ const appearance16=require('./public/appearance16');
 const defaultSave=()=>({attributes:{},energy:null,crownKeyIssuedAt:0,level:1,xp:0,hp:135,coins:60,zone:0,x:ZONE_W/2,y:ZONE_H/2,role:'peregrino',appearance:null,inventory:{pocao:3},kills:0,quests:[],visited:[0],guild:null,guildFounded:false,achievements:[],bossRelics:[],blocked:[],story:freshStory()});
 function hpMax(s){return rpg.calculateAttributes(s).stats.maxHp}
 function xpNeed(level){return 70+level*level*35}
-function safeSave(s){return {attributes:s.attributes,energy:s.energy,crownKeyIssuedAt:s.crownKeyIssuedAt||0,level:s.level,xp:s.xp,hp:s.hp,coins:s.coins,zone:s.zone,x:s.x,y:s.y,role:s.role,appearance:appearance16.normalize(s.appearance),inventory:s.inventory,kills:s.kills,quests:s.quests,visited:s.visited,guild:s.guild,guildFounded:s.guildFounded===true,achievements:s.achievements,bossRelics:s.bossRelics,blocked:s.blocked,story:s.story}}
+function safeSave(s){return {attributes:s.attributes,energy:s.energy,crownKeyIssuedAt:s.crownKeyIssuedAt||0,level:s.level,xp:s.xp,hp:s.hp,coins:s.coins,zone:s.zone,x:s.x,y:s.y,role:s.role,appearance:appearance16.normalize(s.appearance),inventory:s.inventory,kills:s.kills,quests:s.quests,visited:s.visited,guild:s.guildDormant||s.guild,guildFounded:s.guildFounded===true,achievements:s.achievements,bossRelics:s.bossRelics,blocked:s.blocked,story:s.story}}
 function hash32(n){n|=0;n=Math.imul(n^(n>>>16),0x7feb352d);n=Math.imul(n^(n>>>15),0x846ca68b);return (n^(n>>>16))>>>0}
 class World {
  constructor({send,getOnline,hasClassicName,dataFile,autosave=false,persistentStore=null}){
   this.send=send;this.getOnline=getOnline;this.hasClassicName=hasClassicName;
+  this.roomId='auren-publica'; // Sala permanente de referência; salas temporárias recebem ID do RoomHub.
   this.guildDefenseTargets=new Map(); // ameaças de cerco temporárias, somente em RAM
   this.players=new Map();this.guestReconnect=new Map();this.monsters=new Map();this.parties=new Map();this.guilds=new Map();this.pendingTrades=new Map();this.chatGuard=new ChatGuard();this.chatReceipts=new Map();this.chatReports=new Map();this.chatReportRate=new Map();
   this.dirty=false;this.lastTick=Date.now();this.day=1;this.monsterPersistenceEnabled=true;
@@ -139,6 +140,9 @@ class World {
   if(autosave)this.saveTimer=setInterval(()=>this.persist(),30000).unref();
  }
  get count(){return this.players.size}
+ serializePlayer(p){return safeSave(p.save)}
+ guildRoom(g){return g?.roomId||'auren-publica'}
+ currentGuilds(){return [...this.guilds.entries()].filter(([,g])=>this.guildRoom(g)===this.roomId)}
  load(){
   try{
    if(this.dataFile.endsWith('.sqlite')){
@@ -171,7 +175,7 @@ class World {
   }
   // Sessões visitantes não são gravadas no Postgres/SQLite. Somente contas
   // registradas preservam personagens entre visitas ao site.
-  for(const p of this.players.values())if(p.isAccount)this.saved.characters[p.uid]=safeSave(p.save);
+  for(const p of this.players.values())if(p.isAccount)this.saved.characters[p.uid]=this.serializePlayer(p);
   this.saved.guilds=Object.fromEntries(this.guilds);this.saved.day=this.day;
   if(this.persistentStore){this.dirty=false;return this.persistentStore.enqueue(this.saved);}
   try{
@@ -317,7 +321,13 @@ class World {
     }
    }
   if(s.guild){const g=this.guilds.get(s.guild.toLocaleLowerCase('pt-BR'));
-   if(!g?.members?.includes(uid)){s.guild=null;this.dirty=true}}
+   if(!g?.members?.includes(uid)){s.guild=null;this.dirty=true}
+   else if(this.guildRoom(g)!==this.roomId){
+    // A guilda continua salva na conta, mas não embarca para outro servidor.
+    // Ao regressar à sala onde ela existe, a vinculação reaparece intacta.
+    s.guildDormant=s.guild;s.guild=null;
+   }
+  }
   // A primeira escolha vale para contas novas, legadas sem visual e visitantes novos.
   // Reconexões e trocas de sala jamais substituem o visual salvo inadvertidamente.
   s.appearance=appearance16.normalize(s.appearance||d.appearance);
@@ -524,7 +534,7 @@ class World {
   if(!selection||typeof selection!=='object'||Array.isArray(selection)){this.tell(p,'Aparência inválida.');return false}
   p.lastAppearanceChange=now;
   p.save.appearance=appearance16.normalize(selection);
-  if(p.isAccount)this.saved.characters[p.uid]=safeSave(p.save);
+  if(p.isAccount)this.saved.characters[p.uid]=this.serializePlayer(p);
   this.dirty=true;
   this.send(p.socket,this.ownStatus(p));
   this.broadcast({type:'appearanceChanged',id:p.id,appearance:p.save.appearance},q=>q.id!==p.id);
@@ -895,7 +905,8 @@ class World {
   if(channel==='party'&&!p.party)return this.tell(p,'Você precisa entrar em uma equipe.');
   if(channel==='guild'&&!p.save.guild)return this.tell(p,'Você precisa entrar em uma guilda.');
   // Nenhuma mensagem pode ser transmitida antes da moderação no servidor.
-  const id=crypto.randomUUID(),event={type:'chat',id,channel,name:p.name,text:review.text,preset:review.preset};
+  const id=crypto.randomUUID(),event={type:'chat',id,channel,name:p.name,text:review.text,preset:review.preset,
+   senderId:p.id,zone:p.zone};
   const recipients=new Set();
   for(const q of this.players.values()){
    if(q.save.blocked?.includes(p.name.toLocaleLowerCase('pt-BR')))continue;
@@ -950,7 +961,7 @@ class World {
  }
  guildDirectory(p){
   const current=p.save.guild?.toLocaleLowerCase('pt-BR')||null;
-  const result=[...this.guilds.entries()].filter(([,g])=>g&&Array.isArray(g.members)&&g.members.length)
+  const result=this.currentGuilds().filter(([,g])=>g&&Array.isArray(g.members)&&g.members.length)
    .map(([key,g])=>{
     const staff=g.leader===p.uid||g.moderators?.includes(p.uid);
     const member=g.members.includes(p.uid);
@@ -965,14 +976,14 @@ class World {
      roster:member?g.members.map(uid=>({id:uid,name:this.guildName(g,uid),
       role:uid===g.leader?'Líder':g.moderators?.includes(uid)?'Moderador':'Membro'})):undefined};
    }).sort((a,b)=>b.members-a.members||a.name.localeCompare(b.name,'pt-BR'));
-  return {guilds:result,current,canApply:!!p.isAccount&&!p.save.guild};
+  return {guilds:result,current,canApply:!!p.isAccount&&!p.save.guild&&!p.save.guildDormant&&this.roomId==='auren-publica'};
  }
  guildChanged(){
   for(const w of this.guildWorlds()){
    w.dirty=true;
    for(const p of w.players.values()){
     if(p.live===false)continue;
-    if(p.isAccount)this.saved.characters[p.uid]=safeSave(p.save);
+    if(p.isAccount)this.saved.characters[p.uid]=w.serializePlayer(p);
     w.send(p.socket,{type:'guildDirectory',data:w.guildDirectory(p)});
     w.send(p.socket,{type:'kingdomState',data:kingdoms.publicState(w,p)});
     w.send(p.socket,w.ownStatus(p));
@@ -1014,13 +1025,15 @@ class World {
   if(mode==='list'){
    this.send(p.socket,{type:'guildDirectory',data:this.guildDirectory(p)});return;
   }
+  if(this.roomId!=='auren-publica')return inform('Guildas e fortalezas permanentes ficam na Praça Pública de Auren. Volte à sala principal para administrá-las; sua guilda original continua salva.');
+  if(p.save.guildDormant)return inform('Sua guilda original pertence à sala anterior. Volte a ela para gerenciar os seus membros e edifícios.');
   if(mode==='create'){
    if(!p.isAccount)return inform('Para criar uma guilda, entre com uma conta cadastrada.');
    if(p.save.guild||p.save.coins<250||!/^[\p{L}\p{N}][\p{L}\p{N} -]{2,23}$/u.test(name)||
     !inspectNickname(name).ok||this.guilds.has(key))
     return inform('Nome de guilda indisponível. Custo: 250 moedas; não é possível pertencer a duas guildas.');
    p.save.coins-=250;p.save.guild=name;p.save.guildFounded=true;
-   this.guilds.set(key,{name,leader:p.uid,founderUid:p.uid,members:[p.uid],
+   this.guilds.set(key,{name,roomId:this.roomId,leader:p.uid,founderUid:p.uid,members:[p.uid],
     memberNames:{[p.uid]:p.name},moderators:[],applications:[],invitations:[],description:''});
    inform('Guilda fundada: '+name+'. Agora você pode administrar solicitações no diretório.');
   }else if(mode==='describe'){
