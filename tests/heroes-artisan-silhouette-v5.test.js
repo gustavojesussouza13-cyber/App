@@ -29,14 +29,13 @@ test('three hero torsos and capes are sculpted as irregular pixel contours, not 
     assert.ok(w*h<340,role+': rectangular torso of '+w+'x'+h+' at '+x+','+y);
    }
   }
-  // Count varying border positions across the main body.
-  const edgePositions=[];
-  for(let y=34;y<=68;y+=2){
-   const row=[];
-   for(let x=13;x<52;x++)if(a.px.has(y*64+x))row.push(x);
-   if(row.length)edgePositions.push(row[0]);
-  }
-  assert.ok(new Set(edgePositions).size>=4,role+' needs jagged non-rectangular silhouette');
+  // Evaluate the *authored garments*, not the composite left border.
+  // Guardião has a giant shield and Archer a bow, both covering the outline.
+  const shapeRuns=a.strokes.filter(([col,x,y,w,h])=>
+   h===1&&w>=3&&x>=16&&x<=47&&y>=32&&y<=70);
+  assert.ok(shapeRuns.length>65,role+' garment needs hand-rasterized outlines');
+  const edges=new Set(shapeRuns.map(([,x,y,w])=>x+':'+w));
+  assert.ok(edges.size>=17,role+' garment edges must vary by row');
  }
 });
 test('all classes keep correct skin and outfits after contour replacement',()=>{
