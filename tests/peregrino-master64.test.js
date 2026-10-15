@@ -21,7 +21,7 @@ function makeCanvas(){
 const signature=(ops)=>JSON.stringify(ops);
 test('nova arte do Peregrino usa 64x80 nativos e dezenas de clusters pintados',()=>{
  assert.equal(MASTER.WIDTH,64);assert.equal(MASTER.HEIGHT,80);
- assert.equal(MASTER.VERSION,'peregrino-master64-v1');
+ assert.equal(MASTER.VERSION,'peregrino-master64-v2');
  const {g,ops}=makeCanvas();
  assert.equal(MASTER.draw(g,{dir:2,action:'idle',frame:0,colors:{},appearance:APP.DEFAULT}),true);
  assert.ok(ops.filter(o=>o[0]==='pixel').length>165);
@@ -76,7 +76,7 @@ test('renderizador real prioriza o novo mestre sem mudar classes nem monstruári
  assert.match(src,/PILGRIM_MASTER\?\.draw/);
  assert.match(src,/name==='peregrino'/);
  assert.ok(html.indexOf('/peregrino-master64.js')<html.indexOf('/sprite-studio.js'));
- assert.match(html,/peregrino-master64\.js\?v=peregrino-master64-v1/);
+ assert.match(html,/peregrino-master64\.js\?v=peregrino-master64-v2/);
  assert.match(html,/sprite-studio\.js\?v=heroes-master64-v2/);
  assert.match(html,/appearance-editor\.js\?v=peregrino-master64-v1/);
  assert.match(html,/mmo\.css\?v=heroes-master64-v2/);
