@@ -43,7 +43,7 @@
    g.fillStyle=color;g.fillRect(Math.round(x),Math.round(y),Math.round(w),Math.round(h));
   };
   const bands=(col,spans,dx=0,dy=0)=>{for(const [y,x,w,h=1]of spans)p(col,x+dx,y+dy,w,h)};
-  if(dir===3){g.save();g.translate(W,0);g.scale(-1,1)}
+  if(dir===3){g.save();g.translate(WIDTH,0);g.scale(-1,1)}
   if(action==='death'){g.save();g.translate(0,Math.min(12,f*2));g.scale(1,Math.max(.28,1-f*.15))}
   // Capas flutuantes modeladas na silhueta, atrás dos braços e pernas.
   const cape=(app?.cape&&app.cape!=='nenhuma'?
@@ -256,6 +256,54 @@
     p('#70c7e0',39,61+bob,9,2);
     p('#d5ffff',42,58+bob,3,3);
    }
+  }
+  // Pixel finishing: facetas, rebites e textura artesanal, sem noise por frame.
+  if(role==='guardiao'){
+   // Placas de aço recebem refletores orientados à esquerda e gravações.
+   for(const [x,y] of [[19,37],[23,39],[40,37],[41,45],[26,58],[39,59],
+    [13,36],[48,36],[17,45],[51,48],[21,48],[43,51]]){
+    p(c.goldShadow,x,y+bob,3,2);
+    p(c.gold,x+1,y+bob,1,1);
+   }
+   for(const [x,y] of [[24,43],[25,48],[41,42],[40,49],[23,56],[42,57]]){
+    p(c.shine,x,y+bob,2,1);p(c.light,x+1,y+1+bob,1,2);
+   }
+   p('#e6f0ed',13,40+bob,2,1);p(c.shine,9,56+bob,2,1);
+   p(c.gold,4,52+bob,3,1);p(c.light,15,61+bob,3,1);
+   p(c.gold,37,18+bob,2,2);p(c.shine,28,14+bob,2,1);
+   p('#fff9e2',32,14+bob,1,3);
+  }else if(role==='arqueiro'){
+   // Costuras e folhas em diagonal nas ombreiras e na roupa de viagem.
+   for(const [x,y] of [[18,43],[20,47],[21,51],[23,55],[39,42],[40,47],
+    [43,50],[29,60],[35,62]]){
+    p(c.goldShadow,x,y+bob,3,2);p(c.gold,x+1,y+bob,1,1);
+   }
+   for(const [x,y] of [[20,37],[23,39],[40,39],[43,41],[24,55],[42,55]]){
+    p(c.light,x,y+bob,3,1);p(c.shadow,x+1,y+1+bob,2,2);
+   }
+   // Emblemas bordados de folhas e couro quebram os grandes planos.
+   for(let i=0;i<4;i++){
+    p(c.shine,17+i*2,40+i*3+bob,1,2);
+    p(c.gold,25+i*4,48+bob,2,1);
+   }
+   p('#f1e3ba',35,38+bob,2,1);p(c.ink,34,44+bob,1,3);
+   p(c.gold,47,60+bob,2,2);p(c.shine,19,65+bob,2,1);
+  }else{
+   // Barra tripla, inscrições de luz e joias embutidas no traje.
+   for(let i=0;i<8;i++){
+    const x=19+i*4,y=64+(i%3);
+    p(c.goldShadow,x,y+bob,3,3);
+    p(c.gold,x+1,y+bob,1,2);
+   }
+   for(let i=0;i<6;i++){
+    p(c.light,23+i*4,47+(i%2)*5+bob,2,2);
+    p(c.shine,24+i*4,48+(i%2)*5+bob,1,1);
+   }
+   p('#fff9f3',32,37+bob,7,2);p(c.gold,33,39+bob,5,1);
+   p(c.mark,33,58+bob,5,2);p('#a4f3ef',34,58+bob,2,1);
+   p(c.gold,15,45+bob,3,2);p(c.light,16,40+bob,2,5);
+   p('#ed99a2',44,44+bob,2,6);p(c.gold,45,49+bob,2,1);
+   p(c.shine,52,32+bob,2,1);p('#fff9f3',58,13+bob,2,2);
   }
   if(action==='hurt'){p('#ffe0b1',19,35+bob,18,3);p('#e68c77',49,44+bob,3,4)}
   if(action==='death')g.restore();
