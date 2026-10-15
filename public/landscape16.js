@@ -255,7 +255,7 @@
    const v=variant%variantCount;
    // Tronco irregular por linhas nativas: raízes e ramos têm silhueta orgânica.
    px(g,'#213e3266',17,73,65,8);
-   const bark=['#302f2c','#4d4032','#73583c','#9b7850','#b99462'];
+   const bark=['#302f2c','#6b5239','#73583c','#9b7850','#b99462'];
    for(let yy=42;yy<=76;yy++){
     const fork=yy<57?Math.round((57-yy)*.27):0;
     const taper=yy>65?Math.round((yy-65)*.36):0;
