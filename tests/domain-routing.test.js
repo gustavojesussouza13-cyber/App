@@ -22,7 +22,7 @@ const get=(route,host)=>new Promise((resolve,reject)=>{
    res.on('data',s=>body+=s);res.on('end',()=>resolve(body));res.on('error',reject);
   });req.on('error',reject);
 });
-test('site keeps existing canonical until domain is connected',async()=>{
+test('site displays its connected canonical domain also through Render's fallback host',async()=>{
  await ready();
  const html=await get('/','os-peregrinos-online.onrender.com');
  assert.match(html,/canonical" href="https:\/\/os-peregrinos-online\.onrender\.com\//);
