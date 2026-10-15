@@ -28,7 +28,7 @@ function sheet(role,dir=2,action='idle',frame=0,appearance=APP.DEFAULT){
 const sig=ops=>JSON.stringify(ops);
 test('três profissões utilizam mestre visual próprio, 64x80 nativo',()=>{
  assert.equal(ART.WIDTH,64);assert.equal(ART.HEIGHT,80);
- assert.equal(ART.VERSION,'heroes-master64-v2');
+ assert.equal(ART.VERSION,'heroes-master64-v3');
  assert.deepEqual(Object.keys(ART.ROLES).sort(),['arqueiro','curandeiro','guardiao']);
  for(const role of Object.keys(ART.ROLES)){
   assert.ok(sheet(role).filter(x=>x[0]==='rect').length>110,role+' sem clusters suficientes');
