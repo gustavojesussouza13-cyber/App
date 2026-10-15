@@ -50,7 +50,7 @@ test('A identidade do Peregrino 2.5D usa a arte pixel a pixel original e preserv
  assert.match(src,/walk'\?6|move==='walk'\?6/);
  assert.match(src,/cache.size>MAX_CACHE/);
  assert.match(art,/useAurora25d&&p\.role==='peregrino'/);
- assert.match(art,/const studioHero=!auroraHero/);
+ assert.match(art,/const studioHero=Boolean\(spriteStudio\?\.drawHero/);
  assert.match(html,/peregrino-aurora25d\.js/);
  assert.ok(fs.existsSync(path.join(__dirname,'..','public','peregrino-atlas25d.html')));
 });
