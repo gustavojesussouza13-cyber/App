@@ -81,10 +81,8 @@ const rooms=new RoomHub({mainWorld:world,createWorld:()=>{
  // Persista pelo mundo principal para não perder a última atualização de
  // um guerreiro que estava em outra sala.
  instance.persist=function(){
-  for(const p of this.players.values())if(p.isAccount)this.saved.characters[p.uid]={
-   ...p.save,
-   guild:p.save.guild
-  };
+  for(const p of this.players.values())if(p.isAccount)
+   this.saved.characters[p.uid]=this.serializePlayer(p); // não perde guilda na sala original
   if(this.dirty){world.dirty=true;this.dirty=false}
   return world.persist();
  };
