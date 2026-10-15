@@ -403,10 +403,23 @@
      p(shine,11+k*12,29+y,2,2);
     }
     if(action==='attack'){
+     // Cinco silhuetas de ataque de chefe: preparar, carregar, lançar,
+     // atingir e recuperar. A magia desloca-se de quadro a quadro.
+     const arc=[
+      [19,20,3],[25,17,4],[34,12,5],[46,19,6],[54,34,3]
+     ][num%5];
+     const [ax,ay,size]=arc;
      for(let k=0;k<5;k++){
-      p(crest,6+k*10,6+(k%2)*7,4,3);
-      p(PAPER,7+k*10,7+(k%2)*7,2,1);
+      const px=6+k*10,py=6+(k%2)*7-(num%5)*2;
+      p(crest,px,py,4,3);
+      p(PAPER,px+1,py+1,2,1);
      }
+     poly(shade,[[ax-5,ay-6],[ax+4,ay-7],[ax+size+4,ay],
+      [ax+5,ay+size+4],[ax-5,ay+size+2]]);
+     poly(crest,[[ax-3,ay-4],[ax+3,ay-4],[ax+size+2,ay],
+      [ax+3,ay+size+2],[ax-2,ay+size]]);
+     p(PAPER,ax,ay,size,Math.max(2,size-1));
+     line(PAPER,ax,ay,ax+size,ay-size,1);
     }
    }
    if(action==='hurt')p(PAPER,19,31+y,23,3);
