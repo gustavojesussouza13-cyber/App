@@ -296,6 +296,78 @@
      p('#e7dca9',51+j*3,45+j*4+off,1,1);
     }
    }
+   
+   // A identidade facial do NPC também é assinada por sua função.
+   // Adereços seguem a forma do cabelo, gola, ombro ou instrumento.
+   if(/sineir|faroleir|lanterna|vigilia/.test(style)){
+    // Sino facetado pendurado em vez de um quadrado amarelo.
+    poly(ink,[[7,45+off],[15,43+off],[19,49+off],[18,60+off],
+     [12,64+off],[5,60+off],[4,50+off]]);
+    poly('#d5b46d',[[9,47+off],[15,46+off],[17,51+off],
+     [15,58+off],[11,61+off],[7,58+off],[7,51+off]]);
+    p(PAPER,10,49+off,3,2);p(ink,11,61+off,3,2);
+   }else if(/cartograf|historia/.test(style)){
+    // Chapéu angular de exploração e pergaminho.
+    poly(ink,[[18,14+off],[26,9+off],[38,9+off],[45,14+off],
+     [51,18+off],[44,21+off],[21,21+off],[15,18+off]]);
+    poly(trim,[[21,16+off],[28,11+off],[38,11+off],
+     [43,17+off],[30,19+off],[18,18+off]]);
+    line(PAPER,8,46+off,12,61+off,3);
+    line(trim,13,47+off,16,60+off,2);
+   }else if(/padeir|crianca|aprendiz/.test(style)){
+    // Touca orgânica com dobras.
+    poly(PAPER,[[23,19+off],[20,13+off],[26,9+off],
+     [32,11+off],[38,8+off],[44,12+off],[43,20+off]]);
+    line(trim,24,19+off,42,19+off,2);
+   }else if(/escav|ferreir|fornalha|mestre-cinzas/.test(style)){
+    // Ombreira martelada com rebites.
+    poly(ink,[[9,32+off],[16,27+off],[22,30+off],
+     [24,38+off],[17,42+off],[9,40+off]]);
+    poly('#839da6',[[11,33+off],[16,29+off],
+     [20,32+off],[21,37+off],[14,39+off]]);
+    for(let j=0;j<3;j++)p(PAPER,12+j*3,34+off+(j%2),1,1);
+   }else if(/marinheir|barque|pesc|relator-mar/.test(style)){
+    // Lenço de marinheiro e corda diagonal.
+    poly(ink,[[23,32+off],[43,33+off],[44,39+off],
+     [38,43+off],[32,39+off],[26,45+off],[22,39+off]]);
+    poly('#83b9c5',[[24,34+off],[41,34+off],
+     [39,39+off],[33,37+off],[26,41+off]]);
+    line('#dfc68f',48,52+off,54,66+off,2);
+   }else if(/jardin|sementeira|colhed|mensageira-musgo/.test(style)){
+    // Coroa de folhas em pixels angulares.
+    for(let j=0;j<3;j++){
+     const x=22+j*7;
+     poly('#467a52',[[x,14+off],[x+3,8+off],
+      [x+7,15+off],[x+3,19+off]]);
+     p('#d3dca0',x+3,12+off,2,2);
+    }
+   }else if(/copista|escrib|bibliotec|encadern|relator|ancia/.test(style)){
+    // Armação fina em vez de lentes quadradas.
+    for(const x of [26,36]){
+     line(ink,x,24+off,x+6,24+off,1);
+     line(ink,x,24+off,x+1,29+off,1);
+     line(ink,x+6,24+off,x+5,29+off,1);
+     line(ink,x+1,29+off,x+5,29+off,1);
+    }
+    p(PAPER,30,26+off,2,1);
+   }else if(/tecel|ouvint|afinador|regente|coro/.test(style)){
+    line(trim,27,47+off,41,62+off,2);
+    line(light,41,47+off,27,62+off,1);
+    poly(PAPER,[[10,44+off],[16,48+off],[12,58+off],[7,53+off]]);
+   }else if(/guia|viajante|mensageiro|porteiro|emissaria/.test(style)){
+    // Capuz com bordas escalonadas e fecho assimétrico.
+    poly(ink,[[19,25+off],[21,16+off],[28,11+off],
+     [39,12+off],[45,20+off],[47,29+off],[42,23+off],
+     [36,18+off],[26,21+off]]);
+    line(trim,24,35+off,31,40+off,2);
+   }
+   // Bordado particular do personagem, derivado de identidade estável.
+   const thread=[trim,light,'#ead8a9',hexMix(robe,PAPER,.38)][id%4];
+   for(let mark=0;mark<4;mark++){
+    const xx=25+mark*5,yy=59+((id>>>(mark*3))&3);
+    line(thread,xx,yy+off,xx+2,yy+2+off,1);
+    p(ink,xx+3,yy+2+off,1,1);
+   }
    // Ornamentos pintados pixel a pixel em matriz artesanal; cada habitante
    // tem assinatura por ofício e identidade persistente.
    HAND?.npc(g,{profession,identity:id,dir,action,frame:n});
@@ -692,11 +764,21 @@
    // Chefes ganham uma assinatura própria, sem substituírem a criatura.
    if(boss){
     const crest=['#eec47c','#a8a3ef','#75e1ce','#f4a16e'][Math.abs(zone)%4];
-    poly(shade,[[16,21+y],[15,7+y],[26,14+y],
-     [32,2+y],[37,14+y],[48,7+y],[48,21+y]]);
-    poly(crest,[[18,18+y],[18,10+y],[27,17+y],
-     [32,6+y],[38,17+y],[46,10+y],[46,18+y]]);
-    p(PAPER,30,13+y,5,3);
+    if(shape==='skeleton'){
+      // A coroa pertence somente ao rei humanoide.
+      poly(shade,[[16,21+y],[15,7+y],[26,14+y],
+          [32,2+y],[37,14+y],[48,7+y],[48,21+y]]);
+         poly(crest,[[18,18+y],[18,10+y],[27,17+y],
+          [32,6+y],[38,17+y],[46,10+y],[46,18+y]]);
+         p(PAPER,30,13+y,5,3);
+     }else{
+      // Outras espécies possuem runas ao redor, sem coroas no corpo.
+      for(const side of [-1,1]){
+       const xx=32+side*28;
+       line(crest,xx,27+y,xx+side*3,17+y,2);
+       p(PAPER,xx,16+y,2,2);
+      }
+     }
     for(let k=0;k<4;k++){
      p(crest,10+k*12,28+y+((num+k)%2)*2,4,5);
      p(shine,11+k*12,29+y,2,2);
