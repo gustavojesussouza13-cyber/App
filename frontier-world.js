@@ -67,7 +67,7 @@ function around(id){
   entries.push({zone,name:to.name,x,direction,kind:'frontier',dungeon:false,gateway:false,frontier:true});
  }
  if(c.x===0&&c.y===0)entries.push({zone:ORIGIN,name:'Terra da Última Luz · Retornar a Auren',
-  x:1500,direction:'retorno',kind:'frontier',dungeon:false,gateway:true,frontier:true});
+  x:1500,direction:'retorno',kind:'frontier',dungeon:false,gateway:false,frontier:true});
  return entries;
 }
 function difficulty(id){
