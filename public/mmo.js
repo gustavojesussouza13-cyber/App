@@ -23,6 +23,7 @@ function updateWorld25dMode(){
  world25dButton.textContent=world25dLoading?'Carregando 2.5D…':
   (world25dActive?'✧ 2.5D: ligado':'✧ 2.5D: ativar');
  world25dButton.setAttribute('aria-pressed',String(world25dActive));
+ document.body.classList.toggle('mmo-aurora25d',world25dActive);
  world25dButton.disabled=world25dLoading;
  if(world25d?.canvas)world25d.canvas.style.display=world25dActive?'block':'none';
 }
