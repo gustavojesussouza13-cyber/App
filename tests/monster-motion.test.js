@@ -42,16 +42,27 @@ test('perseguição e retorno ao lar seguem limites de velocidade, sem teleporte
  m.x=m.home.x+280;m.y=m.home.y+130;
  m.wander=Date.now()+10000;m.aggroTarget=null;
  for(let i=0;i<8;i++){
-  const x=m.x,y=m.y;world.lastTick=Date.now()-350;world.tick();
-  // O tick limita dt a 0,5 s: retorno ao lar a 40 px/s nunca supera 20 px.\n  assert.ok(Math.hypot(m.x-x,m.y-y)<=20.01);
+  const x=m.x,y=m.y;
+  const previousTick=Date.now()-350;
+  world.lastTick=previousTick;
+  world.tick();
+  // O limite de velocidade usa o dt realmente aplicado pelo servidor.
+  // Assim, pequenas variações do relógio não tornam o teste intermitente.
+  const dt=Math.min(.5,Math.max(.01,(world.lastTick-previousTick)/1000));
+  const moved=Math.hypot(m.x-x,m.y-y);
+  assert.ok(moved<=40*dt+.02,`retorno ao lar acima de 40 px/s: ${moved} em ${dt}s`);
  }
  m.x=m.home.x;m.y=m.home.y;m.wander=0;
  m.wanderGoal={x:m.x+30,y:m.y};
  m.aggroTarget=p.id;m.aggroUntil=Date.now()+50000;
  p.x=m.x+170;p.y=m.y;
- world.lastTick=Date.now()-350;world.tick();
+ const previousTick=Date.now()-350;
+ world.lastTick=previousTick;
+ world.tick();
+ const dt=Math.min(.5,Math.max(.01,(world.lastTick-previousTick)/1000));
  assert.equal(m.wanderGoal,null,'ao perseguir deve cancelar destino de passeio');
- assert.ok(Math.hypot(m.x-m.home.x,m.y-m.home.y)<=20.31);
+ const moved=Math.hypot(m.x-m.home.x,m.y-m.home.y);
+ assert.ok(moved<=58*dt+.02,`perseguição acima de 58 px/s: ${moved} em ${dt}s`);
 });
 
 test('visual interpola quadros entre snapshots sem alterar posições do servidor',()=>{
