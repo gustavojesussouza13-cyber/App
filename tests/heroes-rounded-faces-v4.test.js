@@ -87,7 +87,7 @@ test('a roupa e a capa personalizadas mudam o visual, sem alterar o save',()=>{
 test('site usa versão V4; todos os outros renderizadores e fortalezas 3D são preservados',()=>{
  const html=fs.readFileSync(path.join(__dirname,'../public/mundo.html'),'utf8');
  assert.match(html,/heroes-master64\.js\?v=heroes-master64-v6/);
- assert.match(html,/world-art-master64\.js\?v=world-art-master64-v3/);
+ assert.match(html,/world-art-master64\.js\?v=world-art-master64-v4/);
  assert.match(html,/guild-city-3d\.js/);
  assert.ok(html.indexOf('/heroes-master64.js')<html.indexOf('/sprite-studio.js'));
  const src=fs.readFileSync(path.join(__dirname,'../public/heroes-master64.js'),'utf8');
