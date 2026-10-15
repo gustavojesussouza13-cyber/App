@@ -6,6 +6,7 @@ const crypto=require('node:crypto');
 const {NPCS,chapters,byId,publicNpc,freshStory,normalizeStory,journal}=require('./story-data');
 const {MAX_GOLD}=require('./owner-benefits');
 const terrain=require('./world-terrain');
+const procedural=require('./public/procedural-world');
 const kingdoms=require('./kingdom-politics');
 const rpg=require('./rpg-attributes');
 const creatureRpg=require('./monster-progression');
@@ -206,13 +207,15 @@ class World {
     const boss=i===count-1;const seed=hash32(zone*9217+i*5711+77);
     const speciesId=boss?(dungeon?31:(zone+11)%32):(zone*2+i*7+((seed>>4)%5))%SPECIES.length;
     const sp=SPECIES[speciesId],tier=zoneDifficulty(zone),mult=(boss?5.5:1)*(crownDungeonZone(zone)?1.65:1);
+    const trait=procedural.monsterTrait(zone,i,boss);
     const eliteNames=['Guardião das Raízes','Marechal das Cinzas','Oráculo das Vozes','Arauto do Amanhecer'];
-    const name=boss&&zone>=16?'★ '+eliteNames[Math.floor((zone-16)/6)]+' · Piso '+dungeonDepth(zone):(boss?'★ ':'')+sp[0];
+    const baseName=boss&&zone>=16?'★ '+eliteNames[Math.floor((zone-16)/6)]+' · Piso '+dungeonDepth(zone):(boss?'★ ':'')+sp[0];
+    const name=zone>=16&&!boss&&['Raro','Épico'].includes(trait.rarity)?trait.rarity+' · '+baseName:baseName;
     const chosen={x:130+hash32(seed+1)%(ZONE_W-260),y:130+hash32(seed+2)%(ZONE_H-260)};
     const home=terrain.nearestWalkable(zone,chosen.x,chosen.y,ZONES);
-    const id=`m-${zone}-${i}`,baseHp=Math.floor(sp[1]*mult*tier);
-    const baseDamage=Math.ceil(sp[2]*tier*(boss?2:1)*(crownDungeonZone(zone)?1.20:1));
-    const monster={id,zone,name,species:speciesId,boss,x:home.x,y:home.y,home,
+    const id=`m-${zone}-${i}`,baseHp=Math.floor(sp[1]*mult*tier*trait.bonus);
+    const baseDamage=Math.ceil(sp[2]*tier*(boss?2:1)*(crownDungeonZone(zone)?1.20:1)*trait.bonus);
+    const monster={id,zone,name,species:speciesId,boss,trait,x:home.x,y:home.y,home,
      baseHp,baseDamage,hp:baseHp,maxHp:baseHp,damage:baseDamage,
      xp:Math.ceil(sp[3]*tier*(boss?4:1)),coins:Math.ceil(sp[4]*tier*(boss?5:1)),
      lastAttack:0,windupUntil:0,deadUntil:0,damageFrom:new Map(),wander:0,
@@ -230,7 +233,7 @@ class World {
  inspectMonster(p,id){
   const m=(this.monsters.get(p.zone)||[]).find(mon=>mon.id===id);
   if(!m||dist(p,m)>900){this.tell(p,'Aproxime-se para examinar a criatura.');return false}
-  this.send(p.socket,{type:'monsterSheet',sheet:creatureRpg.publicSheet(m)});
+  this.send(p.socket,{type:'monsterSheet',sheet:{...creatureRpg.publicSheet(m),rarity:m.trait.rarity,affinity:m.trait.affinity,variant:m.trait.variant}});
   return true
  }
  totalMonsters(){return [...this.monsters.values()].reduce((n,a)=>n+a.length,0)}
@@ -240,7 +243,7 @@ class World {
    return {id:p.id,name:p.name,administrator:!!p.isAdministrator,zone:p.zone,x:Math.round(p.x),y:Math.round(p.y),dir:p.dir,level:p.save.level,role:p.save.role,appearance:appearance16.normalize(p.save.appearance),hp:p.save.hp,maxHp:hpMax(p.save),guild:p.save.guild,party:p.party||null,
     escort:escort&&kingdoms.troopCount(escort)>0?escort:null};
   }
- publicMonster(m){return {id:m.id,name:m.name,species:m.species,zone:m.zone,x:Math.round(m.x),y:Math.round(m.y),hp:m.hp,maxHp:m.maxHp,boss:m.boss,level:m.level,rank:m.rank,victories:m.progress?.victories||0}}
+ publicMonster(m){return {id:m.id,name:m.name,species:m.species,zone:m.zone,x:Math.round(m.x),y:Math.round(m.y),hp:m.hp,maxHp:m.maxHp,boss:m.boss,level:m.level,rank:m.rank,victories:m.progress?.victories||0,rarity:m.trait.rarity,affinity:m.trait.affinity,variant:m.trait.variant}}
  zoneInfo(){return ZONES.map((z,i)=>({id:i,name:z[0],biome:z[1],count:this.monsters.get(i).length}))}
  zonePortals(zone){
   if(!Number.isInteger(zone)||zone<0||zone>=ZONES.length)return [];
@@ -368,7 +371,7 @@ class World {
   if(owner&&c.roomTransferRole){this.saved.characters[uid]=safeSave(s);this.dirty=true}
   const p={lastRegenAt:now,lastCombatAt:0,lastResourceBroadcast:0,attackCounter:0,id:crypto.randomUUID(),uid,name,isAccount:!!owner,isAdministrator:!!owner?.administrator,socket:c.socket,save:s,x:s.x,y:s.y,zone:s.zone,dir:2,lastMove:Date.now(),moveCredit:12,lastAttack:0,lastSpell:0,lastChat:0,lastUse:0,party:null,live:true};
   c.worldPlayer=p;c.socket._worldClient=c;this.players.set(p.id,p);
-  this.send(c.socket,{type:'welcome',room:c.worldRoom?{id:c.worldRoom.id,name:c.worldRoom.name}:null,self:this.ownStatus(p),zones:this.zoneInfo(),shop:Object.fromEntries(Object.entries(GOODS).filter(([key,item])=>!item.storyOnly)),relics:RELICS,quests:QUESTS,achievements:ACHIEVEMENTS,portals:this.zonePortals(p.zone),npcs:NPCS.map(publicNpc),merchants:Object.keys(MERCHANT_STOCK).map(id=>{const n=byId.get(id);return {id,name:n.name,zone:n.zone,region:ZONES[n.zone][0]}}),maxPlayers:60,online:this.players.size+this.getOnline(),monsterTotal:this.totalMonsters()});
+  this.send(c.socket,{type:'welcome',room:c.worldRoom?{id:c.worldRoom.id,name:c.worldRoom.name}:null,self:this.ownStatus(p),zones:this.zoneInfo(),shop:Object.fromEntries(Object.entries(GOODS).filter(([key,item])=>!item.storyOnly)),relics:RELICS,quests:QUESTS,achievements:ACHIEVEMENTS,portals:this.zonePortals(p.zone),npcs:NPCS.map(publicNpc),merchants:Object.keys(MERCHANT_STOCK).map(id=>{const n=byId.get(id);return {id,name:n.name,zone:n.zone,region:ZONES[n.zone][0]}}),maxPlayers:60,online:this.players.size+this.getOnline(),monsterTotal:this.totalMonsters(),generation:{seed:procedural.SEED,version:procedural.VERSION,chunkSize:procedural.CHUNK_SIZE}});
   this.broadcast({type:'system',text:p.name+' chegou ao mundo.'},q=>q.id!==p.id);
   this.dirty=true;this.snapshotTo(p);
   this.send(p.socket,{type:'kingdomState',data:kingdoms.publicState(this,p)});
