@@ -20,6 +20,7 @@ function create({ctx,W,H}){
  const desktopSprites=window.OsPeregrinosDesktopSprites16?.create({windowRef:window});
  const desktopCharactersV3=window.OsPeregrinosDesktopCharactersV3?.create({windowRef:window,documentRef:document});
  const desktopBestiary=window.OsPeregrinosDesktopBestiary16?.create({windowRef:window});
+ const worldProps=window.OsPeregrinosWorldPropsArtisan64?.create({documentRef:document});
  let cache=null,objects=[],artReady=false;
  // Três últimas regiões: o retorno pelo atlas não reconstrói milhares de tiles.
  const terrainCache=new Map();
@@ -519,41 +520,46 @@ function create({ctx,W,H}){
   if(o.kind==='biome-prop'&&pixelDetail){pixelDetail.drawSurfaceProp(g,o,cache.biome,cache.z);return}
   if(o.chunkBiome){if(landscape?.drawProp(g,o,o.chunkBiome))return}
   else if(landscape?.drawProp(g,o,cache.biome))return;
+  // Objetos de estrada e cidade desenhados em grade nativa 64x80.
+  const variant=Math.floor(noise(Math.round(o.x),Math.round(o.y),cache.z,88)*4);
+  if(worldProps?.draw(g,{kind:o.key,x:o.x,y:o.y,w:o.w,h:o.h,variant}))return;
   cut(g,o.key,o.x-o.w/2,o.y-o.h,o.w,o.h)
  }
  // Todos os portais reais são recebidos do servidor. Não existem portas falsas no cenário.
  function portal(g,p,now,hero){
-  const pulse=.5+.5*Math.sin(now/440+p.x),near=Math.hypot(hero.x-p.x,hero.y-p.y)<=100;
+  const near=Math.hypot(hero.x-p.x,hero.y-p.y)<=100;
   const gateway=!!p.gateway,down=p.stair==='down',up=p.stair==='up';
   const tint=gateway?'#f7cc80':down?'#e9ab77':up?'#a3daf4':p.dungeon?'#cca9fa':'#a6ebc3';
   g.save();g.translate(Math.round(p.x),Math.round(p.y));
-  g.fillStyle='#031019c9';g.beginPath();g.ellipse(0,5,40,14,0,0,Math.PI*2);g.fill();
-  g.shadowColor=tint;g.shadowBlur=(near?17:9)+pulse*12;
-  // Portal 16-bit original do atlas, aplicado no local exato da passagem do servidor.
-  cut(g,'portal_aberto',-34,-92,68,92);
-  g.shadowBlur=0;
-  if(pixelDetail)pixelDetail.drawPortal(g,p,now);
-  g.strokeStyle=tint;g.lineWidth=near?4:2;
-  g.beginPath();g.ellipse(0,-41,29,47,0,0,Math.PI*2);g.stroke();
-  // Runas e partículas mostram que a entrada realmente pode ser usada.
+  // Portais reais pertencem ao servidor; desenhamos só o marcador 2D.
+  // Substitui a elipse alisada por sombras e runas em pixels inteiros.
   for(let j=0;j<5;j++){
-   const angle=j*1.257+now/1100,rx=Math.cos(angle)*19,ry=-42+Math.sin(angle)*31;
-   g.fillStyle=j%2?tint:'#fff1ce';g.fillRect(Math.round(rx),Math.round(ry),3,3);
+   const ww=40-j*5;
+   g.fillStyle='#091f274a';g.fillRect(Math.round(-ww/2),2+j*2,ww,1);
+  }
+  const portalFrame=Math.floor(now/180)%4;
+  const variant=gateway?1:down?3:up?2:p.dungeon?2:0;
+  if(!worldProps?.draw(g,{kind:'portal',x:0,y:0,w:68,h:92,
+    frame:portalFrame,variant}))cut(g,'portal_aberto',-34,-92,68,92);
+  if(pixelDetail)pixelDetail.drawPortal(g,p,now);
+  for(let j=0;j<(near?7:4);j++){
+   const a=j*1.31+now/700;
+   const xx=Math.round(Math.cos(a)*22),yy=Math.round(-45+Math.sin(a)*29);
+   g.fillStyle=j%2?tint:'#fff1ce';
+   g.fillRect(xx,yy,2,2);g.fillRect(xx+1,yy-2,1,1);
   }
   if(p.stair){
    g.fillStyle='#0e1b25';g.fillRect(-32,-10,64,15);
    g.fillStyle=down?'#f6cb93':'#bcdeff';
    for(let j=0;j<4;j++)g.fillRect(-26+j*4,-8+j*3,52-j*8,3);
   }
-  g.textAlign='center';g.shadowColor='#030a08';g.shadowBlur=6;
+  g.textAlign='center';g.shadowColor='#030a08';g.shadowBlur=0;
   const action=gateway?(p.zone===10?'↥ SAÍDA PARA AUREN':'✦ PRÓXIMA MASMORRA'):
    down?'↧ DESCER':up?'↥ SUBIR':p.dungeon?'✦ ENTRAR':'✦ VIAJAR';
-  g.fillStyle='#071911e8';g.fillRect(-83,-108,166,18);
+  g.fillStyle='#071911ed';g.fillRect(-83,-108,166,18);
   g.font='bold 12px monospace';g.fillStyle=tint;g.fillText(action,0,-95);
   g.fillStyle='#f9e9c5';g.font='bold 12px monospace';
   g.fillText(p.name.slice(0,25),0,-118);
-  // O comando E foi movido para a camada HUD desenhada por último,
-  // impedindo que personagens, árvores ou monstros escondam o texto.
   g.restore();
  }
  // Mensagem da passagem fica acima de todos os sprites e do minimapa.
@@ -579,26 +585,18 @@ function create({ctx,W,H}){
  // Castelo 16-bit: muralhas, torres, estandarte e nome do reino.
  // Não altera colisão nem hitbox dos personagens e portais.
  function kingdomBase(g,b,now){
-  const pulse=Math.sin(now/530)*2;
+  // SOMENTE o ícone de castelo do mapa 2D muda; fortaleza 3D intacta.
+  const variant=String(b.name||'').length%4;
   g.save();g.translate(Math.round(b.x),Math.round(b.y));
-  g.fillStyle='#04130fd9';g.beginPath();g.ellipse(0,8,47,14,0,0,Math.PI*2);g.fill();
-  g.fillStyle='#a48d5e';g.fillRect(-37,-32,74,35);
-  g.fillStyle='#344b45';g.fillRect(-34,-29,68,30);
-  g.fillStyle='#d7be7d';g.fillRect(-26,-21,52,16);
-  for(const dx of [-37,24]){
-   g.fillStyle='#2c443f';g.fillRect(dx,-51,15,55);
-   g.fillStyle='#d9c18a';g.fillRect(dx-3,-57,21,10);
-   for(let i=0;i<3;i++){g.fillStyle='#e3cf9e';g.fillRect(dx-3+i*8,-63,6,6)}
-   g.fillStyle='#e5b76c';g.fillRect(dx+5,-39,5,8);
+  if(!worldProps?.draw(g,{kind:'reino',x:0,y:0,w:104,h:100,
+    variant,frame:Math.floor(now/380)%4})){
+   g.fillStyle='#344b45';g.fillRect(-36,-53,72,58);
+   g.fillStyle='#d7be7d';g.fillRect(-28,-59,16,51);g.fillRect(15,-59,16,51);
+   g.fillStyle='#b98e58';g.fillRect(-12,-20,24,21);
   }
-  g.fillStyle='#b98e58';g.fillRect(-13,-7,26,10);
-  g.fillStyle='#0c211e';g.fillRect(-10,-5,20,9);
-  g.fillStyle='#ead2a0';g.fillRect(-2,-94,4,40);
-  const banner=['#6ac0a8','#e7ba65','#c39add','#ec937a'][(b.name.length||0)%4];
-  g.fillStyle=banner;g.fillRect(1,-92,24,16+Math.round(pulse));
   g.fillStyle='#e8d196';g.font='bold 11px monospace';g.textAlign='center';
   g.shadowColor='#071613';g.shadowBlur=0;
-  g.fillText('♜ '+b.name.slice(0,19),0,-103);
+  g.fillText('♜ '+String(b.name||'Reino').slice(0,19),0,-103);
   g.restore();
  }
  function displayMap(g,opt){
