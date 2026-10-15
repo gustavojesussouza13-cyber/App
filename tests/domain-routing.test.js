@@ -22,7 +22,7 @@ const get=(route,host)=>new Promise((resolve,reject)=>{
    res.on('data',s=>body+=s);res.on('end',()=>resolve(body));res.on('error',reject);
   });req.on('error',reject);
 });
-test('site displays its connected canonical domain also through Render's fallback host',async()=>{
+test('site displays its connected canonical domain also through the Render fallback host',async()=>{
  await ready();
  const html=await get('/','os-peregrinos-online.onrender.com');
   assert.match(html,/canonical" href="https:\/\/www\.cronicasdaaurora\.com\.br\//);
