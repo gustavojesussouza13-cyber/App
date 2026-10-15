@@ -411,6 +411,7 @@ function create({ctx,W,H}){
   if(side&&role==='curandeiro')pix('#fffaf0',-19,-41,5,19);
   return role;
  }
+ let useAurora25d=false;
  function character(g,p,local,now,moved,attacking=false,pose=null){
   const key=heroSheets[p.role]||'gustavo_andar',w=53,h=65;
   drawShadow(g,p.x,p.y,w);
@@ -423,11 +424,19 @@ function create({ctx,W,H}){
   // Mesmo sprite autoral de 64×80 nos aparelhos móveis e no PC.
   // Ajustamos somente a apresentação na tela, nunca colisão ou hitbox.
   const premiumPc=Boolean(desktopCharactersV3?.enabled);
-  const studioHero=Boolean(spriteStudio?.drawHero(g,p,now,{...state,desktopPremium:premiumPc}));
-  const pngSprite=!studioHero&&Boolean(desktopSprites?.drawHero(g,p,now,state));
+  // Nova aparência só é ativada quando o WebGL 2.5D está visível.
+  // O modo clássico mantém integralmente seus sprites anteriores.
+  const auroraHero=Boolean(useAurora25d&&p.role==='peregrino'&&
+   window.OsPeregrinosAurora25D?.draw(g,{
+    x:p.x,y:p.y,dir,appearance:p.appearance,
+    action:state.hurt?'hurt':attacking?'attack':moved?'walk':'idle',
+    frame:Math.floor(now/130),scale:1.5,glow:local
+   }));
+  const studioHero=!auroraHero&&Boolean(spriteStudio?.drawHero(g,p,now,{...state,desktopPremium:premiumPc}));
+  const pngSprite=!auroraHero&&!studioHero&&Boolean(desktopSprites?.drawHero(g,p,now,state));
   const illustratedV3=!studioHero&&!pngSprite&&Boolean(desktopCharactersV3?.drawHero(g,p,now,state));
   const detailed=pngSprite||illustratedV3;
-  const animated=studioHero||detailed||Boolean(spriteStudio?.drawHero(g,p,now,state));
+  const animated=auroraHero||studioHero||detailed||Boolean(spriteStudio?.drawHero(g,p,now,state));
   if(!animated){
    frameSprite(g,key,dir,moved?Math.floor(now/155)%4:0,p.x,p.y,w,h);
    if(pixelDetail)pixelDetail.drawHero(g,p,now);
@@ -436,7 +445,7 @@ function create({ctx,W,H}){
   // O sprite detalhado do Studio já contém a identidade da classe.
   // Uma camada de blocos opacos aqui escondia olhos, roupas e sombreamento.
   // A proteção antiga permanece APENAS quando o Studio não está disponível.
-  const finalRole=studioHero?spriteStudio.normalizeRole(p.role):
+  const finalRole=auroraHero?'peregrino':studioHero?spriteStudio.normalizeRole(p.role):
    pngSprite?desktopSprites.normalizeRole(p.role):
    illustratedV3?desktopCharactersV3.normalizeRole(p.role):
    animated?spriteStudio.normalizeRole(p.role):drawClassIdentity(g,p,dir,now,moved);
@@ -444,7 +453,7 @@ function create({ctx,W,H}){
   g.shadowColor='#000b';g.shadowBlur=0;g.lineWidth=3;g.strokeStyle='#0e271e';
   const roleName={guardiao:'Guardião',curandeiro:'Curandeiro',arqueiro:'Arqueiro',peregrino:'Peregrino'}[finalRole];
   const label=(p.name||'Peregrino')+(local?' · '+roleName:' · Lv.'+(p.level||1));
-  const labelY=p.y-(studioHero?(premiumPc?110:88):pngSprite?80:illustratedV3?94:h)-5;
+  const labelY=p.y-(auroraHero?125:studioHero?(premiumPc?110:88):pngSprite?80:illustratedV3?94:h)-5;
   g.strokeText(label,p.x,labelY);g.fillStyle=local?'#ffe4a3':'#f1edd4';g.fillText(label,p.x,labelY);g.restore();
  }
  function npcActor(g,n,active,finished,now){
@@ -637,6 +646,7 @@ function create({ctx,W,H}){
   ctx.imageSmoothingEnabled=false;
   const biome=biomeThemes[opt.zoneBiome||zones[zone]?.biome]||'meadow';
   const useWorld25d=Boolean(opt.world25dActive);
+  useAurora25d=useWorld25d;
   if(!artReady){ctx.fillStyle='#193629';ctx.fillRect(0,0,W,H);ctx.textAlign='center';ctx.fillStyle='#efd39d';ctx.font='bold 20px Georgia,serif';ctx.fillText('✦ Preparando o mundo 16-bit…',W/2,H/2);return}
   if(!cache||cache.z!==zone||cache.biome!==biome)terrain(zone,biome);
   if(useWorld25d)ctx.clearRect(0,0,W,H);
