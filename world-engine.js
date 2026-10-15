@@ -1294,16 +1294,22 @@ class World {
     if(now>=m.deadUntil){m.hp=m.maxHp;m.x=m.home.x;m.y=m.home.y;m.damageFrom.clear();m.aggroTarget=null;m.aggroUntil=0;m.lastAttack=0;m.windupUntil=0;m.markUntil=0;m.markOwner=null;m.wanderGoal=null;m.wander=now+1500}
     else continue;
    }
+   const frontierDistance=frontier.isFrontier(zone)?frontier.info(zone).distance:0;
+   // O perigo aumenta de maneira monotônica quanto mais afastado do núcleo.
+   const vigilance=Math.min(2.1,1+Math.log2(1+frontierDistance)*.19);
+   const detection=frontier.isFrontier(zone)?Math.min(420,185*vigilance):205;
+   const leash=frontier.isFrontier(zone)?Math.min(720,400*vigilance):400;
+   const chaseSpeed=frontier.isFrontier(zone)?Math.min(115,58*vigilance):58;
    let target=m.aggroTarget?this.players.get(m.aggroTarget):null;
-   let hostile=!!(target&&target.live!==false&&target.zone===zone&&now<m.aggroUntil&&dist(target,m.home)<400&&dist(m,m.home)<440);
+   let hostile=!!(target&&target.live!==false&&target.zone===zone&&now<m.aggroUntil&&dist(target,m.home)<leash&&dist(m,m.home)<leash+40);
    // Terceiro subsolo em diante: somente criaturas COMUNS iniciam combate
    // ao perceber jogadores a até 205px. Bosses permanecem neutros até
    // receber o primeiro golpe. Perseguição tem limite para não arrastar
    // monstros por todo o mapa e não teletransporta criaturas.
-   if(!hostile&&autoAggroZone(zone)&&!m.boss&&dist(m,m.home)<440){
-    let nearest=null,nearestDist=205;
+   if(!hostile&&autoAggroZone(zone)&&(!m.boss||frontierDistance>=10)&&dist(m,m.home)<leash+40){
+    let nearest=null,nearestDist=detection;
     for(const candidate of this.players.values()){
-     if(candidate.live===false||candidate.zone!==zone||dist(candidate,m.home)>=400)continue;
+     if(candidate.live===false||candidate.zone!==zone||dist(candidate,m.home)>=leash)continue;
      const distance=dist(candidate,m);
      if(distance<nearestDist){nearestDist=distance;nearest=candidate}
     }
@@ -1346,11 +1352,12 @@ class World {
    }
    m.wanderGoal=null; // Inimigo provocado cancela o passeio; depois volta a andar normalmente.
    const d=dist(target,m);
-   if(d>42){const step=Math.min(58*dt,d);m.x+=(target.x-m.x)/d*step;m.y+=(target.y-m.y)/d*step}
+   if(d>42){const step=Math.min(chaseSpeed*dt,d);m.x+=(target.x-m.x)/d*step;m.y+=(target.y-m.y)/d*step}
    // O ataque precisa ser anunciado e permanecer ao alcance até o golpe.
    if(d>=53){m.windupUntil=0;continue}
-   if(!m.windupUntil&&now-m.lastAttack>Math.round(2200*(1-(m.attackHaste||0)/100))){
-    const warning=crownDungeonZone(zone)?(m.boss?1600:950):(m.boss?1100:650);
+   const strikeDelay=Math.max(900,Math.round(2200*(1-(m.attackHaste||0)/100)/vigilance));
+   if(!m.windupUntil&&now-m.lastAttack>strikeDelay){
+    const warning=crownDungeonZone(zone)?(m.boss?1600:950):frontier.isFrontier(zone)?Math.max(360,Math.round((m.boss?1100:650)/Math.sqrt(vigilance))):(m.boss?1100:650);
     m.windupUntil=now+warning;
     this.send(target.socket,{type:'monsterWindup',monster:m.id,zone:m.zone,duration:warning,boss:m.boss});
     continue;
