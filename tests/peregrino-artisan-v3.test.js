@@ -50,7 +50,7 @@ test('seis passadas e quatro direcoes possuem sprites distintos',()=>{
   assert.ok(new Set(walks).size>=5,'six walking poses differ');
  }
  const dirs=[0,1,2,3].map(dir=>render({dir,action:'idle',frame:0}));
- assert.equal(new Set(dirs.map(signature)).size>=3);
+ assert.ok(new Set(dirs.map(signature)).size>=3);
  assert.ok(dirs[3].transforms.some(t=>Array.isArray(t)&&t[0]==='scale'&&t[1]===-1));
  assert.notEqual(signature(dirs[0]),signature(dirs[2]));
 });
