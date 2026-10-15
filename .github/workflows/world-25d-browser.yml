@@ -27,8 +27,21 @@ jobs:
           npm install --ignore-scripts --no-audit --no-fund
           npm install --no-save --ignore-scripts playwright@1.56.1 --no-audit --no-fund
           npx playwright install --with-deps chromium
-      - name: Testar previsualização pública 2.5D
+      - name: Iniciar servidor local do MMORPG para teste isolado
+        run: |
+          PORT=3106 HOST=127.0.0.1 npm start > /tmp/world25d-server.log 2>&1 &
+          for i in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:3106/visual-25d.html >/dev/null; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:3106/peregrino-aurora25d.js >/dev/null
+      - name: Testar preview 2.5D do commit (sem esperar deploy Render)
+        env:
+          WORLD25D_URL: http://127.0.0.1:3106/visual-25d.html
         run: node tests/world-25d-browser.mjs
+      - name: Logs do servidor se falhar
+        if: failure()
+        run: cat /tmp/world25d-server.log
       - name: Guardar captura do WebGL
         if: always()
         uses: actions/upload-artifact@v4
