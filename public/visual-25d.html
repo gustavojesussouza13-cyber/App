@@ -125,14 +125,14 @@ function frame(t){
 }
 $('role').addEventListener('change',()=>{$('heroName').textContent=labels[$('role').value]+' · Nv. 35'});
 $('night').addEventListener('click',()=>{day=!day;view?.setNight(!day);$('night').textContent=day?'☾ Anoitecer':'☀ Amanhecer'});
-$('classic').addEventListener('click',()=>{mode3d=!mode3d;if(view)view.canvas.style.display=mode3d?'block':'none';$('classic').textContent=mode3d?'Ver apenas Canvas 2D':'Ativar Canvas 3D · 2.5D'});
+$('classic').addEventListener('click',()=>{if(!view)return;mode3d=!mode3d;if(view)view.canvas.style.display=mode3d?'block':'none';$('classic').textContent=mode3d?'Ver apenas Canvas 2D':'Ativar Canvas 3D · 2.5D'});
 window.addEventListener('keydown',e=>{const key=e.key.toLowerCase();if(['w','a','s','d','arrowup','arrowleft','arrowright','arrowdown'].includes(key)){keys.add(key);e.preventDefault()}});
 window.addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));
 canvas.addEventListener('pointerdown',e=>{drag={x:0,y:0,startX:e.clientX,startY:e.clientY};canvas.setPointerCapture(e.pointerId)});
 canvas.addEventListener('pointermove',e=>{if(!drag)return;drag.x=Math.max(-1,Math.min(1,(e.clientX-drag.startX)/42));drag.y=Math.max(-1,Math.min(1,(e.clientY-drag.startY)/42))});
 canvas.addEventListener('pointerup',()=>{drag=null});canvas.addEventListener('pointercancel',()=>{drag=null});
 try{const {createWorld25D}=await import('/world-25d.mjs');view=createWorld25D({shell:$('stage'),canvas,width:W,height:H});$('status').textContent='✓ WebGL 2.5D pronto. Escolha um bioma ou mova o Peregrino.'}
-catch(e){console.warn(e);mode3d=false;$('status').textContent='WebGL indisponível: exibindo versão 2D de segurança.'}
+catch(e){console.warn(e);mode3d=false;$('classic').disabled=true;$('classic').textContent='WebGL não disponível';$('status').textContent='WebGL indisponível: exibindo versão 2D de segurança.'}
 requestAnimationFrame(frame);
 </script>
 </body></html>
