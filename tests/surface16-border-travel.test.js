@@ -104,5 +104,5 @@ test('cliente oferece nomes clicáveis no atlas e atravessa bordas pelo servidor
  assert.match(src,/atlas-fasttravel/);
  assert.match(src,/crossBoundary/);
  assert.match(src,/session\.region\?\.frontier/);
- assert.match(html,/surface16-v1/);
+ assert.match(html,/chat-drawer-v1/);
 });
