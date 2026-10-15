@@ -89,7 +89,7 @@
     if(e<dx){err+=dx;y+=sy}
    }
   };
-  if(dir===3){g.save();g.translate(W,0);g.scale(-1,1)}
+  if(dir===3){g.save();g.translate(WIDTH,0);g.scale(-1,1)}
   if(dead){
    g.save();g.translate(0,Math.min(10,frameIndex*2));
    g.scale(1,Math.max(.30,1-frameIndex*.16));
@@ -186,6 +186,7 @@
   poly(c.leatherLight,[[46,44+bob],[50,44+bob],[53,47+bob],
    [52,51+bob],[45,51+bob]]);
   p(INK,46,52+bob,7,3);p('#b58b58',47,53+bob,6,1);
+  p('#856343',46,55+bob,5,3);
   p(c.trim,49,52+bob,3,4);p(WHITE,50,53+bob,1,1);
   highlights('#d2a473',[[46,56],[48,59],[51,58],[52,61]]);
   // 5. Ombreiras desenhadas sobre o tronco e braços em perspectiva.
@@ -230,6 +231,8 @@
   poly(RED,[[42,36+bob],[46,37+bob],[46,44+bob],
    [44,47+bob],[42,44+bob]]);
   p(RED_LIGHT,43,37+bob,2,6);
+  p('#ba6050',27,33+bob,6,2);
+  p('#9e4350',44,40+bob,2,5);
   // 7. Face com crânio recortado, maçãs do rosto, pálpebra e boca.
   poly(INK,[[25,13+bob],[39,11+bob],[46,16+bob],[47,25+bob],
    [43,32+bob],[36,35+bob],[27,32+bob],[22,25+bob]]);
