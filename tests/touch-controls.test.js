@@ -86,6 +86,7 @@ test('tick multiplayer aceita eixo de toque e mantém velocidade máxima origina
  const sendEvents=[];
  const ctx={
   Math,Set,
+  document:{hidden:false,querySelector:()=>null},activeFrameMs:1000/30,
   session:{connected:true,x:300,y:300,dir:2},
   $:id=>({hidden:true}),
   moves:{up:['ArrowUp'],down:['ArrowDown'],left:['ArrowLeft'],right:['ArrowRight']},
