@@ -18,7 +18,7 @@ test('chat é acoplado ao canto da tela do jogo e não fica abaixo do mapa',()=>
  assert.match(page,/chat-child-safety/);
  for(const id of ['chatChannel','chatPreset','chatPresetSend','chatChannelLabel'])
   assert.match(page,new RegExp('id="'+id+'"'));
- assert.match(page,/mmo\.css\?v=chat-drawer-v1/);
+ assert.match(page,/mmo\.css\?v=peregrino-master64-v1/);
  assert.match(page,/mmo\.js\?v=chat-drawer-v1/);
 });
 test('dock não cobre permanentemente o mapa e funciona no fullscreen e mobile',()=>{
