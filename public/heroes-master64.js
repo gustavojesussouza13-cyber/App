@@ -70,24 +70,39 @@
 
   if(dir===3){g.save();g.translate(WIDTH,0);g.scale(-1,1)}
   if(action==='death'){g.save();g.translate(0,Math.min(12,f*2));g.scale(1,Math.max(.28,1-f*.15))}
-  // Capas flutuantes modeladas na silhueta, atrás dos braços e pernas.
+  // Mantos desenhados como polígonos de pixel art — nada de placas retas.
   const cape=(app?.cape&&app.cape!=='nenhuma'?
    ({vinho:'#75354c',marinho:'#354c73',musgo:'#456547',marfim:'#ddd2b2'})[app.cape]:null)||c.cloak;
+  const capeWind=action==='walk'?[0,2,4,1,-2,-3][f%6]:
+   action==='attack'?[0,-2,-4,3,1][f%5]:0;
   if(role==='arqueiro'){
-   // Capuz verde triangular e mantos recortados, não um retângulo.
-   bands(c.ink,[[26,17,29,10],[36,14,34,13],[48,12,37,14],[61,10,15,10],[61,36,17,11],
-    [70,9,9,5],[72,47,8,5]],0,bob);
-   bands(cape,[[28,19,24,10],[39,16,30,12],[50,14,34,12],[64,12,12,8],[63,40,10,8]],0,bob);
-   p(c.light,18,31+bob,3,22);p(c.shadow,44,42+bob,3,17);
+   shape(c.ink,[[27,26],[42,26],[49,34],[53+capeWind,46],
+    [52+capeWind,59],[57+capeWind,73],[43,69],[37,75],
+    [27,67],[14-capeWind,75],[11-capeWind,64],[16,45]]);
+   shape(cape,[[28,28],[42,28],[47,35],[50+capeWind,47],
+    [49+capeWind,59],[53+capeWind,69],[43,66],[38,71],
+    [27,63],[17-capeWind,70],[15-capeWind,63],[19,45]]);
+   shape(c.shadow,[[20,39],[25,37],[23,58],[17-capeWind,67],[16,60]]);
+   sheen(c.light,[[20,34,3,9],[24,43,2,12],[44,40,2,10]]);
   }else if(role==='curandeiro'){
-   bands(c.ink,[[25,17,30,14],[38,13,38,10],[48,11,44,15],[62,9,19,10],
-    [63,39,18,10],[71,12,11,4],[72,48,7,4]],0,bob);
-   bands(cape,[[26,19,28,14],[39,15,34,12],[52,13,39,13],[64,11,16,9],[65,42,13,7]],0,bob);
-   p('#f4c3b5',16,39+bob,3,22);
+   shape(c.ink,[[26,23],[42,23],[50,34],[53,48],
+    [57+capeWind,67],[50+capeWind,75],[40,70],
+    [34,76],[25,70],[13-capeWind,75],[10-capeWind,66],[15,44]]);
+   shape(cape,[[27,25],[41,25],[47,34],[50,47],
+    [53+capeWind,67],[49+capeWind,71],[40,66],
+    [35,73],[26,66],[16-capeWind,72],[14-capeWind,64],[18,44]]);
+   shape('#f4c3b5',[[21,33],[25,32],[23,52],[19-capeWind,65],
+    [17-capeWind,67],[17,48]]);
+   shape(c.shadow,[[44,36],[48,41],[50,59],[47+capeWind,68],
+    [44,62]]);
   }else{
-   bands(c.ink,[[29,18,30,13],[42,16,33,13],[57,14,12,12],[60,42,10,11]],0,bob);
-   bands(cape,[[31,20,26,11],[44,18,30,13],[58,16,9,11],[61,44,8,9]],0,bob);
-   p('#7594b9',21,37+bob,3,17);
+   shape(c.ink,[[27,25],[43,26],[49,35],[53,47],
+    [49+capeWind,64],[53+capeWind,73],[42,69],
+    [35,74],[28,68],[15-capeWind,71],[14,60],[19,44]]);
+   shape(cape,[[28,27],[41,28],[46,36],[50,47],
+    [46+capeWind,62],[49+capeWind,69],[41,65],
+    [35,70],[28,64],[18-capeWind,67],[17,59],[21,43]]);
+   shape(c.light,[[20,33],[23,34],[23,48],[20,52],[19,45]]);
   }
   // Calçados e pernas de material distinto da armadura/tecido.
   for(let i=0;i<2;i++){
@@ -99,37 +114,56 @@
    p(c.gold,x+4,y+10,3,2);p(c.ink,x-3,y+15,15,4);
    p(c.light,x-1,y+16,8,1);
   }
-  // Torso de cada classe traz sua própria proporção, não é o mesmo herói colorido.
+  // Torsos anatômicos separados: placa convexa / gibão / vestes.
   if(role==='guardiao'){
-   bands(c.ink,[[30,17,32,13],[40,18,28,17],[54,20,27,8]]);
-   bands(c.deep,[[31,18,29,10],[42,20,26,15]],0,bob);
-   bands(cloth,[[33,20,25,8],[42,22,22,12]],0,bob);
-   p(c.light,22,34+bob,14,3);p('#b5c9ca',38,38+bob,6,15);
-   p(c.ink,28,39+bob,8,17);p(c.gold,30,40+bob,5,12);
-   p(c.shine,31,43+bob,2,8);p(c.ink,29,51+bob,8,5);
-   p(c.goldShadow,29,53+bob,9,3);p(c.gold,31,53+bob,5,2);
+   shape(c.ink,[[26,29],[42,29],[48,35],[48,47],
+    [45,59],[39,62],[28,61],[19,56],[19,42],[21,34]]);
+   shape(c.deep,[[27,31],[41,31],[46,36],[45,48],
+    [43,56],[38,59],[28,58],[22,54],[22,41],[23,35]]);
+   shape(cloth,[[28,32],[40,32],[44,37],[43,47],
+    [41,54],[36,57],[28,56],[24,51],[24,41],[25,36]]);
+   shape(c.light,[[26,34],[33,32],[36,35],[32,38],[24,40]]);
+   shape(c.shadow,[[39,35],[43,40],[43,50],[39,56],[36,56]]);
+   shape(c.ink,[[29,39],[36,39],[39,43],[37,55],[31,55],[28,46]]);
+   shape(c.gold,[[31,40],[35,40],[36,44],[35,53],[31,53],[30,45]]);
+   sheen(c.shine,[[31,43,2,7],[26,36,5,1],[38,45,2,4]]);
+   sheen(c.goldShadow,[[27,54,12,2],[31,38,6,2]]);
    p(c.accent,25,46+bob,4,6);
   }else if(role==='arqueiro'){
-   bands(c.ink,[[32,17,28,11],[43,18,28,14],[56,19,27,7]],0,bob);
-   bands(c.deep,[[34,19,26,10],[45,19,26,13]],0,bob);
-   bands(cloth,[[36,21,23,9],[46,22,22,10]],0,bob);
-   p(c.light,22,37+bob,8,3);
-   // Jaqueta assimétrica aberta sobre um colete de linho.
-   p('#d8bd8d',29,37+bob,11,14);p(c.deep,28,37+bob,2,14);
-   p(c.shadow,39,38+bob,5,15);
-   p(c.goldShadow,21,49+bob,25,6);p(c.gold,22,50+bob,22,2);
-   p(c.ink,30,50+bob,7,5);p(c.gold,31,51+bob,5,3);
-   p('#c0a272',19,58+bob,8,6);
+   shape(c.ink,[[25,30],[41,30],[47,38],[48,50],[45,59],
+    [37,63],[27,60],[19,55],[20,40]]);
+   shape(c.deep,[[26,32],[40,32],[45,39],[45,49],
+    [43,57],[37,60],[28,57],[22,53],[23,40]]);
+   shape(cloth,[[27,34],[39,34],[43,41],[43,51],
+    [39,57],[29,55],[24,49],[24,41]]);
+   shape(c.light,[[26,36],[33,34],[34,38],[27,42],[24,41]]);
+   // Jaqueta aberta de couro e colete de linho artesanal.
+   shape('#d8bd8d',[[31,36],[37,36],[40,44],
+    [38,53],[31,52],[29,44]]);
+   shape(c.deep,[[37,37],[44,41],[43,54],[39,58],
+    [37,53],[40,45]]);
+   sheen(c.goldShadow,[[22,49,23,3],[29,53,12,3]]);
+   sheen(c.gold,[[24,50,19,1],[32,53,5,2]]);
+   shape(c.ink,[[30,51],[37,51],[38,56],[35,59],[30,56]]);
+   p(c.gold,32,53+bob,4,2);
+   shape('#c0a272',[[20,55],[26,54],[28,63],[23,66],[19,62]]);
   }else{
-   // Vestes de curandeiro com painel central, duas barras e bordado radial.
-   bands(c.ink,[[31,18,29,17],[46,15,37,15],[59,15,38,14],[69,20,10,5],[69,43,10,5]]);
-   bands(cloth,[[32,20,25,17],[47,17,33,14],[61,18,32,10]],0,bob);
-   p(c.light,22,35+bob,15,6);p('#fff2dc',29,42+bob,10,28);
-   p(c.goldShadow,27,43+bob,3,27);p(c.gold,28,43+bob,2,26);
-   p(c.goldShadow,39,43+bob,3,28);p(c.gold,40,43+bob,2,26);
-   p(c.cloak,31,45+bob,7,17);p(c.light,32,48+bob,5,13);
-   p(c.mark,33,53+bob,3,8);p(c.shine,34,55+bob,1,3);
-   bands(c.gold,[[70,22,6,2],[69,43,6,2]],0,bob);
+   shape(c.ink,[[26,30],[43,30],[49,37],[51,49],[55,65],
+    [53,73],[43,76],[36,70],[27,76],[14,73],[17,62],[16,46],[19,36]]);
+   shape(c.shadow,[[27,32],[41,32],[47,38],[48,51],[51,66],
+    [48,72],[41,72],[36,67],[27,72],[18,70],[21,61],[19,45]]);
+   shape(cloth,[[28,33],[40,33],[45,40],[45,51],[47,65],
+    [45,71],[40,69],[35,65],[27,71],[21,68],[23,59],[21,45]]);
+   shape(c.light,[[29,35],[37,34],[39,41],[37,52],[35,66],
+    [30,68],[27,57],[27,42]]);
+   shape(c.cloak,[[31,45],[37,44],[40,54],[38,65],[34,68],[31,61]]);
+   shape(c.ink,[[31,39],[39,39],[42,44],[40,48],[30,48],[28,44]]);
+   shape(c.gold,[[30,42],[32,41],[34,47],[30,47]]);
+   sheen(c.goldShadow,[[27,43,2,18],[40,43,2,23]]);
+   sheen(c.gold,[[28,44,1,24],[41,44,1,22],[24,68,6,2],[44,69,4,2]]);
+   sheen(c.shine,[[33,49,3,8],[35,58,2,4],[31,36,5,2]]);
+   p(c.mark,33,53+bob,3,8);
+   p(c.shine,34,55+bob,1,3);
   }
   // Alças, fechos e pequenas reflecções de material.
   p(c.goldShadow,22,51+bob,21,5);p(c.gold,24,52+bob,17,2);
@@ -571,5 +605,5 @@
   if(dir===3)g.restore();
   return true;
  }
- return Object.freeze({WIDTH,HEIGHT,ROLES,draw,VERSION:'heroes-master64-v4'});
+ return Object.freeze({WIDTH,HEIGHT,ROLES,draw,VERSION:'heroes-master64-v5'});
 });
