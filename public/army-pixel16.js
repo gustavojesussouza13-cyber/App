@@ -17,21 +17,38 @@
   ctx.imageSmoothingEnabled=false;
   ctx.translate(Math.round(x-w*scale/2),Math.round(y-h*scale+step*scale));
   const rect=(c,a,b,ww,hh)=>{ctx.fillStyle=COLORS[c]||c;ctx.fillRect(a*scale,b*scale,ww*scale,hh*scale)};
+  // Scanline de 1 pixel nativo: silhuetas com arestas orgânicas.
+  const poly=(col,pts)=>{
+   for(let yy=Math.max(0,Math.floor(Math.min(...pts.map(p=>p[1]))));
+       yy<Math.min(h,Math.ceil(Math.max(...pts.map(p=>p[1]))));yy++){
+    const xs=[];
+    for(let i=0;i<pts.length;i++){
+     const [ax,ay]=pts[i],[bx,by]=pts[(i+1)%pts.length];
+     if((ay<=yy+.5&&by>yy+.5)||(by<=yy+.5&&ay>yy+.5))
+      xs.push(ax+(yy+.5-ay)*(bx-ax)/(by-ay));
+    }
+    xs.sort((a,b)=>a-b);
+    for(let i=0;i+1<xs.length;i+=2){
+     const left=Math.max(0,Math.ceil(xs[i]-.5)),right=Math.min(w,Math.ceil(xs[i+1]-.5));
+     if(right>left)rect(col,left,yy,right-left,1);
+    }
+   }
+  };
   // Sombra de pixel compartilhada, ligeiramente alongada conforme armadura.
   rect('ground',2,h-2,w-4,2);
   if(type==='militia'){
    // Milícia — cota verde, escudo heráldico, espada curta, elmo de aço.
    rect('outline',5,7,9,4);rect('steel',6,7,7,3);rect('light',7,7,4,1);
-   rect('skin',7,10,5,4);rect('outline',6,13,8,8);rect('green',7,13,6,7);
+   rect('skin',7,10,5,4);poly('outline',[[5,17],[7,12],[12,12],[15,17],[14,21],[10,23],[6,21]]);poly('green',[[7,16],[9,14],[12,14],[13,19],[9,21],[7,19]]);
    rect('gold',9,13,2,5);rect('outline',7,20,3,3);rect('outline',11,20,3,3);
    rect('leather',8,20,2,2);rect('leather',12,20,2,2);
-   rect('outline',2,13,6,9);rect('blue',3,14,4,7);rect('steel',4,15,2,5);
+   poly('outline',[[2,15],[5,12],[9,15],[8,21],[5,24],[2,21]]);poly('blue',[[3,16],[5,14],[7,16],[7,21],[5,22],[3,20]]);rect('steel',4,15,2,5);
    rect('gold',4,17,2,2);rect('steel',14,10,2,9);rect('light',14,8,2,3);
    rect('wood',14,18,2,2);rect('outline',13,19,4,2);
   }else if(type==='archer'){
    // Arqueiro — manto verde, capuz, aljava e arco curvo dourado.
-   rect('outline',5,5,9,7);rect('green',6,6,7,6);rect('shadow',7,9,6,3);
-   rect('skin',8,10,4,3);rect('outline',5,13,10,9);rect('green',6,13,8,8);
+   poly('outline',[[5,11],[6,7],[11,3],[15,8],[15,13],[9,14]]);poly('green',[[7,10],[10,5],[13,8],[13,12],[8,12]]);rect('shadow',7,9,6,3);
+   rect('skin',8,10,4,3);poly('outline',[[4,17],[7,12],[12,12],[16,16],[15,22],[10,25],[5,22]]);poly('green',[[6,17],[8,14],[12,14],[14,18],[12,23],[7,20]]);
    rect('gold',10,14,2,4);rect('leather',7,20,3,4);rect('leather',12,20,3,4);
    rect('wood',3,9,2,10);rect('gold',2,8,2,2);rect('gold',2,19,2,2);
    rect('outline',1,11,1,7);rect('light',4,9,1,12);
@@ -40,18 +57,18 @@
    rect('light',8,15,2,1);
   }else if(type==='knight'){
    // Cavaleiro — cavalo blindado, armadura azul, penacho rubro e lança.
-   rect('outline',3,14,19,9);rect('leather',4,15,18,7);rect('steel',8,15,10,5);
+   poly('outline',[[2,18],[5,13],[13,12],[18,14],[23,17],[22,22],[18,24],[7,24],[3,21]]);poly('leather',[[4,17],[8,14],[16,14],[21,18],[20,22],[8,22],[5,20]]);rect('steel',8,15,10,5);
    rect('outline',4,21,4,4);rect('outline',17,21,4,4);
    rect('shadow',5,21,3,3);rect('shadow',18,21,3,3);
    rect('outline',18,11,6,7);rect('leather',19,12,4,5);rect('skin',22,13,2,3);
-   rect('outline',9,5,8,11);rect('steel',10,6,6,9);rect('blue',10,12,6,3);
+   poly('outline',[[9,15],[10,6],[13,4],[17,6],[18,15],[14,18],[10,17]]);poly('steel',[[11,14],[11,8],[13,5],[16,8],[16,14],[13,16]]);rect('blue',10,12,6,3);
    rect('gold',10,10,6,1);rect('outline',10,3,6,4);rect('steel',11,4,4,4);
    rect('light',12,5,3,1);rect('red',12,1,3,3);rect('red',14,2,3,2);
    rect('outline',6,13,5,7);rect('blue',7,14,3,5);rect('gold',7,16,3,2);
    rect('wood',20,2,2,14);rect('light',20,0,2,4);rect('steel',19,4,4,1);
   }else{
    // Máquina de cerco — balista com rodas, plataforma reforçada e projétil.
-   rect('outline',2,13,23,8);rect('wood',3,14,21,6);rect('steel',5,15,17,2);
+   poly('outline',[[2,17],[5,12],[21,12],[25,17],[25,21],[21,23],[4,22]]);poly('wood',[[4,16],[7,14],[20,14],[23,17],[22,20],[5,20]]);rect('steel',5,15,17,2);
    rect('outline',4,18,7,6);rect('outline',18,18,7,6);
    rect('steel',5,19,5,4);rect('steel',19,19,5,4);
    rect('gold',7,20,1,2);rect('gold',21,20,1,2);
