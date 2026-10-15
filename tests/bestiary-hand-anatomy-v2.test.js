@@ -15,7 +15,7 @@ function sheet(){
  return {g,ops};
 }
 test('15 species have handcrafted unique 1px anatomy motifs, not color swaps',()=>{
- assert.equal(HAND.VERSION,'handpixels64-v2');
+ assert.equal(HAND.VERSION,'handpixels64-v3');
  assert.equal(HAND.FAMILIES.length,15);
  const signatures=new Set();
  for(const type of HAND.FAMILIES){
@@ -54,7 +54,7 @@ test('species variants move anatomy details consistently and all world monsters 
  }
 });
 test('mobile and desktop load new bestiary revision before world master; fortress is unchanged',()=>{
- assert.match(html,/pixel-atelier-v1\.js\?v=handpixels64-v2/);
+ assert.match(html,/pixel-atelier-v1\.js\?v=handpixels64-v3/);
  assert.ok(html.indexOf('/pixel-atelier-v1.js')<html.indexOf('/world-art-master64.js'));
  assert.match(html,/guild-city-3d\.js/);
  const sandbox={};vm.createContext(sandbox);
