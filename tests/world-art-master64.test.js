@@ -25,7 +25,7 @@ function canvas(){
 const sign=x=>JSON.stringify(x.pixels);
 test('NPCs have distinct 64x80 professional tools for all 56 original narrative identities',()=>{
  assert.equal(ART.WIDTH,64);assert.equal(ART.HEIGHT,80);
- assert.equal(ART.VERSION,'world-art-master64-v1');
+ assert.equal(ART.VERSION,'world-art-master64-v2');
  const styles=ATELIER.NPC_STYLES;
  assert.equal(styles.length,56);
  const samples=new Set(),colors=new Set();
@@ -110,10 +110,10 @@ test('monster evolution variants, directions and species are represented visuall
 });
 test('browser loads world art before Sprite Studio; actual studio cache uses the new master',()=>{
  const html=source('mundo.html'),studioCode=source('sprite-studio.js');
- assert.match(html,/world-art-master64\.js\?v=world-art-master64-v1/);
+ assert.match(html,/world-art-master64\.js\?v=world-art-master64-v2/);
  assert.match(html,/heroes-master64\.js\?v=heroes-master64-v3/);
  assert.match(html,/landscape16\.js\?v=world-landscape-v2/);
- assert.match(html,/sprite-studio\.js\?v=world-art-master64-v1/);
+ assert.match(html,/sprite-studio\.js\?v=world-art-master64-v2/);
  assert.ok(html.indexOf('/world-art-master64.js')<html.indexOf('/sprite-studio.js'));
  assert.match(studioCode,/WORLD_MASTER\?\.npc/);
  assert.match(studioCode,/WORLD_MASTER\?\.creature/);
@@ -132,7 +132,7 @@ test('browser loads world art before Sprite Studio; actual studio cache uses the
  assert.strictEqual(studio.obtain('monster','lobo',2,'walk',2,false,0,7),monster);
  const browser={OsPeregrinosCharacterAtelier:ATELIER};
  vm.createContext(browser);vm.runInContext(source('world-art-master64.js'),browser);
- assert.equal(browser.OsPeregrinosWorldMaster64.VERSION,'world-art-master64-v1');
+ assert.equal(browser.OsPeregrinosWorldMaster64.VERSION,'world-art-master64-v2');
 });
 test('landscape keeps nine biomes and improves ground and vegetation without new render loops',()=>{
  assert.equal(Object.keys(LAND.PALETTES).length,9);

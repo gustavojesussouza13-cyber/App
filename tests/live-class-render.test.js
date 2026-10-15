@@ -118,5 +118,5 @@ test('visitante usa classe confirmada no servidor; contas novas mantêm seleçã
 test('versão atualizada impede scripts antigos no cache mobile',()=>{
  const html=fs.readFileSync(path.join(ROOT,'mundo.html'),'utf8');
  for(const asset of ['sprite-studio.js','character-atelier16.js','art16.js','mmo.js'])
-  assert.ok(html.includes('/'+asset+'?v='+(asset==='mmo.js'?'chat-drawer-v1':asset==='character-atelier16.js'?'vigilia-56-v1':asset==='sprite-studio.js'?'world-art-master64-v1':'performance-world-v1')),asset+' ainda está cacheado');
+  assert.ok(html.includes('/'+asset+'?v='+(asset==='mmo.js'?'chat-drawer-v1':asset==='character-atelier16.js'?'vigilia-56-v1':asset==='sprite-studio.js'?'world-art-master64-v2':'performance-world-v1')),asset+' ainda está cacheado');
 });

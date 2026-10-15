@@ -35,7 +35,7 @@ test('classe do servidor, nome e posicionamento obedecem a arte desenhada em PC'
 });
 test('versões atualizadas invalidam cache do Chrome sem mudar mobile',()=>{
  const html=source('mundo.html'),studio=source('sprite-studio.js');
- assert.match(html,/sprite-studio\.js\?v=world-art-master64-v1/);
+ assert.match(html,/sprite-studio\.js\?v=world-art-master64-v2/);
  assert.match(html,/art16\.js\?v=performance-world-v1/);
  assert.match(studio,/state\.desktopPremium===true/);
  assert.ok(html.indexOf('/sprite-studio.js')<html.indexOf('/art16.js'));
