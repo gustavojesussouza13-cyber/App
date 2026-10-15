@@ -305,10 +305,66 @@
    p('#ed99a2',44,44+bob,2,6);p(c.gold,45,49+bob,2,1);
    p(c.shine,52,32+bob,2,1);p('#fff9f3',58,13+bob,2,2);
   }
+  // Acabamento de atlas com linguagem própria para as três classes.
+  // Tudo aparece também em mobile, na grade original de 64x80 pixels.
+  if(role==='guardiao'){
+   // Três valores de aço, coroa no capacete e manto onde a luz encontra a borda.
+   const plate='#a6c9da',rim='#f3e9c9';
+   for(const [x,y] of [[14,35],[20,37],[46,34],[51,35],[28,40],[40,43]]){
+    p('#314d67',x,y+bob,6,3);p(plate,x+1,y+bob,3,1);
+    p(rim,x+2,y+bob,1,1);
+   }
+   p(c.gold,28,12+bob,11,2);p(rim,30,12+bob,5,1);
+   p('#273c59',24,17+bob,4,8);
+   p('#e1e7da',25,18+bob,1,6);
+   p(c.gold,34,32+bob,3,4);p(rim,35,32+bob,1,2);
+   if(action==='attack'){
+    // O peso do golpe desloca a guarda e espalha faíscas na direção do corte.
+    const slash=[[57,18],[49,12],[41,7],[36,14],[52,23]][f%5];
+    p('#97d2ff',slash[0],slash[1]+bob,3,2);
+    p('#eaf7ff',slash[0]+1,slash[1]+bob,1,1);
+    p(c.gold,9,39-strike*2+bob,4,2);
+   }
+  }else if(role==='arqueiro'){
+   // Capuz com penas bordadas e aljava encostada no ombro.
+   p(c.ink,26,13+bob,14,3);
+   p(c.shadow,27,13+bob,11,2);
+   p(c.light,28,13+bob,5,1);
+   p(c.gold,22,30+bob,5,2);p(c.shine,23,30+bob,2,1);
+   for(let i=0;i<4;i++){
+    p(i%2?c.light:c.shine,48+i*2,19+(i%2)*3+bob,2,5);
+    p(c.deep,49+i*2,23+(i%2)*3+bob,1,3);
+   }
+   p(c.ink,30,48+bob,7,2);p(c.gold,31,48+bob,4,1);
+   p(c.light,38,40+bob,3,1);p(c.shadow,39,41+bob,3,3);
+   if(action==='attack'){
+    // Três estágios de tensão da corda com brilho de flecha, não magia genérica.
+    p('#f5e0a6',Math.min(58,27+strike*5),35-strike*2+bob,7,1);
+    p('#e7fff1',Math.min(59,34+strike*5),34-strike*2+bob,3,2);
+   }
+  }else{
+   // Manto claro de duas camadas, auréola e runas que respeitam o frame.
+   p(c.goldShadow,19,41+bob,4,24);
+   p('#fff8ea',22,42+bob,2,20);
+   p('#f8dccf',43,42+bob,4,25);
+   p(c.gold,42,44+bob,2,23);
+   p(c.shine,28,16+bob,12,2);
+   p('#ffe3af',32,15+bob,4,1);
+   for(let i=0;i<5;i++){
+    const x=24+i*6,y=61+(i%2)*3;
+    p(c.gold,x,y+bob,2,2);p('#f5ffeb',x+1,y+bob,1,1);
+   }
+   if(action==='attack'){
+    const ring=[[34,51],[29,56],[25,62],[36,59],[41,52]][f%5];
+    p('#57d4dd',ring[0],ring[1]+bob,7,2);
+    p('#e2ffff',ring[0]+2,ring[1]-1+bob,3,1);
+    p('#d9fffa',58,9-strike+bob,2,2);
+   }
+  }
   if(action==='hurt'){p('#ffe0b1',19,35+bob,18,3);p('#e68c77',49,44+bob,3,4)}
   if(action==='death')g.restore();
   if(dir===3)g.restore();
   return true;
  }
- return Object.freeze({WIDTH,HEIGHT,ROLES,draw,VERSION:'heroes-master64-v2'});
+ return Object.freeze({WIDTH,HEIGHT,ROLES,draw,VERSION:'heroes-master64-v3'});
 });
