@@ -28,7 +28,7 @@ function harness(){
   accountMode:false,authed:true,selectedRoomId:'auren-publica',selectedRoomPassword:'',
   roomSwitchPending:false,roomSwitchTarget:null,$:()=>({open:false}),
   spriteActions:{monsters:new Map(),players:new Map(),fallen:[],localHurtAt:0},
-  setOnline:()=>{},closeDialogue:()=>{},monsterMotion:{clear:()=>{}},playerMotion:{clear:()=>{}},combatFx:{clear:()=>{}},
+  setOnline:()=>{},closeDialogue:()=>{},monsterMotion:{clear:()=>{}},playerMotion:{clear:()=>{}},combatFx:{clear:()=>{}},chatBubbles:{clear:()=>{}},
   alert:()=>{},console,JSON,Map,
   setTimeout:(cb,ms)=>{queued.set(++timer,{cb,ms});return timer},
   clearTimeout:id=>queued.delete(id),
