@@ -112,7 +112,8 @@ test('script da interface mede ping e suaviza apenas sprites remotos, sem altera
  assert.match(js,/latency\.poll\(performance\.now\(\),details=>send\('ping',details\)\)/);
  assert.match(js,/latency\.receive\(msg,performance\.now\(\)\)/);
  assert.match(js,/playerMotion\.sync\(\[\.\.\.people\.values\(\)\],performance\.now\(\)\)/);
- assert.match(js,/players:playerMotion\.draw\(\[\.\.\.session\.players\.values\(\)\],now\)/);
+ assert.match(js,/const drawPlayers=playerMotion\.draw\(\[\.\.\.session\.players\.values\(\)\],now\)/);
+ assert.match(js,/players:drawPlayers/);
  assert.match(js,/playerMotion\.clear\(\)/);
  assert.match(art,/character\(ctx,p,false,now,p\.moving!==false,/);
  assert.match(art,/playerActions\.get\(p\.name\)/);
