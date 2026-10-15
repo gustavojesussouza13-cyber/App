@@ -5,8 +5,11 @@
  * (12–15) são neutras e nunca recebem construções. Subsolos também proibidos.
  * Guildas pertencem à conta/personagem e são compartilhadas entre salas.
  */
+const frontier=require('./frontier-world');
+const SURFACE_REGIONS=frontier.MAIN_SURFACE_IDS;
+const SURFACE_SET=new Set(SURFACE_REGIONS);
 const CONTINENT_REGIONS=16;
-const BUILDABLE_REGIONS=12;
+const BUILDABLE_REGIONS=16;
 const BASE_COST=800;
 const RELOCATE_COST=450;
 const RELOCATE_COOLDOWN=24*60*60*1000;
@@ -239,7 +242,7 @@ function guildFor(world,p){
  return {key,guild};
 }
 function forts(world){
- return [...world.guilds.entries()].filter(([k,g])=>guildHere(world,g)&&g.base&&Number.isInteger(g.base.zone)&&g.base.zone<BUILDABLE_REGIONS)
+ return [...world.guilds.entries()].filter(([k,g])=>guildHere(world,g)&&g.base&&Number.isInteger(g.base.zone)&&SURFACE_SET.has(g.base.zone))
   .map(([key,g])=>({key,name:g.name,leader:g.leader,zone:g.base.zone,x:g.base.x,y:g.base.y,
    level:Math.max(1,Math.floor(Number(g.base.level)||1)),army:armyCopy(g.army),influence:g.influence||{}}));
 }
@@ -253,10 +256,8 @@ function eligibleKingdoms(world){
 function politicalMap(world){
  const eligible=eligibleKingdoms(world);
  const only=eligible.length===1?eligible[0][1]:null;
- return Array.from({length:CONTINENT_REGIONS},(_,zone)=>{
-  if(zone>=BUILDABLE_REGIONS)
-   return {zone,buildable:false,ruler:null,influence:0,contested:false};
-  const contenders=eligible.filter(([key,g])=>(g.base?.zone===zone&&g.base.zone<BUILDABLE_REGIONS)||Number(g.influence?.[zone])>0)
+ return SURFACE_REGIONS.map(zone=>{
+  const contenders=eligible.filter(([key,g])=>(g.base?.zone===zone&&SURFACE_SET.has(g.base.zone))||Number(g.influence?.[zone])>0)
    .map(([key,g])=>({key,name:g.name,
     influence:Math.max(0,Number(g.influence?.[zone])||(g.base?.zone===zone?1:0))}))
    .filter(c=>c.influence>0)
@@ -321,12 +322,12 @@ function continentalSovereign(world){
 // Nunca passa pelas masmorras e não aceita destinos fornecidos pelo navegador.
 function marchRoute(world,from,to){
  if(!from||!to||!Number.isInteger(from.zone)||!Number.isInteger(to.zone)||
-    from.zone<0||from.zone>=BUILDABLE_REGIONS||to.zone<0||to.zone>=BUILDABLE_REGIONS)return null;
+    !SURFACE_SET.has(from.zone)||!SURFACE_SET.has(to.zone))return null;
  const previous=new Map([[from.zone,null]]),queue=[from.zone];
  for(let index=0;index<queue.length&&!previous.has(to.zone);index++){
   const zone=queue[index];
   for(const gate of world.zonePortals(zone)){
-   if(!Number.isInteger(gate.zone)||gate.zone<0||gate.zone>=BUILDABLE_REGIONS||previous.has(gate.zone))continue;
+   if(!SURFACE_SET.has(gate.zone)||previous.has(gate.zone))continue;
    previous.set(gate.zone,zone);queue.push(gate.zone);
   }
  }
@@ -512,8 +513,8 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
  if(op==='place'){
   if(!p.isAccount){response(world,p,'Para fundar uma fortaleza permanente, faça login em uma conta cadastrada.');return false}
   if(g.leader!==p.uid){response(world,p,'Somente o líder da guilda pode escolher o local da base.');return false}
-  if(!Number.isInteger(p.zone)||p.zone<0||p.zone>=BUILDABLE_REGIONS){
-   response(world,p,'Não é possível construir reinos em masmorras ou subsolos.');return false
+  if(!SURFACE_SET.has(p.zone)){
+   response(world,p,'Fortalezas só podem existir nas 16 regiões oficiais de superfície; masmorras e fronteiras selvagens são protegidas.');return false
   }
   const x=d.x,y=d.y;
   if(!integer(x)||!integer(y)||x<90||x>1446||y<100||y>924||Math.hypot(x-p.x,y-p.y)>110||
@@ -889,7 +890,7 @@ function action(world,p,d,{walkable,portals=[],npcs=[],now=Date.now()}={}){
   if(!canManage){reject('Somente integrantes da guilda podem mobilizar patrulhas.');return false}
   if(g.march){response(world,p,'Já existe um exército mobilizado.');return false}
   const destination=d.zone;
-  if(!integer(destination)||destination<0||destination>=BUILDABLE_REGIONS){
+  if(!SURFACE_SET.has(destination)){
    response(world,p,'Patrulhas só podem visitar as 12 regiões de superfície.');return false
   }
   const units=armyCopy(g.army);
@@ -1009,7 +1010,7 @@ function resolve(world,now=Date.now()){
  }
  return finished;
 }
-module.exports={CONTINENT_REGIONS,BUILDABLE_REGIONS,BASE_COST,RELOCATE_COST,MAX_TROOPS,UNITS,
+module.exports={CONTINENT_REGIONS,BUILDABLE_REGIONS,SURFACE_REGIONS,BASE_COST,RELOCATE_COST,MAX_TROOPS,UNITS,
  armyCopy,troopCount,power,publicState,politicalMap,rank,marchRoute,marchPosition,collectCity,
  FORTRESS_MAX_LEVEL,BUILDING_MAX_LEVEL,CITY_PRODUCTION_MS,productionCycleMs,productionState,buildingSlots,MILITARY_SUPPLIES,CITY_BUILD_MS,stockCapacity,fortressDefense,escortOf,escortTotal,escortStrike,ESCORT_LIMIT,SIEGE_COOLDOWN,
  militaryCapacity,fullArmyCount,applyArmyUpkeep,completeSurrender,SURRENDER_THRESHOLD,SURRENDER_TRUCE_MS,UPKEEP_CYCLE_MS,continentalSovereign,eligibleKingdoms,crownCandidate,
