@@ -146,6 +146,9 @@ class World {
   this.guildDefenseTargets=new Map(); // ameaças de cerco temporárias, somente em RAM
   this.players=new Map();this.guestReconnect=new Map();this.monsters=new Map();this.parties=new Map();this.guilds=new Map();this.pendingTrades=new Map();this.chatGuard=new ChatGuard();this.chatReceipts=new Map();this.chatReports=new Map();this.chatReportRate=new Map();
   this.dirty=false;this.lastTick=Date.now();this.day=1;this.monsterPersistenceEnabled=true;
+  // O mapa de fortalezas é compartilhado; não recalcular política completa
+  // 60 vezes a cada snapshot de 350ms.
+  this.snapshotBasesCache={at:0,bases:[]};
   this.dataFile=dataFile||path.join(__dirname,'data','world.sqlite');
   this.db=null;this.persistentStore=persistentStore;this.saved={version:3,characters:{},guilds:{},monsters:{},day:1};if(!persistentStore)this.load();
   this.initMonsters();
@@ -430,12 +433,20 @@ class World {
   // Margem de visibilidade evita monstros aparecendo/desaparecendo na borda da tela.
   const mons=(this.ensureMonsters(p.zone)||[]).filter(m=>m.hp>0&&dist(m,p)<850).map(m=>this.publicMonster(m));
   this.send(p.socket,{type:'snapshot',online:this.players.size+this.getOnline(),zone:p.zone,players:near,monsters:mons,defenseTargets:this.guildDefenseList(p),day:this.day,
-   kingdoms:kingdoms.publicState(this,p).bases.filter(b=>b.zone===p.zone)});
+   kingdoms:this.visibleBases(p.zone)});
   if(Date.now()-(p.lastKingdomState||0)>8000){
    p.lastKingdomState=Date.now();
    this.send(p.socket,{type:'kingdomState',data:kingdoms.publicState(this,p)});
   }
  }
+ visibleBases(zone){
+  const now=Date.now();
+  if(now-this.snapshotBasesCache.at>1200){
+   this.snapshotBasesCache={at:now,bases:kingdoms.publicState(this,{save:{guild:null}}).bases};
+  }
+  return this.snapshotBasesCache.bases.filter(b=>b.zone===zone);
+ }
+ invalidateBases(){this.snapshotBasesCache.at=0}
  receive(c,d){if(!d||typeof d!=='object'||Array.isArray(d))return;if(!c.worldPlayer){if(d.type==='hello')this.join(c,d);return}
   const p=c.worldPlayer;const now=Date.now();
   // Um agressor neutralizado não se move, usa habilidades ou inicia outro
@@ -501,7 +512,7 @@ class World {
    case 'ignore':this.ignore(p,d);break;
    case 'party':this.party(p,d);break;
    case 'guild':this.guild(p,d);break;
-   case 'kingdom':kingdoms.action(this,p,d,{walkable:(zone,x,y)=>terrain.canStand(zone,x,y,ZONES),portals:this.zonePortals(p.zone),npcs:NPCS.filter(n=>n.zone===p.zone)});break;
+   case 'kingdom':kingdoms.action(this,p,d,{walkable:(zone,x,y)=>terrain.canStand(zone,x,y,ZONES),portals:this.zonePortals(p.zone),npcs:NPCS.filter(n=>n.zone===p.zone)});this.invalidateBases();break;
    case 'trade':this.trade(p,d);break;
    case 'talk':this.talk(p,d.npc);break;
    case 'storyChoice':this.storyChoice(p,d.npc,d.choice);break;
@@ -1267,6 +1278,7 @@ class World {
   if(this.kingdomTickLeader!==false){
    const finished=kingdoms.resolve(this,now);
    if(finished.length){
+    this.invalidateBases();
     const affected=new Set();
     for(const result of finished){
      affected.add(result.guild);
