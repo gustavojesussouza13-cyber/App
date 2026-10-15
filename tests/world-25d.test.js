@@ -95,3 +95,27 @@ test('As quatro classes mantêm silhuetas nativas de 64x80 na prévia e no MMO e
  assert.match(lab,/pixel-atelier-v1\.js/);
  assert.match(lab,/OsPeregrinosHeroesAurora25D\?\.draw/);
 });
+
+test('A spritesheet original do Runway está instalada como PNG real, não apenas referência',()=>{
+ const png=path.join(__dirname,'..','public/assets/peregrino/peregrino-runway-walk.png');
+ const meta=JSON.parse(read('public/assets/peregrino/peregrino-runway-walk.json'));
+ assert.ok(fs.existsSync(png),'atlas físico PNG deve estar no repositório');
+ const bytes=fs.readFileSync(png);
+ assert.deepEqual(Array.from(bytes.subarray(0,8)),[137,80,78,71,13,10,26,10]);
+ assert.ok(bytes.length>10000,'os sprites não podem ser substituídos por imagem vazia');
+ assert.equal(meta.taskId,'ef4014c5-292b-4fd5-afb6-222c138b8de6');
+ assert.equal(meta.frameCount,16);
+ assert.deepEqual(meta.directions,{south:0,north:1,east:2,west:3});
+ const loader=read('public/peregrino-runway25d.js');
+ const mmo=read('public/art16.js');
+ const lab=read('public/visual-25d.html');
+ assert.match(loader,/peregrino-runway-walk\.png/);
+ assert.match(loader,/drawImage\(image,sx,sy,sw,sh/);
+ assert.match(loader,/allowsAppearance/);
+ assert.match(loader,/action!=='idle'&&action!=='walk'/);
+ assert.match(mmo,/const runwayHero=Boolean\(useAurora25d&&p\.role==='peregrino'/);
+ assert.match(mmo,/if\(runwayHero\|\|/);
+ assert.match(lab,/peregrino-runway25d\.js/);
+ assert.match(read('public/mundo.html'),/peregrino-runway25d\.js/);
+ assert.ok(fs.existsSync(path.join(__dirname,'..','public/peregrino-runway-preview.html')));
+});
