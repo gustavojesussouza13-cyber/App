@@ -50,17 +50,21 @@ button{cursor:pointer}button:hover{background:#365951}button:focus-visible{outli
  <button id="classic" type="button">Ver apenas Canvas 2D</button>
  <div id="status" role="status">Preparando renderizador WebGL…</div>
  <p><b>Controles:</b> WASD ou setas para andar. No celular, arraste o dedo sobre a área do jogo.</p>
- <p>Os personagens são sprites 2D; o cenário usa volumes, materiais e iluminação WebGL com câmera ortográfica fixa.</p>
+ <p>O Peregrino usa seu sprite autoral com 64 × 80 pixels nativos, quatro direções e animação de caminhada. O cenário mantém iluminação WebGL e câmera ortográfica.</p>
+ <a style="color:#f1dca3;font-size:13px" href="/peregrino-atlas25d.html">Ver folha de sprites do Peregrino →</a>
 </aside></section>
 <footer>Protótipo experimental de renderização, não a versão publicada do MMORPG. Sem alterações em combate, progressão, saves ou fortalezas.</footer>
 </main>
 <script type="importmap">{"imports":{"/vendor/three.module.js":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js"}}</script>
+<script src="/appearance16.js"></script>
+<script src="/peregrino-artisan64.js"></script>
+<script src="/peregrino-aurora25d.js"></script>
 <script type="module">
 const $=id=>document.getElementById(id),canvas=$('game'),ctx=canvas.getContext('2d',{alpha:true}),mini=$('mini'),mctx=mini.getContext('2d');
 const W=canvas.width,H=canvas.height,WIDTH=1536,HEIGHT=1024;
 const labels={peregrino:'Peregrino',guardiao:'Guardião',arqueiro:'Arqueiro',curandeiro:'Curandeiro'};
 const palettes={peregrino:['#26618a','#e0c788'],guardiao:['#7c4a51','#bcc6cd'],arqueiro:['#3e7958','#d4a15d'],curandeiro:['#dddac8','#7fcbd5']};
-const player={x:768,y:512},keys=new Set();
+const player={x:768,y:512,dir:2,role:'peregrino'},keys=new Set();
 let view=null,day=true,mode3d=true,last=0,drag=null;
 const textures=new Map();
 function pixelActor(kind) {
@@ -84,10 +88,16 @@ function drawActor(a,camX,camY,now){
  const moving=a===player && [...keys].length;
  const lift=moving?Math.round(Math.sin(now/100)*2):0;
  ctx.fillStyle='#13282071';ctx.beginPath();ctx.ellipse(sx,sy+4,18,7,0,0,Math.PI*2);ctx.fill();
- ctx.imageSmoothingEnabled=false;ctx.drawImage(pixelActor(a.role||$('role').value),sx-24,sy-60+lift,48,64);
+ const role=a===player?$('role').value:a.role;
+ const premium=role==='peregrino'&&Boolean(window.OsPeregrinosAurora25D?.draw(ctx,{
+  x:sx,y:sy,dir:a.dir??2,action:moving?'walk':'idle',
+  frame:Math.floor(now/125),glow:a===player,scale:1.5
+ }));
+ if(!premium){ctx.imageSmoothingEnabled=false;ctx.drawImage(pixelActor(role),sx-24,sy-60+lift,48,64);}
+ const textY=premium?sy-126:sy-69+lift;
  ctx.textAlign='center';ctx.font='bold 14px system-ui,Arial';ctx.lineWidth=3;ctx.strokeStyle='#101b23';
- ctx.strokeText(a.name||labels[$('role').value],sx,sy-69+lift);
- ctx.fillStyle=a===player?'#ffe4a0':'#e9f2d9';ctx.fillText(a.name||labels[$('role').value],sx,sy-69+lift);
+ ctx.strokeText(a.name||labels[$('role').value],sx,textY);
+ ctx.fillStyle=a===player?'#ffe4a0':'#e9f2d9';ctx.fillText(a.name||labels[$('role').value],sx,textY);
 }
 function fallbackTerrain(camX,camY){
  ctx.fillStyle='#496b58';ctx.fillRect(0,0,W,H);
@@ -109,7 +119,7 @@ function frame(t){
  let dy=(keys.has('s')||keys.has('arrowdown')?1:0)-(keys.has('w')||keys.has('arrowup')?1:0);
  if(drag){dx+=drag.x;dy+=drag.y}
  const mag=Math.hypot(dx,dy);
- if(mag){player.x=Math.max(25,Math.min(WIDTH-25,player.x+dx/mag*174*dt));player.y=Math.max(25,Math.min(HEIGHT-25,player.y+dy/mag*174*dt));}
+ if(mag){player.dir=Math.abs(dx)>Math.abs(dy)?dx>0?1:3:dy>0?2:0;player.x=Math.max(25,Math.min(WIDTH-25,player.x+dx/mag*174*dt));player.y=Math.max(25,Math.min(HEIGHT-25,player.y+dy/mag*174*dt));}
  const camX=Math.min(WIDTH-W,Math.max(0,player.x-W/2));
  const camY=Math.min(HEIGHT-H,Math.max(0,player.y-H/2));
  if(mode3d&&view){
