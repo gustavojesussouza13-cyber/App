@@ -57,6 +57,7 @@ function renderMonsterSheet(sheet){
 }
 const monsterMotion=window.OsPeregrinosMonsterMotion.create();
 const playerMotion=window.OsPeregrinosPlayerMotion.create();
+const chatBubbles=window.PeregrinosChatBubbles.create({ttlMs:4800});
 const combatFx=window.OsPeregrinosCombatFx.create();
 // Só o PC mostra a arte 16-bit extra. Cada efeito nasce de mensagem do servidor.
 const classSkillFx=window.OsPeregrinosClassSkillFx16.create({windowRef:window});
@@ -290,7 +291,7 @@ function dispatch(msg){
   closeDialogue();
   keys.clear();joystick.release();
   session.monsters.clear();monsterMotion.clear();playerMotion.clear();combatFx.clear();if(typeof clearMonsterSheet==='function')clearMonsterSheet();
-  session.players.clear();spriteActions.monsters.clear();spriteActions.players.clear();
+  session.players.clear();chatBubbles.clear();spriteActions.monsters.clear();spriteActions.players.clear();
   spriteActions.fallen.length=0;
   visibleKingdomBases=[];kingdomState=null;guildDirectory=null;
   session.partyInvite=null;session.tradeOffer=null;
@@ -407,7 +408,10 @@ function dispatch(msg){
    fx.push({x:fallen?.x||session.x,y:fallen?.y||session.y,text:msg.boss?'★ CHEFE!':'✦ VITÓRIA!',t:now,color:'#f5d587'});
    session.monsters.delete(msg.monster);monsterMotion.sync([...session.monsters.values()])}
  }else if(msg.type==='reward'){alert('+'+msg.xp+' EXP  ·  +'+msg.gold+' moedas'+(msg.boss?' ★ CHEFE':''));
- }else if(msg.type==='chat'){say('['+msg.channel+'] '+msg.name,msg.text,msg.channel,msg.name===session.name?null:msg.id);
+ }else if(msg.type==='chat'){
+  say('['+msg.channel+'] '+msg.name,msg.text,msg.channel,msg.name===session.name?null:msg.id);
+  // O evento do servidor já foi moderado e filtrado por canal e bloqueios.
+  if(msg.zone===session.zone)chatBubbles.show(msg,Date.now());
  }else if(msg.type==='notice'||msg.type==='system'){say('',msg.text,'sys');if(msg.type==='notice')alert(msg.text);
  }else if(msg.type==='partyInfo'){session.partyInvite=null;say('','Equipe: '+msg.members.join(', '),'sys');drawTab();
  }else if(msg.type==='partyInvite'){session.partyInvite=msg;alert('Convite de equipe de '+msg.by);drawTab();
@@ -1228,6 +1232,7 @@ function canvasDraw(now,dt){
   session.cameraX=clamp(Math.floor(session.x-W/2),0,ZONE_W-W);
   session.cameraY=clamp(Math.floor(session.y-H/2),0,ZONE_H-H);
   const projectiles=combatFx.frame(now);
+ const drawPlayers=playerMotion.draw([...session.players.values()],now);
   for(const shot of projectiles)if(shot.justHit){
    fx.push({x:shot.x,y:shot.y,text:'−'+shot.damage,t:now,
      color:shot.projectile==='holy-bolt'?'#a8f4e1':shot.skill?'#b7f9f0':'#ffe5a6'});
@@ -1238,7 +1243,7 @@ function canvasDraw(now,dt){
   for(const [id,v] of spriteActions.players)if(now-v.at>580)spriteActions.players.delete(id);
   classicRenderer.render({zone:session.zone,zones:session.zones,x:session.x,y:session.y,kingdomBases:visibleKingdomBases,
     name:session.name||'PEREGRINO',role:session.role,appearance:session.appearance,dir:session.dir,
-    monsters:monsterMotion.draw([...session.monsters.values()],dt),players:playerMotion.draw([...session.players.values()],now),projectiles,
+    monsters:monsterMotion.draw([...session.monsters.values()],dt),players:drawPlayers,projectiles,
     monsterActions:spriteActions.monsters,playerActions:spriteActions.players,fallen:spriteActions.fallen,
     heroPose:now-spriteActions.localHurtAt<310?{action:'hurt',at:spriteActions.localHurtAt}:{action:'attack',at:lastAction},
     npcs:session.npcs.filter(n=>n.zone===session.zone),portals:session.portals,storyStage:session.story?.stage||0,
@@ -1266,6 +1271,10 @@ function canvasDraw(now,dt){
     ctx.fillStyle='#89d8ba';ctx.fillRect(x-1,y-1,3,3);ctx.restore();
    }
   }
+  // Camada de falas: renderizada após os atores para não esconder o rosto
+  // e sem filtros que borrariam os pixels do jogo.
+  chatBubbles.draw(ctx,{players:drawPlayers,self:{id:session.id,x:session.x,y:session.y},
+   cameraX:session.cameraX,cameraY:session.cameraY,now:Date.now(),width:W,height:H});
    lastFrameX=session.x;lastFrameY=session.y;
 }
 let lastFrameX=768,lastFrameY=512;
