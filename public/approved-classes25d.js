@@ -13,10 +13,13 @@
  if(root)root.OsPeregrinosApprovedClasses25D=api;
 })(typeof globalThis!=='undefined'?globalThis:this,function(root){
  const FW=64,FH=80;
+ // Habilitar somente depois da publicação dos três PNGs reais aprovados.
+ const ASSETS_READY=root.OsPeregrinosApprovedArtEnabled===true;
  const roles=['guardiao','arqueiro','curandeiro'];
  const source=role=>'/assets/approved-classes/'+role+'-sprites-3x2-64x80.png?v=approved-v1';
  const loaded=new Map(),failed=new Set(),pending=new Map();
  function load(role){
+  if(!ASSETS_READY)return Promise.resolve(false);
   if(!roles.includes(role))return Promise.resolve(false);
   if(loaded.has(role))return Promise.resolve(true);
   if(pending.has(role))return pending.get(role);
@@ -66,9 +69,9 @@
   ctx.restore();return true;
  }
  function start(){return Promise.all(roles.map(load))}
- if(typeof document!=='undefined')void start();
+ if(typeof document!=='undefined'&&ASSETS_READY)void start();
  return Object.freeze({
-  VERSION:'approved-classes-25d-v1',ROLES:roles,FW,FH,source,load,start,
+  VERSION:'approved-classes-25d-v1',ASSETS_READY,ROLES:roles,FW,FH,source,load,start,
   isReady:role=>loaded.has(role),hasFailed:role=>failed.has(role),
   isStandard,frameRect,draw
  });
