@@ -78,7 +78,7 @@ test('costas, lateral e frente diferem; espada e cachecol se mantêm na identida
 test('cliente carrega o novo mestre primeiro e mantém fallback, sem mudar outras classes',()=>{
  const html=read('mundo.html'),studio=read('sprite-studio.js');
  assert.match(html,/peregrino-artisan64\.js\?v=peregrino-artisan64-v4/);
- assert.match(html,/sprite-studio\.js\?v=world-art-master64-v2/);
+ assert.match(html,/sprite-studio\.js\?v=world-art-master64-v3/);
  assert.ok(html.indexOf('peregrino-artisan64.js')<html.indexOf('sprite-studio.js'));
  assert.ok(studio.indexOf('PILGRIM_ARTISAN?.draw')<studio.indexOf('PILGRIM_MASTER?.draw'));
  assert.match(studio,/HEROES_MASTER\?\.draw/);
