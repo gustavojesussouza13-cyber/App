@@ -498,6 +498,62 @@
     p('#d9fffa',58,9-strike+bob,2,2);
    }
   }
+  // SEGUNDA PASSADA DE SILHUETA: os tecidos e placas deixam de ser
+  // retângulos embaixo de um rosto mais acabado. Todas as poses reutilizam
+  // a mesma grade, mantendo cache de sprites e colisão intactos.
+  if(role==='curandeiro'){
+   const sw=action==='walk'?[0,1,2,0,-1,-2][f%6]:
+    action==='attack'?[0,-1,-3,3,1][f%5]:0;
+   // Saia em painéis sobrepostos e bainha escalonada (tecido, não armadura).
+   shape(c.ink,[[23,47],[42,46],[50+sw,62],[53+sw,72],
+    [43,76],[35,71],[27,76],[15-sw,72],[18-sw,61]]);
+   shape(c.shadow,[[24,49],[43,48],[47+sw,64],[49+sw,71],
+    [42,73],[35,68],[28,73],[20-sw,70],[22-sw,60]]);
+   shape(cloth,[[25,48],[42,49],[44+sw,63],[46+sw,71],
+    [40,72],[34,68],[28,72],[22-sw,70],[24-sw,60]]);
+   shape(c.light,[[31,50],[38,50],[40+sw,64],[36,70],
+    [32,69],[29,63]]);
+   shape(c.cloak,[[21,53],[26,52],[25-sw,65],[21-sw,73],
+    [16-sw,70]]);
+   shape(c.light,[[22,55],[25,55],[24-sw,66],[20-sw,71]]);
+   sheen(c.gold,[[27,56,2,11],[41,56,2,11],
+    [31,68,2,3],[39,69,2,3],[22-sw,69,3,1]]);
+   sheen(c.shine,[[32,59,2,4],[35,52,3,1],[37,63,2,2]]);
+   // Manga flutuante com punho próximo ao cajado.
+   shape(c.ink,[[43,35],[51,35],[55,42],[53,55],
+    [47,60],[43,52]]);
+   shape(cloth,[[45,37],[50,37],[53,43],[51,54],
+    [47,57],[45,50]]);
+   sheen(c.light,[[47,38,4,2],[49,45,2,7]]);
+   p(skin,49,54+bob,5,4);p(skinLight,50,54+bob,2,1);
+   sheen(c.gold,[[47,52,6,2],[32,48,6,2]]);
+   // Técnica: luvas, bordados e halo variam com a pose de magia.
+   if(action==='attack'){
+    const aura=[[39,52],[35,57],[28,63],[32,58],[42,53]][f%5];
+    p('#70c7e0',aura[0],aura[1]+bob,8,2);
+    p('#e0ffff',aura[0]+2,aura[1]-1+bob,3,1);
+    p('#8cf2ff',57,13-strike+bob,3,3);
+   }
+  }else if(role==='guardiao'){
+   shape(c.deep,[[20,54],[44,53],[49,60],[45,68],
+    [38,70],[35,65],[28,70],[19,66]]);
+   shape(cloth,[[24,56],[43,55],[46,62],[40,67],
+    [36,63],[27,67],[21,64]]);
+   shape(c.ink,[[21,57],[29,58],[27,67],[22,72],[16,67]]);
+   sheen(c.gold,[[22,58,3,2],[38,59,4,2]]);
+   sheen(c.shine,[[25,60,2,4],[42,60,2,3]]);
+  }else if(role==='arqueiro'){
+   // Cauda do manto em folhas assimétricas, com pregas recortadas.
+   const sway=action==='walk'?[0,2,3,0,-2,-3][f%6]:0;
+   shape(c.ink,[[20,46],[44,47],[49+sway,59],
+    [56+sway,72],[45,69],[39,74],[29,67],
+    [19-sway,74],[15-sway,65]]);
+   shape(c.cloak,[[22,47],[43,49],[47+sway,59],
+    [51+sway,69],[44,66],[38,71],[29,64],
+    [20-sway,70],[18-sway,63]]);
+   sheen(c.light,[[23,49,3,9],[42+sway,60,2,6]]);
+   sheen(c.gold,[[25,53,3,2],[37,57,3,1]]);
+  }
   if(action==='hurt'){p('#ffe0b1',19,35+bob,18,3);p('#e68c77',49,44+bob,3,4)}
   if(action==='death')g.restore();
   if(dir===3)g.restore();
