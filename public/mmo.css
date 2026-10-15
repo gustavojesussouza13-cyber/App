@@ -797,3 +797,49 @@ body>.bar .brand,body>.bar .brand strong{
   width:100%;min-width:0;flex:initial;font-size:11px;
  }
 }
+
+/*
+ * A criação de personagem não pode assumir que um Android usa viewport <=850px.
+ * Alguns WebViews e a opção "site para computador" anunciam >=980px; o toque
+ * continua sinalizando um dispositivo mobile. Evitar layout em duas colunas.
+ */
+@media (pointer:coarse){
+ .game-overlay .intro-panel{
+  min-width:0!important;max-width:min(465px,calc(100dvw - 16px))!important;
+  width:100%!important;box-sizing:border-box;
+  overflow-x:hidden;scrollbar-gutter:stable
+ }
+ .appearance-create-panel,.appearance-create-panel>details,#appearanceCreator{
+  width:100%!important;max-width:100%!important;min-width:0!important;
+  box-sizing:border-box
+ }
+ .appearance-create-panel .atelier-custom{
+  display:flex!important;flex-direction:column!important;align-items:stretch!important;
+  gap:10px!important;padding:9px 6px!important;
+  min-width:0!important;width:100%!important;max-width:100%!important
+ }
+ .appearance-create-panel .atelier-custom-preview{
+  display:flex!important;flex-direction:column!important;align-items:center!important;
+  width:100%!important;max-width:100%!important;min-width:0!important
+ }
+ .appearance-create-panel .atelier-custom-fields{
+  display:grid!important;grid-template-columns:minmax(0,1fr)!important;
+  width:100%!important;min-width:0!important;max-width:100%!important;
+ }
+ .appearance-create-panel .atelier-custom-fields label,
+ .appearance-create-panel .atelier-custom-fields select{
+  width:100%!important;min-width:0!important;max-width:100%!important;
+  box-sizing:border-box;white-space:normal;letter-spacing:normal;
+ }
+ .appearance-create-panel .atelier-custom-preview .atelier-preview-canvas{
+  width:128px;height:160px;max-width:100%;
+ }
+ .appearance-create-panel .atelier-pose-controls{
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+  width:100%;max-width:340px
+ }
+ .appearance-create-panel .atelier-pose-controls>select,
+ .appearance-create-panel .atelier-pose-controls>button{
+  width:100%;min-width:0;max-width:100%;font-size:11px;box-sizing:border-box
+ }
+}
