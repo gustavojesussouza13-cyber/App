@@ -26,14 +26,15 @@ function setup(t){
   now,walkable:()=>true,portals:[]});
  return{world,events,history,player,guild,action};
 }
-test('16 regiões históricas compõem o conselho; só 12 permitem fortaleza',()=>{
+test('16 províncias oficiais de superfície permitem fortalezas e masmorras ficam neutras',()=>{
  assert.equal(ZONES.length,40);
  assert.equal(policy.CONTINENT_REGIONS,16);
- assert.equal(policy.BUILDABLE_REGIONS,12);
+ assert.equal(policy.BUILDABLE_REGIONS,16);
  const world={guilds:new Map()};
  const territories=policy.politicalMap(world);
  assert.equal(territories.length,16);
- assert.deepEqual(territories.slice(12).map(t=>t.buildable),[false,false,false,false]);
+ assert.deepEqual(territories.map(t=>t.zone),[0,1,2,3,4,5,6,7,8,9,10,11,40,41,42,43]);
+ assert.ok(territories.every(t=>t.buildable));
 });
 test('guilda autêntica estabelece base por custo, preserva dados e aparece no mapa',t=>{
  const h=setup(t),a=h.player('Fundadora');
@@ -54,7 +55,7 @@ test('guilda autêntica estabelece base por custo, preserva dados e aparece no m
 test('proíbe bases em quatro masmorras históricas e em todos os subsolos',t=>{
  const h=setup(t),a=h.player('Arquiteta'),g=h.guild(a,'Peregrinos Livres');
  const before=a.save.coins;
- for(const zone of [12,13,14,15,16,18,28,39]){
+ for(const zone of [12,13,14,15,16,18,28,39,44,45,500,10000]){
   a.zone=zone;a.save.zone=zone;
   assert.equal(h.action(a,{action:'place',x:768,y:512}),false);
  }

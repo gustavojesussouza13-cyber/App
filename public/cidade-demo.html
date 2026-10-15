@@ -44,11 +44,14 @@ const costs={house:120,farm:160,barracks:280,tower:360,market:240},
 units={militia:{food:4,timber:2,stone:0},archer:{food:5,timber:5,stone:0},knight:{food:8,timber:3,stone:3},siege:{food:12,timber:12,stone:8}};
 const base={name,zone:0,x:768,y:512,level:2};
 let localCoins=8500,lastCollected=start-15*60*1000;
+// Espelhar os ciclos e produções que o servidor real envia para a UI 3D.
+const productionCycles={house:4*60000,farm:8*60000,market:12*60000,barracks:16*60000,tower:20*60000};
+const productionYields={house:{coins:2},farm:{food:8},market:{timber:2,stone:1,coins:5},barracks:{food:1},tower:{stone:1}};
 // Mensagens WebSocket chegam serializadas: o cliente recebe snapshots, não
 // referências mutáveis à memória do servidor. Essencial para testar ACK perdido.
 function current(){return {
  bases:[{...base}],
- cities:[{name,buildings:buildings.map(b=>({...b}))}],
+ cities:[{name,buildings:buildings.map(b=>({...b,production:b.status==='building'?null:{cycleMs:productionCycles[b.type],nextAt:lastCollected+productionCycles[b.type],yields:productionYields[b.type]}}))}],
  serverNow:Date.now(),buildTimes:durations,
  walletCoins:localCoins,
  persistentAccount:true,demo:true, // conta fictícia: nenhuma gravação permanente na demonstração

@@ -53,7 +53,7 @@ function zoneDifficulty(zone){
  const rootIndex=Math.floor((zone-16)/DEPTH_PER_DUNGEON);
  return 3.31+rootIndex*1.8+(dungeonDepth(zone)-1)*.28;
 }
-const autoAggroZone=zone=>crownDungeonZone(zone)||(zone>=16&&zone<ZONES.length&&dungeonDepth(zone)>=3);
+const autoAggroZone=zone=>frontier.isFrontier(zone)||crownDungeonZone(zone)||(zone>=16&&zone<ZONES.length&&dungeonDepth(zone)>=3);
 
 const ZONE_W=1536, ZONE_H=1024;
 const CLASSES={guardiao:{name:'Guardião',hp:165,attack:17,range:85,defense:7},arqueiro:{name:'Arqueiro',hp:112,attack:21,range:250,defense:2},curandeiro:{name:'Curandeiro',hp:125,attack:12,range:160,defense:4},peregrino:{name:'Peregrino',hp:135,attack:16,range:118,defense:4}};
@@ -406,7 +406,7 @@ class World {
   if(owner&&c.roomTransferRole){this.saved.characters[uid]=safeSave(s);this.dirty=true}
   const p={lastRegenAt:now,lastCombatAt:0,lastResourceBroadcast:0,attackCounter:0,id:crypto.randomUUID(),uid,name,isAccount:!!owner,isAdministrator:!!owner?.administrator,socket:c.socket,save:s,x:s.x,y:s.y,zone:s.zone,dir:2,lastMove:Date.now(),moveCredit:12,lastAttack:0,lastSpell:0,lastChat:0,lastUse:0,party:null,live:true};
   c.worldPlayer=p;c.socket._worldClient=c;this.players.set(p.id,p);
-  this.send(c.socket,{type:'welcome',room:c.worldRoom?{id:c.worldRoom.id,name:c.worldRoom.name}:null,self:this.ownStatus(p),zones:this.zoneInfo(),shop:Object.fromEntries(Object.entries(GOODS).filter(([key,item])=>!item.storyOnly)),relics:RELICS,quests:QUESTS,achievements:ACHIEVEMENTS,portals:this.zonePortals(p.zone),npcs:NPCS.map(publicNpc),merchants:Object.keys(MERCHANT_STOCK).map(id=>{const n=byId.get(id);return {id,name:n.name,zone:n.zone,region:ZONES[n.zone][0]}}),maxPlayers:60,online:this.players.size+this.getOnline(),monsterTotal:this.totalMonsters(),region:this.currentRegion(p.zone),infiniteFrontier:true,generation:{seed:procedural.SEED,version:procedural.VERSION,chunkSize:procedural.CHUNK_SIZE}});
+  this.send(c.socket,{type:'welcome',room:c.worldRoom?{id:c.worldRoom.id,name:c.worldRoom.name}:null,self:this.ownStatus(p),zones:this.zoneInfo(),mainSurface:frontier.MAIN_SURFACE_IDS.map(z=>this.currentRegion(z)),shop:Object.fromEntries(Object.entries(GOODS).filter(([key,item])=>!item.storyOnly)),relics:RELICS,quests:QUESTS,achievements:ACHIEVEMENTS,portals:this.zonePortals(p.zone),npcs:NPCS.map(publicNpc),merchants:Object.keys(MERCHANT_STOCK).map(id=>{const n=byId.get(id);return {id,name:n.name,zone:n.zone,region:ZONES[n.zone][0]}}),maxPlayers:60,online:this.players.size+this.getOnline(),monsterTotal:this.totalMonsters(),region:this.currentRegion(p.zone),infiniteFrontier:true,generation:{seed:procedural.SEED,version:procedural.VERSION,chunkSize:procedural.CHUNK_SIZE}});
   this.broadcast({type:'system',text:p.name+' chegou ao mundo.'},q=>q.id!==p.id);
   this.dirty=true;this.snapshotTo(p);
   this.send(p.socket,{type:'kingdomState',data:kingdoms.publicState(this,p)});
@@ -440,7 +440,7 @@ class World {
   const p=c.worldPlayer;const now=Date.now();
   // Um agressor neutralizado não se move, usa habilidades ou inicia outro
   // cerco até terminar a imobilização. Itens de cura continuam disponíveis.
-  if(p.neutralizedUntil>now&&['move','travel','portal','attack','skill','kingdom'].includes(d.type)){
+  if(p.neutralizedUntil>now&&['move','travel','portal','atlasTravel','crossBoundary','attack','skill','kingdom'].includes(d.type)){
    if(now-(p.lastNeutralizedNotice||0)>1700){p.lastNeutralizedNotice=now;this.tell(p,'🛡 Você foi neutralizado. Aguarde o término da imobilização.');}
    return;
   }
@@ -462,6 +462,28 @@ class World {
     p.save.x=p.x;p.save.y=p.y;this.dirty=true;break;
    }
    case 'travel':this.travel(p,d.zone);break;
+   case 'atlasTravel':{
+    // Somente as dezesseis províncias oficiais; não abre masmorras,
+    // não permite saltos arbitrários para regiões procedurais.
+    if(frontier.isMainSurface(d.zone))this.travel(p,d.zone,{atlas:true});
+    else this.tell(p,'O atlas permite voltar apenas às 16 regiões oficiais de superfície.');
+    break;
+   }
+   case 'crossBoundary':{
+    // Fronteiras são contínuas; a borda é validada pelo servidor,
+    // que decide o próximo ID. O cliente nunca escolhe o destino.
+    if(!frontier.isFrontier(p.zone))break;
+    const directions={norte:[0,-1,'y',70],leste:[1,0,'x',ZONE_W-70],sul:[0,1,'y',ZONE_H-70],oeste:[-1,0,'x',70]};
+    if(typeof d.direction!=='string'||!Object.hasOwn(directions,d.direction))break;
+    const [dx,dy,axis,limit]=directions[d.direction];
+    const onEdge=(d.direction==='norte'||d.direction==='oeste')?p[axis]<=limit:p[axis]>=limit;
+    if(!onEdge||now-(p.lastBorderCross||0)<850)break;
+    const coords=frontier.coordsFor(p.zone),z=frontier.idFor(coords.x+dx,coords.y+dy);
+    if(z===null)break;
+    const arrival={x:dx===1?42:dx===-1?ZONE_W-42:p.x,y:dy===1?42:dy===-1?ZONE_H-42:p.y};
+    p.lastBorderCross=now;
+    this.travel(p,z,{border:arrival});break;
+   }
    case 'portal':this.usePortal(p,d.zone);break;
    case 'inspectMonster':this.inspectMonster(p,cap(d.monster,64));break;
    case 'defendGuild':this.guildDefenseAttack(p,d.target);break;
@@ -694,8 +716,10 @@ class World {
    this.tell(p,'♛ A Coroa Continental confiou-lhe uma Chave da Câmara da Aurora. Ela abre somente a quarta masmorra, é pessoal e não pode ser negociada.');
    return true;
   }
-  travel(p,z){if(!frontier.isZone(z))return;
-  if(z===p.zone)return;const a=p.zone,b=z;const legal=this.zonePortals(a).some(g=>g.zone===b);
+  travel(p,z,options={}){if(!frontier.isZone(z))return;
+  if(z===p.zone)return;const a=p.zone,b=z;
+  if(options.atlas&&(!frontier.isMainSurface(b)||Date.now()-(p.lastAtlasTravel||0)<1700))return;
+  const legal=options.atlas||Boolean(options.border)||this.zonePortals(a).some(g=>g.zone===b);
   if(!legal){this.tell(p,'Use uma passagem conectada a esta região.');return}
   const enteringCrownDungeon=requiresCrownKey(a,b);
   const enteringOrdinaryDungeon=b>=12&&b<CROWN_DUNGEON_ROOT&&dungeonRoot(a)!==b;
@@ -712,8 +736,10 @@ class World {
   }
   if(enteringCrownDungeon)p.save.inventory[CROWN_DUNGEON_KEY]--;
   p.zone=b;p.save.zone=b;
+  if(options.atlas)p.lastAtlasTravel=Date.now();
   this.ensureMonsters(b);
-  const arrival=terrain.nearestWalkable(b,ZONE_W/2,ZONE_H/2,ZONES);
+  const spawn=options.border||{x:ZONE_W/2,y:ZONE_H/2};
+  const arrival=terrain.nearestWalkable(b,spawn.x,spawn.y,ZONES);
   p.x=arrival.x;p.y=arrival.y;p.save.x=p.x;p.save.y=p.y;if(!p.save.visited.includes(b))p.save.visited.push(b);
   if(p.save.visited.length>168)p.save.visited=[...p.save.visited.filter(z=>z<40),...p.save.visited.filter(z=>z>=40).slice(-128)];
   if(p.save.visited.length>=8)this.unlockAchievement(p,'explorar-8');
@@ -1268,16 +1294,22 @@ class World {
     if(now>=m.deadUntil){m.hp=m.maxHp;m.x=m.home.x;m.y=m.home.y;m.damageFrom.clear();m.aggroTarget=null;m.aggroUntil=0;m.lastAttack=0;m.windupUntil=0;m.markUntil=0;m.markOwner=null;m.wanderGoal=null;m.wander=now+1500}
     else continue;
    }
+   const frontierDistance=frontier.isFrontier(zone)?frontier.info(zone).distance:0;
+   // O perigo aumenta de maneira monotônica quanto mais afastado do núcleo.
+   const vigilance=Math.min(2.1,1+Math.log2(1+frontierDistance)*.19);
+   const detection=frontier.isFrontier(zone)?Math.min(420,185*vigilance):205;
+   const leash=frontier.isFrontier(zone)?Math.min(720,400*vigilance):400;
+   const chaseSpeed=frontier.isFrontier(zone)?Math.min(115,58*vigilance):58;
    let target=m.aggroTarget?this.players.get(m.aggroTarget):null;
-   let hostile=!!(target&&target.live!==false&&target.zone===zone&&now<m.aggroUntil&&dist(target,m.home)<400&&dist(m,m.home)<440);
+   let hostile=!!(target&&target.live!==false&&target.zone===zone&&now<m.aggroUntil&&dist(target,m.home)<leash&&dist(m,m.home)<leash+40);
    // Terceiro subsolo em diante: somente criaturas COMUNS iniciam combate
    // ao perceber jogadores a até 205px. Bosses permanecem neutros até
    // receber o primeiro golpe. Perseguição tem limite para não arrastar
    // monstros por todo o mapa e não teletransporta criaturas.
-   if(!hostile&&autoAggroZone(zone)&&!m.boss&&dist(m,m.home)<440){
-    let nearest=null,nearestDist=205;
+   if(!hostile&&autoAggroZone(zone)&&(!m.boss||frontierDistance>=10)&&dist(m,m.home)<leash+40){
+    let nearest=null,nearestDist=detection;
     for(const candidate of this.players.values()){
-     if(candidate.live===false||candidate.zone!==zone||dist(candidate,m.home)>=400)continue;
+     if(candidate.live===false||candidate.zone!==zone||dist(candidate,m.home)>=leash)continue;
      const distance=dist(candidate,m);
      if(distance<nearestDist){nearestDist=distance;nearest=candidate}
     }
@@ -1320,11 +1352,12 @@ class World {
    }
    m.wanderGoal=null; // Inimigo provocado cancela o passeio; depois volta a andar normalmente.
    const d=dist(target,m);
-   if(d>42){const step=Math.min(58*dt,d);m.x+=(target.x-m.x)/d*step;m.y+=(target.y-m.y)/d*step}
+   if(d>42){const step=Math.min(chaseSpeed*dt,d);m.x+=(target.x-m.x)/d*step;m.y+=(target.y-m.y)/d*step}
    // O ataque precisa ser anunciado e permanecer ao alcance até o golpe.
    if(d>=53){m.windupUntil=0;continue}
-   if(!m.windupUntil&&now-m.lastAttack>Math.round(2200*(1-(m.attackHaste||0)/100))){
-    const warning=crownDungeonZone(zone)?(m.boss?1600:950):(m.boss?1100:650);
+   const strikeDelay=Math.max(900,Math.round(2200*(1-(m.attackHaste||0)/100)/vigilance));
+   if(!m.windupUntil&&now-m.lastAttack>strikeDelay){
+    const warning=crownDungeonZone(zone)?(m.boss?1600:950):frontier.isFrontier(zone)?Math.max(360,Math.round((m.boss?1100:650)/Math.sqrt(vigilance))):(m.boss?1100:650);
     m.windupUntil=now+warning;
     this.send(target.socket,{type:'monsterWindup',monster:m.id,zone:m.zone,duration:warning,boss:m.boss});
     continue;

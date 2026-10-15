@@ -286,7 +286,8 @@ function dispatch(msg){
  }
  if(msg.type==='pong'){if(latency.receive(msg,performance.now()))updatePingIndicator();return}
  if(msg.type==='welcome'){
- session.id=msg.self.id;session.name=msg.self.name;session.zones=msg.zones;session.region=msg.region||null;session.shop=msg.shop;session.relics=msg.relics||{};session.quests=msg.quests;session.achievements=msg.achievements||{};session.npcs=Array.isArray(msg.npcs)?msg.npcs:[];session.merchants=Array.isArray(msg.merchants)?msg.merchants:[];
+ session.id=msg.self.id;session.name=msg.self.name;session.zones=msg.zones;session.region=msg.region||null;
+ session.mainSurface=Array.isArray(msg.mainSurface)?msg.mainSurface:session.zones.filter(z=>z.id<12);session.shop=msg.shop;session.relics=msg.relics||{};session.quests=msg.quests;session.achievements=msg.achievements||{};session.npcs=Array.isArray(msg.npcs)?msg.npcs:[];session.merchants=Array.isArray(msg.merchants)?msg.merchants:[];
  const roomChanged=Boolean(roomSwitchPending&&msg.room?.id===roomSwitchTarget&&selectedRoomId!==msg.room.id);
  if(roomChanged){
   // Não deixar sprites, efeitos e diálogos da sala anterior no novo mundo.
@@ -1188,13 +1189,16 @@ function showWorldMap(){
  close.onclick=()=>dialog.close();
  header.append(heading,close);dialog.append(header);
  const description=document.createElement('p');
- description.textContent='Além das 40 regiões históricas, as fronteiras procedurais se estendem em quatro direções, sem precisar baixar um mapa inteiro. Comece na Terra da Última Luz. Fortalezas e política seguem reservadas ao continente histórico.';
+ description.textContent='Clique no nome de uma das 16 províncias oficiais para voltar imediatamente. Apenas nelas é permitido fundar fortalezas. Nas fronteiras selvagens, atravesse qualquer borda caminhando para descobrir outro mapa.';
  dialog.append(description);
  const grid=document.createElement('div');grid.className='atlas-grid';
  const explored=new Set(session.characters?.visited||[]);
  for(const z of session.zones){
   const tile=document.createElement('div');tile.className='atlas-entry'+(z.id===session.zone?' current':'')+(explored.has(z.id)?' explored':'');
-  const title=document.createElement('b');title.textContent=(explored.has(z.id)?'✦ ':'◇ ')+z.name;
+  const isSurface=(session.mainSurface||[]).some(region=>region.id===z.id);
+  const title=document.createElement(isSurface?'button':'b');title.textContent=(explored.has(z.id)?'✦ ':'◇ ')+z.name;
+  if(isSurface){title.className='atlas-fasttravel';title.type='button';title.title='Viajar para '+z.name;
+   title.onclick=()=>{if(send('atlasTravel',{zone:z.id}))dialog.close()};}
   const sub=document.createElement('small');
   sub.textContent=z.id<12?'Superfície · '+z.biome:
     z.id<16?'Masmorra principal':('Subsolo '+(1+(z.id-16)%6)+' · Complexo '+(1+Math.floor((z.id-16)/6)));
@@ -1216,6 +1220,17 @@ function showWorldMap(){
   const title=document.createElement('b');title.textContent='✦ '+zone.name;
   const sub=document.createElement('small');sub.textContent='FRONTEIRA ∞ · '+zone.biome+' · coordenadas '+zone.gridX+', '+zone.gridY;
   tile.append(title,sub);grid.prepend(tile);
+ }
+ // Os quatro territórios fronteiriços iniciais completam as dezesseis
+ // províncias históricas de superfície sem converter masmorras em reinos.
+ for(const province of session.mainSurface||[]){
+  if(province.id<40)continue;
+  const tile=document.createElement('div');tile.className='atlas-entry atlas-main-surface'+(province.id===session.zone?' current':'');
+  const title=document.createElement('button');title.className='atlas-fasttravel';title.type='button';
+  title.textContent='✦ '+province.name;title.title='Viajar para '+province.name;
+  title.onclick=()=>{if(send('atlasTravel',{zone:province.id}))dialog.close()};
+  const info=document.createElement('small');info.textContent='Província oficial · Superfície · Fortaleza permitida';
+  tile.append(title,info);grid.prepend(tile);
  }
  dialog.append(grid);if(!dialog.open)dialog.showModal();
 }
@@ -1287,10 +1302,22 @@ function canvasDraw(now,dt){
    lastFrameX=session.x;lastFrameY=session.y;
 }
 let lastFrameX=768,lastFrameY=512;
+let lastBorderRequest=0;
 let lastFrame=0;function tick(t){const dt=Math.min(.065,(t-lastFrame)/1000||0);lastFrame=t;
  if(session.connected&&$('welcomeOverlay').hidden&&$('npcDialogue').hidden&&(typeof document==='undefined'||!document.querySelector('.city-dialog')?.open)){let dx=0,dy=0;if(moves.up.some(k=>keys.has(k)))dy--;if(moves.down.some(k=>keys.has(k)))dy++;if(moves.left.some(k=>keys.has(k)))dx--;if(moves.right.some(k=>keys.has(k)))dx++;
   if(touchDevice){const v=joystick.vector;dx+=v.x;dy+=v.y}
-  if(dx||dy){const l=Math.hypot(dx,dy);session.x=clamp(session.x+dx/l*166*dt,24,ZONE_W-24);session.y=clamp(session.y+dy/l*166*dt,24,ZONE_H-24);session.dir=Math.abs(dx)>Math.abs(dy)?dx>0?1:3:dy>0?2:0}
+  if(dx||dy){const l=Math.hypot(dx,dy),vx=dx/l,vy=dy/l;
+   session.x=clamp(session.x+vx*166*dt,24,ZONE_W-24);
+   session.y=clamp(session.y+vy*166*dt,24,ZONE_H-24);
+   session.dir=Math.abs(dx)>Math.abs(dy)?dx>0?1:3:dy>0?2:0;
+   // As bordas das áreas procedurais não são paredes. O servidor
+   // verifica a direção e faz a transição para o mapa vizinho.
+   if(session.region?.frontier&&t-lastBorderRequest>1150){
+    const edge=vx<-.15&&session.x<=26?'oeste':vx>.15&&session.x>=ZONE_W-26?'leste':
+     vy<-.15&&session.y<=26?'norte':vy>.15&&session.y>=ZONE_H-26?'sul':null;
+    if(edge&&send('crossBoundary',{direction:edge}))lastBorderRequest=t;
+   }
+  }
   if(t-movingAt>85){send('move',{x:Math.round(session.x),y:Math.round(session.y),dir:session.dir});movingAt=t}
  }
  canvasDraw(t,dt);requestAnimationFrame(tick)}requestAnimationFrame(tick);
