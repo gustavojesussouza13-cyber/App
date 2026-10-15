@@ -50,8 +50,9 @@ button{cursor:pointer}button:hover{background:#365951}button:focus-visible{outli
  <button id="classic" type="button">Ver apenas Canvas 2D</button>
  <div id="status" role="status">Preparando renderizador WebGL…</div>
  <p><b>Controles:</b> WASD ou setas para andar. No celular, arraste o dedo sobre a área do jogo.</p>
- <p>As quatro classes utilizam seus sprites autorais de 64 × 80 pixels nativos, com silhuetas e equipamentos próprios, quatro direções e caminhada animada. O cenário mantém iluminação WebGL e câmera ortográfica.</p>
- <a style="color:#f1dca3;font-size:13px" href="/peregrino-atlas25d.html">Ver folha de sprites do Peregrino →</a>
+ <p><b>Peregrino:</b> sprites reais do Runway, extraídos da imagem rosa e transformados em PNG transparente (16 quadros). As demais classes continuam com suas artes originais. Câmera ortográfica e cenário WebGL.</p>
+ <a style="color:#f1dca3;font-size:13px" href="/peregrino-runway-preview.html">Inspecionar sprites REAIS do Runway →</a>
+ <a style="color:#e5c995;font-size:13px" href="/peregrino-atlas25d.html">Comparar com o Peregrino original →</a>
 </aside></section>
 <footer>Protótipo experimental de renderização, não a versão publicada do MMORPG. Sem alterações em combate, progressão, saves ou fortalezas.</footer>
 </main>
@@ -93,12 +94,16 @@ function drawActor(a,camX,camY,now){
  const lift=moving?Math.round(Math.sin(now/100)*2):0;
  ctx.fillStyle='#13282071';ctx.beginPath();ctx.ellipse(sx,sy+4,18,7,0,0,Math.PI*2);ctx.fill();
  const role=a===player?$('role').value:a.role;
- const premium=Boolean(window.OsPeregrinosHeroesAurora25D?.draw(ctx,{
+ const runway=role==='peregrino'&&Boolean(window.OsPeregrinosRunway25D?.draw(ctx,{
+  x:sx,y:sy,dir:a.dir??2,now,moving,action:moving?'walk':'idle',
+  glow:a===player,scale:.73
+ }));
+ const premium=runway||Boolean(window.OsPeregrinosHeroesAurora25D?.draw(ctx,{
   role,x:sx,y:sy,dir:a.dir??2,action:moving?'walk':'idle',
   frame:Math.floor(now/130),glow:a===player,scale:1.32
  }));
  if(!premium){ctx.imageSmoothingEnabled=false;ctx.drawImage(pixelActor(role),sx-24,sy-60+lift,48,64);}
- const textY=premium?sy-115:sy-69+lift;
+ const textY=runway?sy-123:premium?sy-115:sy-69+lift;
  ctx.textAlign='center';ctx.font='bold 14px system-ui,Arial';ctx.lineWidth=3;ctx.strokeStyle='#101b23';
  ctx.strokeText(a.name||labels[$('role').value],sx,textY);
  ctx.fillStyle=a===player?'#ffe4a0':'#e9f2d9';ctx.fillText(a.name||labels[$('role').value],sx,textY);
@@ -147,6 +152,10 @@ canvas.addEventListener('pointermove',e=>{if(!drag)return;drag.x=Math.max(-1,Mat
 canvas.addEventListener('pointerup',()=>{drag=null});canvas.addEventListener('pointercancel',()=>{drag=null});
 try{const {createWorld25D}=await import('/world-25d.mjs');view=createWorld25D({shell:$('stage'),canvas,width:W,height:H});$('status').textContent='✓ WebGL 2.5D pronto. Escolha um bioma ou mova o Peregrino.'}
 catch(e){console.warn(e);mode3d=false;$('classic').disabled=true;$('classic').textContent='WebGL não disponível';$('status').textContent='WebGL indisponível: exibindo versão 2D de segurança.'}
+window.OsPeregrinosRunway25D?.load().then(ok=>{
+ if(ok){$('status').textContent='✓ WebGL + sprites originais do Runway carregados (Peregrino: 16 quadros).';}
+ else {$('status').textContent='WebGL pronto; sprites Runway indisponíveis, usando Peregrino original.';}
+});
 requestAnimationFrame(frame);
 </script>
 </body></html>
