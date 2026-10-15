@@ -29,7 +29,7 @@ function welcomeHarness(){
   roomSwitchPending:true,roomSwitchTarget:'nova-sala',selectedRoomId:'sala-antiga',
   roomName:'Sala Antiga',pendingRoom:null,authed:true,
   keys:new Set(),joystick:{release(){}},closeDialogue(){},
-  monsterMotion:empty,playerMotion:empty,combatFx:empty,
+  monsterMotion:empty,playerMotion:empty,combatFx:empty,chatBubbles:empty,
   spriteActions:{monsters:new Map(),players:new Map(),fallen:[{id:'velho'}]},
   drawTravel(){travelRenders.push([...state.portals])},
   setOnline(){},displayOnline(){},character(){},alert(){},
