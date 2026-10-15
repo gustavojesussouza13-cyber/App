@@ -231,14 +231,15 @@ function escortStrike(g,uid){
  const escort=escortOf(g,uid);
  return {units:escort,damage:troopCount(escort)?Math.min(50,Math.max(1,Math.round(power(escort)*.18))):0};
 }
+const guildHere=(world,g)=>Boolean(g)&&(g.roomId||'auren-publica')===(world.roomId||'auren-publica');
 function guildFor(world,p){
  if(!p.save.guild)return null;
  const key=p.save.guild.toLocaleLowerCase('pt-BR'),guild=world.guilds.get(key);
- if(!guild||!Array.isArray(guild.members)||!guild.members.includes(p.uid))return null;
+ if(!guildHere(world,guild)||!Array.isArray(guild.members)||!guild.members.includes(p.uid))return null;
  return {key,guild};
 }
 function forts(world){
- return [...world.guilds.entries()].filter(([k,g])=>g&&g.base&&Number.isInteger(g.base.zone)&&g.base.zone<BUILDABLE_REGIONS)
+ return [...world.guilds.entries()].filter(([k,g])=>guildHere(world,g)&&g.base&&Number.isInteger(g.base.zone)&&g.base.zone<BUILDABLE_REGIONS)
   .map(([key,g])=>({key,name:g.name,leader:g.leader,zone:g.base.zone,x:g.base.x,y:g.base.y,
    level:Math.max(1,Math.floor(Number(g.base.level)||1)),army:armyCopy(g.army),influence:g.influence||{}}));
 }
@@ -247,7 +248,7 @@ function forts(world){
 // Quando houver rivais, somente território efetivamente disputado conta.
 function eligibleKingdoms(world){
  return [...world.guilds.entries()].filter(([key,g])=>
-  Array.isArray(g.members)&&g.members.length>0&&g.leader&&g.members.includes(g.leader));
+  guildHere(world,g)&&Array.isArray(g.members)&&g.members.length>0&&g.leader&&g.members.includes(g.leader));
 }
 function politicalMap(world){
  const eligible=eligibleKingdoms(world);
@@ -291,7 +292,7 @@ function crownCandidate(world,zones=politicalMap(world)){
 function rank(world){
  const territories=politicalMap(world);
  const crownKey=crownCandidate(world,territories);
- return [...world.guilds.entries()].filter(([k,g])=>Array.isArray(g.members)&&g.members.length)
+ return [...world.guilds.entries()].filter(([k,g])=>guildHere(world,g)&&Array.isArray(g.members)&&g.members.length)
   .map(([key,g])=>{
    const regions=territories.filter(t=>t.ruler===g.name).length;
    const influence=Object.values(g.influence||{}).reduce((n,value)=>n+Math.max(0,Number(value)||0),0);
@@ -398,7 +399,7 @@ function publicState(world,p){
   fortressMaxLevel:FORTRESS_MAX_LEVEL,buildingMaxLevel:BUILDING_MAX_LEVEL,
   maxBuildings:buildingSlots(your?.guild?.base?.level),productionTimes:CITY_PRODUCTION_MS,
   buildBounds:cityLayout.bounds(your?.guild?.base?.level||1),maxEscort:ESCORT_LIMIT,
-  cities:[...world.guilds.values()].filter(g=>g.base).map(g=>({name:g.name,
+  cities:[...world.guilds.values()].filter(g=>guildHere(world,g)&&g.base).map(g=>({name:g.name,
    buildings:(Array.isArray(g.city?.buildings)?g.city.buildings:[])
     .filter(b=>b&&CITY_BUILDINGS[b.type]&&Number.isInteger(b.x)&&Number.isInteger(b.y))
     .slice(0,CITY_LIMIT).map(b=>({
@@ -415,7 +416,7 @@ function publicState(world,p){
      durationMs:Number.isSafeInteger(b.durationMs)?b.durationMs:null
     }))
   })),
-  marches:[...world.guilds.values()].filter(g=>g.march&&g.base).map(g=>({name:g.name,targetName:world.guilds.get(g.march.target)?.name||'',from:g.march.from,to:g.march.to,kind:g.march.kind||'attack',startedAt:g.march.startedAt,arrivesAt:g.march.arrivesAt,route:g.march.route||null,units:troopCount(g.march.units)})),
+  marches:[...world.guilds.values()].filter(g=>guildHere(world,g)&&g.march&&g.base).map(g=>({name:g.name,targetName:world.guilds.get(g.march.target)?.name||'',from:g.march.from,to:g.march.to,kind:g.march.kind||'attack',startedAt:g.march.startedAt,arrivesAt:g.march.arrivesAt,route:g.march.route||null,units:troopCount(g.march.units)})),
   unitTypes:UNITS,trainingCosts:MILITARY_SUPPLIES,baseCost:BASE_COST,relocateCost:RELOCATE_COST,maxTroops:militaryCapacity(your?.guild?.base?.level),absoluteMaxTroops:MAX_TROOPS,
    upkeepCycleMs:UPKEEP_CYCLE_MS,surrenderThreshold:SURRENDER_THRESHOLD,activeTruceMs:SURRENDER_TRUCE_MS};
 }
