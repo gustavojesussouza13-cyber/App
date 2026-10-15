@@ -1,0 +1,33 @@
+name: Importar Runway Peregrino (execução única)
+on:
+  push:
+    branches: [feature/mundo-aberto-25d-webgl-preview]
+    paths: ['.github/workflows/runway-peregrino-import.yml']
+permissions:
+  contents: write
+jobs:
+  sprite-import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Preparar rasterização transparente
+        run: pip install Pillow==11.3.0
+      - name: Importar arte gerada no Runway e separar 16 quadros
+        env:
+          RUNWAY_SOURCE_URL: 'https://dnznrvs05pmza.cloudfront.net/gpt_image_2_5_flare/ef4014c5-292b-4fd5-afb6-222c138b8de6/A_single_carefully_aligned_practical_production_SPRITESHEET_atlas_for_a_top_down_fantasy_2_5D_MMORPG_0.png?_jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJrZXlIYXNoIjoiN2ZmNGIwNWEyM2RjNTQ1MSIsImJ1Y2tldCI6InJ1bndheS10YXNrLWFydGlmYWN0cyIsInN0YWdlIjoicHJvZCIsImV4cCI6MTc5MjI0MzE2Mn0.p29Bdr4y1Ke85lVukx0-mgnUhmIp8KWu5k8yHid37jM'
+        run: python scripts/import_runway_peregrino.py
+      - name: Salvar PNG real e metadados na branch experimental
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add public/assets/peregrino/peregrino-runway-walk.png public/assets/peregrino/peregrino-runway-walk.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'assets: import real Runway Peregrino sprites as transparent 16-frame atlas'
+            git push origin HEAD:feature/mundo-aberto-25d-webgl-preview
+          fi
