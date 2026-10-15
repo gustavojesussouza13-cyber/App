@@ -42,10 +42,10 @@ test('a primeira guilda é soberana antes mesmo de escolher a localização da c
  assert.equal(f.world.claimCrownKey(p),true);
  assert.equal(p.save.inventory.chave_coroa_aurora,1);
 });
-test('uma única guilda com fortaleza governa as 12 regiões e pode reivindicar a chave',t=>{
+test('uma única guilda com fortaleza governa as 16 regiões e pode reivindicar a chave',t=>{
  const f=fixture(t),a=f.establish('Casa Aurora');
  const map=politics.politicalMap(f.world);
- assert.equal(map.filter(z=>z.buildable&&z.ruler===a.g.name).length,12);
+ assert.equal(map.filter(z=>z.buildable&&z.ruler===a.g.name).length,16);
  assert.equal(map.filter(z=>!z.buildable&&z.ruler!==null).length,0);
  assert.equal(politics.rank(f.world)[0].title,'Coroa Continental');
  const crown=politics.continentalSovereign(f.world);
