@@ -13,6 +13,14 @@
  if(root)root.OsPeregrinosArtisan64=art;
 })(typeof globalThis!=='undefined'?globalThis:this,function(APP){
  const WIDTH=64,HEIGHT=80;
+ // Paletas intermediárias derivadas da escolha do jogador; evita cabelo
+ // loiro em blocos amarelos, ou preto com reflexos castanhos fixos.
+ const blend=(a,b,amount)=>{
+  if(!/^#[0-9a-f]{6}$/i.test(a)||!/^#[0-9a-f]{6}$/i.test(b))return a;
+  const ar=[1,3,5].map(i=>parseInt(a.slice(i,i+2),16));
+  const br=[1,3,5].map(i=>parseInt(b.slice(i,i+2),16));
+  return '#'+ar.map((v,i)=>Math.round(v*(1-amount)+br[i]*amount).toString(16).padStart(2,'0')).join('');
+ };
  const INK='#27242f',SHADOW='#463341',DEEP='#392c35',
   IRON='#4d6574',STEEL='#a9c3c7',WHITE='#fff7df',
   GOLD='#eec477',GOLD_DARK='#8c6244',RED='#aa3544',
@@ -37,6 +45,12 @@
    trim:cfg.trim||GOLD,
    eyes:cfg.eyeColor||defaultColors.eyes,
    gem:cfg.gem||'#83dacb'};
+  c.hairShade=blend(c.hair,INK,.57);
+  c.hairMid=blend(c.hair,c.hairLight,.45);
+  c.coatShade=blend(c.coat,INK,.47);
+  c.coatLight=blend(c.coat,c.leatherLight,.4);
+  c.leatherShade=blend(c.leather,INK,.53);
+  const clothDark=blend(c.coat,INK,.68);
   const pose=Object.hasOwn(moves,action)?action:'idle';
   const frameNo=Number.isFinite(frame)?Math.max(0,Math.floor(frame)):0;
   const frameIndex=frameNo%moves[pose].length;
@@ -51,8 +65,12 @@
   const dead=pose==='death';
   const p=(col,x,y,w=1,h=1)=>{
    if(!col||w<1||h<1)return;
+   const left=Math.max(0,Math.round(x)),top=Math.max(0,Math.round(y));
+   const right=Math.min(WIDTH,Math.round(x)+Math.round(w));
+   const bottom=Math.min(HEIGHT,Math.round(y)+Math.round(h));
+   if(right<=left||bottom<=top)return;
    g.fillStyle=col;
-   g.fillRect(Math.round(x),Math.round(y),Math.round(w),Math.round(h));
+   g.fillRect(left,top,right-left,bottom-top);
   };
   // Rasterização de arte desenhada manualmente: somente runs inteiros.
   // O scanline evita os cantos retos de fillRect em áreas grandes.
@@ -146,6 +164,7 @@
    [50,51+bob],[46,56+bob],[48,63+bob],
    [37,65+bob],[33,59+bob],[28,65+bob],[19,62+bob],
    [21,53+bob],[17,42+bob]]);
+  poly(c.coatShade,[[25,36+bob],[44,36+bob],[48,40+bob],[46,55+bob],[41,63+bob],[26,65+bob],[19,56+bob]]);
   poly(c.coat,[[26,35+bob],[42,36+bob],[47,39+bob],
    [46,49+bob],[44,55+bob],[45,60+bob],
    [37,62+bob],[34,55+bob],[28,62+bob],
@@ -154,9 +173,9 @@
    [25,54+bob],[22,56+bob],[23,44+bob]]);
   poly(c.shirt,[[29,36+bob],[41,37+bob],[43,50+bob],
    [38,54+bob],[29,51+bob]]);
-  poly('#ac906c',[[30,37+bob],[36,38+bob],[33,50+bob],
+  poly(blend(c.shirt,c.leather,.38),[[30,37+bob],[36,38+bob],[33,50+bob],
    [29,48+bob]]);
-  poly(c.skinDark,[[39,37+bob],[44,41+bob],[41,48+bob],
+  poly(c.coatShade,[[39,37+bob],[44,41+bob],[41,48+bob],
    [38,44+bob]]);
   // Camada de couro, costuras e sombras em diagonal.
   stroke(INK,28,39+bob,41,51+bob,5);
@@ -167,6 +186,7 @@
   // Barrigueira e bainha com cortes que interrompem as retas do torso.
   poly(INK,[[20,51+bob],[45,51+bob],[46,59+bob],
    [40,57+bob],[35,62+bob],[30,56+bob],[23,61+bob],[20,58+bob]]);
+  poly(c.leatherShade,[[20,52+bob],[46,52+bob],[46,60+bob],[39,59+bob],[30,60+bob],[20,60+bob]]);
   poly(c.leather,[[21,53+bob],[44,53+bob],[44,56+bob],
    [39,56+bob],[35,59+bob],[30,55+bob],[22,58+bob]]);
   p(c.trim,30,52+bob,9,6);p(INK,32,53+bob,5,4);
@@ -181,17 +201,19 @@
   // 4. Mochila lateral e bolsa pequena para reforçar a função de aventureiro.
   poly(INK,[[44,42+bob],[51,42+bob],[55,47+bob],
    [55,61+bob],[51,64+bob],[44,62+bob],[42,52+bob]]);
-  poly('#6d4838',[[45,43+bob],[51,44+bob],[53,48+bob],
+  poly(c.leatherShade,[[45,43+bob],[51,44+bob],[53,48+bob],
    [53,61+bob],[46,60+bob],[44,53+bob]]);
   poly(c.leatherLight,[[46,44+bob],[50,44+bob],[53,47+bob],
    [52,51+bob],[45,51+bob]]);
   p(INK,46,52+bob,7,3);p('#b58b58',47,53+bob,6,1);
   p('#856343',46,55+bob,5,3);
+  p(c.coatLight,48,47+bob,4,2);p(c.leatherShade,47,57+bob,5,3);
   p(c.trim,49,52+bob,3,4);p(WHITE,50,53+bob,1,1);
   highlights('#d2a473',[[46,56],[48,59],[51,58],[52,61]]);
   // 5. Ombreiras desenhadas sobre o tronco e braços em perspectiva.
   poly(INK,[[18,34+bob],[26,33+bob],[29,37+bob],
    [27,44+bob],[21,45+bob],[17,42+bob]]);
+  poly(c.leatherShade,[[18,35+bob],[28,34+bob],[29,40+bob],[25,45+bob],[18,43+bob]]);
   poly(c.leather,[[19,35+bob],[26,35+bob],[27,38+bob],
    [25,42+bob],[20,42+bob]]);
   poly(c.leatherLight,[[19,36+bob],[24,35+bob],[26,37+bob],
@@ -199,6 +221,7 @@
   p(c.trim,21,37+bob,4,2);p(WHITE,22,37+bob,1,1);
   poly(INK,[[43,34+bob],[50,35+bob],[53,40+bob],
    [49,44+bob],[44,43+bob]]);
+  poly(c.leatherShade,[[43,35+bob],[51,36+bob],[54,40+bob],[48,45+bob],[43,44+bob]]);
   poly(c.leather,[[44,36+bob],[49,37+bob],[51,40+bob],
    [47,42+bob],[44,41+bob]]);
   highlights(c.leatherLight,[[44,37,4,1],[47,39,3,1]]);
@@ -206,11 +229,13 @@
    [0,-1,-4,4,2][frameIndex]:0;
   poly(INK,[[18,41+bob],[25,42+bob],[24,50+bob+swing],
    [23,54+bob+swing],[16,53+bob+swing],[15,47+bob]]);
+  poly(c.leatherShade,[[17,42+bob],[24,42+bob],[24,51+bob+swing],[18,54+bob+swing]]);
   poly(c.leather,[[18,43+bob],[23,43+bob],[22,52+bob+swing],
    [18,51+bob+swing],[17,47+bob]]);
   p(c.leatherLight,18,44+bob,3,6);p(c.trim,18,51+bob+swing,5,2);
   poly(INK,[[47,42+bob],[53,43+bob],[55,55+bob-swing],
    [51,57+bob-swing],[45,51+bob]]);
+  poly(c.leatherShade,[[47,42+bob],[53,42+bob],[55,55+bob-swing],[49,57+bob-swing]]);
   poly(c.leather,[[48,43+bob],[51,44+bob],[53,54+bob-swing],
    [49,54+bob-swing],[47,49+bob]]);
   highlights(c.leatherLight,[[48,44,3,2],[49,50,2,3]]);
