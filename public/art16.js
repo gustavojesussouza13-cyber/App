@@ -426,17 +426,25 @@ function create({ctx,W,H}){
   const premiumPc=Boolean(desktopCharactersV3?.enabled);
   // Nova aparência só é ativada quando o WebGL 2.5D está visível.
   // O modo clássico mantém integralmente seus sprites anteriores.
-  const auroraHero=Boolean(useAurora25d&&p.role==='peregrino'&&
+  if(useAurora25d&&p.role==='peregrino'&&
    window.OsPeregrinosAurora25D?.draw(g,{
     x:p.x,y:p.y,dir,appearance:p.appearance,
     action:state.hurt?'hurt':attacking?'attack':moved?'walk':'idle',
     frame:Math.floor(now/130),scale:1.5,glow:local
-   }));
-  const studioHero=!auroraHero&&Boolean(spriteStudio?.drawHero(g,p,now,{...state,desktopPremium:premiumPc}));
-  const pngSprite=!auroraHero&&!studioHero&&Boolean(desktopSprites?.drawHero(g,p,now,state));
+   })){
+   // Renderiza o rótulo e encerra apenas o desenho visual do Peregrino.
+   // Nenhuma regra de combate, nome, posição, save ou colisão é alterada.
+   g.save();g.textAlign='center';g.font=(local?'bold 15px':'bold 13px')+' monospace';
+   g.shadowColor='#000b';g.shadowBlur=0;g.lineWidth=3;g.strokeStyle='#0e271e';
+   const label=(p.name||'Peregrino')+(local?' · Peregrino':' · Lv.'+(p.level||1));
+   g.strokeText(label,p.x,p.y-130);g.fillStyle=local?'#ffe4a3':'#f1edd4';
+   g.fillText(label,p.x,p.y-130);g.restore();return;
+  }
+  const studioHero=Boolean(spriteStudio?.drawHero(g,p,now,{...state,desktopPremium:premiumPc}));
+  const pngSprite=!studioHero&&Boolean(desktopSprites?.drawHero(g,p,now,state));
   const illustratedV3=!studioHero&&!pngSprite&&Boolean(desktopCharactersV3?.drawHero(g,p,now,state));
   const detailed=pngSprite||illustratedV3;
-  const animated=auroraHero||studioHero||detailed||Boolean(spriteStudio?.drawHero(g,p,now,state));
+  const animated=studioHero||detailed||Boolean(spriteStudio?.drawHero(g,p,now,state));
   if(!animated){
    frameSprite(g,key,dir,moved?Math.floor(now/155)%4:0,p.x,p.y,w,h);
    if(pixelDetail)pixelDetail.drawHero(g,p,now);
@@ -445,7 +453,7 @@ function create({ctx,W,H}){
   // O sprite detalhado do Studio já contém a identidade da classe.
   // Uma camada de blocos opacos aqui escondia olhos, roupas e sombreamento.
   // A proteção antiga permanece APENAS quando o Studio não está disponível.
-  const finalRole=auroraHero?'peregrino':studioHero?spriteStudio.normalizeRole(p.role):
+  const finalRole=studioHero?spriteStudio.normalizeRole(p.role):
    pngSprite?desktopSprites.normalizeRole(p.role):
    illustratedV3?desktopCharactersV3.normalizeRole(p.role):
    animated?spriteStudio.normalizeRole(p.role):drawClassIdentity(g,p,dir,now,moved);
@@ -453,7 +461,7 @@ function create({ctx,W,H}){
   g.shadowColor='#000b';g.shadowBlur=0;g.lineWidth=3;g.strokeStyle='#0e271e';
   const roleName={guardiao:'Guardião',curandeiro:'Curandeiro',arqueiro:'Arqueiro',peregrino:'Peregrino'}[finalRole];
   const label=(p.name||'Peregrino')+(local?' · '+roleName:' · Lv.'+(p.level||1));
-  const labelY=p.y-(auroraHero?125:studioHero?(premiumPc?110:88):pngSprite?80:illustratedV3?94:h)-5;
+  const labelY=p.y-(studioHero?(premiumPc?110:88):pngSprite?80:illustratedV3?94:h)-5;
   g.strokeText(label,p.x,labelY);g.fillStyle=local?'#ffe4a3':'#f1edd4';g.fillText(label,p.x,labelY);g.restore();
  }
  function npcActor(g,n,active,finished,now){
