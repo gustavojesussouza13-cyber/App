@@ -346,7 +346,7 @@ function dispatch(msg){
   defenseTargets=Array.isArray(msg.defenseTargets)?msg.defenseTargets:[];
   if(!defenseTargets.some(t=>t.id===defenseTargetId))defenseTargetId=null;
   if(tab==='social'&&socialSection==='guilds'&&defenseTargets.length)drawTab();
- }else if(msg.type==='travel'){defenseTargets=[];defenseTargetId=null;desktopAudio.play('travel');session.zone=msg.zone;visibleKingdomBases=[];session.portals=msg.portals||[];session.x=msg.x;session.y=msg.y;session.target=null;session.monsters.clear();monsterMotion.clear();playerMotion.clear();combatFx.clear();if(typeof clearMonsterSheet==='function')clearMonsterSheet();classSkillFx.clear();$('zoneTitle').textContent=msg.name;alert('✦ '+msg.name);drawTravel();
+ }else if(msg.type==='travel'){chatBubbles.clear();defenseTargets=[];defenseTargetId=null;desktopAudio.play('travel');session.zone=msg.zone;visibleKingdomBases=[];session.portals=msg.portals||[];session.x=msg.x;session.y=msg.y;session.target=null;session.monsters.clear();monsterMotion.clear();playerMotion.clear();combatFx.clear();if(typeof clearMonsterSheet==='function')clearMonsterSheet();classSkillFx.clear();$('zoneTitle').textContent=msg.name;alert('✦ '+msg.name);drawTravel();
  }else if(msg.type==='hit'){if(msg.zone===session.zone){
   if(typeof desktopAudio!=='undefined')desktopAudio.play(msg.projectile==='arrow'?'arrow':msg.projectile==='holy-bolt'?'magic':'hit');
   const m=session.monsters.get(msg.monster);if(m)m.hp=msg.remaining;
@@ -446,7 +446,7 @@ function connect(){
     $('roomSwitchConfirm').disabled=true;$('roomSwitchCancel').disabled=false;
    }
    setOnline(false,'Desconectado');
-   session.monsters.clear();monsterMotion.clear();playerMotion.clear();combatFx.clear();if(typeof clearMonsterSheet==='function')clearMonsterSheet();session.players.clear();spriteActions.monsters.clear();spriteActions.players.clear();spriteActions.fallen.length=0;session.portals=[];
+   session.monsters.clear();monsterMotion.clear();playerMotion.clear();combatFx.clear();if(typeof clearMonsterSheet==='function')clearMonsterSheet();session.players.clear();chatBubbles.clear();spriteActions.monsters.clear();spriteActions.players.clear();spriteActions.fallen.length=0;session.portals=[];
    if(!authed)return;
    clearTimeout(reconnectTimer);reconnectTimer=setTimeout(connect,reconnectMs);
    reconnectMs=Math.min(14000,reconnectMs*1.7);
