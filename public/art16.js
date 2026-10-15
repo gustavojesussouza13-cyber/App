@@ -506,7 +506,8 @@ function create({ctx,W,H}){
   const size=o.w;drawShadow(g,o.x,o.y,size*.63);
   if(o.kind==='dungeon-prop'&&pixelDetail){pixelDetail.drawDungeonProp(g,o,cache.z);return}
   if(o.kind==='biome-prop'&&pixelDetail){pixelDetail.drawSurfaceProp(g,o,cache.biome,cache.z);return}
-  if(landscape?.drawProp(g,o,o.chunkBiome||cache.biome))return;
+  if(o.chunkBiome){if(landscape?.drawProp(g,o,o.chunkBiome))return}
+  else if(landscape?.drawProp(g,o,cache.biome))return;
   cut(g,o.key,o.x-o.w/2,o.y-o.h,o.w,o.h)
  }
  // Todos os portais reais são recebidos do servidor. Não existem portas falsas no cenário.
