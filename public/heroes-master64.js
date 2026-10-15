@@ -43,6 +43,31 @@
    g.fillStyle=color;g.fillRect(Math.round(x),Math.round(y),Math.round(w),Math.round(h));
   };
   const bands=(col,spans,dx=0,dy=0)=>{for(const [y,x,w,h=1]of spans)p(col,x+dx,y+dy,w,h)};
+  // Os rostos são pintados como contornos pixelados fechados, não caixas.
+  // Scanlines inteiras preservam a nitidez nos navegadores móveis.
+  const poly=(col,points)=>{
+   if(!col||points.length<3)return;
+   const ys=points.map(([x,y])=>y);
+   for(let y=Math.max(0,Math.floor(Math.min(...ys)));y<=Math.min(79,Math.ceil(Math.max(...ys)));y++){
+    const crossings=[];
+    for(let i=0;i<points.length;i++){
+     const [ax,ay]=points[i],[bx,by]=points[(i+1)%points.length];
+     if((ay<=y+.5&&by>y+.5)||(by<=y+.5&&ay>y+.5))
+      crossings.push(ax+(y+.5-ay)*(bx-ax)/(by-ay));
+    }
+    crossings.sort((a,b)=>a-b);
+    for(let i=0;i+1<crossings.length;i+=2){
+     const left=Math.max(0,Math.ceil(crossings[i]-.5));
+     const right=Math.min(64,Math.ceil(crossings[i+1]-.5));
+     if(right>left)p(col,left,y,right-left,1);
+    }
+   }
+  };
+  const shape=(color,coords)=>poly(color,coords.map(([x,y])=>[x,y+bob]));
+  const sheen=(color,runs)=>{for(const [x,y,w=1,h=1]of runs)p(color,x,y+bob,w,h)};
+  const hairMood=action==='walk'?[0,1,-1,0,1,-1][f%6]:
+   action==='attack'?[0,-1,-2,1,2][f%5]:0;
+
   if(dir===3){g.save();g.translate(WIDTH,0);g.scale(-1,1)}
   if(action==='death'){g.save();g.translate(0,Math.min(12,f*2));g.scale(1,Math.max(.28,1-f*.15))}
   // Capas flutuantes modeladas na silhueta, atrás dos braços e pernas.
@@ -133,53 +158,165 @@
    p(c.light,48,36+bob,5,13);p(c.gold,48,50+bob,6,3);
    p(skin,16,54+bob,5,5);p(skin,49,54+bob,6,5);
   }
-  // Cabeça: capacete do guardião, capuz sombreado do arqueiro, lenço do curandeiro.
+  // CABEÇAS DE ATLAS: cada classe tem contorno e anatomia próprios em
+  // frente, perfil e costas. Sem máscaras quadradas por cima da pele.
+  const wind=hairMood;
+  const longHair=['medio','longo','rabo','tranca'].includes(app?.hairStyle);
   if(role==='guardiao'){
-   bands(c.ink,[[10,23,20,7],[16,20,26,13],[27,23,21,7]],0,bob);
-   bands(c.deep,[[11,24,18,7],[18,21,24,8],[26,24,19,7]],0,bob);
-   bands(c.light,[[11,27,11,3],[17,23,6,8]],0,bob);
-   p(c.shine,29,12+bob,9,1);
-   p(c.gold,31,9+bob,5,21);p('#fff0cc',32,10+bob,2,16);
-   p(c.gold,24,18+bob,19,3);p(c.goldShadow,24,20+bob,19,2);
-   p(c.ink,25,22+bob,17,8);p(skinShade,27,23+bob,14,5);
-   if(!back){
-    p(skin,29,24+bob,11,4);p(c.ink,30,24+bob,3,2);
-    p(c.mark,32,25+bob,2,2);p(c.ink,38,24+bob,2,3);
-    if(side)p(c.ink,29,25+bob,3,2);
+   // Capacete possui cimeira angulosa, mandíbula guardada e viseira afunilada.
+   shape(c.ink,[[28,8],[38,7],[44,12],[49,18],[47,27],
+    [43,32],[26,33],[20,28],[20,18],[23,13]]);
+   shape(c.deep,[[28,10],[37,9],[42,13],[46,19],
+    [44,27],[40,30],[25,30],[22,26],[22,18],[25,13]]);
+   shape(c.light,[[27,11],[35,9],[40,13],[30,14],[24,18],[24,15]]);
+   shape(c.shadow,[[43,16],[45,19],[44,26],[40,30],[36,30]]);
+   p(c.gold,32,9+bob,4,19);p('#fff0cc',33,10+bob,2,15);
+   shape(c.goldShadow,[[23,18],[45,18],[44,22],[24,22]]);
+   p(c.gold,24,18+bob,19,2);p('#f4d99d',27,18+bob,9,1);
+   if(back){
+    shape(c.mark,[[25,23],[39,23],[42,28],[36,31],[27,29]]);
+    sheen(c.gold,[[28,25,2,2],[37,26,2,2]]);
+   }else{
+    // Abertura da viseira desenha maçãs do rosto e queixo, não retângulo.
+    shape(c.ink,[[26,22],[40,22],[43,25],[41,31],
+     [37,33],[29,32],[25,28]]);
+    shape(skinShade,[[28,23],[39,23],[41,26],
+     [39,30],[35,32],[29,30],[27,27]]);
+    shape(skin,[[29,23],[38,23],[40,26],[38,29],
+     [34,30],[29,28]]);
+    sheen(skinLight,[[30,24,5,1],[29,27,3,1]]);
+    if(side){
+     p(c.ink,38,25+bob,3,2);p(c.mark,39,25+bob,1,1);
+    }else{
+     p(c.ink,30,25+bob,3,2);p(c.ink,37,25+bob,3,2);
+     p(c.mark,31,25+bob,1,1);p(c.mark,38,25+bob,1,1);
+    }
    }
-   p(c.light,23,28+bob,5,6);p(c.light,42,28+bob,5,5);
-   p(c.gold,25,30+bob,2,5);p(c.gold,43,30+bob,2,4);
+   shape(c.light,[[21,27],[26,27],[28,33],[25,35],[21,32]]);
+   shape(c.light,[[41,27],[46,26],[47,31],[44,34],[41,32]]);
+   p(c.gold,23,30+bob,2,3);p(c.gold,44,30+bob,2,3);
   }else if(role==='arqueiro'){
-   // Topo do capuz mais alto que os ombros; frente inclinada e sombra facial.
-   bands(c.ink,[[9,30,11,5],[13,24,20,6],[18,20,29,12],
-    [27,19,32,7]],0,bob);
-   bands(c.deep,[[10,30,11,4],[14,26,18,6],[19,22,25,12]],0,bob);
-   bands(c.shadow,[[11,32,6,2],[16,27,9,4],[21,23,5,11]],0,bob);
-   p(c.light,31,11+bob,6,2);p(c.shine,33,12+bob,2,1);
-   if(!back){
-    p(skinShade,28,21+bob,16,12);
-    p(skin,30,22+bob,13,8);p(skinLight,31,23+bob,6,2);
-    p(c.ink,30,24+bob,10,3);
-    if(!side){p(iris,33,25+bob,2,2);p(iris,39,25+bob,2,2)}
-    else p(iris,40,25+bob,2,2);
-    p(skinShade,37,30+bob,6,1);
-    p(hair,29,21+bob,7,3);p(hairLight,30,22+bob,4,1);
+   // Capuz em ponta e gola recortada. O rosto aparece em um recorte oval.
+   shape(c.ink,[[34,7],[44,12],[49,23],[50,30],
+    [44,35],[24,35],[18,29],[20,21],[27,12]]);
+   shape(c.deep,[[34,9],[42,13],[47,24],
+    [47,30],[43,33],[24,33],[21,29],[23,21]]);
+   shape(c.shadow,[[30,12],[35,10],[42,14],
+    [34,17],[26,21],[24,27],[21,27]]);
+   sheen(c.light,[[33,10,3,1],[29,14,4,2],[23,25,2,5]]);
+   if(back){
+    shape(c.cloak,[[25,21],[43,20],[46,30],
+     [40,36],[27,34],[22,28]]);
+    sheen(c.light,[[28,24,3,2],[38,27,2,3]]);
+   }else{
+    shape(c.ink,[[29,18],[41,18],[46,24],
+     [44,30],[39,33],[30,31],[27,26]]);
+    shape(skinShade,[[30,19],[40,19],[44,23],
+     [42,29],[38,31],[31,29],[28,24]]);
+    shape(skin,[[31,20],[39,20],[42,23],
+     [41,28],[37,30],[31,28],[29,24]]);
+    shape(skinLight,[[32,21],[37,21],[37,23],[32,25]]);
+    shape(hair,[[28,19],[34,18],[39,20],[36,23],[29,23]]);
+    p(hairLight,30,19+bob,4,1);
+    if(side){
+     p(c.ink,40,24+bob,3,2);p(iris,41,24+bob,1,2);
+     p(skinShade,42,29+bob,2,1);
+    }else{
+     p(c.ink,32,24+bob,3,2);p(c.ink,39,24+bob,3,2);
+     p(iris,33,24+bob,1,2);p(iris,40,24+bob,1,2);
+     p(skinShade,35,29+bob,4,1);
+    }
    }
-   p(c.light,20,30+bob,4,5);p(c.gold,24,31+bob,6,2);
+   // O capuz recobre as têmporas, em vez de deixar lados retilíneos.
+   shape(c.shadow,[[22,23],[27,21],[29,29],[26,33],[22,31]]);
+   shape(c.deep,[[43,20],[48,23],[47,31],[43,33],[41,30]]);
+   sheen(c.light,[[23,27,2,3],[44,24,2,2]]);
+   if(action==='walk'){
+    p(c.light,22+wind,33+bob,3,5);
+    p(c.ink,20+wind,36+bob,2,3);
+   }
   }else{
-   bands(c.ink,[[11,26,17,5],[16,22,24,11],[25,22,23,8]],0,bob);
-   bands(c.cloak,[[12,26,16,5],[17,23,22,10],[25,23,6,6]],0,bob);
-   bands('#f4bdbe',[[12,28,12,2],[17,23,5,7]],0,bob);
-   p(c.light,25,14+bob,13,3);p(c.shine,28,13+bob,7,1);
-   if(!back){
-    p(skinShade,27,20+bob,16,11);
-    p(skin,28,20+bob,15,9);p(skinLight,30,21+bob,8,2);
-    p(hair,26,18+bob,10,4);p(hairLight,29,19+bob,5,1);
-    if(!side){p(iris,31,24+bob,2,2);p(iris,39,24+bob,2,2)}
-    else p(iris,40,24+bob,2,2);
-    p(skinShade,35,29+bob,6,1);
-   }else p(c.cloak,29,19+bob,13,12);
-   p(c.gold,28,31+bob,11,3);p(c.light,31,32+bob,6,1);
+   // CURANDEIRO: rosto em oval escalonado, franja assimétrica e véu ao
+   // redor da face. A sombra separa tecido, cabelo e pele em cada perfil.
+   const veil=cape||c.cloak;
+   shape(c.ink,[[31+wind,8],[40+wind,10],[45,15],
+    [49,22],[48,34],[52,43],[47,47],[42,37],
+    [24,37],[19,45],[15,39],[19,24],[23,14]]);
+   shape(c.cloak,[[30+wind,10],[40+wind,12],[44,17],
+    [46,27],[44,35],[48,40],[45,43],[39,35],
+    [25,35],[20,41],[19,37],[21,24],[25,16]]);
+   shape('#f4bdbe',[[27+wind,12],[34+wind,11],[40+wind,13],
+    [43,17],[40,19],[29,17],[24,23],[21,30],[21,23]]);
+   sheen(c.shine,[[29+wind,12,7,2],[25,16,4,2],[20,29,2,5]]);
+   if(back){
+    // Costas não repetem os olhos ou rosto; véu e cabelo com queda própria.
+    shape(veil,[[27,17],[42,16],[45,26],[46,37],
+     [50,52],[44,62],[39,53],[29,57],[21,62],[18,52],[22,29]]);
+    shape(c.shadow,[[25,20],[38,19],[41,28],
+     [37,42],[29,47],[22,38]]);
+    if(app?.hairStyle!=='raspado'){
+     shape(hair,[[27,19],[37,19],[41,28],[40,41],
+      [35,48],[25,44],[23,31]]);
+     sheen(hairLight,[[28,20,6,2],[36,27,2,8],[27,39,4,2]]);
+    }
+    sheen(c.gold,[[27,50,2,5],[39,51,2,4]]);
+   }else{
+    // Silhueta do rosto usa queixo em degraus de 2px.
+    shape(c.ink,[[28,18],[39,18],[45,22],
+     [45,28],[42,33],[37,36],[31,35],[26,31],[25,24]]);
+    shape(skinShade,[[29,19],[39,19],[43,23],
+     [43,28],[40,32],[36,34],[31,33],[27,29],[27,24]]);
+    shape(skin,[[30,20],[39,20],[42,23],
+     [41,29],[38,32],[32,32],[29,29],[28,24]]);
+    shape(skinLight,[[31,21],[37,20],[40,23],
+     [37,25],[31,25],[30,23]]);
+    sheen(skinLight,[[30,27,2,2],[33,31,4,1]]);
+    // Franja arredondada, adaptada ao penteado salvo.
+    if(app?.hairStyle!=='raspado'){
+     shape(hair,[[26+wind,18],[30+wind,14],[36+wind,15],
+      [41+wind,17],[41+wind,21],[36+wind,21],
+      [33+wind,24],[30+wind,21],[27+wind,26],[25+wind,23]]);
+     shape(hairLight,[[30+wind,16],[35+wind,16],
+      [36+wind,17],[32+wind,18],[28+wind,19]]);
+     p(hairLight,39+wind,18+bob,2,1);
+     if(longHair){
+      shape(c.ink,[[24,20],[28,22],[27,33],
+       [24,43],[19,47],[19,35]]);
+      shape(hair,[[25,22],[27,24],[26,34],
+       [23,42],[21,43],[21,34]]);
+      sheen(hairLight,[[23,28,2,6],[21,37,1,4]]);
+      if(app?.hairStyle==='longo'){
+       shape(c.ink,[[41,22],[45,22],[46,36],[42,47],[39,43]]);
+       shape(hair,[[42,23],[44,24],[44,35],[41,43]]);
+       p(hairLight,42,29+bob,1,8);
+      }else if(['tranca','rabo'].includes(app?.hairStyle)){
+       for(let i=0;i<3;i++)p(i%2?hair:hairLight,43+(i%2),34+i*4+bob,3,3);
+      }
+     }
+    }else{
+     shape(hair,[[29,19],[37,19],[40,21],[29,22]]);
+     p(hairLight,32,19+bob,4,1);
+    }
+    if(side){
+     // Perfil com ponte nasal e um único olho.
+     p(c.ink,39,25+bob,4,2);p(iris,40,25+bob,2,2);
+     p(skinLight,43,28+bob,2,2);
+     p(skinShade,41,31+bob,4,1);
+    }else{
+     p(c.ink,30,25+bob,5,2);p(c.ink,38,24+bob,5,2);
+     p(iris,32,25+bob,2,2);p(iris,40,24+bob,2,2);
+     p(c.shine,32,25+bob,1,1);p(c.shine,40,24+bob,1,1);
+     p(skinShade,36,28+bob,2,2);
+     p(skinLight,36,28+bob,1,1);
+     p(c.ink,34,31+bob,5,1);
+     p(skinLight,35,32+bob,3,1);
+    }
+   }
+   // Gola e pingente indicam separação entre pele, tecido e bordado.
+   shape(c.ink,[[25,33],[41,33],[43,38],[36,43],[29,41],[23,37]]);
+   shape(c.light,[[27,34],[38,34],[40,37],[35,41],[29,39]]);
+   sheen(c.gold,[[28,35,3,2],[37,35,3,2],[33,40,4,1]]);
+   p(c.mark,34,38+bob,3,3);p(c.shine,35,38+bob,1,2);
   }
   // Customizações que não destroem a identidade da armadura/capuz.
   if(app?.accessory==='tiara'){
@@ -361,10 +498,78 @@
     p('#d9fffa',58,9-strike+bob,2,2);
    }
   }
+  // SEGUNDA PASSADA DE SILHUETA: os tecidos e placas deixam de ser
+  // retângulos embaixo de um rosto mais acabado. Todas as poses reutilizam
+  // a mesma grade, mantendo cache de sprites e colisão intactos.
+  if(role==='curandeiro'){
+   const sw=action==='walk'?[0,1,2,0,-1,-2][f%6]:
+    action==='attack'?[0,-1,-3,3,1][f%5]:0;
+   // Saia em painéis sobrepostos e bainha escalonada (tecido, não armadura).
+   shape(c.ink,[[23,47],[42,46],[50+sw,62],[53+sw,72],
+    [43,76],[35,71],[27,76],[15-sw,72],[18-sw,61]]);
+   shape(c.shadow,[[24,49],[43,48],[47+sw,64],[49+sw,71],
+    [42,73],[35,68],[28,73],[20-sw,70],[22-sw,60]]);
+   shape(cloth,[[25,48],[42,49],[44+sw,63],[46+sw,71],
+    [40,72],[34,68],[28,72],[22-sw,70],[24-sw,60]]);
+   shape(c.light,[[31,50],[38,50],[40+sw,64],[36,70],
+    [32,69],[29,63]]);
+   shape(c.cloak,[[21,53],[26,52],[25-sw,65],[21-sw,73],
+    [16-sw,70]]);
+   shape(c.light,[[22,55],[25,55],[24-sw,66],[20-sw,71]]);
+   sheen(c.gold,[[27,56,2,11],[41,56,2,11],
+    [31,68,2,3],[39,69,2,3],[22-sw,69,3,1]]);
+   sheen(c.shine,[[32,59,2,4],[35,52,3,1],[37,63,2,2]]);
+   // Manga flutuante com punho próximo ao cajado.
+   shape(c.ink,[[43,35],[51,35],[55,42],[53,55],
+    [47,60],[43,52]]);
+   shape(cloth,[[45,37],[50,37],[53,43],[51,54],
+    [47,57],[45,50]]);
+   sheen(c.light,[[47,38,4,2],[49,45,2,7]]);
+   p(skin,49,54+bob,5,4);p(skinLight,50,54+bob,2,1);
+   sheen(c.gold,[[47,52,6,2],[32,48,6,2]]);
+   // Cajado em primeiro plano: empunhadura alinhada ao punho e haste
+   // contínua mesmo diante das novas dobras do manto.
+   p(c.ink,55,24+bob,5,50);
+   p('#78573e',57,25+bob,2,48);
+   p(c.gold,56,52+bob,4,3);
+   p(c.shine,58,28+bob,1,27);
+   // Cristal com pontas irregulares e reflexo angular.
+   shape(c.ink,[[56,7],[62,11],[63,20],[59,26],[53,21],[53,13]]);
+   shape('#335666',[[57,9],[61,12],[62,19],[58,24],[55,20],[55,14]]);
+   shape('#65d7c6',[[58,9],[61,13],[60,20],[58,23],[56,18]]);
+   sheen(c.shine,[[58,12,2,5],[59,18,1,2]]);
+   p('#f4feff',59,11+bob,1,5);
+   // Técnica: luvas, bordados e halo variam com a pose de magia.
+   if(action==='attack'){
+    const aura=[[39,52],[35,57],[28,63],[32,58],[42,53]][f%5];
+    p('#70c7e0',aura[0],aura[1]+bob,8,2);
+    p('#e0ffff',aura[0]+2,aura[1]-1+bob,3,1);
+    p('#8cf2ff',57,13-strike+bob,3,3);
+   }
+  }else if(role==='guardiao'){
+   shape(c.deep,[[20,54],[44,53],[49,60],[45,68],
+    [38,70],[35,65],[28,70],[19,66]]);
+   shape(cloth,[[24,56],[43,55],[46,62],[40,67],
+    [36,63],[27,67],[21,64]]);
+   shape(c.ink,[[21,57],[29,58],[27,67],[22,72],[16,67]]);
+   sheen(c.gold,[[22,58,3,2],[38,59,4,2]]);
+   sheen(c.shine,[[25,60,2,4],[42,60,2,3]]);
+  }else if(role==='arqueiro'){
+   // Cauda do manto em folhas assimétricas, com pregas recortadas.
+   const sway=action==='walk'?[0,2,3,0,-2,-3][f%6]:0;
+   shape(c.ink,[[20,46],[44,47],[49+sway,59],
+    [56+sway,72],[45,69],[39,74],[29,67],
+    [19-sway,74],[15-sway,65]]);
+   shape(c.cloak,[[22,47],[43,49],[47+sway,59],
+    [51+sway,69],[44,66],[38,71],[29,64],
+    [20-sway,70],[18-sway,63]]);
+   sheen(c.light,[[23,49,3,9],[42+sway,60,2,6]]);
+   sheen(c.gold,[[25,53,3,2],[37,57,3,1]]);
+  }
   if(action==='hurt'){p('#ffe0b1',19,35+bob,18,3);p('#e68c77',49,44+bob,3,4)}
   if(action==='death')g.restore();
   if(dir===3)g.restore();
   return true;
  }
- return Object.freeze({WIDTH,HEIGHT,ROLES,draw,VERSION:'heroes-master64-v3'});
+ return Object.freeze({WIDTH,HEIGHT,ROLES,draw,VERSION:'heroes-master64-v4'});
 });
