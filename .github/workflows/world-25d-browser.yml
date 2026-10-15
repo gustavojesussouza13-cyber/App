@@ -5,6 +5,8 @@ on:
     paths:
       - 'public/world-25d.mjs'
       - 'public/peregrino-aurora25d.js'
+      - 'public/aurora-heroes25d.js'
+      - 'public/heroes-master64.js'
       - 'public/peregrino-artisan64.js'
       - 'public/peregrino-atlas25d.html'
       - 'public/visual-25d.html'
@@ -35,6 +37,7 @@ jobs:
             sleep 1
           done
           curl -fsS http://127.0.0.1:3106/peregrino-aurora25d.js >/dev/null
+          curl -fsS http://127.0.0.1:3106/aurora-heroes25d.js >/dev/null
       - name: Testar preview 2.5D do commit (sem esperar deploy Render)
         env:
           WORLD25D_URL: http://127.0.0.1:3106/visual-25d.html
