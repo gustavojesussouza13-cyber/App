@@ -83,7 +83,7 @@ test('navegador carrega a geração antes da arte e informa afinidade no bestiá
  const mmo=html.indexOf('src="/mmo.js');
  assert.ok(script>=0&&art>script&&mmo>art);
  assert.match(renderer,/procedural\.chunkFeatures/);
- assert.match(renderer,/procedural\.biomeAt/);
+ assert.match(renderer,/procedural\?\.biomeAt/);
  assert.match(renderer,/m\.affinity/);
  assert.match(client,/sheet\.affinity/);
 });
