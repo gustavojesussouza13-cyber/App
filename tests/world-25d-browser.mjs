@@ -28,6 +28,23 @@ try{
  assert.equal(await layer.evaluate(c=>c.style.display),'block','WebGL deve ser reativável');
  await page.waitForTimeout(500);
  assert.deepEqual(pageErrors,[],'não pode haver erros JavaScript durante o teste');
+ await page.waitForFunction(()=>Boolean(window.OsPeregrinosAurora25D?.VERSION),null,{timeout:5000});
+ const version=await page.evaluate(()=>window.OsPeregrinosAurora25D.VERSION);
+ assert.match(version,/peregrino-aurora-25d/);
  await page.screenshot({path:'/tmp/os-peregrinos-25d-browser.png',fullPage:true});
+ const atlasUrl=url.replace('visual-25d.html','peregrino-atlas25d.html');
+ const atlasResponse=await page.goto(atlasUrl,{waitUntil:'domcontentloaded'});
+ assert.equal(atlasResponse?.status(),200,'o ateliê precisa ser servido no Render');
+ await page.waitForFunction(()=>document.querySelector('#label')?.textContent?.includes('PEREGRINO'),null,{timeout:7000});
+ const atlas=await page.evaluate(()=>{
+  const c=document.querySelector('#atlas'),g=c.getContext('2d'),bytes=g.getImageData(0,0,c.width,c.height).data;
+  let visible=0;
+  for(let i=3;i<bytes.length;i+=4)if(bytes[i]>0)visible++;
+  return {w:c.width,h:c.height,visible};
+ });
+ assert.deepEqual([atlas.w,atlas.h],[384,320]);
+ assert.ok(atlas.visible>18000,'folha de 24 quadros deve conter pixels visíveis');
+ await page.screenshot({path:'/tmp/os-peregrinos-peregrino-atlas.png',fullPage:true});
+
  console.log('WORLD_25D_BROWSER_OK',JSON.stringify({url,classes:4,biomes:6,canvas:'webgl'}));
 }finally{await browser.close()}
