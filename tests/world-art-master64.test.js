@@ -111,7 +111,7 @@ test('monster evolution variants, directions and species are represented visuall
 test('browser loads world art before Sprite Studio; actual studio cache uses the new master',()=>{
  const html=source('mundo.html'),studioCode=source('sprite-studio.js');
  assert.match(html,/world-art-master64\.js\?v=world-art-master64-v2/);
- assert.match(html,/heroes-master64\.js\?v=heroes-master64-v4/);
+ assert.match(html,/heroes-master64\.js\?v=heroes-master64-v5/);
  assert.match(html,/landscape16\.js\?v=world-landscape-v2/);
  assert.match(html,/sprite-studio\.js\?v=world-art-master64-v2/);
  assert.ok(html.indexOf('/world-art-master64.js')<html.indexOf('/sprite-studio.js'));
