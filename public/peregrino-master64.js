@@ -215,25 +215,82 @@
   }else if(a?.accessory==='amuleto'&&!back){
    p(c.trim,33,39+bob,6,3);p(c.gem,35,40+bob,3,4);
   }
-  // Espada: duas arestas, guarda de bronze, fio luminoso e empunhadura.
-  // O golpe desloca lâmina + braço, sem mudar sua hitbox no servidor.
-  const bladeY=attacking?28-hit*5:38;
-  const bladeX=attacking?5+hit*3:3;
-  runs(c.ink,[[bladeY,bladeX+4,7,32],
-    [bladeY-3,bladeX+5,5,4],[bladeY+31,bladeX+5,7,7]],0,bob+swordLift);
-  p(c.metalShadow,bladeX+5,bladeY+bob+swordLift,5,31);
-  p(c.metal,bladeX+6,bladeY+bob+swordLift,3,29);
-  p(c.steel,bladeX+7,bladeY+bob+swordLift,1,25);
-  p('#e0e1c5',bladeX+7,bladeY-4+bob+swordLift,2,6);
-  p(c.trim,bladeX+2,bladeY+27+bob+swordLift,13,4);
-  p('#f8e0a0',bladeX+3,bladeY+27+bob+swordLift,8,1);
-  p(c.ink,bladeX+6,bladeY+30+bob+swordLift,4,12);
-  p('#87563c',bladeX+7,bladeY+31+bob+swordLift,2,9);
-  p(c.trim,bladeX+6,bladeY+40+bob+swordLift,5,3);
+  // Cinco keyframes reais de esgrima: guarda, antecipação, corte,
+  // impacto e recuperação. Não rotacionar o Canvas evita antialiasing.
+  const stances=[
+   {h:[9,68],t:[9,32]},       // repouso: lâmina vertical
+   {h:[18,51],t:[8,15]},      // recolhe o ombro antes do golpe
+   {h:[27,39],t:[5,18]},      // espada diagonal e braço levantado
+   {h:[29,43],t:[58,22]},     // impacto e transferência de peso
+   {h:[21,57],t:[53,46]}      // follow-through, ponta baixa
+  ];
+  const stance=attacking?stances[n%5]:stances[0];
+  const [hx,hy]=stance.h,[tx,ty]=stance.t;
+  // Bresenham sobre a grade de 64x80. Uma linha, vários materiais:
+  // espinha escura, aço frio e um único fio branco.
+  const pixelLine=(color,x0,y0,x1,y1,width=1)=>{
+   x0=Math.round(x0);y0=Math.round(y0);
+   x1=Math.round(x1);y1=Math.round(y1);
+   const dx=Math.abs(x1-x0),dy=Math.abs(y1-y0);
+   const sx=x0<x1?1:-1,sy=y0<y1?1:-1;
+   let error=dx-dy;
+   for(let i=0;i<82;i++){
+    p(color,x0-Math.floor(width/2),y0-Math.floor(width/2),width,width);
+    if(x0===x1&&y0===y1)break;
+    const twice=error*2;
+    if(twice>-dy){error-=dy;x0+=sx}
+    if(twice<dx){error+=dx;y0+=sy}
+   }
+  };
+  // Antebraço da espada acompanha a mão; luva possui volume próprio.
   if(attacking){
-   runs('#8ee0ec',[[7+hit,4,4,2],[10+hit,8,3,2],
-    [13+hit,11,4,2],[16+hit,15,4,2]],0,bob);
-   p('#eafff8',14,17+hit+bob,3,2);
+   const advance=[0,2,5,8,3][n%5];
+   p(c.ink,11+advance,44+Math.min(3,hit)+bob,10,9);
+   p(c.leatherShade,13+advance,45+Math.min(3,hit)+bob,7,6);
+   p(c.leatherLight,14+advance,46+Math.min(3,hit)+bob,4,2);
+   p(c.trim,16+advance,47+Math.min(3,hit)+bob,2,2);
+  }
+  pixelLine(c.ink,hx,hy,tx,ty,8);
+  pixelLine(c.metalShadow,hx,hy,tx,ty,6);
+  pixelLine(c.metal,hx-1,hy,tx-1,ty,3);
+  pixelLine(c.steel,hx-2,hy,tx-2,ty,1);
+  // Viés do fio e reflexão alternada no aço (não uma barra uniforme).
+  for(let i=2;i<29;i+=6){
+   const ratio=i/36;
+   const x=Math.round(hx+(tx-hx)*ratio);
+   const y=Math.round(hy+(ty-hy)*ratio);
+   p('#d7e8e5',x-1,y,1,3);
+   p('#ffffff',x-2,y,1,1);
+  }
+  // Guarda ligeiramente perpendicular ao fio, cabo e pomo ornamentado.
+  const slope=Math.abs(tx-hx)>Math.abs(ty-hy);
+  if(slope){
+   p(c.ink,hx-2,hy-6,4,13);
+   p(c.trim,hx-1,hy-5,2,11);
+   p('#ffe5a5',hx,hy-2,1,4);
+  }else{
+   p(c.ink,hx-8,hy-1,17,5);
+   p(c.trim,hx-7,hy,15,3);
+   p('#ffefbc',hx-5,hy,8,1);
+  }
+  const gripX=hx+(hx>tx?4:-4),gripY=hy+(hy>ty?8:-8);
+  pixelLine(c.ink,hx,hy,gripX,gripY,5);
+  pixelLine('#87563c',hx,hy,gripX,gripY,3);
+  p(c.trim,gripX-2,gripY-1,5,3);
+  p('#fff0be',gripX-1,gripY-1,2,1);
+  if(attacking&&(n%5===2||n%5===3)){
+   // Arco escalonado de deslocamento: quadros sucessivos em locais distintos.
+   const trail=n%5===2?
+    [[7,7,6,2],[12,9,3,2],[18,13,3,2],[23,17,3,2],
+     [27,22,2,3],[30,28,2,3]]:
+    [[51,11,4,2],[55,14,3,3],[58,18,2,4],[59,23,2,4],
+     [57,29,3,2],[53,33,3,2]];
+   runs('#8ee0ec',trail,0,bob);
+   const glint=trail[Math.min(n%5,trail.length-1)];
+   p('#eafff8',glint[1]+2,glint[0]+bob,2,2);
+   p('#d8fff5',36,32+bob,2,1);
+  }else if(attacking&&n%5===1){
+   p('#fff2cc',tx-2,ty-4+bob,2,3);
   }
   if(hurt){
    p('#f8d1b2',22,27+bob,3,3);p('#f8d1b2',37,37+bob,3,2);
