@@ -77,7 +77,7 @@ test('cores escolhidas pelo jogador afetam os sprites das três classes',()=>{
 test('mestra carregada antes do estúdio, sem alterar monstros, NPCs ou fortaleza 3D',()=>{
  const html=read('mundo.html'),studio=read('sprite-studio.js');
  assert.ok(html.indexOf('/heroes-master64.js')<html.indexOf('/sprite-studio.js'));
- assert.match(html,/heroes-master64\.js\?v=heroes-master64-v2/);
+ assert.match(html,/heroes-master64\.js\?v=heroes-master64-v3/);
  assert.match(html,/sprite-studio\.js\?v=world-art-master64-v1/);
  assert.match(studio,/HEROES_MASTER\?\.draw/);
  assert.match(studio,/PILGRIM_MASTER\?\.draw/);
