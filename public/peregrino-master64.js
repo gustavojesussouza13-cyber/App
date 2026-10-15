@@ -136,6 +136,8 @@
   runs(c.scarfShadow,[[31,22,24,5],[34,18,31,5],[38,21,23,4]],0,bob);
   runs(c.scarf,[[32,24,23,4],[35,19,28,3],[38,22,18,2]],0,bob);
   p(c.scarfLight,23,33+bob,14,2);
+  p('#ba6050',22,35+bob,5,2); // borda avermelhada do lenço clássico
+  p('#9e4350',42,37+bob,3,7); // dobra vinho na ponta do cachecol
   p('#f69a74',28,36+bob,10,1);
   p(c.scarfShadow,43,36+bob,5,8);
   p(c.scarf,43,37+bob,4,9);
