@@ -42,9 +42,10 @@ try{
  await page.locator('#guild3dCollect').click();
  await page.waitForFunction(()=>document.querySelector('.guild3d-dialog[open] #guild3dFeedback')?.textContent?.includes('Produção fictícia coletada.'),null,{timeout:6000});
  assert.equal(await page.locator('#guild3dFeedback').getAttribute('data-status'),'success');
- await page.locator('#guild3dCollect').click();
- await page.waitForFunction(()=>document.querySelector('.guild3d-dialog[open] #guild3dFeedback')?.textContent?.includes('15 minutos'),null,{timeout:6000});
- assert.equal(await page.locator('#guild3dFeedback').getAttribute('data-status'),'error');
+ // Após coletar, o botão fica desativado durante o ciclo de produção;
+ // uma segunda tentativa não é clicável (o servidor continua autoritativo).
+ assert.equal(await page.locator('#guild3dCollect').isDisabled(),true);
+ assert.match(await page.locator('#guild3dCollect').innerText(),/Aguardando produção/);
  // Clique real no WebGL: projeta a posição de um lote livre usando a mesma câmera pública inicial.
  const buildTarget=await page.evaluate(async()=>{
   const THREE=await import('/vendor/three.module.js');
