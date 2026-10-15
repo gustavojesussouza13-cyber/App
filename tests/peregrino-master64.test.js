@@ -77,9 +77,9 @@ test('renderizador real prioriza o novo mestre sem mudar classes nem monstruári
  assert.match(src,/name==='peregrino'/);
  assert.ok(html.indexOf('/peregrino-master64.js')<html.indexOf('/sprite-studio.js'));
  assert.match(html,/peregrino-master64\.js\?v=peregrino-master64-v1/);
- assert.match(html,/sprite-studio\.js\?v=peregrino-master64-v1/);
+ assert.match(html,/sprite-studio\.js\?v=heroes-master64-v2/);
  assert.match(html,/appearance-editor\.js\?v=peregrino-master64-v1/);
- assert.match(html,/mmo\.css\?v=peregrino-master64-v1/);
+ assert.match(html,/mmo\.css\?v=heroes-master64-v2/);
  const draws=[];
  const docs={createElement:()=>({width:0,height:0,getContext:()=>{
   const obj=makeCanvas();draws.push(obj.ops);return obj.g;
