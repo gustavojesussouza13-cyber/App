@@ -18,6 +18,7 @@
  const PILGRIM_MASTER=typeof module==='object'&&module.exports?require('./peregrino-master64'):globalThis.OsPeregrinosPilgrimMaster64;
  const PILGRIM_ARTISAN=typeof module==='object'&&module.exports?require('./peregrino-artisan64'):globalThis.OsPeregrinosArtisan64;
  const HEROES_MASTER=typeof module==='object'&&module.exports?require('./heroes-master64'):globalThis.OsPeregrinosHeroesMaster64;
+ const WORLD_MASTER=typeof module==='object'&&module.exports?require('./world-art-master64'):globalThis.OsPeregrinosWorldMaster64;
  const W=RETRO?.WIDTH||40,H=RETRO?.HEIGHT||52;
  const ROLES=Object.freeze({
   peregrino:{coat:'#8a6245',edge:'#402e32',light:'#b99163',trim:'#dcc28e',hair:'#493328',skin:'#e1af7f',boots:'#352b34',metal:'#acb6a4',gem:'#a9e6ca'},
@@ -323,12 +324,16 @@
     HEROES_MASTER.draw(g,{role:name,dir,action,frame,colors:ROLES[name],appearance});
    else if(kind==='hero'&&RETRO?.hero)RETRO.hero(g,{role:name,dir,action,frame,colors:ROLES[name]||ROLES.peregrino,appearance});
    else if(kind==='hero')heroFrame(g,name,dir,action,frame,appearance);
+   else if(kind==='npc'&&WORLD_MASTER?.npc)
+    WORLD_MASTER.npc(g,{npc:npc||{name},dir,action,frame});
    else if(kind==='npc'&&RETRO?.npc)RETRO.npc(g,{npc:npc||{name},dir,action,frame});
    else if(kind==='npc'&&ATELIER?.npc){
     ATELIER.npc(g,npc||{name}, {dir,action,frame});
     POLISH?.npc(g,{style:name,dir,action,frame});
    }
    else if(kind==='npc')heroFrame(g,npc?.role||'peregrino',dir,action,frame);
+   else if(WORLD_MASTER?.creature)
+    WORLD_MASTER.creature(g,{type:name,dir,action,frame,boss:!!boss,zone,species});
    else if(RETRO?.creature)RETRO.creature(g,{type:name,dir,action,frame,boss:!!boss,zone,species,colors:CREATURES[name]||CREATURES.limo});
    else monsterFrame(g,name,dir,action,frame,!!boss,zone,species);
    cache.set(key,canvas);builds++;

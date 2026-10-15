@@ -60,6 +60,15 @@
     px(g,'#225c76',x0,y0+2,11,2);px(g,'#b0d7c7',x0+2,y0,7,2);
     px(g,'#e1e6cd',x0+5,y0,2,1);
    }
+   // Reflexos em níveis da água: espuma em curvas discretizadas, 3 pixels.
+   // Determinístico: o mapa não repinta animação durante o loop do jogo.
+   const ripple=Math.floor(hash(tx,ty,z,301)*3);
+   for(let wave=0;wave<3;wave++){
+    const rx=x+3+wave*8+((ripple+wave)%3),ry=y+6+wave*8;
+    px(g,'#184e69',rx,ry+3,9,2);
+    px(g,'#b8e1dd',rx+2,ry,5,1);
+    px(g,'#e8f5e7',rx+4,ry,2,1);
+   }
    SHADE?.ground(g,tx,ty,z,kind,p,hash);
    return;
   }
@@ -132,6 +141,38 @@
     px(g,'#f3ded6',x+9,y+13,7,2);px(g,'#b97b99',x+12,y+10,2,8);
     px(g,'#f5d78e',x+12,y+13,2,2);
    }
+  }
+  // Textura regional legível sem encher cada tile de pontos soltos.
+  // Linhas em 2-5px, pedras com quinas, musgo do pântano e grãos desérticos.
+  const spot=hash(tx,ty,z,404),detailX=x+4+Math.floor(hash(tx,ty,z,405)*19),
+   detailY=y+4+Math.floor(hash(tx,ty,z,406)*18);
+  if(!path&&!rock&&biome==='forest'){
+   px(g,p[4],detailX-3,detailY+4,11,2);
+   px(g,p[1],detailX-1,detailY,8,3);
+   px(g,p[3],detailX+2,detailY,2,2);
+   if(spot>.74){px(g,'#d5aa72',detailX,detailY+6,5,2);px(g,p[4],detailX+2,detailY+4,2,2)}
+  }else if(!path&&!rock&&biome==='swamp'){
+   px(g,'#263e36',detailX-2,detailY+3,13,4);
+   px(g,'#75998a',detailX,detailY+3,8,2);
+   px(g,'#b4c7a5',detailX+4,detailY+3,3,1);
+  }else if(!path&&!rock&&biome==='desert'){
+   for(let i=0;i<3;i++){
+    px(g,p[6],detailX-2+i*3,detailY+i*2,8-i*2,2);
+    px(g,p[7],detailX+i*3,detailY-1+i*2,4,1);
+   }
+  }else if(!path&&!rock&&(biome==='mountain'||biome==='ruins')){
+   px(g,p[4],detailX,detailY,9,6);
+   px(g,p[2],detailX+2,detailY,7,2);
+   px(g,p[3],detailX+3,detailY,3,1);
+   px(g,p[6],detailX+6,detailY+3,2,3);
+  }else if(path&&spot>.48){
+   px(g,p[6],detailX,detailY,7,2);
+   px(g,p[7],detailX+1,detailY-1,4,1);
+   px(g,p[4],detailX+5,detailY+2,2,2);
+  }else if(rock&&spot>.45){
+   px(g,'#3e5652',detailX,detailY,12,2);
+   px(g,'#cfccb3',detailX+1,detailY-2,5,2);
+   px(g,'#577266',detailX+8,detailY+2,3,3);
   }
   // Luz de cima à esquerda: grupos de pixels mais claros, occlusão à direita.
   SHADE?.ground(g,tx,ty,z,kind,p,hash);
@@ -239,6 +280,19 @@
     px(g,j%3===0?p[3]:p[2],xx,yy,4,2);
     if(j%3===0)px(g,'#e2df9b',xx+2,yy-2,2,2);
    }
+   // Ramos, folhas pendentes e luz recortada em cada copa.
+   // Produzidos apenas no canvas de prop em cache, jamais em cada frame.
+   for(let k=0;k<10;k++){
+    const bx=21+Math.floor(hash(k,v,biome.length,611)*58),
+     by=19+Math.floor(hash(k,v,biome.length,612)*43);
+    px(g,p[4],bx,by+2,8,3);
+    px(g,p[1],bx+1,by,7,3);
+    px(g,p[3],bx+2,by,3,1);
+    if(k%4===0){
+     px(g,'#6d573d',bx+4,by+5,2,6);
+     px(g,p[2],bx+2,by+3,5,2);
+    }
+   }
    SHADE?.tree(g,p,v);
   }
   function shrub(g,biome,variant){
@@ -257,6 +311,13 @@
     const x=8+Math.floor(hash(j,v,biome.length,3)*42),y=12+Math.floor(hash(j,v,biome.length,9)*14);
     px(g,p[j%2?3:2],x,y,3+j%2,2);
    }
+   for(let k=0;k<5;k++){
+    const bx=6+Math.floor(hash(k,v,biome.length,630)*41),
+     by=10+Math.floor(hash(k,v,biome.length,631)*18);
+    px(g,p[4],bx-1,by+2,8,3);
+    px(g,p[2],bx,by,7,2);
+    px(g,p[3],bx+2,by,3,1);
+   }
    SHADE?.bush(g,p,v);
   }
   function rock(g,biome,variant){
@@ -273,6 +334,12 @@
    for(let j=0;j<4;j++){
     const xx=13+j*8,yy=19+(j%2)*4;
     px(g,'#d7d2b7',xx,yy,6,2);px(g,'#5b6d64',xx+5,yy+2,3,3);
+   }
+   for(let k=0;k<3;k++){
+    const bx=13+k*11,by=19+((variant+k)%2)*4;
+    px(g,'#3b504b',bx,by+3,9,2);
+    px(g,'#ddd6bc',bx+1,by,5,1);
+    px(g,p[2],bx+3,by+1,3,2);
    }
    SHADE?.rock(g,p,variant);
   }
