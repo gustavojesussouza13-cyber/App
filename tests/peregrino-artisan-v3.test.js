@@ -23,7 +23,7 @@ function render({role='peregrino',dir=2,action='idle',frame=0,appearance=APP.DEF
 }
 const signature=r=>JSON.stringify(r.pixels);
 test('novo mestre preserva 64x80 e o percurso principal nao perde o Peregrino',()=>{
- assert.equal(ART.VERSION,'peregrino-artisan64-v3');
+ assert.equal(ART.VERSION,'peregrino-artisan64-v4');
  assert.equal(ART.WIDTH,64);
  assert.equal(ART.HEIGHT,80);
  assert.equal(render({role:'arqueiro'}).drawn,false);
@@ -76,7 +76,7 @@ test('dano/morte animados sem deslocar dados nem executar scripts externos',()=>
  assert.ok(dead.transforms.some(t=>Array.isArray(t)&&t[0]==='scale'&&t[2]<1));
  const src=fs.readFileSync(path.join(__dirname,'../public/peregrino-artisan64.js'),'utf8');
  const scope={PeregrinosAppearance16:APP};vm.createContext(scope);vm.runInContext(src,scope);
- assert.equal(scope.OsPeregrinosArtisan64.VERSION,'peregrino-artisan64-v3');
+ assert.equal(scope.OsPeregrinosArtisan64.VERSION,'peregrino-artisan64-v4');
  assert.equal(scope.OsPeregrinosArtisan64.draw({
   fillRect(){},save(){},restore(){},translate(){},scale(){}
  },{role:'peregrino'}),true);
@@ -86,8 +86,8 @@ test('estudio prioritiza o novo mestre; outras classes nao usam o Peregrino',()=
  assert.match(studioSource,/PILGRIM_ARTISAN\?\.draw/);
  assert.ok(studioSource.indexOf('PILGRIM_ARTISAN?.draw')<studioSource.indexOf('PILGRIM_MASTER?.draw'));
  assert.ok(html.indexOf('peregrino-artisan64.js')<html.indexOf('sprite-studio.js'));
- assert.match(html,/peregrino-artisan64\.js\?v=peregrino-artisan64-v3/);
- assert.match(html,/sprite-studio\.js\?v=peregrino-artisan64-v3/);
+ assert.match(html,/peregrino-artisan64\.js\?v=peregrino-artisan64-v4/);
+ assert.match(html,/sprite-studio\.js\?v=peregrino-artisan64-v4/);
  const created=[];
  const studio=STUDIO.create({documentRef:{createElement:()=>({
   width:0,height:0,getContext:()=>{
