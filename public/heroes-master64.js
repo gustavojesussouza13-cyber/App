@@ -527,6 +527,18 @@
    sheen(c.light,[[47,38,4,2],[49,45,2,7]]);
    p(skin,49,54+bob,5,4);p(skinLight,50,54+bob,2,1);
    sheen(c.gold,[[47,52,6,2],[32,48,6,2]]);
+   // Cajado em primeiro plano: empunhadura alinhada ao punho e haste
+   // contínua mesmo diante das novas dobras do manto.
+   p(c.ink,55,24+bob,5,50);
+   p('#78573e',57,25+bob,2,48);
+   p(c.gold,56,52+bob,4,3);
+   p(c.shine,58,28+bob,1,27);
+   // Cristal com pontas irregulares e reflexo angular.
+   shape(c.ink,[[56,7],[62,11],[63,20],[59,26],[53,21],[53,13]]);
+   shape('#335666',[[57,9],[61,12],[62,19],[58,24],[55,20],[55,14]]);
+   shape('#65d7c6',[[58,9],[61,13],[60,20],[58,23],[56,18]]);
+   sheen(c.shine,[[58,12,2,5],[59,18,1,2]]);
+   p('#f4feff',59,11+bob,1,5);
    // Técnica: luvas, bordados e halo variam com a pose de magia.
    if(action==='attack'){
     const aura=[[39,52],[35,57],[28,63],[32,58],[42,53]][f%5];
