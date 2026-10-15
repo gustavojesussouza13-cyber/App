@@ -28,6 +28,9 @@ const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
 function isWalkable(zone,x,y,zones){
  if(!Number.isInteger(zone)||!zones?.[zone]||!Number.isFinite(x)||!Number.isFinite(y))return false;
  if(x<24||x>ZW-24||y<24||y>ZH-24)return false;
+ // Além do continente, água e pedras são cenográficas: o jogador nunca
+ // fica preso em tiles e as bordas são convertidas em novas regiões.
+ if(zone>=40)return true;
  const biome=BIOMES[zones[zone][1]];
  return kind(Math.floor(x/TILE),Math.floor(y/TILE),zone,biome)!=='water';
 }
