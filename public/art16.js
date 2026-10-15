@@ -440,7 +440,7 @@ function create({ctx,W,H}){
     role:p.role,x:p.x,y:p.y,dir,appearance:p.appearance,
     action:state.hurt?'hurt':attacking?'attack':moved?'walk':'idle',
     frame:Math.floor(now/130),scale:1.32,glow:local
-   })))){
+   }))){
    // Artes Aurora detalhadas por classe: não altera controles nem simulação.
    g.save();g.textAlign='center';g.font=(local?'bold 15px':'bold 13px')+' monospace';
    g.shadowColor='#000b';g.shadowBlur=0;g.lineWidth=3;g.strokeStyle='#0e271e';
