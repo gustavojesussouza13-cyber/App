@@ -93,7 +93,7 @@ test('sem suavização, browser carrega ateliê antes dos masters, não altera f
  assert.ok(html.indexOf(positions[0])>=0);
  for(let i=1;i<positions.length;i++)assert.ok(html.indexOf(positions[0])<html.indexOf(positions[i]));
  assert.match(html,/heroes-master64\.js\?v=heroes-master64-v6/);
- assert.match(html,/world-art-master64\.js\?v=world-art-master64-v3/);
+ assert.match(html,/world-art-master64\.js\?v=world-art-master64-v4/);
  assert.match(html,/landscape16\.js\?v=world-landscape-v3/);
  assert.match(html,/guild-city-3d\.js/);
  const code=fs.readFileSync(path.join(__dirname,'../public/pixel-atelier-v1.js'),'utf8');
