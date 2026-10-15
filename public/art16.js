@@ -426,19 +426,19 @@ function create({ctx,W,H}){
   const premiumPc=Boolean(desktopCharactersV3?.enabled);
   // Nova aparência só é ativada quando o WebGL 2.5D está visível.
   // O modo clássico mantém integralmente seus sprites anteriores.
-  if(useAurora25d&&p.role==='peregrino'&&
-   window.OsPeregrinosAurora25D?.draw(g,{
-    x:p.x,y:p.y,dir,appearance:p.appearance,
+  if(useAurora25d&&
+   window.OsPeregrinosHeroesAurora25D?.draw(g,{
+    role:p.role,x:p.x,y:p.y,dir,appearance:p.appearance,
     action:state.hurt?'hurt':attacking?'attack':moved?'walk':'idle',
-    frame:Math.floor(now/130),scale:1.5,glow:local
+    frame:Math.floor(now/130),scale:1.32,glow:local
    })){
-   // Renderiza o rótulo e encerra apenas o desenho visual do Peregrino.
-   // Nenhuma regra de combate, nome, posição, save ou colisão é alterada.
+   // Artes Aurora detalhadas por classe: não altera controles nem simulação.
    g.save();g.textAlign='center';g.font=(local?'bold 15px':'bold 13px')+' monospace';
    g.shadowColor='#000b';g.shadowBlur=0;g.lineWidth=3;g.strokeStyle='#0e271e';
-   const label=(p.name||'Peregrino')+(local?' · Peregrino':' · Lv.'+(p.level||1));
-   g.strokeText(label,p.x,p.y-130);g.fillStyle=local?'#ffe4a3':'#f1edd4';
-   g.fillText(label,p.x,p.y-130);g.restore();return;
+   const roleName={guardiao:'Guardião',curandeiro:'Curandeiro',arqueiro:'Arqueiro',peregrino:'Peregrino'}[p.role]||'Peregrino';
+   const label=(p.name||roleName)+(local?' · '+roleName:' · Lv.'+(p.level||1));
+   g.strokeText(label,p.x,p.y-115);g.fillStyle=local?'#ffe4a3':'#f1edd4';
+   g.fillText(label,p.x,p.y-115);g.restore();return;
   }
   const studioHero=Boolean(spriteStudio?.drawHero(g,p,now,{...state,desktopPremium:premiumPc}));
   const pngSprite=!studioHero&&Boolean(desktopSprites?.drawHero(g,p,now,state));
