@@ -16,7 +16,16 @@
   ctx.save();
   ctx.imageSmoothingEnabled=false;
   ctx.translate(Math.round(x-w*scale/2),Math.round(y-h*scale+step*scale));
-  const rect=(c,a,b,ww,hh)=>{ctx.fillStyle=COLORS[c]||c;ctx.fillRect(a*scale,b*scale,ww*scale,hh*scale)};
+  const rect=(c,a,b,ww,hh)=>{
+   // Matriz lógica: cada célula pintada é exatamente um pixel nativo.
+   // Escala inteira somente no canvas final; sem placas retangulares no atlas.
+   const col=COLORS[c]||c;
+   for(let py=Math.max(0,b);py<Math.min(h,b+hh);py++)
+    for(let px=Math.max(0,a);px<Math.min(w,a+ww);px++){
+     ctx.fillStyle=col;
+     ctx.fillRect(px*scale,py*scale,scale,scale);
+    }
+  };
   // Scanline de 1 pixel nativo: silhuetas com arestas orgânicas.
   const poly=(col,pts)=>{
    for(let yy=Math.max(0,Math.floor(Math.min(...pts.map(p=>p[1]))));
@@ -78,6 +87,73 @@
    rect('steel',13,0,2,4);rect('red',14,2,3,2);
    rect('gold',4,13,5,2);rect('gold',19,13,5,2);
    rect('shadow',12,14,4,5);
+  }
+  // Entalhes pintados um pixel por vez, com peças distintas para cada tropa.
+  // Diferente da troca de renderizador acima, estes pontos mudam de fato a arte.
+  const ENGRAVINGS={
+   militia:{
+    steel:[[6,8],[7,7],[8,7],[10,7],[12,8],[6,9],[8,9],
+     [4,16],[4,18],[4,20],[6,21],[13,12],[14,15]],
+    light:[[7,8],[9,8],[10,9],[8,11],[9,11],[7,14],[8,15],
+     [9,16],[11,18],[5,15],[5,16],[5,19],[14,9]],
+    shadow:[[7,10],[11,10],[8,13],[10,14],[12,16],
+     [12,19],[8,21],[12,21],[6,19]],
+    gold:[[5,17],[5,18],[5,20],[3,19],[6,19],[9,17],
+     [10,18],[10,19],[11,17],[12,18]],
+    green:[[7,16],[8,17],[8,19],[11,16],[12,17],[12,19]]
+   },
+   archer:{
+    green:[[10,5],[10,6],[9,7],[8,8],[7,9],[12,8],[13,10],
+     [6,17],[7,18],[8,19],[9,20],[10,21],[11,22]],
+    shadow:[[11,7],[12,9],[8,10],[7,12],[12,15],[13,18],[11,20]],
+    light:[[10,8],[11,9],[8,12],[9,13],[9,16],
+     [10,17],[11,18],[7,19],[5,12],[4,17]],
+    leather:[[14,13],[15,14],[14,16],[15,18],[14,20],[7,21]],
+    gold:[[3,9],[2,11],[2,16],[3,18],[14,9],[14,11],
+     [15,16],[10,15],[11,16]]
+   },
+   knight:{
+    light:[[11,7],[12,6],[13,5],[14,7],[15,9],[11,10],
+     [12,13],[14,14],[8,15],[9,16],[10,17],[15,15],
+     [16,16],[7,18],[17,18],[19,19],[20,20]],
+    shadow:[[4,18],[6,17],[7,16],[9,19],[11,20],[14,19],
+     [16,20],[18,20],[21,17],[19,14]],
+    leather:[[5,18],[6,20],[10,21],[12,22],[15,21],
+     [17,21],[20,21],[21,16],[22,15]],
+    gold:[[9,10],[11,10],[14,10],[15,10],[8,15],
+     [9,17],[8,19],[12,16],[14,16]],
+    red:[[12,1],[13,0],[14,1],[15,2],[16,3],[14,3]],
+    steel:[[20,5],[20,9],[20,13],[19,15],[18,13]]
+   },
+   siege:{
+    wood:[[6,15],[8,16],[11,16],[15,16],[18,17],[21,18],
+     [9,19],[12,20],[15,19],[18,20],[13,9],[14,10]],
+    shadow:[[4,19],[5,18],[9,20],[18,19],[19,18],
+     [23,19],[22,22],[8,22],[12,17],[17,17]],
+    steel:[[5,18],[7,19],[8,21],[19,20],[20,21],[22,19],
+     [6,5],[7,7],[22,6],[23,8],[13,3]],
+    light:[[6,19],[7,20],[20,20],[21,19],
+     [9,6],[11,7],[16,7],[19,6],[13,2]],
+    gold:[[7,20],[8,20],[20,20],[21,20],
+     [4,14],[5,13],[22,13],[23,14]],
+    leather:[[11,8],[14,8],[18,8],[10,9],[16,9]]
+   }
+  };
+  const marks=ENGRAVINGS[type]||ENGRAVINGS.militia;
+  for(const [shade,points] of Object.entries(marks))
+   for(const [px,py] of points)rect(shade,px,py,1,1);
+  // Variação por quadro: músculos/penas/ferro brilham nos próprios pixels.
+  // A máquina de cerco gira suas rodas; tropas alternam costura e bota.
+  if(type==='siege'){
+   const wheel=Math.round(Math.sin(t/230));
+   rect('gold',7+wheel,21,1,1);
+   rect('gold',21-wheel,21,1,1);
+   rect('steel',13,Math.max(0,3+wheel),1,1);
+  }else{
+   const gait=Math.round(Math.sin(t/175+(x+y)*.016));
+   const shin=type==='knight'?17:10;
+   rect('light',shin+Math.max(0,gait),h-4,1,1);
+   rect('shadow',shin+Math.max(0,-gait),h-3,1,1);
   }
   ctx.restore();
  }
