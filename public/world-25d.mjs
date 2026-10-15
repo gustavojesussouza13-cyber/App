@@ -203,6 +203,26 @@ export function createWorld25D({shell,canvas,width=960,height=576}) {
   canvas.style.background='transparent';
   shell.insertBefore(renderer.domElement,canvas);
 
+  // A versão em tela cheia centraliza o Canvas 2D com flexbox.
+  // O WebGL deve acompanhar exatamente a área visível desse Canvas,
+  // sem esticar o mundo quando a proporção da tela mudar.
+  const alignBackdrop=()=>{
+    if(!renderer.domElement.isConnected)return;
+    const gameBounds=canvas.getBoundingClientRect();
+    const shellBounds=shell.getBoundingClientRect();
+    const style=renderer.domElement.style;
+    style.left=(gameBounds.left-shellBounds.left-shell.clientLeft)+'px';
+    style.top=(gameBounds.top-shellBounds.top-shell.clientTop)+'px';
+    style.width=gameBounds.width+'px';
+    style.height=gameBounds.height+'px';
+  };
+  const observer=typeof ResizeObserver!=='undefined'
+   ?new ResizeObserver(alignBackdrop):null;
+  observer?.observe(canvas);
+  window.addEventListener('resize',alignBackdrop);
+  document.addEventListener('fullscreenchange',alignBackdrop);
+  alignBackdrop();
+
   const scene=new THREE.Scene();
   scene.background=new THREE.Color('#506c63');
   const camera=new THREE.OrthographicCamera(-width/2,width/2,height/2,-height/2,.1,2200);
@@ -293,6 +313,9 @@ export function createWorld25D({shell,canvas,width=960,height=576}) {
       });
       scene.remove(layer);
     }
+    observer?.disconnect();
+    window.removeEventListener('resize',alignBackdrop);
+    document.removeEventListener('fullscreenchange',alignBackdrop);
     renderer.dispose();
     renderer.domElement.remove();
     canvas.style.zIndex='';
