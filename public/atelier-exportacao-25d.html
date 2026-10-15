@@ -1,0 +1,48 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Os Peregrinos · Oficina de atlas sem IA</title></head>
+<body><h1>Oficina de sprites nativos de Auren</h1>
+<script src="/appearance16.js"></script>
+<script src="/pixel-atelier-v1.js"></script>
+<script src="/character-atelier16.js"></script>
+<script src="/heroes-master64.js"></script>
+<script src="/world-art-master64.js"></script>
+<script>
+'use strict';
+(function(){
+ const HERO=window.OsPeregrinosHeroesMaster64, WORLD=window.OsPeregrinosWorldMaster64,
+  NPC=window.OsPeregrinosCharacterAtelier;
+ const SPECIES=['limo','lobo','morcego','esqueleto','aranha','golem','serpente','morcego','golem','fera','escorpiao','fantasma','lobo','golem','fantasma','esqueleto','vespa','aranha','golem','fantasma','lobo','aranha','cavaleiro','serpente','dragao','fera','dragao','golem','sentinela','serpente','fantasma','chefe'];
+ const ROLE=['guardiao','arqueiro','curandeiro'];
+ const WIDTH=64,HEIGHT=80,FRAMES=6,DIRECTIONS=4;
+ const canvas=document.createElement('canvas');canvas.width=WIDTH*FRAMES;canvas.height=HEIGHT*DIRECTIONS;
+ const context=canvas.getContext('2d',{alpha:true});
+ function draw(kind,id,direction,frame){
+  if(kind==='hero')return HERO.draw(context,{role:ROLE[id],dir:direction,action:'walk',frame});
+  if(kind==='npc')return WORLD.npc(context,{npc:{id:'historia-'+id,name:NPC.NPC_STYLES[id],role:NPC.NPC_STYLES[id]},dir:direction,action:'walk',frame});
+  const species=Number(id),type=SPECIES[species];
+  return WORLD.creature(context,{type,dir:direction,action:'walk',frame,boss:kind==='boss',zone:species,species});
+ }
+ function render(kind,id){
+  if(!['hero','npc','monster','boss'].includes(kind))throw Error('Categoria desconhecida '+kind);
+  const max=kind==='hero'?ROLE.length:kind==='npc'?NPC.NPC_STYLES.length:SPECIES.length;
+  if(!Number.isInteger(id)||id<0||id>=max)throw Error('Índice fora do catálogo');
+  context.clearRect(0,0,canvas.width,canvas.height);
+  context.imageSmoothingEnabled=false;
+  let ok=0;
+  for(let direction=0;direction<DIRECTIONS;direction++)for(let frame=0;frame<FRAMES;frame++){
+   context.save();context.translate(frame*WIDTH,direction*HEIGHT);
+   if(draw(kind,id,direction,frame))ok++;
+   context.restore();
+  }
+  if(ok!==FRAMES*DIRECTIONS)throw Error('Sprite incompleto '+kind+'/'+id+'; quadros='+ok);
+  const alpha=context.getImageData(0,0,canvas.width,canvas.height).data;
+  let opaque=0;for(let i=3;i<alpha.length;i+=4)if(alpha[i]>128)opaque++;
+  if(opaque<2400)throw Error('Sprite vazio '+kind+'/'+id+'; '+opaque);
+  return {data:canvas.toDataURL('image/png'),opaque,w:canvas.width,h:canvas.height,
+   name:kind==='hero'?ROLE[id]:kind==='npc'?NPC.NPC_STYLES[id]:SPECIES[id]};
+ }
+ window.PeregrinosAtlasForge=Object.freeze({
+  render,roles:ROLE,species:SPECIES,npcStyles:NPC.NPC_STYLES,
+  categories:{hero:ROLE.length,monster:SPECIES.length,npc:NPC.NPC_STYLES.length,boss:SPECIES.length}
+ });
+})();
+</script></body></html>
