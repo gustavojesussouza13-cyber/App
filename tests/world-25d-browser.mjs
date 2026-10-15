@@ -44,6 +44,27 @@ try{
  await page.waitForTimeout(250);
  await checkAlignment();
  assert.deepEqual(pageErrors,[],'não pode haver erros JavaScript durante o teste');
+ await page.waitForFunction(()=>Boolean(window.OsPeregrinosHeroesAurora25D?.VERSION),null,{timeout:6000});
+ const heroes=await page.evaluate(()=>{
+  const api=window.OsPeregrinosHeroesAurora25D;
+  return api.ROLES.map(role=>{
+   const canvases=[0,1,2,3].map(dir=>api.prepare(role,dir,'walk',0));
+   const pixelCounts=canvases.map(canvas=>{
+    if(!canvas)return 0;
+    const rgba=canvas.getContext('2d').getImageData(0,0,64,80).data;
+    let nonzero=0;for(let p=3;p<rgba.length;p+=4)if(rgba[p]>0)nonzero++;
+    return nonzero;
+   });
+   return {role,pixelCounts,unique: new Set(canvases.map(c=>c?.toDataURL('image/png'))).size};
+  });
+ });
+ assert.deepEqual(heroes.map(h=>h.role),['peregrino','guardiao','arqueiro','curandeiro']);
+ assert.ok(heroes.every(h=>h.pixelCounts.every(c=>c>300)),'cada classe/direção precisa ser desenhada pixel a pixel');
+ assert.ok(heroes.every(h=>h.unique>=2),'cada classe deve oferecer direções visualmente distintas');
+ for(const role of ['guardiao','arqueiro','peregrino','curandeiro']){
+  await page.locator('#role').selectOption(role);
+  assert.match(await page.locator('#heroName').innerText(),new RegExp(role==='guardiao'?'Guardião':role==='arqueiro'?'Arqueiro':role==='curandeiro'?'Curandeiro':'Peregrino'));
+ }
  await page.waitForFunction(()=>Boolean(window.OsPeregrinosAurora25D?.VERSION),null,{timeout:5000});
  const version=await page.evaluate(()=>window.OsPeregrinosAurora25D.VERSION);
  assert.match(version,/peregrino-aurora-25d/);
