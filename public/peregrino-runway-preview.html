@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Peregrino Runway · 16 sprites reais · Os Peregrinos</title>
+<style>
+:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at top,#244246,#08141b 76%);color:#e9e8da;font:14px/1.6 system-ui,sans-serif}
+main{max-width:1120px;margin:0 auto;padding:28px 16px 50px}
+h1{font:700 clamp(25px,4vw,36px) Georgia,serif;color:#f3d8a5;margin:6px 0}
+h2{font:700 22px Georgia,serif;color:#f0d4a4}p{color:#bad4cb}a{color:#f7d99b}
+header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;border-bottom:1px solid #7c896f;padding-bottom:16px}
+section{background:#112832;border:1px solid #9d8b69;border-radius:12px;margin-top:20px;padding:18px}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 310px;gap:24px}
+.check{background-color:#172730;background-image:linear-gradient(45deg,#2b3e42 25%,transparent 25%),linear-gradient(-45deg,#2b3e42 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#2b3e42 75%),linear-gradient(-45deg,transparent 75%,#2b3e42 75%);background-size:28px 28px;background-position:0 0,0 14px,14px -14px,-14px 0}
+#atlas{width:100%;max-width:512px;image-rendering:pixelated;border:2px solid #927c5f}
+#solo{width:256px;height:320px;border:2px solid #927c5f;image-rendering:pixelated}
+.controls{display:flex;gap:8px;flex-wrap:wrap;margin:13px 0}
+button,select{color:#f5dfac;background:#29434b;border:1px solid #b49f72;border-radius:6px;padding:10px 13px;font:inherit;cursor:pointer}
+button:hover{background:#35636a}
+.status{color:#a0e2b9;font:700 12px ui-monospace,monospace}
+.legend{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;color:#d3bc8d}
+small{font-size:12px;color:#a7bbb5}
+@media(max-width:800px){.grid{grid-template-columns:1fr}}
+</style></head><body><main>
+<header><div><small>OS PEREGRINOS · CRÔNICAS DA AURORA</small><h1>Peregrino · Sprites reais do Runway</h1></div><a href="/visual-25d.html">← Mundo Aberto 2.5D</a></header>
+<p>Esta é a folha original gerada no Runway, extraída de seu fundo rosa. Os 16 quadros agora são um arquivo PNG transparente utilizado pelo Peregrino na versão experimental do jogo.</p>
+<section class="grid"><div>
+<h2>Atlas transparente · 4×4 quadros</h2>
+<img class="check" id="atlas" width="512" height="640" alt="Atlas real com 16 sprites transparentes do Peregrino">
+<div class="legend"><span>1 · FRENTE</span><span>2 · COSTAS</span><span>3 · DIREITA</span><span>4 · ESQUERDA (espelhada)</span></div>
+<p><small>Atlas: 512×640 px · quadros 128×160 px. As poses foram processadas automaticamente; a qualidade final ainda será refinada manualmente.</small></p>
+</div><aside>
+<h2>Teste da animação</h2><canvas class="check" id="solo" width="256" height="320" aria-label="Peregrino animado"></canvas>
+<div class="controls"><label for="dir">Direção</label><select id="dir"><option value="2">Frente</option><option value="0">Costas</option><option value="1">Direita</option><option value="3">Esquerda</option></select></div>
+<div class="controls"><button id="play">Pausar</button><button id="next">Próximo quadro</button></div>
+<p id="status" class="status">Carregando a arte…</p>
+<p>O ataque e os golpes de dano continuam usando as animações autorais anteriores. Esta importação altera somente a caminhada e o repouso do Peregrino.</p>
+<a id="download" download="peregrino-runway-walk.png" href="/assets/peregrino/peregrino-runway-walk.png">Baixar sprites PNG</a>
+</aside></section>
+<script src="/peregrino-runway25d.js?v=runway-original-v1"></script>
+<script>
+const $=id=>document.getElementById(id),api=window.OsPeregrinosRunway25D;
+$('atlas').src=api.SOURCE;
+let playing=true,frame=0;
+function draw(){
+ const c=$('solo'),ctx=c.getContext('2d');
+ ctx.clearRect(0,0,c.width,c.height);
+ ctx.save();ctx.scale(2,2);
+ if(api.isReady())api.draw(ctx,{x:64,y:151,dir:Number($('dir').value),frame,action:'walk',scale:1});
+ ctx.restore();
+}
+api.load().then(ok=>{
+ $('status').textContent=ok?'✓ Imagem Runway ativa. 16 quadros carregados.':'A arte Runway não carregou.';
+ draw();
+});
+setInterval(()=>{if(playing&&api.isReady()){frame=(frame+1)%4;draw()}},155);
+$('play').onclick=()=>{playing=!playing;$('play').textContent=playing?'Pausar':'Reproduzir'};
+$('next').onclick=()=>{playing=false;$('play').textContent='Reproduzir';frame=(frame+1)%4;draw()};
+$('dir').onchange=()=>{frame=0;draw()};
+</script></main></body></html>
