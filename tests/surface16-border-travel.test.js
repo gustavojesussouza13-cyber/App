@@ -23,6 +23,7 @@ test('o continente tem exatamente 16 províncias de superfície e não transform
 });
 test('fundar fortaleza é permitido nos quatro novos territórios mas proibido no deserto selvagem',t=>{
  const {world,p}=fixture(t);
+ p.save.coins=10000;
  world.guild(p,{action:'create',name:'Guardioes da Superficie'});
  assert.equal(p.save.guild,'Guardioes da Superficie');
  p.zone=42;p.save.zone=42;p.x=770;p.y=511;p.save.coins=10000;
@@ -64,7 +65,7 @@ test('caminhar até a borda da fronteira atravessa ao vizinho e preserva progres
  assert.ok(p.save.visited.includes(east));
  assert.ok(events.some(m=>m.type==='travel'&&m.zone===east));
  const before=p.zone;
- p.lastBorderCross=0;
+ p.x=300;p.lastBorderCross=0;
  world.receive(client,{type:'crossBoundary',direction:'oeste'});
  assert.equal(p.zone,before,'não atravessar estando longe da borda');
  p.x=24;p.lastBorderCross=0;
