@@ -15,8 +15,25 @@
   const canvas=document.createElement('canvas');canvas.width=128;canvas.height=160;
   canvas.className='atelier-preview-canvas';
   canvas.setAttribute('aria-label','Prévia do personagem personalizado');
-  const note=document.createElement('small');note.textContent='Pixel art nítida · silhueta da classe preservada';
-  left.append(title,canvas,note);
+  const note=document.createElement('small');note.textContent='Quadro autoral 64 × 80 · pixels nítidos sem suavização';
+  const poseControls=document.createElement('div');poseControls.className='atelier-pose-controls';
+  const direction=document.createElement('select');direction.setAttribute('aria-label','Direção da prévia');
+  for(const [value,label]of [['2','Frente'],['1','Lado'],['0','Costas'],['3','Outro lado']]){
+   const option=document.createElement('option');option.value=value;option.textContent=label;direction.append(option);
+  }
+  const animation=document.createElement('select');animation.setAttribute('aria-label','Ação da prévia');
+  for(const [value,label]of [['idle','Parado'],['walk','Andando'],['attack','Atacando'],['hurt','Ferido']]){
+   const option=document.createElement('option');option.value=value;option.textContent=label;animation.append(option);
+  }
+  let poseFrame=0;
+  const nextFrame=document.createElement('button');nextFrame.type='button';
+  nextFrame.className='atelier-next-frame';nextFrame.textContent='▶ Quadro';
+  nextFrame.title='Ver o próximo quadro de animação';
+  direction.addEventListener('change',render);
+  animation.addEventListener('change',()=>{poseFrame=0;render()});
+  nextFrame.addEventListener('click',()=>{poseFrame++;render()});
+  poseControls.append(direction,animation,nextFrame);
+  left.append(title,canvas,poseControls,note);
   const previewStudio=studio?.create?.({documentRef:document,limit:128});
   const options=document.createElement('div');options.className='atelier-custom-fields';
   const selects={};
@@ -41,7 +58,10 @@
    const ctx=canvas.getContext('2d');ctx.imageSmoothingEnabled=false;
    ctx.clearRect(0,0,canvas.width,canvas.height);
    const type=role();
-   const sprite=previewStudio?.obtain('hero',type,2,'idle',0,false,0,0,null,read());
+   const frames={idle:4,walk:6,attack:5,hurt:3};
+   const action=animation.value||'idle';
+   const sprite=previewStudio?.obtain('hero',type,Number(direction.value||2),action,
+    poseFrame%frames[action],false,0,0,null,read());
    if(sprite){ctx.imageSmoothingEnabled=false;ctx.drawImage(sprite,0,0,128,160)}
   }
   render();
