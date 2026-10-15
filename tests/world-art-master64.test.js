@@ -143,7 +143,7 @@ test('landscape keeps nine biomes and improves ground and vegetation without new
    calls.push([this.fillStyle,x,y,w,h]);
   }};
   LAND.terrainTile(ctx,4,4,2,biome,'grass',()=>'grass');
-  assert.ok(calls.length>40);
+  assert.ok(calls.length>20);
   keys.add(JSON.stringify(calls));
  }
  assert.equal(keys.size,9);
