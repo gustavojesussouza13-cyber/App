@@ -2,8 +2,51 @@
 /* Os Peregrinos — interface multiplayer de mundo aberto, pixel-art gerado no navegador. */
 (()=>{
 const $=id=>document.getElementById(id);
-const cvs=$('game'),ctx=cvs.getContext('2d',{alpha:false});ctx.imageSmoothingEnabled=false;
+const cvs=$('game'),ctx=cvs.getContext('2d',{alpha:true});ctx.imageSmoothingEnabled=false;
 const W=cvs.width,H=cvs.height,ZONE_W=1536,ZONE_H=1024;
+
+// Renderizador 2.5D opcional. Não importa módulos da fortaleza ou altera o servidor.
+let world25d=null,world25dActive=false,world25dLoading=false;
+const world25dButton=document.createElement('button');
+world25dButton.type='button';
+world25dButton.id='world25dMode';
+world25dButton.textContent='✧ 2.5D: ativar';
+world25dButton.setAttribute('aria-pressed','false');
+world25dButton.title='Alternar Mundo Aberto 2D e 2.5D; fortalezas 3D não são afetadas';
+Object.assign(world25dButton.style,{
+ position:'absolute',right:'12px',top:'54px',zIndex:'12',padding:'6px 10px',
+ background:'#132e2de8',color:'#f7deb0',border:'2px solid #bb9b5c',
+ borderRadius:'6px',fontSize:'12px',fontWeight:'700'
+});
+$('canvasShell').append(world25dButton);
+function updateWorld25dMode(){
+ world25dButton.textContent=world25dLoading?'Carregando 2.5D…':
+  (world25dActive?'✧ 2.5D: ligado':'✧ 2.5D: ativar');
+ world25dButton.setAttribute('aria-pressed',String(world25dActive));
+ world25dButton.disabled=world25dLoading;
+ if(world25d?.canvas)world25d.canvas.style.display=world25dActive?'block':'none';
+}
+async function enableWorld25d(){
+ if(world25dLoading||world25dActive)return;
+ world25dLoading=true;updateWorld25dMode();
+ try{
+  if(!world25d){
+   const {createWorld25D}=await import('/world-25d.mjs');
+   world25d=createWorld25D({shell:$('canvasShell'),canvas:cvs,width:W,height:H});
+  }
+  world25dActive=true;
+ }catch(err){
+  console.warn('[Mundo Aberto 2.5D] WebGL indisponível; mantendo Canvas 2D.',err);
+  world25dActive=false;
+  try{world25d?.dispose()}catch{}
+  world25d=null;
+  world25dButton.title='WebGL indisponível neste navegador. Modo 2D preservado.';
+ }finally{world25dLoading=false;updateWorld25dMode()}
+}
+world25dButton.addEventListener('click',()=>{
+ if(world25dActive){world25dActive=false;updateWorld25dMode()}
+ else void enableWorld25d();
+});
 const session={id:'',name:'',connected:false,region:null,characters:null,online:0,zones:[],portals:[],shop:{},relics:{},quests:[],npcs:[],merchants:[],story:null,achievements:{},monsters:new Map(),players:new Map(),zone:0,x:768,y:512,dir:2,target:null,partyInvite:null,guildInvite:null,tradeOffer:null,role:'peregrino',cameraX:0,cameraY:0,formClass:'peregrino',appearance:null,formAppearance:null};
 const keys=new Set(),moves={up:['KeyW','ArrowUp'],down:['KeyS','ArrowDown'],left:['KeyA','ArrowLeft'],right:['KeyD','ArrowRight']};
 let selectedMonsterSheet=null;
@@ -1300,7 +1343,17 @@ function canvasDraw(now,dt){
   spriteActions.fallen=spriteActions.fallen.filter(m=>now-m.defeatedAt<570);
   for(const [id,v] of spriteActions.monsters)if(now-v.at>750)spriteActions.monsters.delete(id);
   for(const [id,v] of spriteActions.players)if(now-v.at>580)spriteActions.players.delete(id);
-  classicRenderer.render({zone:session.zone,zones:session.zones,zoneBiome:session.region?.id===session.zone?session.region.biome:null,x:session.x,y:session.y,kingdomBases:visibleKingdomBases,
+  if(world25dActive&&world25d){
+   try{
+    world25d.render({zone:session.zone,
+     biome:session.region?.id===session.zone?session.region.biome:(session.zones[session.zone]?.biome||'pradaria'),
+     cameraX:session.cameraX,cameraY:session.cameraY,now});
+   }catch(err){
+    console.warn('[Mundo Aberto 2.5D] Falha na renderização; retomando modo 2D.',err);
+    world25dActive=false;updateWorld25dMode();
+   }
+  }
+  classicRenderer.render({world25dActive,zone:session.zone,zones:session.zones,zoneBiome:session.region?.id===session.zone?session.region.biome:null,x:session.x,y:session.y,kingdomBases:visibleKingdomBases,
     name:session.name||'PEREGRINO',role:session.role,appearance:session.appearance,dir:session.dir,
     monsters:monsterMotion.draw([...session.monsters.values()],dt),players:drawPlayers,projectiles,
     monsterActions:spriteActions.monsters,playerActions:spriteActions.players,fallen:spriteActions.fallen,
@@ -1374,5 +1427,9 @@ window.addEventListener('pagehide',()=>{joystick.release();try{socket?.close()}c
 window.addEventListener('pageshow',event=>{if(event.persisted)location.reload()});
 // Nunca iniciar Visitante automaticamente: sempre pedir nome e classe.
 void setupLogin();
+// Prévia: o 2.5D inicia automaticamente em PCs com ponteiro de precisão.
+// No celular permanece em 2D até o jogador optar pelo WebGL.
+if(window.matchMedia?.('(hover: hover) and (pointer: fine)').matches)
+ setTimeout(()=>{void enableWorld25d()},1000);
 window.OsPeregrinosMundo=Object.freeze({get online(){return session.online},get zone(){return session.zone},get connected(){return session.connected},get monsters(){return session.monsters.size},get name(){return session.name}});
 })();
