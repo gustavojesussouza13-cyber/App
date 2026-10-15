@@ -31,7 +31,7 @@ test('lobby e indicador mostram até 60 por sala, com arte e cliente versionados
  assert.match(page,/CRIAR SALA · 60 VAGAS/);
  assert.match(page,/id="playerCount">0\/60/);
  assert.match(page,/mmo\.js\?v=surface16-v1/);
- assert.match(page,/art16\.js\?v=surface16-v1/);
+ assert.match(page,/art16\.js\?v=infinite-frontiers-v1/);
  assert.match(js,/session\.online=n;.*?n\+'\/60'/);
 });
 test('servidor transmite a política atual e base de guildas na própria região',t=>{
@@ -48,7 +48,7 @@ test('servidor transmite a política atual e base de guildas na própria região
  const current=packets.filter(msg=>msg.type==='kingdomState').at(-1);
  assert.ok(current);
  assert.equal(current.data.continent,16);
- assert.equal(current.data.buildable,12);
+ assert.equal(current.data.buildable,16);
  // A posição de spawn não precisa estar livre; posicionar explicitamente
  // em local seguro só é necessário para criar o castelo, não para atualizar HUD.
  p.lastKingdomState=0;
