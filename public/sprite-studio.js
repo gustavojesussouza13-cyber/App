@@ -307,7 +307,9 @@
    action=phases[action]?action:'idle';
    frame=((Number.isFinite(frame)?Math.floor(frame):0)%phases[action]+phases[action])%phases[action];
    const id=kind==='npc'?(npc?.id||npc?.name||name):'';
-   const key=[kind,name,dir,action,frame,boss?1:0,kind==='monster'?family(zone):0,kind==='monster'?species:id,
+   // A coroa e a variação dos monstros dependem da zona real, não só da família.
+   // O LRU limitado impede que áreas visitadas acumulem canvases indefinidamente.
+   const key=[kind,name,dir,action,frame,boss?1:0,kind==='monster'?(Number.isInteger(zone)?zone:0):0,kind==='monster'?species:id,
     kind==='hero'&&appearance&&APPEARANCE?APPEARANCE.key(appearance):''].join(':');
    let sprite=cache.get(key);
    if(sprite){cache.delete(key);cache.set(key,sprite);return sprite}
