@@ -9,6 +9,12 @@
  */
 const FIRST_ZONE=40;
 const ORIGIN=11; // Terra da Última Luz é a passagem para além de Auren.
+// Doze regiões de superfície clássicas + quatro províncias fronteiriças.
+// Os IDs 12..15 são masmorras históricas e NUNCA são terrenos de guilda.
+// Os IDs 40..43 já existem na geração: preservamos seus saves e coordenadas.
+const MAIN_SURFACE_IDS=Object.freeze([...Array(12).keys(),40,41,42,43]);
+const isMainSurface=id=>MAIN_SURFACE_IDS.includes(id);
+const isOuterWilds=id=>isFrontier(id)&&!isMainSurface(id);
 const BIOMES=Object.freeze([
  ['pradaria','Campos de Esmeralda'],['floresta','Florestas Antigas'],
  ['rio','Rios Silenciosos'],['deserto','Dunas Esquecidas'],
@@ -75,16 +81,16 @@ function difficulty(id){
  if(!data)return 1;
  // Vizinhos iniciais acessíveis a novatos; a distância cresce lentamente,
  // sem tornar a primeira nova área impossível para personagens iniciantes.
- return Math.min(7,1.12+Math.log2(2+data.distance)*.38);
+ return Math.min(12,1.12+Math.log2(2+data.distance)*.62);
 }
 function monsterLevel(id){
  const data=info(id);
  if(!data)return 1;
- return Math.min(90,Math.round(2+Math.log2(2+data.distance)*3.1));
+ return Math.min(100,Math.round(2+Math.log2(2+data.distance)*5));
 }
 function spawnSeed(id,index){
  const c=coordsFor(id);
  return c?hash(c.x,c.y,index+191):null;
 }
-module.exports={FIRST_ZONE,ORIGIN,BIOMES,SEED,hash,idFor,coordsFor,
+module.exports={FIRST_ZONE,ORIGIN,BIOMES,SEED,MAIN_SURFACE_IDS,isMainSurface,isOuterWilds,hash,idFor,coordsFor,
  isFrontier,isZone,info,around,difficulty,monsterLevel,spawnSeed};
