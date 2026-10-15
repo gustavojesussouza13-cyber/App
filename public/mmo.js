@@ -23,7 +23,7 @@ function renderMonsterSheet(sheet){
  panel.hidden=false;
  document.getElementById('monsterSheetClose').onclick=clearMonsterSheet;
  document.getElementById('monsterSheetTitle').textContent=sheet.name;
- document.getElementById('monsterSheetRank').textContent='Nível '+sheet.level+' · '+sheet.rank+' · '+sheet.archetype;
+ document.getElementById('monsterSheetRank').textContent='Nível '+sheet.level+' · '+sheet.rank+' · '+sheet.archetype+(sheet.rarity?' · '+sheet.rarity:'')+(sheet.affinity?' · Afinidade: '+sheet.affinity:'');
  const stats=document.getElementById('monsterSheetStats');stats.replaceChildren();
  function addStat(label,value){
   const tile=document.createElement('div');tile.className='monster-sheet-stat';
