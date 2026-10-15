@@ -15,6 +15,7 @@
  const POLISH=typeof module==='object'&&module.exports?require('./sprite-polish16'):globalThis.OsPeregrinosSpritePolish16;
  const APPEARANCE=typeof module==='object'&&module.exports?require('./appearance16'):globalThis.PeregrinosAppearance16;
  const RETRO=typeof module==='object'&&module.exports?require('./retro-atlas64'):globalThis.OsPeregrinosRetro64;
+ const PILGRIM_MASTER=typeof module==='object'&&module.exports?require('./peregrino-master64'):globalThis.OsPeregrinosPilgrimMaster64;
  const W=RETRO?.WIDTH||40,H=RETRO?.HEIGHT||52;
  const ROLES=Object.freeze({
   peregrino:{coat:'#8a6245',edge:'#402e32',light:'#b99163',trim:'#dcc28e',hair:'#493328',skin:'#e1af7f',boots:'#352b34',metal:'#acb6a4',gem:'#a9e6ca'},
@@ -312,7 +313,9 @@
    const g=canvas.getContext('2d');
    if(!g)return null;
    g.imageSmoothingEnabled=false;
-   if(kind==='hero'&&RETRO?.hero)RETRO.hero(g,{role:name,dir,action,frame,colors:ROLES[name]||ROLES.peregrino,appearance});
+   if(kind==='hero'&&name==='peregrino'&&PILGRIM_MASTER?.draw)
+    PILGRIM_MASTER.draw(g,{role:name,dir,action,frame,colors:ROLES.peregrino,appearance});
+   else if(kind==='hero'&&RETRO?.hero)RETRO.hero(g,{role:name,dir,action,frame,colors:ROLES[name]||ROLES.peregrino,appearance});
    else if(kind==='hero')heroFrame(g,name,dir,action,frame,appearance);
    else if(kind==='npc'&&RETRO?.npc)RETRO.npc(g,{npc:npc||{name},dir,action,frame});
    else if(kind==='npc'&&ATELIER?.npc){
