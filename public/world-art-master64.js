@@ -14,6 +14,7 @@
  if(root)root.OsPeregrinosWorldMaster64=api;
 })(typeof globalThis!=='undefined'?globalThis:this,function(ATELIER){
  const WIDTH=64,HEIGHT=80;
+ const HAND=typeof module==='object'&&module.exports?require('./pixel-atelier-v1'):globalThis.OsPeregrinosHandPixels;
  const INK='#272433',PAPER='#fff0d0',GOLD='#e4bf78',DARK='#433743';
  const BASE={
   limo:['#267359','#57d97b','#bafda0','#ffe8b4','slime'],
@@ -295,6 +296,9 @@
      p('#e7dca9',51+j*3,45+j*4+off,1,1);
     }
    }
+   // Ornamentos pintados pixel a pixel em matriz artesanal; cada habitante
+   // tem assinatura por ofício e identidade persistente.
+   HAND?.npc(g,{profession,identity:id,dir,action,frame:n});
    // Símbolos individuais determinísticos, consistentes a cada sessão.
    for(let bit=0;bit<6;bit++){
     const lit=(id>>>bit)&1;
@@ -636,10 +640,11 @@
      line(PAPER,ax,ay,ax+size,ay-size,1);
     }
    }
+   HAND?.creature(g,{type,boss,dir,action,frame:num,species});
    if(action==='hurt')p(PAPER,19,31+y,23,3);
   });
   return true;
  }
  return Object.freeze({WIDTH,HEIGHT,npc,creature,NPC_JOBS:job,
-  CREATURES:Object.freeze(Object.keys(BASE)),VERSION:'world-art-master64-v2'});
+  CREATURES:Object.freeze(Object.keys(BASE)),VERSION:'world-art-master64-v3'});
 });
