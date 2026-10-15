@@ -29,6 +29,7 @@
    coat:custom.coat||COLORS.coat,leatherLight:custom.light||COLORS.leatherLight,
    hair:custom.hair||COLORS.hair,hairLight:custom.hairLight||COLORS.hairLight,
    skin:custom.skin||COLORS.skin,skinLight:custom.skinHighlight||COLORS.skinLight,
+   skinShadow:APP?.SKIN?.[a?.skin]?.[2]||COLORS.skinShadow,
    eye:custom.eyeColor||COLORS.eye,trim:custom.trim||COLORS.trim,
    steel:custom.metal||COLORS.steel,
    gem:custom.gem||'#a9e6ca',metal:custom.metal||COLORS.metal};
@@ -70,14 +71,25 @@
   }
   // Botas com biqueiras e joelheiras; passada legível em 6 quadros.
   const leftStride=Math.max(0,step),rightStride=Math.max(0,-step);
-  for(const [x,stride]of [[22,leftStride],[35,rightStride]]){
-   const y=57+stride;
+  for(const [baseX,stride]of [[22,leftStride],[35,rightStride]]){
+   const x=baseX+(walking?(baseX===22?Math.round(step*.5):-Math.round(step*.5)):0);
+   const y=57+Math.round(stride*.45)+(attacking&&n%5===3?(baseX===22?-2:1):0);
    runs(c.ink,[[y,x,11,16],[y+10,x-3,14,7]]);
    p('#44383b',x+2,y+2,7,10);p('#765541',x+2,y+2,4,5);
    p(c.leatherLight,x+3,y+4,3,2);p(c.ink,x,y+10,12,4);
    p('#795d49',x+2,y+11,8,3);p(c.trim,x+3,y+11,2,2);
    p(c.ink,x-3,y+15,15,4);p('#4e4444',x-1,y+15,11,2);
    p('#baa078',x,y+16,7,1);
+   // Recorte das botas, ilhós, joelheira e linhas de costura.
+   p(c.ink,x-3,y+15,3,3);p('#b1875d',x-1,y+17,10,1);
+   p('#382f35',x+1,y+2,9,4);p('#8b654b',x+2,y+3,6,3);
+   p(c.leatherLight,x+3,y+3,3,1);p(c.trim,x+4,y+7,3,2);
+   p('#fae0a7',x+5,y+7,1,1);
+   for(let lace=0;lace<3;lace++){
+    p(c.ink,x+3+lace,y+11+lace%2,2,1);
+    p('#b99670',x+4+lace,y+12+lace%2,1,1);
+   }
+   p('#c8a37c',x+1,y+14,5,1);
   }
   // Saia/jaqueta assimétrica com sombras internas e cintura de couro.
   runs(c.ink,[[35,17,32,15],[43,15,35,9],[51,17,32,8],
@@ -85,9 +97,18 @@
   runs(c.coat,[[36,19,28,15],[47,17,31,7],[54,20,12,10],
    [54,35,12,9]],0,bob);
   p(c.leatherShade,19,38+bob,5,18);p(c.leatherLight,23,37+bob,5,15);
-  p('#b08458',30,38+bob,14,17);
+  p(c.leatherLight,30,38+bob,14,17);
   p(c.ink,38,41+bob,3,11);p(c.leatherShade,40,43+bob,6,14);
   p('#5c443b',22,56+bob,9,8);p('#745541',36,56+bob,10,6);
+  // Painéis assimétricos do gibão: dobras e bordas recortadas.
+  runs(c.leatherShade,[[43,17,4,9],[46,19,4,8],[53,18,5,7],
+   [57,18,5,5],[58,44,5,7]],0,bob);
+  runs(c.coat,[[42,20,5,8],[49,19,5,6],[56,21,5,7],
+   [59,36,8,4],[61,42,4,4]],0,bob);
+  runs(c.leatherLight,[[38,20,3,9],[42,24,2,7],[48,23,5,2],
+   [55,20,6,2],[60,37,5,2]],0,bob);
+  p('#483338',30,57+bob,7,8);p('#b38b65',32,58+bob,2,6);
+  p(c.ink,27,61+bob,3,3);p('#c5976f',22,61+bob,5,1);
   // Bainha e rasgos irregulares da jaqueta.
   runs(c.ink,[[62,17,7,2],[63,27,6,3],[62,37,5,3],[64,44,6,2]],0,bob);
   p(c.trim,20,60+bob,4,2);p(c.leatherLight,37,60+bob,5,2);
@@ -113,6 +134,14 @@
   p(c.leatherLight,46,53+bob,9,3);p('#5e432e',46,58+bob,9,4);
   p(c.trim,49,56+bob,4,3);p(c.ink,50,57+bob,2,1);
   p('#b88e60',45,63+bob,8,1);
+  // Bolsa com aba, alça, costura e fecho, não um retângulo.
+  p('#453136',44,51+bob,2,15);p('#654333',46,54+bob,10,11);
+  p('#ad8053',46,54+bob,10,3);p('#d6a471',47,54+bob,7,2);
+  p(c.ink,48,58+bob,7,4);p('#9c6b49',49,58+bob,6,3);
+  p(c.trim,50,57+bob,4,3);p('#fff0ba',51,57+bob,2,1);
+  p('#332e36',48,63+bob,7,2);p('#bc9468',49,63+bob,5,1);
+  for(const [x,y]of [[46,59],[47,61],[54,60],[54,63]])
+   p('#e0b581',x,y+bob,1,1);
   // Braços: punhos sob luvas, ombreiras com volume.
   const armSwing=walking?Math.trunc(step/2):0;
   const swordLift=attacking?hit*3:0;
@@ -121,8 +150,13 @@
   p(c.coat,11,36+bob,8,16);p(c.leatherLight,11,37+bob,4,11);
   p('#d5a46b',12,38+bob,6,3);p(c.ink,12,49+bob,8,5);
   p('#906b4f',13,49+bob,6,4);p(c.trim,14,50+bob,3,2);
+  p('#47323a',10,43+bob,4,6);p('#b88558',14,42+bob,5,2);
+  p(c.trim,12,48+bob,6,2);p('#f0c997',13,48+bob,2,1);
+  p('#4c3536',14,52+bob,5,2);
   p(c.coat,48,36+bob,9,15);p(c.leatherLight,49,37+bob,6,5);
   p(c.leatherShade,53,42+bob,4,8);
+  p(c.trim,49,39+bob,6,2);p(c.ivory,50,39+bob,2,1);
+  p('#4d363a',53,43+bob,4,9);p('#bf9263',50,45+bob,3,5);
   p(c.ink,48,51+bob+armSwing,10,7);
   p('#92775a',50,52+bob+armSwing,7,4);p(c.trim,52,53+bob+armSwing,2,2);
   // Ombreiras sobrepostas, com rebites destacados.
@@ -130,6 +164,10 @@
   p('#9e7e50',13,33+bob,8,5);p(c.trim,13,34+bob,6,2);
   p('#c59a5f',48,34+bob,7,3);p(c.ivory,49,34+bob,4,1);
   p(c.ink,17,34+bob,2,3);p(c.ink,52,35+bob,2,2);
+  for(const [x,y]of [[14,34],[18,36],[48,34],[52,37],[20,45],[45,43]]){
+   p('#6d4c3b',x,y+bob,3,2);p(c.trim,x+1,y+bob,2,1);
+   p('#fff4cf',x+1,y+bob,1,1);
+  }
   // Pescoço e pescoceira; scarf vermelho sobre a armadura.
   p(c.ink,26,28+bob,15,10);
   p(c.skin,29,28+bob,10,7);
