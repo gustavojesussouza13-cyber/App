@@ -28,7 +28,7 @@ function sheet(role,dir=2,action='idle',frame=0,appearance=APP.DEFAULT){
 const sig=ops=>JSON.stringify(ops);
 test('três profissões utilizam mestre visual próprio, 64x80 nativo',()=>{
  assert.equal(ART.WIDTH,64);assert.equal(ART.HEIGHT,80);
- assert.equal(ART.VERSION,'heroes-master64-v5');
+ assert.equal(ART.VERSION,'heroes-master64-v6');
  assert.deepEqual(Object.keys(ART.ROLES).sort(),['arqueiro','curandeiro','guardiao']);
  for(const role of Object.keys(ART.ROLES)){
   assert.ok(sheet(role).filter(x=>x[0]==='rect').length>110,role+' sem clusters suficientes');
@@ -77,8 +77,8 @@ test('cores escolhidas pelo jogador afetam os sprites das três classes',()=>{
 test('mestra carregada antes do estúdio, sem alterar monstros, NPCs ou fortaleza 3D',()=>{
  const html=read('mundo.html'),studio=read('sprite-studio.js');
  assert.ok(html.indexOf('/heroes-master64.js')<html.indexOf('/sprite-studio.js'));
- assert.match(html,/heroes-master64\.js\?v=heroes-master64-v5/);
- assert.match(html,/sprite-studio\.js\?v=world-art-master64-v2/);
+ assert.match(html,/heroes-master64\.js\?v=heroes-master64-v6/);
+ assert.match(html,/sprite-studio\.js\?v=world-art-master64-v3/);
  assert.match(studio,/HEROES_MASTER\?\.draw/);
  assert.match(studio,/PILGRIM_MASTER\?\.draw/);
  assert.match(studio,/RETRO\?\.creature/);
