@@ -517,7 +517,15 @@ function create({ctx,W,H}){
  function prop(g,o){
   const size=o.w;drawShadow(g,o.x,o.y,size*.63);
   if(o.kind==='dungeon-prop'&&pixelDetail){pixelDetail.drawDungeonProp(g,o,cache.z);return}
-  if(o.kind==='biome-prop'&&pixelDetail){pixelDetail.drawSurfaceProp(g,o,cache.biome,cache.z);return}
+  if(o.kind==='biome-prop'){
+   const propBiome=o.chunkBiome||cache.biome;
+   const variant=Math.floor(noise(Math.round(o.x),Math.round(o.y),cache.z,96)*4);
+   // Pradaria, floresta, rio, deserto, montanha, ruínas, pântano,
+   // costa e cidade ganham monumentos diferentes, pintados 64x80.
+   if(worldProps?.draw(g,{kind:'biome-'+propBiome,x:o.x,y:o.y,
+     w:o.w,h:o.h,variant}))return;
+   if(pixelDetail){pixelDetail.drawSurfaceProp(g,o,cache.biome,cache.z);return}
+  }
   if(o.chunkBiome){if(landscape?.drawProp(g,o,o.chunkBiome))return}
   else if(landscape?.drawProp(g,o,cache.biome))return;
   // Objetos de estrada e cidade desenhados em grade nativa 64x80.
