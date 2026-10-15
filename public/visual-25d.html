@@ -54,8 +54,8 @@ button{cursor:pointer}button:hover{background:#365951}button:focus-visible{outli
 </aside></section>
 <footer>Protótipo experimental de renderização, não a versão publicada do MMORPG. Sem alterações em combate, progressão, saves ou fortalezas.</footer>
 </main>
+<script type="importmap">{"imports":{"/vendor/three.module.js":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js"}}</script>
 <script type="module">
-import {createWorld25D} from '/world-25d.mjs';
 const $=id=>document.getElementById(id),canvas=$('game'),ctx=canvas.getContext('2d',{alpha:true}),mini=$('mini'),mctx=mini.getContext('2d');
 const W=canvas.width,H=canvas.height,WIDTH=1536,HEIGHT=1024;
 const labels={peregrino:'Peregrino',guardiao:'Guardião',arqueiro:'Arqueiro',curandeiro:'Curandeiro'};
@@ -131,7 +131,7 @@ window.addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));
 canvas.addEventListener('pointerdown',e=>{drag={x:0,y:0,startX:e.clientX,startY:e.clientY};canvas.setPointerCapture(e.pointerId)});
 canvas.addEventListener('pointermove',e=>{if(!drag)return;drag.x=Math.max(-1,Math.min(1,(e.clientX-drag.startX)/42));drag.y=Math.max(-1,Math.min(1,(e.clientY-drag.startY)/42))});
 canvas.addEventListener('pointerup',()=>{drag=null});canvas.addEventListener('pointercancel',()=>{drag=null});
-try{view=createWorld25D({shell:$('stage'),canvas,width:W,height:H});$('status').textContent='✓ WebGL 2.5D pronto. Escolha um bioma ou mova o Peregrino.'}
+try{const {createWorld25D}=await import('/world-25d.mjs');view=createWorld25D({shell:$('stage'),canvas,width:W,height:H});$('status').textContent='✓ WebGL 2.5D pronto. Escolha um bioma ou mova o Peregrino.'}
 catch(e){console.warn(e);mode3d=false;$('status').textContent='WebGL indisponível: exibindo versão 2D de segurança.'}
 requestAnimationFrame(frame);
 </script>
