@@ -15,6 +15,7 @@ function create({ctx,W,H}){
  const pixelDetail=window.OsPeregrinosPixelDetail;
  const shade16=window.OsPeregrinosShade16;
  const landscape=window.OsPeregrinosLandscape16?.create({documentRef:document});
+ const procedural=window.PeregrinosProceduralWorld;
  const spriteStudio=window.OsPeregrinosSpriteStudio?.create({documentRef:document});
  const desktopSprites=window.OsPeregrinosDesktopSprites16?.create({windowRef:window});
  const desktopCharactersV3=window.OsPeregrinosDesktopCharactersV3?.create({windowRef:window,documentRef:document});
@@ -57,7 +58,9 @@ function create({ctx,W,H}){
     else key='grama_0'+(1+Math.floor(n*8));
     if(biome!=='dungeon'&&landscape){
      // Tiles de solo, grama e água consistentes com a colisão do servidor.
-     landscape.terrainTile(g,tx,ty,z,biome,k,(cx,cy)=>kind(cx,cy,z,biome));
+     // O microclima modifica somente a paleta: água, estradas e colisões permanecem intactas.
+     const tileBiome=procedural?.biomeAt(z,tx,ty,biome)||biome;
+     landscape.terrainTile(g,tx,ty,z,tileBiome,k,(cx,cy)=>kind(cx,cy,z,biome));
     }else if(biome==='dungeon'&&pixelDetail)pixelDetail.drawDungeonTile(g,tx,ty,z,k);
     else{
      cut(g,key,tx*TILE,ty*TILE,TILE,TILE);
@@ -109,6 +112,15 @@ function create({ctx,W,H}){
     }else{
       objs.push({x:gx,y:gy,kind:'biome-prop',w:62,h:72});
     }
+  }
+  // Cenografia por chunks: a seed reproduz exatamente as mesmas descobertas
+  // ao regressar à região, sem armazenar milhares de tiles no banco.
+  if(procedural)for(let cy=0;cy<ZH/procedural.CHUNK_SIZE;cy++)for(let cx=0;cx<ZW/procedural.CHUNK_SIZE;cx++){
+   for(const feature of procedural.chunkFeatures(z,cx,cy,biome)){
+    if(Math.abs(feature.y-pathY(feature.x,z))<83)continue;
+    if(kind(Math.floor(feature.x/TILE),Math.floor(feature.y/TILE),z,biome)==='water')continue;
+    objs.push(feature);
+   }
   }
   // The road contains recognisable Zelda-style original landmark sprites.
   for(let i=0;i<4;i++){
@@ -468,6 +480,20 @@ function create({ctx,W,H}){
    if(pixelDetail)pixelDetail.drawMonster(g,m,now);
   }
   if(dead)return;
+  // Runas originais por afinidade/raridade, desenhadas em pixels inteiros.
+  // Sem filtros que apaguem as silhuetas 64x80 ou interfiram na hitbox.
+  if(m.rarity==='Raro'||m.rarity==='Épico'||m.boss){
+   const colors={terra:'#a0c38e',bruma:'#a6dcdb',fogo:'#f6b474',aurora:'#e9d68f',gelo:'#b6d6f4',sombras:'#bd9cd6'};
+   const tint=colors[m.affinity]||'#e5cb8b';
+   const phase=Math.floor(now/280+(m.variant||0))%4;
+   g.save();g.fillStyle=tint;
+   for(let i=0;i<4;i++){
+    const xx=Math.round(x-23+i*14),yy=Math.round(y-11-((i+phase)%3)*4);
+    g.fillRect(xx,yy,3,3);
+    if(m.rarity==='Épico')g.fillRect(xx+2,yy-3,2,2);
+   }
+   g.restore();
+  }
   const top=studioMonster?(m.boss?(premiumPc?155:123):(premiumPc?100:85)):detailedBoss?121:illustrated?(m.boss?137:83):m.boss?90:56;
   const width=studioMonster?(m.boss?(premiumPc?124:98):(premiumPc?80:68)):detailedBoss?90:illustrated?(m.boss?110:62):m.boss?61:45;
   g.fillStyle='#231d1b';g.fillRect(x-width/2,y-top,width,7);
@@ -479,7 +505,7 @@ function create({ctx,W,H}){
   const size=o.w;drawShadow(g,o.x,o.y,size*.63);
   if(o.kind==='dungeon-prop'&&pixelDetail){pixelDetail.drawDungeonProp(g,o,cache.z);return}
   if(o.kind==='biome-prop'&&pixelDetail){pixelDetail.drawSurfaceProp(g,o,cache.biome,cache.z);return}
-  if(landscape?.drawProp(g,o,cache.biome))return;
+  if(landscape?.drawProp(g,o,o.chunkBiome||cache.biome))return;
   cut(g,o.key,o.x-o.w/2,o.y-o.h,o.w,o.h)
  }
  // Todos os portais reais são recebidos do servidor. Não existem portas falsas no cenário.
@@ -616,6 +642,13 @@ function create({ctx,W,H}){
     ctx.beginPath();ctx.arc(x+dx*19,y-30+dy*14,31,-Math.PI*.7,Math.PI*.18);ctx.stroke();ctx.restore();}
   for(const f of fx){const t=(now-f.t)/1100;ctx.save();ctx.font='bold 18px monospace';ctx.fillStyle=f.color;ctx.textAlign='center';ctx.shadowColor='#000';ctx.shadowBlur=5;ctx.fillText(f.text,f.x,f.y-45-30*t);ctx.restore()}
   ctx.restore();displayMap(ctx,opt);
+  if(procedural){
+   const piece=procedural.chunk(zone,Math.floor(x/procedural.CHUNK_SIZE),Math.floor(y/procedural.CHUNK_SIZE),biome);
+   ctx.save();ctx.fillStyle='#081b17d9';ctx.fillRect(13,H-35,252,22);
+   ctx.font='bold 12px monospace';ctx.fillStyle='#d8e9bb';ctx.textAlign='left';
+   ctx.fillText('✦ '+piece.name+' · setor '+(piece.cx+1)+','+(piece.cy+1),21,H-20);
+   ctx.restore();
+  }
   // Última camada visível, sem depender da profundidade do portal no mapa.
   portalInteractionHud(ctx,portals,{x,y});
  }
