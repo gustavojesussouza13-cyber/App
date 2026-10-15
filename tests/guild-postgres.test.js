@@ -66,7 +66,7 @@ test('PostgreSQL real persiste duas construções, recibos e moedas após sair e
 });
 
 
-test('PostgreSQL conserva obras em salas privadas, conclui ao voltar e restaura após novo login', {
+test('PostgreSQL preserva a capital da Praça Pública ao visitar outra sala e reiniciar', {
  skip:!process.env.TEST_POSTGRES_URL?'Requer PostgreSQL isolado':false
 },async t=>{
  const accountId='account:ci-private-room-build',guildName='Reino Vivo CI';
@@ -98,13 +98,13 @@ test('PostgreSQL conserva obras em salas privadas, conclui ao voltar e restaura 
  }});
  const privateInfo=hub.create({name:'Sala Teste das Obras',owner:accountId});
  const privateRoom=hub.get(privateInfo.id);
+ // Guildas e capitais permanentes são criadas apenas no mundo principal.
  const client={socket:{},authUser:{uid:accountId,username:'ArquitetoCI'},worldPlayer:null};
- privateRoom.world.join(client,{name:'ArquitetoCI'});
- hub.entered(privateRoom);
+ main.join(client,{name:'ArquitetoCI'});
  const p=client.worldPlayer;p.zone=1;p.save.zone=1;p.x=768;p.y=512;p.save.coins=11000;
- privateRoom.world.guild(p,{action:'create',name:guildName});
- assert.equal(p.save.guild,guildName,'criação da guilda deve ser aceita antes de fundar capital');
- const act=(action,now=Date.now())=>politics.action(privateRoom.world,p,action,{now,walkable:()=>true,portals:[],npcs:[]});
+ main.guild(p,{action:'create',name:guildName});
+ assert.equal(p.save.guild,guildName,'fundação permitida no mundo principal');
+ const act=(action,now=Date.now())=>politics.action(main,p,action,{now,walkable:()=>true,portals:[],npcs:[]});
  assert.equal(act({action:'place',x:768,y:512}),true);
  const key='f7b0b123-32aa-4123-8abc-abcdef123456';
  assert.equal(act({action:'construct',type:'farm',x:2,y:2,opKey:key,requestId:301}),true);
@@ -116,10 +116,18 @@ test('PostgreSQL conserva obras em salas privadas, conclui ao voltar e restaura 
  assert.equal(guildBefore.city.buildings.length,1);
  assert.equal(guildBefore.city.buildings[0].status,'building');
  const savedEndsAt=guildBefore.city.buildings[0].endsAt;
- // O cliente deixou a sala antes do prazo. O mundo principal continua sendo
- // responsável pela conclusão, mesmo sem nenhum jogador conectado nele.
- privateRoom.world.leave(client);hub.left(privateRoom);
+ main.leave(client);assert.equal(await store.flush(),true);
+ // Ao entrar em sala temporária a guilda fica adormecida: nem a capital
+ // nem a sua administração migram para o outro servidor.
+ const visitor={socket:{},authUser:{uid:accountId,username:'ArquitetoCI'},worldPlayer:null};
+ privateRoom.world.join(visitor,{name:'ArquitetoCI'});hub.entered(privateRoom);
+ assert.equal(visitor.worldPlayer.save.guild,null,'guilda não viaja com jogador');
+ assert.equal(visitor.worldPlayer.save.guildDormant,guildName);
+ privateRoom.world.guild(visitor.worldPlayer,{action:'create',name:'Guilda Intrusa'});
+ assert.equal(privateRoom.world.guilds.has('guilda intrusa'),false);
+ privateRoom.world.leave(visitor);hub.left(privateRoom);
  assert.equal(await store.flush(),true);
+ // Retornando à sala principal a mesma capital continua intacta.
  const localLogin={socket:{},authUser:{uid:accountId,username:'ArquitetoCI'},worldPlayer:null};
  main.join(localLogin,{name:'ArquitetoCI'});
  assert.equal(main.guilds.get('reino vivo ci').city.buildings[0].endsAt,savedEndsAt);
