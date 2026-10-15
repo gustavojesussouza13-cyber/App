@@ -49,7 +49,8 @@ test('A identidade do Peregrino 2.5D usa a arte pixel a pixel original e preserv
  assert.match(src,/WIDTH:W,HEIGHT:H/);
  assert.match(src,/walk'\?6|move==='walk'\?6/);
  assert.match(src,/cache.size>MAX_CACHE/);
- assert.match(art,/useAurora25d&&p\.role==='peregrino'/);
+ assert.match(art,/useAurora25d&&/);
+ assert.match(art,/OsPeregrinosHeroesAurora25D\?\.draw/);
  assert.match(art,/const studioHero=Boolean\(spriteStudio\?\.drawHero/);
  assert.match(html,/peregrino-aurora25d\.js/);
  assert.ok(fs.existsSync(path.join(__dirname,'..','public','peregrino-atlas25d.html')));
@@ -76,4 +77,21 @@ test('Modo 2.5D usa paleta Figma sem alterar HUD clássico e mantém Canvas WebG
  assert.match(engine,/ResizeObserver\(alignBackdrop\)/);
  assert.match(engine,/document\.addEventListener\('fullscreenchange',alignBackdrop\)/);
  assert.match(engine,/document\.removeEventListener\('fullscreenchange',alignBackdrop\)/);
+});
+
+test('As quatro classes mantêm silhuetas nativas de 64x80 na prévia e no MMO experimental',()=>{
+ const heroes=read('public/aurora-heroes25d.js');
+ const html=read('public/mundo.html');
+ const lab=read('public/visual-25d.html');
+ assert.match(heroes,/OsPeregrinosHeroesMaster64/);
+ assert.match(heroes,/OsPeregrinosAurora25D/);
+ assert.match(heroes,/ROLES=\['peregrino','guardiao','arqueiro','curandeiro'\]/);
+ assert.match(heroes,/WIDTH,HEIGHT,ROLES/);
+ assert.match(heroes,/ctx\.imageSmoothingEnabled=false/);
+ assert.match(heroes,/cache\.size>MAX_CACHE/);
+ assert.match(heroes,/const face=appearance/);
+ assert.match(html,/aurora-heroes25d\.js/);
+ assert.match(lab,/heroes-master64\.js/);
+ assert.match(lab,/pixel-atelier-v1\.js/);
+ assert.match(lab,/OsPeregrinosHeroesAurora25D\?\.draw/);
 });
