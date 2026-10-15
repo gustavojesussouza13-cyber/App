@@ -1303,7 +1303,14 @@ function canvasDraw(now,dt){
 }
 let lastFrameX=768,lastFrameY=512;
 let lastBorderRequest=0;
-let lastFrame=0;function tick(t){const dt=Math.min(.065,(t-lastFrame)/1000||0);lastFrame=t;
+// Limitar redesenhos: dispositivos móveis não precisam de 60 telas completas
+// por segundo para reproduzir a pixel art. Simulação usa o tempo real acumulado.
+const activeFrameMs=1000/(touchDevice?30:45);
+let lastFrame=0;function tick(t){
+ const frameBudget=document.hidden?250:
+  (!$('welcomeOverlay').hidden?83:activeFrameMs);
+ if(lastFrame&&t-lastFrame<frameBudget){requestAnimationFrame(tick);return}
+ const dt=Math.min(.065,(t-lastFrame)/1000||0);lastFrame=t;
  if(session.connected&&$('welcomeOverlay').hidden&&$('npcDialogue').hidden&&(typeof document==='undefined'||!document.querySelector('.city-dialog')?.open)){let dx=0,dy=0;if(moves.up.some(k=>keys.has(k)))dy--;if(moves.down.some(k=>keys.has(k)))dy++;if(moves.left.some(k=>keys.has(k)))dx--;if(moves.right.some(k=>keys.has(k)))dx++;
   if(touchDevice){const v=joystick.vector;dx+=v.x;dy+=v.y}
   if(dx||dy){const l=Math.hypot(dx,dy),vx=dx/l,vy=dy/l;
