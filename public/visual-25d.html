@@ -99,12 +99,16 @@ function drawActor(a,camX,camY,now){
   x:sx,y:sy,dir:a.dir??2,now,moving,action:moving?'walk':'idle',
   glow:a===player,scale:.73
  }));
- const premium=runway||Boolean(window.OsPeregrinosHeroesAurora25D?.draw(ctx,{
+ const approved=role!=='peregrino'&&Boolean(window.OsPeregrinosApprovedClasses25D?.draw(ctx,{
+  role,x:sx,y:sy,dir:a.dir??2,now,action:moving?'walk':'idle',
+  glow:a===player,scale:1.45
+ }));
+ const premium=runway||approved||Boolean(window.OsPeregrinosHeroesAurora25D?.draw(ctx,{
   role,x:sx,y:sy,dir:a.dir??2,action:moving?'walk':'idle',
   frame:Math.floor(now/130),glow:a===player,scale:1.32
  }));
  if(!premium){ctx.imageSmoothingEnabled=false;ctx.drawImage(pixelActor(role),sx-24,sy-60+lift,48,64);}
- const textY=runway?sy-123:premium?sy-115:sy-69+lift;
+ const textY=runway?sy-123:approved?sy-112:premium?sy-115:sy-69+lift;
  ctx.textAlign='center';ctx.font='bold 14px system-ui,Arial';ctx.lineWidth=3;ctx.strokeStyle='#101b23';
  ctx.strokeText(a.name||labels[$('role').value],sx,textY);
  ctx.fillStyle=a===player?'#ffe4a0':'#e9f2d9';ctx.fillText(a.name||labels[$('role').value],sx,textY);
