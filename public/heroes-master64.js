@@ -11,6 +11,7 @@
  if(root)root.OsPeregrinosHeroesMaster64=api;
 })(typeof globalThis!=='undefined'?globalThis:this,function(){
  const APP=typeof module==='object'&&module.exports?require('./appearance16'):globalThis.PeregrinosAppearance16;
+ const HAND=typeof module==='object'&&module.exports?require('./pixel-atelier-v1'):globalThis.OsPeregrinosHandPixels;
  const ROLES=Object.freeze({
   guardiao:{ink:'#1d2534',deep:'#273c59',shadow:'#385778',body:'#557ea1',
    light:'#8cb5d0',shine:'#e6f0ed',gold:'#efc56e',goldShadow:'#906b42',
@@ -600,10 +601,11 @@
    sheen(c.light,[[23,49,3,9],[42+sway,60,2,6]]);
    sheen(c.gold,[[25,53,3,2],[37,57,3,1]]);
   }
+  HAND?.hero(g,{role,dir,action,frame:f,colors:pc});
   if(action==='hurt'){p('#ffe0b1',19,35+bob,18,3);p('#e68c77',49,44+bob,3,4)}
   if(action==='death')g.restore();
   if(dir===3)g.restore();
   return true;
  }
- return Object.freeze({WIDTH,HEIGHT,ROLES,draw,VERSION:'heroes-master64-v5'});
+ return Object.freeze({WIDTH,HEIGHT,ROLES,draw,VERSION:'heroes-master64-v6'});
 });
