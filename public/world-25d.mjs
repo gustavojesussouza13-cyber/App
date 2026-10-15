@@ -141,7 +141,7 @@ export function createWorld25D({shell,canvas,width=960,height=576}) {
   renderer.domElement.id='world25dBackdrop';
   Object.assign(renderer.domElement.style,{
     position:'absolute',left:'0',top:'0',width:'100%',height:'100%',
-    pointerEvents:'none',zIndex:'0',display:'block'
+    pointerEvents:'none',zIndex:'0',display:'block',imageRendering:'auto'
   });
   shell.style.position='relative';
   canvas.style.position='relative';
