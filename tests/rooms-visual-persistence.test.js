@@ -10,11 +10,11 @@ const read=file=>fs.readFileSync(path.join(root,file),'utf8');
 
 test('homepage mostra as quantidades corretas, sem apresentar dez jogadores como limite global',()=>{
  const html=read('index.html'),js=read('site.js');
- assert.match(html,/40<\/b><span>REGIÕES EXPLORÁVEIS/);
+ assert.match(html,/40 \+ ∞<\/b><span>REGIÕES E FRONTEIRAS/);
  assert.match(html,/40<\/b><span>CAPÍTULOS DA HISTÓRIA/);
  assert.match(html,/id="onlineNumber".*?<span>JOGADORES ONLINE/);
  assert.doesNotMatch(html,/CAPÍTULOS ONLINE|10 JOGADORES ·|SUBSOLOS EXPLORÁVEIS/);
- assert.match(html,/ATÉ 60 POR SALA/);
+ assert.match(html,/60 POR SALA/);
  assert.match(js,/number\.textContent=String\(d\.online\|\|0\)/);
  assert.doesNotMatch(js,/number\.textContent=d\.online\+'\/'/);
 });
@@ -24,7 +24,7 @@ test('lobby de salas públicas não oferece senhas e mantém seleção, criaçã
   assert.match(html,new RegExp('id="'+id+'"'));
  assert.match(html,/até 60 jogadores/);
  assert.match(html,/último jogador sai/);
- assert.match(html,/mmo\.js\?v=surface16-v1/);
+ assert.match(html,/mmo\.js\?v=performance-world-v1/);
  assert.match(client,/fetch\('\/api\/rooms'/);
  assert.match(client,/roomId:selectedRoomId/);
  assert.doesNotMatch(client,/roomPassword:selectedRoomPassword|wrong_room_password|roomSwitchNewPassword|newRoomPassword/);

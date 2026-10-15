@@ -21,7 +21,9 @@ function create({ctx,W,H}){
  const desktopCharactersV3=window.OsPeregrinosDesktopCharactersV3?.create({windowRef:window,documentRef:document});
  const desktopBestiary=window.OsPeregrinosDesktopBestiary16?.create({windowRef:window});
  let cache=null,objects=[],artReady=false;
- atlas.addEventListener('load',()=>{artReady=true;cache=null});
+ // Três últimas regiões: o retorno pelo atlas não reconstrói milhares de tiles.
+ const terrainCache=new Map();
+ atlas.addEventListener('load',()=>{artReady=true;cache=null;terrainCache.clear()});
  atlas.addEventListener('error',()=>{artReady=false});
  function cut(g,key,x,y,w,h){const p=SPRITES[key];if(!artReady||!p)return false;g.drawImage(atlas,p[0],p[1],p[2],p[3],Math.round(x),Math.round(y),Math.round(w??p[2]),Math.round(h??p[3]));return true}
  function piece(g,key,sx,sy,sw,sh,x,y,w,h){const p=SPRITES[key];if(!artReady||!p)return false;g.drawImage(atlas,p[0]+sx,p[1]+sy,sw,sh,Math.round(x),Math.round(y),Math.round(w),Math.round(h));return true}
@@ -46,6 +48,13 @@ function create({ctx,W,H}){
  function terrain(z,biome){
   // A moldura do desktop acompanha o bioma; não altera controles mobile.
   document.documentElement.dataset.pixelFamily=pixelDetail?.styleFor(z)?.id||biome;
+  const key=z+':'+biome;
+  const previous=terrainCache.get(key);
+  if(previous){terrainCache.delete(key);terrainCache.set(key,previous);cache=previous;objects=previous.objects;return}
+  // Uma leitura de clima por chunk (8x8 tiles), não uma por pixel/tile.
+  const chunkBiomes=[];
+  if(procedural)for(let cy=0;cy<ZH/procedural.CHUNK_SIZE;cy++)for(let cx=0;cx<ZW/procedural.CHUNK_SIZE;cx++)
+   chunkBiomes.push(procedural?.biomeAt(z,cx*8+4,cy*8+4,biome)||biome);
   const gcanvas=document.createElement('canvas');gcanvas.width=ZW;gcanvas.height=ZH;
   const g=gcanvas.getContext('2d',{alpha:false});g.imageSmoothingEnabled=false;
   g.fillStyle='#406648';g.fillRect(0,0,ZW,ZH);
@@ -59,7 +68,7 @@ function create({ctx,W,H}){
     if(biome!=='dungeon'&&landscape){
      // Tiles de solo, grama e água consistentes com a colisão do servidor.
      // O microclima modifica somente a paleta: água, estradas e colisões permanecem intactas.
-     const tileBiome=procedural?.biomeAt(z,tx,ty,biome)||biome;
+     const tileBiome=procedural?chunkBiomes[Math.floor(ty/8)*6+Math.floor(tx/8)]:biome;
      if(tileBiome===biome)landscape.terrainTile(g,tx,ty,z,biome,k,(cx,cy)=>kind(cx,cy,z,biome));
      else landscape.terrainTile(g,tx,ty,z,tileBiome,k,(cx,cy)=>kind(cx,cy,z,biome));
     }else if(biome==='dungeon'&&pixelDetail)pixelDetail.drawDungeonTile(g,tx,ty,z,k);
@@ -139,7 +148,9 @@ function create({ctx,W,H}){
   }
   if(biome==='city')for(let j=0;j<4;j++)objs.push({key:'tenda',x:410+j*160,y:pathY(410+j*160,z)-143,kind:'prop',w:93,h:74});
   objs.sort((a,b)=>a.y-b.y);objects=objs;
-  cache={z,biome,canvas:gcanvas};
+  cache={z,biome,canvas:gcanvas,objects:objs};
+  terrainCache.set(key,cache);
+  if(terrainCache.size>3)terrainCache.delete(terrainCache.keys().next().value);
  }
  function frameSprite(g,key,dir,step,x,y,w,h){const row=clamp((dir|0),0,3),col=clamp(step|0,0,3);piece(g,key,col*40,row*48,40,48,x-w/2,y-h,w,h)}
  function drawShadow(g,x,y,w=42){

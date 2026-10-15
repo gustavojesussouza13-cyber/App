@@ -22,17 +22,17 @@ const get=(route,host)=>new Promise((resolve,reject)=>{
    res.on('data',s=>body+=s);res.on('end',()=>resolve(body));res.on('error',reject);
   });req.on('error',reject);
 });
-test('site keeps existing canonical until domain is connected',async()=>{
+test('site displays its connected canonical domain also through the Render fallback host',async()=>{
  await ready();
  const html=await get('/','os-peregrinos-online.onrender.com');
- assert.match(html,/canonical" href="https:\/\/os-peregrinos-online\.onrender\.com\//);
+  assert.match(html,/canonical" href="https:\/\/www\.cronicasdaaurora\.com\.br\//);
  const sitemap=await get('/sitemap.xml','os-peregrinos-online.onrender.com');
  assert.match(sitemap,/os-peregrinos-online\.onrender\.com/);
 });
 test('registered domain is recognized for canonicals, sitemap, robots and privacy',async()=>{
  for(const host of ['cronicasdaaurora.com.br','www.cronicasdaaurora.com.br']){
   const html=await get('/',''+host);
-  assert.match(html,/canonical" href="https:\/\/cronicasdaaurora\.com\.br\//);
+  assert.match(html,/canonical" href="https:\/\/www\.cronicasdaaurora\.com\.br\//);
   const sitemap=await get('/sitemap.xml',host);
   assert.match(sitemap,/https:\/\/cronicasdaaurora\.com\.br\/privacidade\.html/);
   const robots=await get('/robots.txt',host);
@@ -43,6 +43,6 @@ test('registered domain is recognized for canonicals, sitemap, robots and privac
 });
 test('untrusted host header cannot inject SEO domain',async()=>{
  const html=await get('/','attacker.example');
- assert.match(html,/canonical" href="https:\/\/os-peregrinos-online\.onrender\.com\//);
+  assert.match(html,/canonical" href="https:\/\/www\.cronicasdaaurora\.com\.br\//);
  assert.doesNotMatch(html,/attacker\.example/);
 });

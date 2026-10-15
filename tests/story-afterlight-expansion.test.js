@@ -109,10 +109,11 @@ test('portal público, história, guia e sobre divulgam números reais e salvame
  const landing=html('index.html'),historia=html('historia.html'),
   guia=html('guia.html'),sobre=html('sobre.html'),privacy=html('privacidade.html'),
   world=html('mundo.html');
- for(const v of ['40 regiões','576 criaturas','56 personagens','40 capítulos','24 subsolos'])
+ for(const v of ['40 regiões históricas','576 criaturas','56 NPCs','40 capítulos','24 subsolos'])
   assert.ok(landing.includes(v),'informação principal ausente: '+v);
- assert.match(landing,/REGIÃO 01 \/ 40/);
- assert.doesNotMatch(landing,/240 monstros|16 regiões|16 capítulos|32 NPCs/i);
+ assert.match(landing,/REGIÃO HISTÓRICA 01/);
+ assert.doesNotMatch(landing,/240 monstros|32 NPCs/i);
+ assert.match(landing,/16 REGIÕES PARA FORTALEZAS/);
  assert.match(historia,/40 capítulos e 56 NPCs/);
  assert.match(historia,/O Hino de Muitas Vozes/);
  assert.match(sobre,/40 regiões/);
@@ -120,5 +121,5 @@ test('portal público, história, guia e sobre divulgam números reais e salvame
  assert.match(guia,/Subsolo 3 de cada masmorra/);
  assert.match(privacy,/token temporário para cada abertura da página/);
  assert.match(world,/character-atelier16\.js\?v=vigilia-56-v1/);
- assert.match(world,/mmo\.js\?v=surface16-v1/);
+ assert.match(world,/mmo\.js\?v=performance-world-v1/);
 });
