@@ -5,6 +5,10 @@ on:
     paths:
       - 'public/world-25d.mjs'
       - 'public/peregrino-aurora25d.js'
+      - 'public/peregrino-runway25d.js'
+      - 'public/peregrino-runway-preview.html'
+      - 'public/assets/peregrino/peregrino-runway-walk.png'
+      - 'public/assets/peregrino/peregrino-runway-walk.json'
       - 'public/aurora-heroes25d.js'
       - 'public/heroes-master64.js'
       - 'public/peregrino-artisan64.js'
@@ -38,6 +42,7 @@ jobs:
           done
           curl -fsS http://127.0.0.1:3106/peregrino-aurora25d.js >/dev/null
           curl -fsS http://127.0.0.1:3106/aurora-heroes25d.js >/dev/null
+          curl -fsS http://127.0.0.1:3106/assets/peregrino/peregrino-runway-walk.png >/dev/null
       - name: Testar preview 2.5D do commit (sem esperar deploy Render)
         env:
           WORLD25D_URL: http://127.0.0.1:3106/visual-25d.html
@@ -53,4 +58,5 @@ jobs:
           path: |
             /tmp/os-peregrinos-25d-browser.png
             /tmp/os-peregrinos-peregrino-atlas.png
+            /tmp/peregrino-runway-16-quadros-reais.png
           if-no-files-found: ignore
