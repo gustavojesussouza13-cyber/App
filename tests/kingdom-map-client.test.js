@@ -31,7 +31,7 @@ test('lobby e indicador mostram até 60 por sala, com arte e cliente versionados
  assert.match(page,/CRIAR SALA · 60 VAGAS/);
  assert.match(page,/id="playerCount">0\/60/);
  assert.match(page,/mmo\.js\?v=chat-drawer-v1/);
- assert.match(page,/art16\.js\?v=chat-drawer-v1/);
+ assert.match(page,/art16\.js\?v=performance-world-v1/);
  assert.match(js,/session\.online=n;.*?n\+'\/60'/);
 });
 test('servidor transmite a política atual e base de guildas na própria região',t=>{
