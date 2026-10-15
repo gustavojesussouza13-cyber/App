@@ -5,6 +5,7 @@ const fs=require('node:fs');
 const path=require('node:path');
 const vm=require('node:vm');
 const {World,ZONES}=require('../world-engine');
+const frontier=require('../frontier-world');
 
 const script=fs.readFileSync(path.join(__dirname,'../public/mmo.js'),'utf8');
 const art=fs.readFileSync(path.join(__dirname,'../public/art16.js'),'utf8');
@@ -66,7 +67,7 @@ test('Toda região do jogo fornece portais após troca ou novo login',()=>{
   h.context.processWelcome(msg);
   assert.ok(h.state.portals.length>0,'região '+z+' não pode ficar sem passagens');
   assert.deepEqual(h.state.portals,msg.portals);
-  assert.ok(h.state.portals.every(p=>p.zone>=0&&p.zone<ZONES.length));
+  assert.ok(h.state.portals.every(p=>frontier.isZone(p.zone)));
  }
 });
 test('O renderizador desenha os portais recebidos do servidor e a interação E permanece por cima',()=>{
