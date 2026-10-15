@@ -1,0 +1,239 @@
+'use strict';
+/**
+ * Os Peregrinos — mundo aberto 2.5D (renderizador experimental).
+ * Plano X/Z corresponde exatamente ao X/Y da simulação 2D.
+ * Câmera ortográfica vertical: não muda controles, colisões ou a simulação.
+ * Este arquivo nunca importa nem altera os módulos das fortalezas de guilda.
+ */
+import * as THREE from '/vendor/three.module.js';
+
+const ZONE_WIDTH = 1536;
+const ZONE_HEIGHT = 1024;
+const roadY = (x, zone) => 496 + Math.sin((x + zone * 117) / 225) * 54 +
+  Math.sin(x / 79 + zone * 2) * 12;
+const palette = {
+  meadow:['#647d57','#77946a','#ceb28a'],
+  forest:['#385848','#64856a','#bcab83'],
+  river:['#506b5d','#73918c','#ccb698'],
+  desert:['#bca37b','#d8bd8b','#a88a64'],
+  mountain:['#66706e','#8e9896','#b4a68a'],
+  ruins:['#60695c','#7f8270','#b3a68d'],
+  swamp:['#455e54','#65786a','#9f9980'],
+  coast:['#729187','#8dab9c','#dfceb0'],
+  city:['#7b8576','#a2a696','#c0b6a0'],
+  dungeon:['#454a50','#565d60','#878079']
+};
+const biomeNames = {
+  pradaria:'meadow',floresta:'forest',rio:'river',deserto:'desert',
+  montanha:'mountain',ruinas:'ruins',pantano:'swamp',costa:'coast',
+  cidade:'city',masmorra:'dungeon'
+};
+function rng(seed) {
+  let v = (seed >>> 0) || 1;
+  return () => ((v = (Math.imul(v, 1664525) + 1013904223) >>> 0) / 4294967296);
+}
+function groundTexture(zone, colors) {
+  const size = 256, canvas = document.createElement('canvas');
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  const rnd = rng(901 + zone * 701);
+  ctx.fillStyle = colors[0];
+  ctx.fillRect(0, 0, size, size);
+  for (let i = 0; i < 3500; i++) {
+    const x = rnd() * size, y = rnd() * size;
+    ctx.fillStyle = rnd() > .53 ? colors[1] : '#25342f';
+    ctx.globalAlpha = .10 + rnd() * .18;
+    ctx.fillRect(x | 0, y | 0, 1 + (rnd() * 4 | 0), 1 + (rnd() * 3 | 0));
+  }
+  ctx.globalAlpha = 1;
+  const t = new THREE.CanvasTexture(canvas);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(9, 6);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 2;
+  return t;
+}
+function roadGeometry(zone, width = 38) {
+  const vertices = [], indices = [];
+  const count = 96;
+  for(let i=0;i<=count;i++) {
+    const x = i * ZONE_WIDTH / count;
+    const z = roadY(x, zone);
+    vertices.push(x,.24,z-width,x,.24,z+width);
+    if(i<count){const n=i*2;indices.push(n,n+1,n+2,n+1,n+3,n+2);}
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices,3));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  return geometry;
+}
+function addBox(group,w,h,d,x,y,z,color) {
+  const mesh = new THREE.Mesh(
+    new THREE.BoxGeometry(w,h,d),
+    new THREE.MeshStandardMaterial({color,roughness:.94,metalness:0})
+  );
+  mesh.position.set(x,y,z);
+  group.add(mesh);
+  return mesh;
+}
+function addTree(group,x,z,rand,colors) {
+  const stem = addBox(group,5,13,5,x,7,z,'#655244');
+  stem.rotation.y = rand()*Math.PI;
+  const canopy = new THREE.Mesh(
+    new THREE.IcosahedronGeometry(17+rand()*11,1),
+    new THREE.MeshStandardMaterial({color:rand()>.5?colors[1]:'#436952',roughness:1,flatShading:true})
+  );
+  canopy.scale.set(1.0+rand()*.2,.75+rand()*.2,.95+rand()*.2);
+  canopy.position.set(x,20,z);
+  group.add(canopy);
+  const shadow = new THREE.Mesh(
+    new THREE.CircleGeometry(20,20),
+    new THREE.MeshBasicMaterial({color:'#152c23',transparent:true,opacity:.17,depthWrite:false})
+  );
+  shadow.rotation.x=-Math.PI/2;
+  shadow.position.set(x,.26,z);
+  group.add(shadow);
+}
+function addHouse(group,x,z,rand) {
+  const width=38+rand()*19, depth=36+rand()*20;
+  addBox(group,width,15,depth,x,7.5,z,'#c8bca0');
+  const roof = new THREE.Mesh(
+    new THREE.ConeGeometry(Math.max(width,depth)*.76,16,4),
+    new THREE.MeshStandardMaterial({color:rand()>.5?'#526c88':'#976c5c',roughness:.91,flatShading:true})
+  );
+  roof.rotation.y=Math.PI/4;
+  roof.position.set(x,22,z);
+  group.add(roof);
+}
+function addWater(group,zone,mode) {
+  const mat = new THREE.MeshStandardMaterial({
+    color:'#3991aa',roughness:.3,metalness:.16,
+    transparent:true,opacity:.86,depthWrite:false
+  });
+  if(mode==='coast'){
+    const water = new THREE.Mesh(new THREE.PlaneGeometry(ZONE_WIDTH,320),mat);
+    water.rotation.x=-Math.PI/2;
+    water.position.set(ZONE_WIDTH/2,.19,860);
+    group.add(water);
+  } else {
+    for(let i=0;i<26;i++) {
+      const z=(i+.5)*ZONE_HEIGHT/26;
+      const x=420+92*Math.sin(z/150+zone);
+      const water = new THREE.Mesh(new THREE.PlaneGeometry(118,ZONE_HEIGHT/26+2),mat);
+      water.rotation.x=-Math.PI/2;
+      water.position.set(x,.18,z);
+      group.add(water);
+    }
+  }
+}
+export function createWorld25D({shell,canvas,width=960,height=576}) {
+  if (!shell || !canvas) throw Error('O Canvas 2D e seu contêiner são obrigatórios.');
+  const renderer = new THREE.WebGLRenderer({
+    alpha:false,antialias:true,powerPreference:'default',
+    preserveDrawingBuffer:false
+  });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.5));
+  renderer.setSize(width,height,false);
+  renderer.outputColorSpace=THREE.SRGBColorSpace;
+  renderer.toneMapping=THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure=1.20;
+  renderer.domElement.id='world25dBackdrop';
+  Object.assign(renderer.domElement.style,{
+    position:'absolute',left:'0',top:'0',width:'100%',height:'100%',
+    pointerEvents:'none',zIndex:'0',display:'block'
+  });
+  shell.style.position='relative';
+  canvas.style.position='relative';
+  canvas.style.zIndex='1';
+  canvas.style.background='transparent';
+  shell.insertBefore(renderer.domElement,canvas);
+
+  const scene=new THREE.Scene();
+  scene.background=new THREE.Color('#506c63');
+  const camera=new THREE.OrthographicCamera(-width/2,width/2,height/2,-height/2,.1,2200);
+  camera.up.set(0,0,-1);
+  const ambient=new THREE.HemisphereLight('#e8f2df','#465447',2.1);
+  const sun=new THREE.DirectionalLight('#ffe9bd',1.8);
+  sun.position.set(-240,600,190);
+  scene.add(ambient,sun);
+  let layer=null,activeZone=NaN,activeBiome='',disposed=false,night=false;
+  function rebuild(zone,biome) {
+    if(layer){
+      scene.remove(layer);
+      layer.traverse(o=>{
+        if(o.geometry)o.geometry.dispose();
+        if(o.material){
+          for(const mat of [o.material].flat()){
+            if(mat.map)mat.map.dispose();
+            mat.dispose();
+          }
+        }
+      });
+    }
+    layer=new THREE.Group();
+    scene.add(layer);
+    const colors=palette[biome]||palette.meadow;
+    scene.background=new THREE.Color(biome==='dungeon'?'#333941':'#71918c');
+    const ground=new THREE.Mesh(
+      new THREE.PlaneGeometry(ZONE_WIDTH,ZONE_HEIGHT),
+      new THREE.MeshStandardMaterial({map:groundTexture(zone,colors),roughness:1})
+    );
+    ground.rotation.x=-Math.PI/2;
+    ground.position.set(ZONE_WIDTH/2,0,ZONE_HEIGHT/2);
+    layer.add(ground);
+    const road=new THREE.Mesh(
+      roadGeometry(zone),
+      new THREE.MeshStandardMaterial({color:colors[2],roughness:1,side:THREE.DoubleSide})
+    );
+    layer.add(road);
+    if(biome==='river'||biome==='coast')addWater(layer,zone,biome);
+    const random=rng((zone+3)*102449);
+    const count=biome==='city'?95:biome==='desert'?55:128;
+    for(let i=0;i<count;i++){
+      const x=25+random()*(ZONE_WIDTH-50),z=25+random()*(ZONE_HEIGHT-50);
+      if(Math.abs(z-roadY(x,zone))<75)continue;
+      if(biome==='coast'&&z>700)continue;
+      if(biome==='river'&&Math.abs(x-(420+92*Math.sin(z/150+zone)))<105)continue;
+      if(biome==='city'&&random()<.40)addHouse(layer,x,z,random);
+      else if(biome==='desert'||biome==='dungeon'){
+        addBox(layer,9+random()*23,3+random()*15,10+random()*18,x,6,z,
+          biome==='desert'?'#a99370':'#687271');
+      } else addTree(layer,x,z,random,colors);
+    }
+    activeZone=zone;
+    activeBiome=biome;
+  }
+  function render({zone=0,biome='pradaria',cameraX=0,cameraY=0,now=0}={}) {
+    if(disposed)return false;
+    const selected=biomeNames[biome]||biome;
+    if(zone!==activeZone||selected!==activeBiome)rebuild(zone,selected);
+    const cx=cameraX+width/2,cz=cameraY+height/2;
+    camera.position.set(cx,1350,cz);
+    camera.lookAt(cx,0,cz);
+    const pulse=Math.sin(now/10000)*.09;
+    ambient.intensity=night?.77:1.8+pulse;
+    sun.intensity=night?.42:1.6+pulse;
+    renderer.toneMappingExposure=night?.78:1.14;
+    renderer.render(scene,camera);
+    return true;
+  }
+  function setNight(value){night=Boolean(value);}
+  function dispose(){
+    if(disposed)return;
+    disposed=true;
+    if(layer){
+      layer.traverse(o=>{
+        o.geometry?.dispose();
+        if(o.material)for(const mat of [o.material].flat()){mat.map?.dispose();mat.dispose();}
+      });
+      scene.remove(layer);
+    }
+    renderer.dispose();
+    renderer.domElement.remove();
+    canvas.style.zIndex='';
+    canvas.style.background='';
+  }
+  window.addEventListener('pagehide',dispose,{once:true});
+  return {render,setNight,dispose,canvas:renderer.domElement};
+}
