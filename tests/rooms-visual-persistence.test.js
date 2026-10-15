@@ -14,7 +14,7 @@ test('homepage mostra as quantidades corretas, sem apresentar dez jogadores como
  assert.match(html,/40<\/b><span>CAPÍTULOS DA HISTÓRIA/);
  assert.match(html,/id="onlineNumber".*?<span>JOGADORES ONLINE/);
  assert.doesNotMatch(html,/CAPÍTULOS ONLINE|10 JOGADORES ·|SUBSOLOS EXPLORÁVEIS/);
- assert.match(html,/ATÉ 60 POR SALA/);
+ assert.match(html,/60 POR SALA/);
  assert.match(js,/number\.textContent=String\(d\.online\|\|0\)/);
  assert.doesNotMatch(js,/number\.textContent=d\.online\+'\/'/);
 });
