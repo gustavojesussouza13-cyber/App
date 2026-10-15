@@ -4,7 +4,8 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const path=require('node:path');
 const vm=require('node:vm');
-const ARMY=require('../public/army-pixel16');
+require('../public/army-pixel16');
+const ARMY=globalThis.PeregrinosArmyPixel16;
 function mock(){
  const calls=[],motions=[];
  return{
