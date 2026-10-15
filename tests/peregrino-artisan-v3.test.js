@@ -87,7 +87,7 @@ test('estudio prioritiza o novo mestre; outras classes nao usam o Peregrino',()=
  assert.ok(studioSource.indexOf('PILGRIM_ARTISAN?.draw')<studioSource.indexOf('PILGRIM_MASTER?.draw'));
  assert.ok(html.indexOf('peregrino-artisan64.js')<html.indexOf('sprite-studio.js'));
  assert.match(html,/peregrino-artisan64\.js\?v=peregrino-artisan64-v4/);
- assert.match(html,/sprite-studio\.js\?v=world-art-master64-v3/);
+ assert.match(html,/sprite-studio\.js\?v=world-art-master64-v4/);
  const created=[];
  const studio=STUDIO.create({documentRef:{createElement:()=>({
   width:0,height:0,getContext:()=>{
