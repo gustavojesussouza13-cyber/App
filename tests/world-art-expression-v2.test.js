@@ -35,7 +35,7 @@ function drawNpc(style,options={}){
 }
 const signature=p=>JSON.stringify(p.calls);
 test('chefes lendários têm anatomias individuais em vez de apenas a mesma coroa',()=>{
- assert.equal(ART.VERSION,'world-art-master64-v3');
+ assert.equal(ART.VERSION,'world-art-master64-v4');
  const expected=[
   ['esqueleto','#af85d7'],['aranha','#da8594'],
   ['golem','#8eefff'],['dragao','#d85743']
@@ -100,7 +100,7 @@ test('efeitos preservam a grade e módulo também carrega no navegador',()=>{
  const script=fs.readFileSync(path.join(__dirname,'../public/world-art-master64.js'),'utf8');
  const scope={OsPeregrinosCharacterAtelier:ATELIER};
  vm.createContext(scope);vm.runInContext(script,scope);
- assert.equal(scope.OsPeregrinosWorldMaster64.VERSION,'world-art-master64-v3');
+ assert.equal(scope.OsPeregrinosWorldMaster64.VERSION,'world-art-master64-v4');
  assert.doesNotMatch(script,/requestAnimationFrame|setInterval|localStorage|WebSocket|fetch\(/);
 });
 test('integração mantém os quatro heróis e fortaleza tridimensional sem mudanças',()=>{
@@ -111,7 +111,7 @@ test('integração mantém os quatro heróis e fortaleza tridimensional sem muda
  assert.match(studio,/HEROES_MASTER\?\.draw/);
  assert.match(studio,/WORLD_MASTER\?\.creature/);
  assert.match(studio,/WORLD_MASTER\?\.npc/);
- assert.match(html,/world-art-master64\.js\?v=world-art-master64-v3/);
- assert.match(html,/sprite-studio\.js\?v=world-art-master64-v3/);
+ assert.match(html,/world-art-master64\.js\?v=world-art-master64-v4/);
+ assert.match(html,/sprite-studio\.js\?v=world-art-master64-v4/);
  assert.match(html,/guild-city-3d\.js/);
 });
