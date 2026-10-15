@@ -54,3 +54,26 @@ test('A identidade do Peregrino 2.5D usa a arte pixel a pixel original e preserv
  assert.match(html,/peregrino-aurora25d\.js/);
  assert.ok(fs.existsSync(path.join(__dirname,'..','public','peregrino-atlas25d.html')));
 });
+
+test('Cenário ortográfico inclui vegetação em instâncias e marco de Aurora sem hitboxes',()=>{
+ const renderer=read('public/world-25d.mjs');
+ assert.match(renderer,/function addMeadowDetails/);
+ assert.match(renderer,/THREE\.InstancedMesh/);
+ assert.match(renderer,/function addAuroraShrine/);
+ assert.match(renderer,/zone===0&&\(biome==='meadow'\|\|biome==='city'\)/);
+ assert.match(renderer,/shrine\.crystal\.rotation\.y=/);
+ assert.match(renderer,/camera\.lookAt\(cx,0,cz\)/);
+});
+test('Modo 2.5D usa paleta Figma sem alterar HUD clássico e mantém Canvas WebGL alinhado',()=>{
+ const mmo=read('public/mmo.js');
+ const html=read('public/mundo.html');
+ const styles=read('public/mmo-aurora25d.css');
+ const engine=read('public/world-25d.mjs');
+ assert.match(html,/mmo-aurora25d\.css/);
+ assert.match(mmo,/document\.body\.classList\.toggle\('mmo-aurora25d',world25dActive\)/);
+ assert.match(styles,/body\.mmo-aurora25d \.sidebar \.panel/);
+ assert.match(styles,/#canvasShell:fullscreen #world25dBackdrop/);
+ assert.match(engine,/ResizeObserver\(alignBackdrop\)/);
+ assert.match(engine,/document\.addEventListener\('fullscreenchange',alignBackdrop\)/);
+ assert.match(engine,/document\.removeEventListener\('fullscreenchange',alignBackdrop\)/);
+});
