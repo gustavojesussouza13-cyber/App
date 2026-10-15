@@ -4,7 +4,7 @@
 const $=id=>document.getElementById(id);
 const cvs=$('game'),ctx=cvs.getContext('2d',{alpha:false});ctx.imageSmoothingEnabled=false;
 const W=cvs.width,H=cvs.height,ZONE_W=1536,ZONE_H=1024;
-const session={id:'',name:'',connected:false,characters:null,online:0,zones:[],portals:[],shop:{},relics:{},quests:[],npcs:[],merchants:[],story:null,achievements:{},monsters:new Map(),players:new Map(),zone:0,x:768,y:512,dir:2,target:null,partyInvite:null,guildInvite:null,tradeOffer:null,role:'peregrino',cameraX:0,cameraY:0,formClass:'peregrino',appearance:null,formAppearance:null};
+const session={id:'',name:'',connected:false,region:null,characters:null,online:0,zones:[],portals:[],shop:{},relics:{},quests:[],npcs:[],merchants:[],story:null,achievements:{},monsters:new Map(),players:new Map(),zone:0,x:768,y:512,dir:2,target:null,partyInvite:null,guildInvite:null,tradeOffer:null,role:'peregrino',cameraX:0,cameraY:0,formClass:'peregrino',appearance:null,formAppearance:null};
 const keys=new Set(),moves={up:['KeyW','ArrowUp'],down:['KeyS','ArrowDown'],left:['KeyA','ArrowLeft'],right:['KeyD','ArrowRight']};
 let selectedMonsterSheet=null;
 const monsterAttributeLabels={vitalidade:'Vitalidade',fortitude:'Fortitude',forca:'Força',agilidade:'Agilidade',intelecto:'Intelecto',espirito:'Espírito',sorte:'Sorte'};
@@ -243,7 +243,9 @@ function character(c){session.characters=c;session.zone=c.zone;session.role=c.ro
   $('energyText').textContent=Math.floor(c.energy||0)+' / '+(c.maxEnergy||0);
   $('energyBar').style.width=clamp((c.energy||0)/Math.max(1,c.maxEnergy||1)*100,0,100)+'%';
   renderRpgPanel(c);$('hpBar').style.width=clamp(c.hp/c.maxHp*100,0,100)+'%';$('xpBar').style.width=clamp(c.xp/c.nextXp*100,0,100)+'%';
- session.story=c.story||null;$('kills').textContent=c.kills;$('visited').textContent=c.visited.length+'/'+(session.zones.length||40);$('zoneTitle').textContent=session.zones[c.zone]?.name||('Região '+c.zone);drawTravel();drawTab();
+ session.story=c.story||null;$('kills').textContent=c.kills;
+ $('visited').textContent=c.zone>=40?c.visited.length+' regiões · ∞':c.visited.length+'/'+(session.zones.length||40);
+ $('zoneTitle').textContent=(session.region?.id===c.zone?session.region.name:null)||session.zones[c.zone]?.name||('Região '+c.zone);drawTravel();drawTab();
 }
 function displayOnline(n){session.online=n;$('playerCount').textContent=n+'/60';setOnline(true,'✦ '+roomName+' · '+n+'/60 jogadores')}
 function dispatch(msg){
@@ -284,7 +286,7 @@ function dispatch(msg){
  }
  if(msg.type==='pong'){if(latency.receive(msg,performance.now()))updatePingIndicator();return}
  if(msg.type==='welcome'){
- session.id=msg.self.id;session.name=msg.self.name;session.zones=msg.zones;session.shop=msg.shop;session.relics=msg.relics||{};session.quests=msg.quests;session.achievements=msg.achievements||{};session.npcs=Array.isArray(msg.npcs)?msg.npcs:[];session.merchants=Array.isArray(msg.merchants)?msg.merchants:[];
+ session.id=msg.self.id;session.name=msg.self.name;session.zones=msg.zones;session.region=msg.region||null;session.shop=msg.shop;session.relics=msg.relics||{};session.quests=msg.quests;session.achievements=msg.achievements||{};session.npcs=Array.isArray(msg.npcs)?msg.npcs:[];session.merchants=Array.isArray(msg.merchants)?msg.merchants:[];
  const roomChanged=Boolean(roomSwitchPending&&msg.room?.id===roomSwitchTarget&&selectedRoomId!==msg.room.id);
  if(roomChanged){
   // Não deixar sprites, efeitos e diálogos da sala anterior no novo mundo.
@@ -346,7 +348,7 @@ function dispatch(msg){
   defenseTargets=Array.isArray(msg.defenseTargets)?msg.defenseTargets:[];
   if(!defenseTargets.some(t=>t.id===defenseTargetId))defenseTargetId=null;
   if(tab==='social'&&socialSection==='guilds'&&defenseTargets.length)drawTab();
- }else if(msg.type==='travel'){chatBubbles.clear();defenseTargets=[];defenseTargetId=null;desktopAudio.play('travel');session.zone=msg.zone;visibleKingdomBases=[];session.portals=msg.portals||[];session.x=msg.x;session.y=msg.y;session.target=null;session.monsters.clear();monsterMotion.clear();playerMotion.clear();combatFx.clear();if(typeof clearMonsterSheet==='function')clearMonsterSheet();classSkillFx.clear();$('zoneTitle').textContent=msg.name;alert('✦ '+msg.name);drawTravel();
+ }else if(msg.type==='travel'){chatBubbles.clear();defenseTargets=[];defenseTargetId=null;desktopAudio.play('travel');session.zone=msg.zone;session.region=msg.region||null;visibleKingdomBases=[];session.portals=msg.portals||[];session.x=msg.x;session.y=msg.y;session.target=null;session.monsters.clear();monsterMotion.clear();playerMotion.clear();combatFx.clear();if(typeof clearMonsterSheet==='function')clearMonsterSheet();classSkillFx.clear();$('zoneTitle').textContent=msg.name;alert('✦ '+msg.name);drawTravel();
  }else if(msg.type==='hit'){if(msg.zone===session.zone){
   if(typeof desktopAudio!=='undefined')desktopAudio.play(msg.projectile==='arrow'?'arrow':msg.projectile==='holy-bolt'?'magic':'hit');
   const m=session.monsters.get(msg.monster);if(m)m.hp=msg.remaining;
@@ -1181,12 +1183,12 @@ function showWorldMap(){
  }
  dialog.replaceChildren();
  const header=document.createElement('div');header.className='atlas-heading';
- const heading=document.createElement('h2');heading.textContent='✦ Atlas de Auren · '+session.zones.length+' regiões';
+ const heading=document.createElement('h2');heading.textContent='✦ Atlas de Auren · '+session.zones.length+' regiões históricas · Fronteiras ∞';
  const close=document.createElement('button');close.type='button';close.textContent='✕ Fechar';
  close.onclick=()=>dialog.close();
  header.append(heading,close);dialog.append(header);
  const description=document.createElement('p');
- description.textContent='Os reinos disputam o conselho de 16 regiões históricas; bases só podem ser fundadas nas 12 regiões de superfície. As masmorras são neutras. Use os portais para viajar.';
+ description.textContent='Além das 40 regiões históricas, as fronteiras procedurais se estendem em quatro direções, sem precisar baixar um mapa inteiro. Comece na Terra da Última Luz. Fortalezas e política seguem reservadas ao continente histórico.';
  dialog.append(description);
  const grid=document.createElement('div');grid.className='atlas-grid';
  const explored=new Set(session.characters?.visited||[]);
@@ -1207,6 +1209,13 @@ function showWorldMap(){
    const line=document.createElement('small');line.textContent='🏰 '+base.name+' ('+base.x+', '+base.y+')';tile.append(line);
   }
   grid.append(tile);
+ }
+ if(session.region?.frontier){
+  const zone=session.region;
+  const tile=document.createElement('div');tile.className='atlas-entry current explored';
+  const title=document.createElement('b');title.textContent='✦ '+zone.name;
+  const sub=document.createElement('small');sub.textContent='FRONTEIRA ∞ · '+zone.biome+' · coordenadas '+zone.gridX+', '+zone.gridY;
+  tile.append(title,sub);grid.prepend(tile);
  }
  dialog.append(grid);if(!dialog.open)dialog.showModal();
 }
@@ -1241,7 +1250,7 @@ function canvasDraw(now,dt){
   spriteActions.fallen=spriteActions.fallen.filter(m=>now-m.defeatedAt<570);
   for(const [id,v] of spriteActions.monsters)if(now-v.at>750)spriteActions.monsters.delete(id);
   for(const [id,v] of spriteActions.players)if(now-v.at>580)spriteActions.players.delete(id);
-  classicRenderer.render({zone:session.zone,zones:session.zones,x:session.x,y:session.y,kingdomBases:visibleKingdomBases,
+  classicRenderer.render({zone:session.zone,zones:session.zones,zoneBiome:session.region?.id===session.zone?session.region.biome:null,x:session.x,y:session.y,kingdomBases:visibleKingdomBases,
     name:session.name||'PEREGRINO',role:session.role,appearance:session.appearance,dir:session.dir,
     monsters:monsterMotion.draw([...session.monsters.values()],dt),players:drawPlayers,projectiles,
     monsterActions:spriteActions.monsters,playerActions:spriteActions.players,fallen:spriteActions.fallen,

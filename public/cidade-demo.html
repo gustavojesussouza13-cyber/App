@@ -52,7 +52,7 @@ function current(){return {
  serverNow:Date.now(),buildTimes:durations,
  walletCoins:localCoins,
  persistentAccount:true,demo:true, // conta fictícia: nenhuma gravação permanente na demonstração
- yourGuild:{name,leader:true,stock:{...stock},army:{...army}},
+ yourGuild:{name,leader:true,canManage:true,stock:{...stock},army:{...army}},
  trainingCosts:units,marches:[]
 }}
 const successfulRequests=new Map();

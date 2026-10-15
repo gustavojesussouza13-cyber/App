@@ -7,12 +7,13 @@ const {NPCS,chapters,byId,publicNpc,freshStory,normalizeStory,journal}=require('
 const {MAX_GOLD}=require('./owner-benefits');
 const terrain=require('./world-terrain');
 const procedural=require('./public/procedural-world');
+const frontier=require('./frontier-world');
 const kingdoms=require('./kingdom-politics');
 const rpg=require('./rpg-attributes');
 const creatureRpg=require('./monster-progression');
 const {ChatGuard,inspectNickname}=require('./chat-safety');
 
-const ZONES=[
+const HISTORIC_ZONES=[
  ['Vale das Oliveiras','pradaria'],['Floresta da Promessa','floresta'],['Riacho do Alvorecer','rio'],['Deserto das Provações','deserto'],
  ['Montanhas da Fé','montanha'],['Ruínas do Crepúsculo','ruinas'],['Campos da Esperança','pradaria'],['Pântano dos Sussurros','pantano'],
  ['Costa da Aurora','costa'],['Bosque da Misericórdia','floresta'],['Cidadela de Auren','cidade'],['Terra da Última Luz','ruinas'],
@@ -22,10 +23,19 @@ const ZONES=[
 const DUNGEON_ROOTS=['Raiz Ancestral','Cinzas Eternas','Templo das Vozes','Aurora Profunda'];
 const FLOOR_TITLES=['Galerias','Salões Perdidos','Catacumbas','Santuário Oculto','Abismo','Trono Esquecido'];
 for(let dungeon=0;dungeon<4;dungeon++)for(let depth=1;depth<=6;depth++)
- ZONES.push([`${FLOOR_TITLES[depth-1]} da ${DUNGEON_ROOTS[dungeon]} · Subsolo ${depth}`,'masmorra']);
+ HISTORIC_ZONES.push([`${FLOOR_TITLES[depth-1]} da ${DUNGEON_ROOTS[dungeon]} · Subsolo ${depth}`,'masmorra']);
+// Um Proxy oferece metadata a qualquer fronteira sem expandir a Array histórica.
+// .length, .map e enumeração continuam restritas às 40 regiões canônicas.
+const ZONES=new Proxy(HISTORIC_ZONES,{get(target,key,receiver){
+ if(typeof key==='string'&&/^(0|[1-9]\d*)$/.test(key)){
+  const zone=Number(key);
+  if(frontier.isFrontier(zone)){const info=frontier.info(zone);return [info.name,info.biome]}
+ }
+ return Reflect.get(target,key,receiver);
+}});
 const LEGACY_ZONE_COUNT=16,DEPTH_PER_DUNGEON=6;
 const dungeonRoot=zone=>zone>=16&&zone<ZONES.length?12+Math.floor((zone-16)/DEPTH_PER_DUNGEON):zone>=12&&zone<16?zone:null;
-const dungeonDepth=zone=>zone>=16?1+(zone-16)%DEPTH_PER_DUNGEON:0;
+const dungeonDepth=zone=>zone>=16&&zone<ZONES.length?1+(zone-16)%DEPTH_PER_DUNGEON:0;
 const dungeonFloor=(root,depth)=>root+4+(root-12)*(DEPTH_PER_DUNGEON-1)+depth-1;
 const CROWN_DUNGEON_ROOT=15;
 const CROWN_DUNGEON_KEY='chave_coroa_aurora';
@@ -36,6 +46,7 @@ const requiresCrownKey=(from,to)=>to===CROWN_DUNGEON_ROOT&&!crownDungeonZone(fro
 // sucede o sexto subsolo da anterior (IDs 12–15 são masmorras clássicas).
 // Escala também os prêmios para que a progressão continue recompensadora.
 function zoneDifficulty(zone){
+ if(frontier.isFrontier(zone))return frontier.difficulty(zone);
  if(!Number.isInteger(zone)||zone<0||zone>=ZONES.length)return 1;
  if(zone<12)return 1+zone*.17;
  if(zone<16)return 3.05+(zone-12)*1.8;
@@ -198,24 +209,28 @@ class World {
    this.dirty=false;return Promise.resolve(true)
   }catch(e){console.error('[world] falha ao salvar:',e.message);return Promise.resolve(false)}
  }
- initMonsters(){for(let zone=0;zone<ZONES.length;zone++){
-   const mons=[];const dungeon=zone>=12;
+ initMonsters(){for(let zone=0;zone<ZONES.length;zone++)this.ensureMonsters(zone)}
+ ensureMonsters(zone){
+   if(!frontier.isZone(zone))return [];
+   if(this.monsters.has(zone))return this.monsters.get(zone);
+   const isFrontier=frontier.isFrontier(zone);
+   const mons=[];const dungeon=zone>=12&&!isFrontier;
    // Densidade inspirada na campanha clássica: 13 criaturas comuns + chefe por área,
    // e um pouco mais nas masmorras (em vez das antigas 24–30 por região).
    const count=dungeon?(zone>=16?14:18):14;
    for(let i=0;i<count;i++){
-    const boss=i===count-1;const seed=hash32(zone*9217+i*5711+77);
+    const boss=i===count-1;const seed=isFrontier?frontier.spawnSeed(zone,i):hash32(zone*9217+i*5711+77);
     const speciesId=boss?(dungeon?31:(zone+11)%32):(zone*2+i*7+((seed>>4)%5))%SPECIES.length;
     const sp=SPECIES[speciesId],tier=zoneDifficulty(zone),mult=(boss?5.5:1)*(crownDungeonZone(zone)?1.65:1);
     const trait=procedural.monsterTrait(zone,i,boss);
     const eliteNames=['Guardião das Raízes','Marechal das Cinzas','Oráculo das Vozes','Arauto do Amanhecer'];
-    const baseName=boss&&zone>=16?'★ '+eliteNames[Math.floor((zone-16)/6)]+' · Piso '+dungeonDepth(zone):(boss?'★ ':'')+sp[0];
+    const baseName=boss&&!isFrontier&&zone>=16?'★ '+eliteNames[Math.floor((zone-16)/6)]+' · Piso '+dungeonDepth(zone):(boss?'★ ':'')+sp[0];
     const name=zone>=16&&!boss&&['Raro','Épico'].includes(trait.rarity)?trait.rarity+' · '+baseName:baseName;
     const chosen={x:130+hash32(seed+1)%(ZONE_W-260),y:130+hash32(seed+2)%(ZONE_H-260)};
     const home=terrain.nearestWalkable(zone,chosen.x,chosen.y,ZONES);
     const id=`m-${zone}-${i}`,baseHp=Math.floor(sp[1]*mult*tier*trait.bonus);
     const baseDamage=Math.ceil(sp[2]*tier*(boss?2:1)*(crownDungeonZone(zone)?1.20:1)*trait.bonus);
-    const monster={id,zone,name,species:speciesId,boss,trait,x:home.x,y:home.y,home,
+    const monster={id,zone,name,species:speciesId,boss,trait,explorationLevel:isFrontier?frontier.monsterLevel(zone):null,x:home.x,y:home.y,home,
      baseHp,baseDamage,hp:baseHp,maxHp:baseHp,damage:baseDamage,
      xp:Math.ceil(sp[3]*tier*(boss?4:1)),coins:Math.ceil(sp[4]*tier*(boss?5:1)),
      lastAttack:0,windupUntil:0,deadUntil:0,damageFrom:new Map(),wander:0,
@@ -224,14 +239,27 @@ class World {
     mons.push(monster);
    }
    this.monsters.set(zone,mons);
-  }}
+   if(isFrontier)this.pruneMonsterCache(zone);
+   return mons;
+ }
+ pruneMonsterCache(keepZone=null){
+  // Somente regiões procedurais desocupadas são descarregadas; o progresso
+  // de monstros já fica em saved.monsters/DB, não no cache descartável.
+  let loaded=[...this.monsters.keys()].filter(z=>frontier.isFrontier(z));
+  if(loaded.length<=32)return;
+  const occupied=new Set([...this.players.values()].map(p=>p.zone));
+  for(const z of loaded){
+   if(loaded.length<=32)break;
+   if(z!==keepZone&&!occupied.has(z)){this.monsters.delete(z);loaded=loaded.filter(a=>a!==z)}
+  }
+ }
  restoreMonsterProfiles(){
   for(const monsters of this.monsters.values())
    for(const monster of monsters)creatureRpg.restoreMonster(monster,
     this.monsterPersistenceEnabled?this.saved.monsters?.[monster.id]:null);
  }
  inspectMonster(p,id){
-  const m=(this.monsters.get(p.zone)||[]).find(mon=>mon.id===id);
+  const m=(this.ensureMonsters(p.zone)||[]).find(mon=>mon.id===id);
   if(!m||dist(p,m)>900){this.tell(p,'Aproxime-se para examinar a criatura.');return false}
   this.send(p.socket,{type:'monsterSheet',sheet:{...creatureRpg.publicSheet(m),rarity:m.trait.rarity,affinity:m.trait.affinity,variant:m.trait.variant}});
   return true
@@ -245,8 +273,10 @@ class World {
   }
  publicMonster(m){return {id:m.id,name:m.name,species:m.species,zone:m.zone,x:Math.round(m.x),y:Math.round(m.y),hp:m.hp,maxHp:m.maxHp,boss:m.boss,level:m.level,rank:m.rank,victories:m.progress?.victories||0,rarity:m.trait.rarity,affinity:m.trait.affinity,variant:m.trait.variant}}
  zoneInfo(){return ZONES.map((z,i)=>({id:i,name:z[0],biome:z[1],count:this.monsters.get(i).length}))}
+ currentRegion(zone){return frontier.info(zone)||{id:zone,name:ZONES[zone]?.[0]||'Auren',biome:ZONES[zone]?.[1]||'pradaria',frontier:false}}
  zonePortals(zone){
-  if(!Number.isInteger(zone)||zone<0||zone>=ZONES.length)return [];
+  if(!frontier.isZone(zone))return [];
+  if(frontier.isFrontier(zone))return frontier.around(zone).map(g=>({...g,y:Math.round(roadY(g.x,zone)),depth:0,stair:null}));
   const entries=[1,3,5,11];
   let destinations;
   if(zone>=16){
@@ -259,13 +289,14 @@ class World {
   }else{
    destinations=ZONES.map((_,i)=>i).filter(i=>i<12&&i!==zone&&Math.abs(i-zone)<=2);
    for(let i=0;i<4;i++)if(entries[i]===zone)destinations.push(12+i);
+   if(zone===frontier.ORIGIN)destinations.push(frontier.FIRST_ZONE);
   }
   return destinations.map((to,i)=>{
    const x=Math.round(destinations.length===1?ZONE_W/2:180+i*1170/(destinations.length-1));
    const finalGate=zone>=16&&dungeonDepth(zone)===DEPTH_PER_DUNGEON&&
     to===(dungeonRoot(zone)<15?dungeonRoot(zone)+1:10);
    const kind=finalGate?'gateway':zone>=12&&to>=12?'stair':'portal';
-   return {zone:to,name:ZONES[to][0],x,y:Math.round(roadY(x,zone)),dungeon:to>=12,
+   return {zone:to,name:ZONES[to][0],x,y:Math.round(roadY(x,zone)),dungeon:to>=12&&to<40,frontier:frontier.isFrontier(to),
     depth:dungeonDepth(to),kind,gateway:finalGate,
     stair:kind==='stair'?(to>zone?'down':'up'):null};
   });
@@ -334,7 +365,8 @@ class World {
   // A primeira escolha vale para contas novas, legadas sem visual e visitantes novos.
   // Reconexões e trocas de sala jamais substituem o visual salvo inadvertidamente.
   s.appearance=appearance16.normalize(s.appearance||d.appearance);
-  if(!CLASSES[s.role])s.role='peregrino';if(!Number.isInteger(s.zone)||s.zone<0||s.zone>=ZONES.length)s.zone=0;
+  if(!CLASSES[s.role])s.role='peregrino';if(!frontier.isZone(s.zone))s.zone=0;
+  this.ensureMonsters(s.zone);
   s.level=clamp(Math.floor(Number(s.level)||1),1,100);
    s.attributes=rpg.normalizeAllocations(s.attributes,s.level);
    const maximumEnergy=rpg.calculateAttributes(s).stats.maxEnergy;
@@ -349,7 +381,10 @@ class World {
     else delete s.inventory[CROWN_DUNGEON_KEY];
    }
    s.crownKeyIssuedAt=Number.isSafeInteger(s.crownKeyIssuedAt)&&s.crownKeyIssuedAt>0?s.crownKeyIssuedAt:0;
-   if(!Array.isArray(s.quests))s.quests=[];if(!Array.isArray(s.visited))s.visited=[0];if(!Array.isArray(s.achievements))s.achievements=[];if(!Array.isArray(s.bossRelics))s.bossRelics=[];s.bossRelics=s.bossRelics.filter(z=>Number.isInteger(z)&&z>=0&&z<ZONES.length);
+   if(!Array.isArray(s.quests))s.quests=[];if(!Array.isArray(s.visited))s.visited=[0];
+   s.visited=[...new Set(s.visited.filter(id=>frontier.isZone(id)))];
+   s.visited=[...s.visited.filter(id=>id<40),...s.visited.filter(id=>id>=40).slice(-128)];
+   if(!Array.isArray(s.achievements))s.achievements=[];if(!Array.isArray(s.bossRelics))s.bossRelics=[];s.bossRelics=s.bossRelics.filter(z=>Number.isInteger(z)&&z>=0&&z<ZONES.length);
   s.blocked=Array.isArray(s.blocked)?[...new Set(s.blocked.filter(n=>typeof n==='string'&&assertName(n)).map(n=>n.toLocaleLowerCase('pt-BR')))].slice(0,30):[];
   s.story=normalizeStory(s.story);
   // Classe selecionada no novo início vale imediatamente para visitante.
@@ -371,7 +406,7 @@ class World {
   if(owner&&c.roomTransferRole){this.saved.characters[uid]=safeSave(s);this.dirty=true}
   const p={lastRegenAt:now,lastCombatAt:0,lastResourceBroadcast:0,attackCounter:0,id:crypto.randomUUID(),uid,name,isAccount:!!owner,isAdministrator:!!owner?.administrator,socket:c.socket,save:s,x:s.x,y:s.y,zone:s.zone,dir:2,lastMove:Date.now(),moveCredit:12,lastAttack:0,lastSpell:0,lastChat:0,lastUse:0,party:null,live:true};
   c.worldPlayer=p;c.socket._worldClient=c;this.players.set(p.id,p);
-  this.send(c.socket,{type:'welcome',room:c.worldRoom?{id:c.worldRoom.id,name:c.worldRoom.name}:null,self:this.ownStatus(p),zones:this.zoneInfo(),shop:Object.fromEntries(Object.entries(GOODS).filter(([key,item])=>!item.storyOnly)),relics:RELICS,quests:QUESTS,achievements:ACHIEVEMENTS,portals:this.zonePortals(p.zone),npcs:NPCS.map(publicNpc),merchants:Object.keys(MERCHANT_STOCK).map(id=>{const n=byId.get(id);return {id,name:n.name,zone:n.zone,region:ZONES[n.zone][0]}}),maxPlayers:60,online:this.players.size+this.getOnline(),monsterTotal:this.totalMonsters(),generation:{seed:procedural.SEED,version:procedural.VERSION,chunkSize:procedural.CHUNK_SIZE}});
+  this.send(c.socket,{type:'welcome',room:c.worldRoom?{id:c.worldRoom.id,name:c.worldRoom.name}:null,self:this.ownStatus(p),zones:this.zoneInfo(),shop:Object.fromEntries(Object.entries(GOODS).filter(([key,item])=>!item.storyOnly)),relics:RELICS,quests:QUESTS,achievements:ACHIEVEMENTS,portals:this.zonePortals(p.zone),npcs:NPCS.map(publicNpc),merchants:Object.keys(MERCHANT_STOCK).map(id=>{const n=byId.get(id);return {id,name:n.name,zone:n.zone,region:ZONES[n.zone][0]}}),maxPlayers:60,online:this.players.size+this.getOnline(),monsterTotal:this.totalMonsters(),region:this.currentRegion(p.zone),infiniteFrontier:true,generation:{seed:procedural.SEED,version:procedural.VERSION,chunkSize:procedural.CHUNK_SIZE}});
   this.broadcast({type:'system',text:p.name+' chegou ao mundo.'},q=>q.id!==p.id);
   this.dirty=true;this.snapshotTo(p);
   this.send(p.socket,{type:'kingdomState',data:kingdoms.publicState(this,p)});
@@ -393,7 +428,7 @@ class World {
  }
  snapshotTo(p){const near=[...this.players.values()].filter(o=>o.id!==p.id&&o.zone===p.zone&&dist(o,p)<680).map(o=>this.publicPlayer(o));
   // Margem de visibilidade evita monstros aparecendo/desaparecendo na borda da tela.
-  const mons=(this.monsters.get(p.zone)||[]).filter(m=>m.hp>0&&dist(m,p)<850).map(m=>this.publicMonster(m));
+  const mons=(this.ensureMonsters(p.zone)||[]).filter(m=>m.hp>0&&dist(m,p)<850).map(m=>this.publicMonster(m));
   this.send(p.socket,{type:'snapshot',online:this.players.size+this.getOnline(),zone:p.zone,players:near,monsters:mons,defenseTargets:this.guildDefenseList(p),day:this.day,
    kingdoms:kingdoms.publicState(this,p).bases.filter(b=>b.zone===p.zone)});
   if(Date.now()-(p.lastKingdomState||0)>8000){
@@ -659,7 +694,7 @@ class World {
    this.tell(p,'♛ A Coroa Continental confiou-lhe uma Chave da Câmara da Aurora. Ela abre somente a quarta masmorra, é pessoal e não pode ser negociada.');
    return true;
   }
-  travel(p,z){z=Number(z);if(!Number.isInteger(z)||z<0||z>=ZONES.length)return;
+  travel(p,z){if(!frontier.isZone(z))return;
   if(z===p.zone)return;const a=p.zone,b=z;const legal=this.zonePortals(a).some(g=>g.zone===b);
   if(!legal){this.tell(p,'Use uma passagem conectada a esta região.');return}
   const enteringCrownDungeon=requiresCrownKey(a,b);
@@ -677,12 +712,14 @@ class World {
   }
   if(enteringCrownDungeon)p.save.inventory[CROWN_DUNGEON_KEY]--;
   p.zone=b;p.save.zone=b;
+  this.ensureMonsters(b);
   const arrival=terrain.nearestWalkable(b,ZONE_W/2,ZONE_H/2,ZONES);
   p.x=arrival.x;p.y=arrival.y;p.save.x=p.x;p.save.y=p.y;if(!p.save.visited.includes(b))p.save.visited.push(b);
+  if(p.save.visited.length>168)p.save.visited=[...p.save.visited.filter(z=>z<40),...p.save.visited.filter(z=>z>=40).slice(-128)];
   if(p.save.visited.length>=8)this.unlockAchievement(p,'explorar-8');
   if(p.save.visited.length>=16)this.unlockAchievement(p,'explorar-16');
   this.dirty=true;
-  this.send(p.socket,{type:'travel',zone:b,name:ZONES[b][0],x:p.x,y:p.y,portals:this.zonePortals(b)});
+  this.send(p.socket,{type:'travel',zone:b,name:ZONES[b][0],region:this.currentRegion(b),x:p.x,y:p.y,portals:this.zonePortals(b)});
   if(autoAggroZone(b))this.tell(p,crownDungeonZone(b)?
     '⚠ Câmara da Aurora: criaturas excepcionalmente perigosas atacam por aproximação. Esquive dos golpes anunciados e mantenha sua equipe preparada.':
     '⚠ Subsolo '+dungeonDepth(b)+': criaturas comuns atacam por aproximação. Os chefes só revidam quando forem atacados.');
@@ -741,7 +778,7 @@ class World {
   const derived=rpg.calculateAttributes(p.save),modifiers=rpg.attackModifiers(p.save,p.save.role==='curandeiro'?'magic':'physical');
   const cooldown=Math.round((skill?4000:600)*modifiers.cooldownFactor);
   if(now-(skill?p.lastSpell:p.lastAttack)<cooldown)return;
-  const m=(this.monsters.get(p.zone)||[]).find(x=>x.id===tid&&x.hp>0);
+  const m=(this.ensureMonsters(p.zone)||[]).find(x=>x.id===tid&&x.hp>0);
   const canHit=!!(m&&dist(m,p)<=(skill?role.range*1.4:role.range));
   if(skill){
    if(!canHit&&p.save.role==='arqueiro')return;
@@ -1226,7 +1263,7 @@ class World {
   }
   // Apenas regiões ocupadas têm IA ativa. O servidor controla quem provocou cada monstro.
   const activeZones=new Set([...this.players.values()].map(p=>p.zone));
-  for(const zone of activeZones){for(const m of this.monsters.get(zone)||[]){
+  for(const zone of activeZones){for(const m of this.ensureMonsters(zone)||[]){
    if(m.hp<=0){
     if(now>=m.deadUntil){m.hp=m.maxHp;m.x=m.home.x;m.y=m.home.y;m.damageFrom.clear();m.aggroTarget=null;m.aggroUntil=0;m.lastAttack=0;m.windupUntil=0;m.markUntil=0;m.markOwner=null;m.wanderGoal=null;m.wander=now+1500}
     else continue;
@@ -1299,7 +1336,7 @@ class World {
      (target.save.inventory.amuleto?4:0)+
      ((target.save.inventory.manto_luz||0)>0?RELICS.manto_luz.defense:0)+
      (target.guardUntil>now?14+Math.floor(target.save.level/3):0);
-    const element=zone>=12?'magic':zone%4===1?'fire':zone%4===2?'lightning':'physical';
+    const element=zone>=12&&zone<40?'magic':zone%4===1?'fire':zone%4===2?'lightning':'physical';
     const rawDamage=rpg.mitigateDamage(
      Math.max(1,Math.ceil(m.damage*(m.boss?1.2:1))-equipmentDefense),defenses,element);
      // Altíssima dificuldade, mas os ataques têm aviso e não são one-shot.

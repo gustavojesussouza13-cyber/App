@@ -56,11 +56,12 @@ function speciesAttributes(species,zone,baseLevel,boss){
  if(boss){attributes.fortitude+=8;attributes.forca+=8;attributes.espirito+=5}
  return attributes;
 }
-function initialMonsterProfile({id,zone,species,boss,baseHp,baseDamage,xp,coins},progress){
+function initialMonsterProfile({id,zone,species,boss,baseHp,baseDamage,xp,coins,explorationLevel},progress){
  const state=cleanRecord(progress);
  const boosted=cap(state.victories,0,MAX_VICTORIES);
  const promotion=Math.min(MAX_VICTORIES,Math.floor(state.xp/170)+Math.floor(boosted/3));
- const zoneLevel=Math.round(1+zone*.42+(zone>=12?(zone-11)*1.4:0));
+ const zoneLevel=Number.isInteger(explorationLevel)&&explorationLevel>=1?explorationLevel:
+  Math.round(1+zone*.42+(zone>=12?(zone-11)*1.4:0));
  const baseLevel=cap(zoneLevel+(boss?9:0),1,MAX_LEVEL);
  const level=cap(baseLevel+promotion,1,MAX_LEVEL);
  const attributes=speciesAttributes(species,zone,level,boss);
