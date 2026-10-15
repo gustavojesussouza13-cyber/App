@@ -61,7 +61,7 @@ test('walk, attack, hurt, death stay within their own visual identity',()=>{
 test('no 3D fortress or backend changes required, browser loads updated art',()=>{
  const html=fs.readFileSync(path.join(__dirname,'../public/mundo.html'),'utf8');
  assert.match(html,/heroes-master64\.js\?v=heroes-master64-v6/);
- assert.match(html,/world-art-master64\.js\?v=world-art-master64-v3/);
+ assert.match(html,/world-art-master64\.js\?v=world-art-master64-v4/);
  assert.match(html,/guild-city-3d\.js/);
  const source=fs.readFileSync(path.join(__dirname,'../public/heroes-master64.js'),'utf8');
  assert.match(source,/Mantos desenhados como polígonos de pixel art/);
