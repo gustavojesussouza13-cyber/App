@@ -262,9 +262,11 @@
   poly(INK,[[25,13+bob],[39,11+bob],[46,16+bob],[47,25+bob],
    [43,32+bob],[36,35+bob],[27,32+bob],[22,25+bob]]);
   if(back){
+   poly(c.hairShade,[[24,13+bob],[41,12+bob],[47,20+bob],[45,30+bob],[37,35+bob],[24,29+bob]]);
    poly(c.hair,[[25,14+bob],[39,12+bob],[45,17+bob],
     [44,30+bob],[37,34+bob],[26,30+bob],[23,22+bob]]);
-   highlights(c.hairLight,[[27,15,6,2],[35,13,5,2],[25,21,3,5],[39,23,4,2]]);
+   highlights(c.hairMid,[[27,15,6,2],[35,13,5,2],[25,21,3,5],[39,23,4,2]]);
+   highlights(c.hairLight,[[29,14,3,1],[37,13,2,1],[25,22,1,3]]);
    stroke(c.hairLight,29,17+bob,30,29+bob,2);
    stroke(c.hairLight,38,17+bob,39,28+bob,2);
   }else{
@@ -285,22 +287,38 @@
      [48+wind,16+bob],[45+wind,23+bob],[40+wind,21+bob],
      [38+wind,27+bob],[35+wind,22+bob],[29+wind,26+bob],
      [25+wind,22+bob],[21+wind,28+bob]]);
+    poly(c.hairShade,[[21+wind,14+bob],[29+wind,9+bob],[35+wind,10+bob],
+     [39+wind,7+bob],[45+wind,12+bob],[47+wind,20+bob],[42+wind,25+bob],
+     [36+wind,23+bob],[30+wind,28+bob],[24+wind,25+bob]]);
     poly(c.hair,[[22+wind,16+bob],[27+wind,12+bob],
      [31+wind,9+bob],[34+wind,13+bob],[39+wind,10+bob],
      [44+wind,15+bob],[46+wind,19+bob],[41+wind,20+bob],
      [38+wind,25+bob],[34+wind,20+bob],[28+wind,24+bob],
      [26+wind,19+bob],[22+wind,24+bob]]);
-    poly(c.hairLight,[[25+wind,13+bob],[30+wind,10+bob],
+    poly(c.hairMid,[[25+wind,13+bob],[30+wind,10+bob],
      [34+wind,13+bob],[32+wind,16+bob],[26+wind,17+bob]]);
-    highlights(c.hairLight,[[36+wind,12,4,2],[41+wind,16,3,2],
+    highlights(c.hairMid,[[36+wind,12,4,2],[41+wind,16,3,2],
      [23+wind,20,2,3],[30+wind,18,2,2]]);
-    p('#ba8b65',30+wind,12+bob,2,1);
+    highlights(c.hairLight,[[31+wind,10,2,1],[38+wind,10,2,1],
+     [27+wind,14,3,1],[42+wind,17,1,2]]);
+    p(c.hairLight,30+wind,12+bob,2,1);
     if(['medio','longo','rabo','tranca'].includes(a.hairStyle)){
-     poly(INK,[[42,20+bob],[47,22+bob],[47,35+bob],
-      [43,40+bob],[40,33+bob]]);
-     poly(c.hair,[[43,23+bob],[46,24+bob],[45,34+bob],
-      [43,37+bob]]);
-     if(a.hairStyle==='longo')p(c.hair,22,22+bob,4,17);
+     poly(INK,[[42,19+bob],[47,20+bob],[49,29+bob],
+      [47,37+bob],[43,43+bob],[40,34+bob]]);
+     poly(c.hairShade,[[43,21+bob],[46,24+bob],[47,32+bob],[43,41+bob],
+      [41,33+bob]]);
+     poly(c.hair,[[44,23+bob],[46,25+bob],[46,34+bob],
+      [43,38+bob]]);
+     p(c.hairMid,44,24+bob,1,10);
+     if(a.hairStyle==='longo'){
+      poly(INK,[[21,18+bob],[26,18+bob],[25,32+bob],[23,43+bob],
+       [19,45+bob],[18,36+bob]]);
+      poly(c.hairShade,[[22,19+bob],[25,20+bob],[24,32+bob],
+       [21,42+bob],[20,38+bob]]);
+      poly(c.hair,[[23,20+bob],[25,22+bob],[23,32+bob],
+       [21,40+bob],[21,28+bob]]);
+      p(c.hairMid,23,26+bob,1,9);
+     }
      if(a.hairStyle==='tranca'||a.hairStyle==='rabo'){
       for(let i=0;i<4;i++)p(i%2?c.hair:c.hairLight,44+(i%2),32+i*4+bob,4,4);
      }
@@ -308,16 +326,23 @@
    }else{
     poly(c.hair,[[27,14+bob],[39,14+bob],[42,17+bob],
      [30,17+bob],[25,19+bob]]);
-    p(c.hairLight,30,14+bob,8,1);
+    p(c.hairMid,30,14+bob,8,1);p(c.hairLight,34,14+bob,3,1);
    }
    if(!profile){
     // Olhos com branco, sombra da pálpebra, íris e um brilho único.
-    p(INK,28,23+bob,5,2);p(INK,37,22+bob,5,2);
+    p(INK,28,22+bob,6,2);p(INK,37,21+bob,6,2);
+    p(c.skinDark,27,24+bob,1,3);p(c.skinDark,43,23+bob,1,3);
     p('#fff2d7',29,25+bob,4,2);p('#fff2d7',38,24+bob,4,2);
     p(c.eyes,30,24+bob,2,3);p(c.eyes,39,23+bob,2,3);
     p('#fcfff7',30,24+bob,1,1);
+    p('#fcfff7',39,23+bob,1,1);
+    p(c.skinLight,26,26+bob,2,2);p(c.skinDark,41,28+bob,2,1);
     p(c.skinDark,34,26+bob,2,2);p(c.skinLight,34,26+bob,1,1);
     p('#603c3f',32,30+bob,7,1);p(c.skinLight,34,31+bob,3,1);
+    p(c.skinDark,31,29+bob,2,1);p(c.skinLight,39,29+bob,2,1);
+    if(attack&&(frameIndex===2||frameIndex===3)){
+     p(INK,31,30+bob,8,1);p(c.skinLight,33,31+bob,3,1);
+    }
    }else{
     p(INK,39,22+bob,5,2);p('#fff4dd',40,24+bob,3,2);
     p(c.eyes,42,24+bob,2,2);p(c.skinLight,43,27+bob,3,1);
