@@ -426,12 +426,21 @@ function create({ctx,W,H}){
   const premiumPc=Boolean(desktopCharactersV3?.enabled);
   // Nova aparência só é ativada quando o WebGL 2.5D está visível.
   // O modo clássico mantém integralmente seus sprites anteriores.
-  if(useAurora25d&&
+  // O Peregrino usa PRIMEIRO os 16 quadros reais processados do Runway.
+  // Para trajes personalizados e ações sem quadros (ataque/dano/morte),
+  // o herói autoral de 64x80 permanece disponível como fallback.
+  const runwayHero=Boolean(useAurora25d&&p.role==='peregrino'&&
+   !state.hurt&&!attacking&&!state.dead&&
+   window.OsPeregrinosRunway25D?.draw(g,{
+    x:p.x,y:p.y,dir,appearance:p.appearance,now,moving:moved,
+    action:moved?'walk':'idle',glow:local,scale:.73
+   }));
+  if(runwayHero||(useAurora25d&&
    window.OsPeregrinosHeroesAurora25D?.draw(g,{
     role:p.role,x:p.x,y:p.y,dir,appearance:p.appearance,
     action:state.hurt?'hurt':attacking?'attack':moved?'walk':'idle',
     frame:Math.floor(now/130),scale:1.32,glow:local
-   })){
+   })))){
    // Artes Aurora detalhadas por classe: não altera controles nem simulação.
    g.save();g.textAlign='center';g.font=(local?'bold 15px':'bold 13px')+' monospace';
    g.shadowColor='#000b';g.shadowBlur=0;g.lineWidth=3;g.strokeStyle='#0e271e';
