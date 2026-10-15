@@ -119,3 +119,18 @@ test('A spritesheet original do Runway está instalada como PNG real, não apena
  assert.match(read('public/mundo.html'),/peregrino-runway25d\.js/);
  assert.ok(fs.existsSync(path.join(__dirname,'..','public/peregrino-runway-preview.html')));
 });
+
+test('Sprites aprovados aguardam PNGs reais e nunca quebram os personagens legados',()=>{
+ const loader=read('public/approved-classes25d.js');
+ const mmo=read('public/art16.js');
+ const lab=read('public/visual-25d.html');
+ const html=read('public/mundo.html');
+ assert.match(loader,/ASSETS_READY=root\.OsPeregrinosApprovedArtEnabled===true/);
+ assert.match(loader,/if\(!ASSETS_READY\)return Promise\.resolve\(false\)/);
+ assert.match(loader,/if\(typeof document!=='undefined'&&ASSETS_READY\)void start\(\)/);
+ assert.match(loader,/assets\/approved-classes/);
+ assert.match(mmo,/approvedHero=Boolean\(useAurora25d/);
+ assert.match(mmo,/OsPeregrinosApprovedClasses25D\?\.draw/);
+ assert.match(html,/approved-classes25d\.js/);
+ assert.match(lab,/approved-classes25d\.js/);
+});
