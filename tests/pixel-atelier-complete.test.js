@@ -18,7 +18,7 @@ function surface(maxX=64,maxY=80){
  return{g,writes};
 }
 test('o ateliê é realmente desenhado um pixel por vez, com matrizes autorais',()=>{
- assert.equal(ATELIER.VERSION,'handpixels64-v2');
+ assert.equal(ATELIER.VERSION,'handpixels64-v3');
  assert.equal(ATELIER.FAMILIES.length,15);
  const {g,writes}=surface();
  let n=0;
