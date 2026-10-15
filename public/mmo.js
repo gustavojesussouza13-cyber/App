@@ -767,7 +767,7 @@ document.addEventListener('keydown',e=>{
  if(e.key==='Escape'&&expandedFullscreen)setExpandedFullscreen(false);
 });
 updateFullscreenButton();
-const keyAction=e=>{if(!$('npcDialogue').hidden){if(e.code==='Escape'){closeDialogue();e.preventDefault()}else if(e.code==='Enter'||e.code==='Space'){advanceDialogue();e.preventDefault()}return}if(e.target.matches('input,textarea,select'))return;
+const keyAction=e=>{if(!$('npcDialogue').hidden){if(e.code==='Escape'){closeDialogue();e.preventDefault()}else if(e.code==='Enter'||e.code==='Space'){advanceDialogue();e.preventDefault()}return}if(e.target.matches('input,textarea,select,button,a,[contenteditable="true"]'))return;
  if(['ArrowDown','ArrowUp','ArrowLeft','ArrowRight','Space'].includes(e.code))e.preventDefault();keys.add(e.code);
  if(e.repeat)return;
  if(e.code==='KeyJ'||e.code==='Space'){attack(false);e.preventDefault()}
