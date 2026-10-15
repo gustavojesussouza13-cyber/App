@@ -390,6 +390,138 @@
     const on=(variant>>>bit)&1;
     p(on?shine:deep,22+bit*3,60+y+(bit%2)*2,2,2);
    }
+   // QUADROS DE ATAQUE ESPECÍFICOS POR ANATOMIA.
+   // Desenhar SOBRE a criatura (e não alterar IA ou hitboxes do servidor).
+   if(action==='attack'){
+    const phase=num%5;
+    const velocity=[0,2,5,8,3][phase];
+    if(shape==='wolf'||shape==='dragon'){
+     // Garras projetadas à frente, presas e saliva/faísca.
+     for(let claw=0;claw<3;claw++){
+      line(shade,43+velocity,55+claw*4+y,54+velocity,50+claw*5+y,3);
+      line(shine,48+velocity,53+claw*4+y,55+velocity,50+claw*5+y,1);
+     }
+     p(eye,39,47+y,4,2);
+    }else if(shape==='skeleton'){
+     // Espada descreve uma diagonal diferente a cada keyframe.
+     const swing=[[-10,10],[-7,-8],[4,-18],[18,-5],[12,11]][phase];
+     line(shade,50,51+y,50+swing[0],30+swing[1]+y,6);
+     line('#dce8dc',50,51+y,50+swing[0],30+swing[1]+y,3);
+     p(PAPER,49+swing[0],29+swing[1]+y,2,2);
+    }else if(shape==='spider'){
+     // Mandíbulas avançam, teia quadriculada e olhos brilham.
+     p(eye,27,40+y,4,3);p(eye,37,40+y,4,3);
+     line(shade,27,55+y,22,60+velocity+y,4);
+     line(shade,39,55+y,44,60+velocity+y,4);
+     line(PAPER,18,57+y,48+velocity,57+y,1);
+     line(shine,23,53+y,37+velocity,62+y,1);
+    }else if(shape==='golem'){
+     // Punho pesado avança; runa se ilumina antes do impacto.
+     p(shade,47,38+y,12,14);
+     p(base,48+velocity/2,38+y,10,13);
+     p(light,49+velocity/2,38+y,6,3);
+     p(eye,51+velocity/2,42+y,4,4);
+     p(PAPER,52+velocity/2,43+y,2,1);
+    }else if(shape==='bat'){
+     for(let i=0;i<3;i++){
+      const x=46+i*5,y0=41+i*4+velocity+y;
+      p(eye,x,y0,4,2);p(PAPER,x+2,y0,1,1);
+     }
+    }else if(shape==='slime'||shape==='ghost'){
+     // O golpe é uma onda de energia que sai do corpo.
+     const x=42+velocity;
+     line(shine,x,35+y,x+8,47+y,2);
+     line(eye,x+2,38+y,x+9,49+y,1);
+     p(PAPER,x+5,41+y,2,2);
+    }else if(shape==='snake'){
+     p(eye,42+velocity,30+y,3,3);
+     line('#e98b7e',37,31+y,43+velocity,41+y,2);
+    }
+   }
+   // Silhuetas autorais dos quatro ARQUÉTIPOS DE CHEFE.
+   // O rei, a rainha, o colosso e o dragão não recebem apenas a mesma coroa.
+   if(boss){
+    if(shape==='skeleton'){
+     // Rei Esqueleto: manto rasgado, ombreiras reais e cetro necromântico.
+     poly(shade,[[18,38+y],[9,43+y],[4,67+y],[15,62+y],
+      [21,72+y],[28,62+y],[37,69+y],[50,60+y],
+      [56,67+y],[53,42+y],[43,37+y]]);
+     poly('#51386b',[[14,42+y],[9,62+y],[17,58+y],
+      [22,65+y],[27,54+y],[39,63+y],[50,54+y],[51,42+y]]);
+     line('#bb9fe3',18,44+y,14,62+y,2);
+     line('#8f6bbb',44,44+y,48,58+y,2);
+     line(shade,54,23+y,54,71+y,5);
+     line('#bea676',54,26+y,54,68+y,3);
+     poly('#af85d7',[[54,10+y],[61,18+y],[55,29+y],[49,18+y]]);
+     p(PAPER,53,16+y,3,4);
+     for(let k=0;k<4;k++)p('#ad80ef',14+k*10,56+y+(num+k)%3,3,3);
+    }else if(shape==='spider'){
+     // Rainha Aranha: oito patas grossas, abdômen blindado e teias vivas.
+     for(let leg=0;leg<4;leg++){
+      const ly=19+leg*12+y+((num+leg)%3);
+      line(shade,24,38+leg*4+y,6,ly,6);
+      line('#be6671',25,38+leg*4+y,8,ly,3);
+      line(shade,40,38+leg*4+y,57,ly,6);
+      line('#da8594',39,38+leg*4+y,55,ly,3);
+     }
+     poly(shade,[[18,31+y],[25,23+y],[41,24+y],
+      [49,32+y],[48,51+y],[41,62+y],[24,60+y],[16,47+y]]);
+     poly('#734052',[[20,33+y],[27,26+y],[39,27+y],
+      [46,35+y],[45,50+y],[38,58+y],[24,56+y]]);
+     for(let j=0;j<8;j++){
+      const x=25+(j%4)*5,yy=36+Math.floor(j/4)*7+y;
+      p(j%2?'#ff8180':'#e14c6c',x,yy,3,3);
+      p(PAPER,x+1,yy,1,1);
+     }
+     for(let j=0;j<3;j++){
+      line('#d3b5d8',8+j*5,63+y,24+j*4,57+y,1);
+      line('#d3b5d8',40+j*4,57+y,54+j*3,63+y,1);
+     }
+    }else if(shape==='golem'){
+     // Colosso Rúnico: placas de rocha suspensas, núcleo pulsante e fissuras.
+     for(const [x,ry]of [[5,24],[43,22],[12,48],[41,47]]){
+      poly(shade,[[x,ry+y],[x+12,ry-3+y],
+       [x+16,ry+11+y],[x+9,ry+17+y],[x-2,ry+13+y]]);
+      poly('#617f8f',[[x+1,ry+1+y],[x+11,ry-1+y],
+       [x+13,ry+11+y],[x+6,ry+14+y]]);
+      p('#a1c7d4',x+4,ry+2+y,6,2);
+      p('#63dfef',x+6,ry+7+y,3,5);
+      p(PAPER,x+7,ry+8+y,1,2);
+     }
+     poly(shade,[[22,29+y],[37,29+y],[44,41+y],
+      [38,58+y],[24,59+y],[17,44+y]]);
+     poly('#426c7e',[[24,32+y],[36,32+y],
+      [41,42+y],[35,55+y],[26,54+y],[20,43+y]]);
+     poly('#8eefff',[[31,35+y],[39,42+y],[33,53+y],
+      [25,48+y],[24,41+y]]);
+     p(PAPER,30,42+y,5,5);
+    }else if(shape==='dragon'){
+     // Dragão Ancião: membranas rubras, chifres e sopro em cinco fases.
+     poly(shade,[[23,37+y],[5,14+y],[11,42+y],[3,58+y],
+      [27,52+y]]);
+     poly('#ae3e46',[[22,39+y],[8,20+y],[13,43+y],
+      [8,54+y],[25,49+y]]);
+     poly(shade,[[39,36+y],[59,13+y],[55,42+y],
+      [62,58+y],[38,51+y]]);
+     poly('#d85743',[[40,39+y],[56,21+y],
+      [53,42+y],[58,53+y],[39,48+y]]);
+     for(let i=0;i<4;i++){
+      line('#e18a65',12+i*2,31+y,25,44+i*2+y,1);
+      line('#f49c73',52-i*2,31+y,39,44+i*2+y,1);
+     }
+     poly('#f3c18b',[[26,29+y],[30,11+y],[33,29+y]]);
+     poly('#f3c18b',[[38,30+y],[47,11+y],[46,31+y]]);
+     p('#fff2bb',43,47+y,4,3);
+     if(action==='attack'){
+      const flame=[0,2,6,10,5][num%5];
+      for(let k=0;k<4;k++){
+       p('#e25b3d',46+k*4+flame,45+k%2*3+y,5,4);
+       p('#ffca65',48+k*3+flame,46+k%2*2+y,3,2);
+       p(PAPER,49+k*3+flame,46+k%2*2+y,1,1);
+      }
+     }
+    }
+   }
    // Chefes ganham uma assinatura própria, sem substituírem a criatura.
    if(boss){
     const crest=['#eec47c','#a8a3ef','#75e1ce','#f4a16e'][Math.abs(zone)%4];
@@ -427,5 +559,5 @@
   return true;
  }
  return Object.freeze({WIDTH,HEIGHT,npc,creature,NPC_JOBS:job,
-  CREATURES:Object.freeze(Object.keys(BASE)),VERSION:'world-art-master64-v1'});
+  CREATURES:Object.freeze(Object.keys(BASE)),VERSION:'world-art-master64-v2'});
 });
