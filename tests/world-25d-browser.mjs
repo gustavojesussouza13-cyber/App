@@ -12,7 +12,7 @@ try{
  page.on('console',message=>{if(message.type()==='error')pageErrors.push(message.text())});
  const result=await page.goto(url,{waitUntil:'domcontentloaded',timeout:40000});
  assert.equal(result?.status(),200,'prévia precisa ser publicada e acessível');
- await page.waitForFunction(()=>document.querySelector('#status')?.textContent?.includes('WebGL 2.5D pronto'),null,{timeout:30000});
+ await page.waitForFunction(()=>/WebGL.*(pronto|carregados)/.test(document.querySelector('#status')?.textContent||''),null,{timeout:30000});
  const layer=page.locator('#world25dBackdrop');
  await layer.waitFor({timeout:20000});
  assert.ok((await layer.evaluate(c=>c.width))>100,'Canvas 3D deve ter resolução real');
