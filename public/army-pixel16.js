@@ -16,7 +16,16 @@
   ctx.save();
   ctx.imageSmoothingEnabled=false;
   ctx.translate(Math.round(x-w*scale/2),Math.round(y-h*scale+step*scale));
-  const rect=(c,a,b,ww,hh)=>{ctx.fillStyle=COLORS[c]||c;ctx.fillRect(a*scale,b*scale,ww*scale,hh*scale)};
+  const rect=(c,a,b,ww,hh)=>{
+   // Matriz lógica: cada célula pintada é exatamente um pixel nativo.
+   // Escala inteira somente no canvas final; sem placas retangulares no atlas.
+   const col=COLORS[c]||c;
+   for(let py=Math.max(0,b);py<Math.min(h,b+hh);py++)
+    for(let px=Math.max(0,a);px<Math.min(w,a+ww);px++){
+     ctx.fillStyle=col;
+     ctx.fillRect(px*scale,py*scale,scale,scale);
+    }
+  };
   // Scanline de 1 pixel nativo: silhuetas com arestas orgânicas.
   const poly=(col,pts)=>{
    for(let yy=Math.max(0,Math.floor(Math.min(...pts.map(p=>p[1]))));
