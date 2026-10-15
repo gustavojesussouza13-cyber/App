@@ -21,6 +21,7 @@ function create({ctx,W,H}){
  const desktopCharactersV3=window.OsPeregrinosDesktopCharactersV3?.create({windowRef:window,documentRef:document});
  const desktopBestiary=window.OsPeregrinosDesktopBestiary16?.create({windowRef:window});
  const worldProps=window.OsPeregrinosWorldPropsArtisan64?.create({documentRef:document});
+ const worldProps=window.OsPeregrinosWorldPropsArtisan64?.create({documentRef:document});
  let cache=null,objects=[],artReady=false;
  // Três últimas regiões: o retorno pelo atlas não reconstrói milhares de tiles.
  const terrainCache=new Map();
@@ -522,6 +523,9 @@ function create({ctx,W,H}){
   else if(landscape?.drawProp(g,o,cache.biome))return;
   // Objetos de estrada e cidade desenhados em grade nativa 64x80.
   const variant=Math.floor(noise(Math.round(o.x),Math.round(o.y),cache.z,88)*4);
+  if(worldProps?.draw(g,{kind:o.key,x:o.x,y:o.y,w:o.w,h:o.h,variant}))return;
+  const variant=Math.floor(noise(Math.round(o.x),Math.round(o.y),cache.z,88)*4);
+  // Pintura autoral 64x80; o atlas antigo permanece como fallback.
   if(worldProps?.draw(g,{kind:o.key,x:o.x,y:o.y,w:o.w,h:o.h,variant}))return;
   cut(g,o.key,o.x-o.w/2,o.y-o.h,o.w,o.h)
  }
