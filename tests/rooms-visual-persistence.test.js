@@ -10,7 +10,7 @@ const read=file=>fs.readFileSync(path.join(root,file),'utf8');
 
 test('homepage mostra as quantidades corretas, sem apresentar dez jogadores como limite global',()=>{
  const html=read('index.html'),js=read('site.js');
- assert.match(html,/40<\/b><span>REGIÕES EXPLORÁVEIS/);
+ assert.match(html,/40 \+ ∞<\/b><span>REGIÕES E FRONTEIRAS/);
  assert.match(html,/40<\/b><span>CAPÍTULOS DA HISTÓRIA/);
  assert.match(html,/id="onlineNumber".*?<span>JOGADORES ONLINE/);
  assert.doesNotMatch(html,/CAPÍTULOS ONLINE|10 JOGADORES ·|SUBSOLOS EXPLORÁVEIS/);
