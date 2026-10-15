@@ -471,6 +471,87 @@
     }
     p(shine,31,28+y,5,4);p(eye,28,26+y,3,2);
    }
+   
+   // Traçados únicos em 64x80: cada espécie mantém anatomia e arma
+   // distintas, mesmo quando compartilha a massa de uma família.
+   if(type==='escorpiao'){
+    line(shade,42,35+y,50,26+y,6);line(base,44,33+y,52,25+y,3);
+    line(shade,51,26+y,53,13+y,6);
+    poly(shade,[[49,12+y],[57,10+y],[61,16+y],[58,25+y],[54,29+y],[51,22+y]]);
+    poly(light,[[52,13+y],[57,13+y],[59,17+y],[55,25+y],[53,22+y]]);
+    poly(eye,[[54,23+y],[57,28+y],[54,35+y],[51,29+y]]);
+    for(const sign of [-1,1]){
+     const ox=32+sign*14;
+     poly(shade,[[ox,45+y],[ox+sign*12,38+y],[ox+sign*16,41+y],
+      [ox+sign*11,50+y],[ox+sign*17,54+y],[ox+sign*6,57+y]]);
+     poly(light,[[ox+sign*9,44+y],[ox+sign*13,43+y],[ox+sign*9,49+y]]);
+    }
+   }else if(type==='vespa'){
+    // Asas de insecto, listras e ferrão: não reutilizar asas de morcego.
+    poly(shade,[[25,38+y],[38,36+y],[43,48+y],[38,58+y],[29,60+y],[24,50+y]]);
+    for(let j=0;j<3;j++)line(j%2?shade:'#f6d978',27+j*3,40+y,30+j*3,56+y,3);
+    poly(shade,[[29,58+y],[37,58+y],[33,70+y]]);
+    poly(eye,[[32,60+y],[35,60+y],[33,67+y]]);
+    for(const sign of [-1,1]){
+     const a=32+sign*6;
+     poly('#a6d9d5',[[a,36+y],[a+sign*9,17+y],[a+sign*15,20+y],[a+sign*13,37+y]]);
+     line(PAPER,a+sign*2,32+y,a+sign*11,22+y,1);
+     line(shade,32+sign*3,34+y,32+sign*10,16+y,2);
+    }
+   }else if(type==='fera'){
+    // Fera com juba e caninos longos, diferente do lobo.
+    for(let j=0;j<5;j++){
+     const xx=19+j*6,yy=26+((j+species)%3)*3+y;
+     poly(shade,[[xx,yy],[xx+3,yy-10],[xx+8,yy+2],[xx+5,yy+10]]);
+     line(light,xx+3,yy-5,xx+4,yy+2,1);
+    }
+    poly(base,[[22,48+y],[35,44+y],[51,51+y],[48,63+y],[36,68+y],[22,59+y]]);
+    poly(PAPER,[[35,60+y],[39,61+y],[36,70+y]]);
+    poly(PAPER,[[44,59+y],[48,59+y],[45,68+y]]);
+   }else if(type==='lobo'){
+    poly(shade,[[16,28+y],[18,15+y],[27,24+y],[25,38+y]]);
+    poly(light,[[20,24+y],[20,19+y],[24,26+y]]);
+    poly(shade,[[38,27+y],[48,16+y],[49,33+y],[43,40+y]]);
+    poly(light,[[44,27+y],[47,21+y],[46,32+y]]);
+    poly(base,[[36,52+y],[50,51+y],[58,57+y],[52,65+y],[40,64+y]]);
+    p(eye,45,49+y,2,2);p(shade,52,61+y,4,2);
+   }else if(type==='sentinela'){
+    // Viseira e reator do sentinela não aparecem no golem.
+    poly(shade,[[22,14+y],[26,6+y],[38,6+y],[44,15+y],[42,30+y],[24,30+y]]);
+    poly(base,[[24,14+y],[28,8+y],[37,8+y],[42,16+y],[39,27+y],[25,27+y]]);
+    line(light,26,19+y,40,19+y,2);
+    for(let j=0;j<3;j++)p(eye,29+j*4,21+y,2,2);
+    poly(shade,[[24,38+y],[39,38+y],[43,47+y],[33,58+y],[20,48+y]]);
+    poly(eye,[[30,40+y],[35,40+y],[38,46+y],[33,52+y],[28,46+y]]);
+    p(PAPER,32,44+y,2,2);
+   }else if(type==='golem'){
+    for(const [sx,sy]of [[15,32],[40,37],[23,56]]){
+     line(shade,sx,sy+y,sx+7,sy+6+y,2);
+     line(light,sx+2,sy+y,sx+4,sy+2+y,1);
+    }
+    poly('#536e73',[[45,36+y],[56,35+y],[60,43+y],[56,55+y],[46,52+y]]);
+    p(eye,52,43+y,3,3);
+   }else if(type==='cavaleiro'||type==='chefe'){
+    // Elmo e espada no lugar de uma caveira genérica.
+    poly(shade,[[21,13+y],[27,9+y],[40,11+y],[45,22+y],[42,33+y],[25,34+y],[20,26+y]]);
+    poly(base,[[24,15+y],[29,12+y],[39,14+y],[42,22+y],[39,30+y],[26,29+y]]);
+    line(PAPER,27,22+y,41,21+y,2);
+    for(let j=0;j<4;j++)p(eye,28+j*4,24+y,2,1);
+    line(shade,53,26+y,54,70+y,5);line(light,53,26+y,54,59+y,2);
+    line(GOLD,47,58+y,59,58+y,3);
+   }else if(type==='morcego'){
+    for(const sign of [-1,1]){
+     poly(shade,[[32+sign*3,34+y],[32+sign*14,16+y],
+      [32+sign*22,28+y],[32+sign*29,17+y],
+      [32+sign*27,47+y],[32+sign*18,39+y]]);
+     line(light,32+sign*5,36+y,32+sign*23,27+y,1);
+    }
+    p(PAPER,27,44+y,2,2);p(PAPER,38,44+y,2,2);
+   }
+   // Desgaste persistente por ecossistema, sem interferir em hitboxes.
+   if((variant&3)===1&&['lobo','fera','golem','dragao'].includes(type)){
+    line(shine,20,51+y,26,56+y,1);p(PAPER,23,52+y,1,1);
+   }
    // Marca corporal evolutiva da criatura, baseada no ID persistente.
    for(let bit=0;bit<6;bit++){
     const on=(variant>>>bit)&1;
@@ -646,5 +727,5 @@
   return true;
  }
  return Object.freeze({WIDTH,HEIGHT,npc,creature,NPC_JOBS:job,
-  CREATURES:Object.freeze(Object.keys(BASE)),VERSION:'world-art-master64-v3'});
+  CREATURES:Object.freeze(Object.keys(BASE)),VERSION:'world-art-master64-v4'});
 });
