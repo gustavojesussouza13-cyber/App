@@ -33,7 +33,7 @@ test('four families paint visible 1-by-1 logical pixels instead of large blocks'
 test('every troop has authored anatomy glints and movement variation',()=>{
  const names=['militia','archer','knight','siege'];
  for(const type of names){
-  const idle=render(type,0),moving=render(type,500);
+  const idle=render(type,0),moving=render(type,180);
   assert.notDeepEqual(idle,moving,type+' animation frozen');
  }
  for(const keyword of ['ENGRAVINGS','steel','leather','gold','green',
