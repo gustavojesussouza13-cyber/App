@@ -40,3 +40,17 @@ test('A prévia isolada não exige autenticação, banco ou conexão WebSocket',
  assert.match(html,/id="biome"/);
  assert.doesNotMatch(html,/new WebSocket|DATABASE_URL|password/);
 });
+
+test('A identidade do Peregrino 2.5D usa a arte pixel a pixel original e preserva aparência clássica',()=>{
+ const src=read('public/peregrino-aurora25d.js');
+ const art=read('public/art16.js');
+ const html=read('public/mundo.html');
+ assert.match(src,/OsPeregrinosArtisan64/);
+ assert.match(src,/WIDTH:W,HEIGHT:H/);
+ assert.match(src,/walk'\?6|move==='walk'\?6/);
+ assert.match(src,/cache.size>MAX_CACHE/);
+ assert.match(art,/useAurora25d&&p\.role==='peregrino'/);
+ assert.match(art,/const studioHero=!auroraHero/);
+ assert.match(html,/peregrino-aurora25d\.js/);
+ assert.ok(fs.existsSync(path.join(__dirname,'..','public','peregrino-atlas25d.html')));
+});
