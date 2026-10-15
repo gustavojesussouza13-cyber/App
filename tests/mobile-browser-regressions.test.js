@@ -109,7 +109,7 @@ test('estilos responsivos e URLs novas do cliente são publicados',()=>{
  assert.ok(html.indexOf('/sprite-studio.js')<html.indexOf('/art16.js'));
  assert.ok(html.indexOf('/character-atelier16.js')<html.indexOf('/sprite-studio.js'));
  assert.ok(html.indexOf('/landscape16.js')<html.indexOf('/art16.js'));
- assert.match(html,/src="\/landscape16\.js\?v=world-landscape-v2"/);
+ assert.match(html,/src="\/landscape16\.js\?v=world-landscape-v3"/);
  assert.ok(html.indexOf('/shading16.js')<html.indexOf('/pixel-detail.js'));
  assert.ok(html.indexOf('/shading16.js')<html.indexOf('/sprite-studio.js'));
 });
