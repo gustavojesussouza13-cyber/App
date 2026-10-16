@@ -21,6 +21,7 @@ canvas{display:block;width:100%;height:auto;image-rendering:pixelated;border:2px
 <button type="button" id="boss" aria-pressed="false">Modo chefe</button>
 </div><canvas id="preview" width="1180" height="520" aria-label="Sprites V3 das cinco criaturas"></canvas>
 <p id="status" role="status" aria-live="polite">Iniciando verificação dos cinco PNGs RGBA...</p><button type="button" id="retry" hidden onclick="location.reload()">Tentar novamente</button>
+<details id="diagnostics"><summary>Diagnóstico dos arquivos PNG</summary><pre id="asset-details" style="white-space:pre-wrap;color:#c4d8de">Aguardando verificação...</pre></details>
 <small>Atlas: 4 × 6 quadros de 192 × 160 px. A transparência deve ser real. Não publicar esta página na produção sem revisão visual.</small>
 </main><script>
 window.__v3BootError=function(message){const el=document.getElementById("status");if(el){el.textContent="Erro no laboratório V3: "+message;el.style.color="#ffadad";document.getElementById("retry").hidden=false;}};
@@ -34,6 +35,20 @@ setTimeout(function(){if(!window.__CREATURES_V3_QA__)window.__v3BootError("scrip
  const engine=api.create({windowRef:{matchMedia:function(){return {matches:true}}}});
  const canvas=document.getElementById('preview'),g=canvas.getContext('2d');
  const names=['limo','lobo','aranha','esqueleto','golem'];
+ const assetDetails=document.getElementById('asset-details');
+ const assetChecks=Object.create(null);
+ function showAssetChecks(){assetDetails.textContent=names.map(t=>t+': '+(assetChecks[t]||'verificando...')).join('\\n')}
+ names.forEach(function(type){
+   const img=new Image();
+   const url='/assets/creatures-v3/'+type+'_v3.png?v=diagnostico-20261016';
+   img.onload=function(){
+     assetChecks[type]=img.naturalWidth+' × '+img.naturalHeight+(img.naturalWidth===768&&img.naturalHeight===960?' · OK':' · DIMENSÕES INVÁLIDAS');
+     showAssetChecks();
+   };
+   img.onerror=function(){assetChecks[type]='ERRO ao obter '+url;showAssetChecks();document.getElementById('diagnostics').open=true};
+   img.src=url;
+ });
+ showAssetChecks();
  let state='repouso',boss=false,begin=performance.now();
  const params=function(now){
   const elapsed=Math.max(0,now-begin);
