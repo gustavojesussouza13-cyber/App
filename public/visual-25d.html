@@ -77,6 +77,7 @@ button{cursor:pointer}button:hover{background:#365951}button:focus-visible{outli
 <script src="/world-art-master64.js"></script>
 <script src="/aurora-creatures25d.js?v=creatures-25d-v1"></script>
 <script src="/aurora-combat25d.js?v=combat-pixels-v1"></script>
+<script src="/combat-approved25d.js?v=approved-combat-v1"></script>
 <script type="module">
 const $=id=>document.getElementById(id),canvas=$('game'),ctx=canvas.getContext('2d',{alpha:true}),mini=$('mini'),mctx=mini.getContext('2d');
 const W=canvas.width,H=canvas.height,WIDTH=1536,HEIGHT=1024;
@@ -108,20 +109,23 @@ function drawActor(a,camX,camY,now){
  const lift=moving?Math.round(Math.sin(now/100)*2):0;
  ctx.fillStyle='#13282071';ctx.beginPath();ctx.ellipse(sx,sy+4,18,7,0,0,Math.PI*2);ctx.fill();
  const role=a===player?$('role').value:a.role;
- const runway=role==='peregrino'&&Boolean(window.OsPeregrinosRunway25D?.draw(ctx,{
+ const combat=role!=='peregrino'&&a===player&&Boolean(window.OsPeregrinosApprovedCombat25D?.drawHero(ctx,{
+  role,x:sx,y:sy,dir:a.dir??2,now,attackAt:demoAttackAt,glow:true,scale:.63
+ }));
+ const runway=!combat&&role==='peregrino'&&Boolean(window.OsPeregrinosRunway25D?.draw(ctx,{
   x:sx,y:sy,dir:a.dir??2,now,moving,action:moving?'walk':'idle',
   glow:a===player,scale:.73
  }));
- const approved=role!=='peregrino'&&Boolean(window.OsPeregrinosApprovedClasses25D?.draw(ctx,{
+ const approved=!combat&&role!=='peregrino'&&Boolean(window.OsPeregrinosApprovedClasses25D?.draw(ctx,{
   role,x:sx,y:sy,dir:a.dir??2,now,action:moving?'walk':'idle',
   glow:a===player,scale:1.45
  }));
- const premium=runway||approved||Boolean(window.OsPeregrinosHeroesAurora25D?.draw(ctx,{
+ const premium=combat||runway||approved||Boolean(window.OsPeregrinosHeroesAurora25D?.draw(ctx,{
   role,x:sx,y:sy,dir:a.dir??2,action:moving?'walk':'idle',
   frame:Math.floor(now/130),glow:a===player,scale:1.32
  }));
  if(!premium){ctx.imageSmoothingEnabled=false;ctx.drawImage(pixelActor(role),sx-24,sy-60+lift,48,64);}
- const textY=runway?sy-123:approved?sy-112:premium?sy-115:sy-69+lift;
+ const textY=combat?sy-121:runway?sy-123:approved?sy-112:premium?sy-115:sy-69+lift;
  ctx.textAlign='center';ctx.font='bold 14px system-ui,Arial';ctx.lineWidth=3;ctx.strokeStyle='#101b23';
  ctx.strokeText(a.name||labels[$('role').value],sx,textY);
  ctx.fillStyle=a===player?'#ffe4a0':'#e9f2d9';ctx.fillText(a.name||labels[$('role').value],sx,textY);
@@ -162,7 +166,22 @@ function frame(t){
  const movement=keys.size>0||Boolean(drag);
  effects?.drawSteps(ctx,{x:heroX,y:heroY,dir:player.dir,role:$('role').value,now:t,moving:movement});
  effects?.drawHero(ctx,{x:heroX,y:heroY,dir:player.dir,role:$('role').value,now:t,
-   attackAt:demoAttackAt,skill:demoSkill});
+   attackAt:window.OsPeregrinosApprovedCombat25D?.isReady($('role').value)?null:demoAttackAt,
+   skill:demoSkill});
+ // Disparo demonstrativo do laboratório — nunca enviado ao servidor.
+ const roleForShot=$('role').value;
+ if((roleForShot==='arqueiro'||roleForShot==='curandeiro')&&t-demoAttackAt>=175&&t-demoAttackAt<580){
+  const ratio=Math.min(1,Math.max(0,(t-demoAttackAt-175)/285));
+  const aimX=600-camX,aimY=660-camY-32;
+  const startX=heroX+16,startY=heroY-50;
+  const key=roleForShot==='arqueiro'?'arrow':'holy-bolt';
+  window.OsPeregrinosApprovedCombat25D?.drawProjectile(ctx,{
+   kind:ratio>=1?(key==='arrow'?'impact':'magic-impact'):(key==='arrow'?'arrow':'magic'),
+   projectile:key,
+   x:startX+(aimX-startX)*ratio,y:startY+(aimY-startY)*ratio,
+   angle:Math.atan2(aimY-startY,aimX-startX),progress:ratio,impactAge:ratio>=1?t-demoAttackAt-460:0
+  });
+ }
  const creatureType=$('creature').value;
  const cx=600-camX,cy=660-camY;
  ctx.fillStyle='#112a247a';ctx.beginPath();ctx.ellipse(cx,cy+3,26,9,0,0,Math.PI*2);ctx.fill();
