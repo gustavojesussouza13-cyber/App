@@ -67,9 +67,9 @@ try{
   window.__guildDemoReplyDelayMs=1600;
   window.__guildInstantEventLog=[];
   const canvas=document.querySelector('.guild3d-canvas');
-  // O terreno é selecionado primeiro, e o botão Construir confirma o comando.
-  // O observador verifica o estado no próprio clique do botão, antes da rede.
-  document.querySelector('#guild3dLotAction').addEventListener('click',()=>{
+  // Registrado depois da cena: o observador verifica o estado NO MESMO
+  // evento pointerup, antes de timers e respostas de rede.
+  canvas.addEventListener('pointerup',()=>{
    window.__guildInstantEventLog.push({
     pending:canvas.dataset.pendingBuilding||null,
     feedback:document.querySelector('#guild3dFeedback')?.textContent||''
@@ -77,7 +77,6 @@ try{
   });
  });
  await page.mouse.click(buildTarget.x,buildTarget.y);
- await page.locator('#guild3dLotAction').click();
  const instantFirst=await page.evaluate(()=>window.__guildInstantEventLog.at(-1));
  assert.equal(instantFirst?.pending,'house:8:12','edifício 3D aparece no próprio clique, antes da rede');
  assert.match(instantFirst?.feedback||'',/posicionado\. Continue construindo/);
@@ -116,7 +115,6 @@ try{
  const projectedCell=await page.locator('#guild3dCoords').innerText();
  console.log('GUILD_TEST_DENIED_TARGET',JSON.stringify({denied,projectedCell}));
  await page.mouse.click(denied.x,denied.y);
- await page.locator('#guild3dLotAction').click();
  const instantDenied=await page.evaluate(()=>window.__guildInstantEventLog.at(-1));
  assert.equal(instantDenied?.pending,'house:8:15','recusa também deve mostrar edifício no próprio evento antes de desfazer');
  // A prévia pode já ter sumido quando o Chromium concluir o click com WebGL
@@ -130,7 +128,6 @@ try{
  await page.evaluate(()=>{window.__guildDemoOffline=true});
  const offline=await projectPoint(4,12);
  await page.mouse.click(offline.x,offline.y);
- await page.locator('#guild3dLotAction').click();
  const instantOffline=await page.evaluate(()=>window.__guildInstantEventLog.at(-1));
  assert.equal(instantOffline?.pending,null,'sem conexão, a prévia é revertida dentro do mesmo clique');
  await page.waitForFunction(()=>document.querySelector('#guild3dFeedback')?.textContent?.includes('Sem conexão'),null,{timeout:2000});
@@ -146,7 +143,6 @@ try{
  });
  const missingAck=await projectPoint(4,12);
  await page.mouse.click(missingAck.x,missingAck.y);
- await page.locator('#guild3dLotAction').click();
  const lostInstant=await page.evaluate(()=>window.__guildInstantEventLog.at(-1));
  assert.equal(lostInstant?.pending,'house:4:12','a construção aparece no mesmo evento mesmo quando o primeiro ACK se perde');
  await page.waitForFunction(()=>document.querySelector('#guild3dFeedback')?.textContent?.includes('Obra registrada'),null,{timeout:15000});
@@ -174,11 +170,9 @@ try{
  assert.equal(await page.evaluate(()=>layout.canPlace(buildings,'house',6,14)),true);
  assert.equal(await page.evaluate(()=>layout.canPlace(buildings,'house',8,15)),true);
  await page.mouse.click(multiA.x,multiA.y);
- await page.locator('#guild3dLotAction').click();
  const firstSameFrame=await page.evaluate(()=>window.__guildInstantEventLog.at(-1));
  assert.equal(firstSameFrame.pending,'house:6:14');
  await page.mouse.click(multiB.x,multiB.y);
- if(await page.locator('#guild3dLotAction').isEnabled())await page.locator('#guild3dLotAction').click();
  const secondSameFrame=await page.evaluate(()=>window.__guildInstantEventLog.at(-1));
  assert.equal(secondSameFrame.pending,'house:8:15');
  assert.equal(await canvas.getAttribute('data-pending-count'),'2','duas construções ficam visíveis simultaneamente sem espera');
@@ -186,7 +180,6 @@ try{
  assert.doesNotMatch(await page.locator('#guild3dFeedback').innerText(),/aguarde|sincronizando|anterior/i,'diário não bloqueia construções sucessivas');
  // Dois cliques no mesmo lote não podem criar edifícios sobrepostos.
  await page.mouse.click(multiB.x,multiB.y);
- if(await page.locator('#guild3dLotAction').isEnabled())await page.locator('#guild3dLotAction').click();
  assert.equal(await canvas.getAttribute('data-pending-count'),'2','não criar terceiro prédio no terreno já reservado');
  await page.waitForFunction(()=>document.querySelector('.guild3d-canvas')?.dataset.pendingCount==='0',null,{timeout:14000});
  assert.equal(await page.evaluate(()=>buildings.filter(b=>b.type==='house'&&
