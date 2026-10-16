@@ -33,9 +33,20 @@ O commit que incluiu os cinco PNGs foi `fa1a1811ceb5540252c46c843705b37ed2cefbac
 - [x] Cinco atlas incorporados na branch experimental e blobs conferidos.
 - [x] Código de integração e fallback aplicado.
 - [x] Testes antigos de precedência atualizados para a nova prioridade.
-- [ ] Confirmar GitHub Actions com todos os testes verdes após commit dos PNGs.
-- [ ] Testar o MMORPG em navegador real, incluindo animações com eventos do servidor para ataque/dano/morte, chefes, direções, hitboxes e barras de HP.
+- [x] Duas suítes automatizadas principais do MMORPG passaram depois do envio dos PNGs.
+- [x] WebGL 2.5D passou.
+- [x] Laboratório V3 no Chromium passou e gerou captura de tela no artefato `criaturas-v3-chromium-preview` (execução 38943531431).
+- [ ] O teste independente do navegador das fortalezas 3D segue falhando na checagem da construção instantânea; investigar à parte antes do merge, sem confundir com os cinco atlas V3.
+- [ ] Testar o MMORPG **em uma partida real** no navegador, incluindo animações ligadas a eventos do servidor (ataque/dano/morte), chefes, direções, hitboxes, modo mobile e barras de HP. A galeria independente não substitui esta validação.
 - [ ] Revisar visualmente halos/artefatos de transparência em cenário com contraste.
 - [ ] Confirmar com o usuário a aprovação **funcional** antes de merge/deploy.
 
 **Não publicar no Render de produção antes de completar o checklist.** As pranchas V3 foram aprovadas visualmente, mas esse aval não substitui a inspeção da integração em execução.
+
+## Revisão do navegador V3
+
+- Página experimental na branch: `/laboratorio-criaturas-v3.html`.
+- Teste automatizado: `tests/creatures-v3-browser.mjs`.
+- Workflow: `.github/workflows/creatures-v3-browser.yml`.
+- Execução aprovada e captura: https://github.com/gustavojesussouza13-cyber/App/actions/runs/38943531431
+- A prova cobre carregamento, estados e integridade visual básica em Chromium real, **não** sincronização multiplayer nem a experiência do jogador em jogo ao vivo.
