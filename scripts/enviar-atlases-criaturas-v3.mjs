@@ -11,6 +11,13 @@ import {execFileSync} from 'node:child_process';
 const repo='gustavojesussouza13-cyber/App';
 const branch='feature/criaturas-v3-review-20261016';
 const names=['limo','lobo','aranha','esqueleto','golem'];
+const approved=Object.freeze({
+ limo:'fe1cf22702a956f11701bf3c787488bae7362677af3492575ed5ca0ce6066675',
+ lobo:'e2245b04292ffa26393385af6b60bd2f523aeaa7b5bf6920d3252be8d50f7091',
+ aranha:'77eb109b847e94b2b76bc15b1535a86b356de315be9720509fc58479c2f23779',
+ esqueleto:'336fa26b5303d55ddecbd0f523d598ccdc3427189dc0db27db56881cc044e49c',
+ golem:'35c9c164a263bf6ffe5985172b6606cba12439677f5d7a20b01bc176751c07bb'
+});
 const dir=path.resolve(process.argv[2]||'.');
 const command=process.argv[3];
 if(!['--dry-run','--confirm-upload'].includes(command)){
@@ -25,6 +32,8 @@ for(const name of names){
  const pngSignature=Buffer.from([137,80,78,71,13,10,26,10]);
  if(!b.subarray(0,8).equals(pngSignature)||b.readUInt32BE(16)!==768||
     b.readUInt32BE(20)!==960||b[25]!==6)throw Error(`${rel} nao e PNG RGBA 768x960`);
+ const sha256=createHash('sha256').update(b).digest('hex');
+ if(sha256!==approved[name])throw Error(`${rel} hash is not the approved asset; refusing upload`);
  const sha=createHash('sha1').update(Buffer.from(`blob ${b.length}\0`)).update(b).digest('hex');
  files.push({name,rel,b,sha});
  console.log(`${rel}: ${b.length} bytes, sha ${sha.slice(0,12)}`);
