@@ -18,13 +18,19 @@ test('PC retorna ao Atelier detalhado antes dos recortes PNG e dos bonecos V3',(
  assert.match(art,/const animated=studioHero\|\|detailed/);
  assert.match(art,/const detailed=studioNpc\|\|pngNpc\|\|illustratedNpcV3/);
 });
-test('criaturas e chefes no PC usam animação exclusiva do Atelier antes do atlas minúsculo',()=>{
- const art=source('art16.js');
- assert.match(art,/const studioMonster=Boolean\(spriteStudio\?\.drawMonster/);
- assert.match(art,/const detailedBoss=!studioMonster&&Boolean/);
- assert.match(art,/const illustrated=!studioMonster&&!detailedBoss&&Boolean/);
- assert.match(art,/const top=studioMonster\?\(m\.boss\?\(premiumPc\?155:123\):\(premiumPc\?100:85\)\)/);
- assert.match(art,/const width=studioMonster\?\(m\.boss\?\(premiumPc\?124:98\):\(premiumPc\?80:68\)\)/);
+test('criaturas V3 antecedem Atelier, que continua antes dos atlas antigos como fallback',()=>{
+ const art=source('art16.js'),html=source('mundo.html');
+ const v3=art.indexOf('const creatureV3=Boolean(creaturesV3?.drawMonster');
+ const studio=art.indexOf('const studioMonster=!creatureV3&&Boolean(spriteStudio?.drawMonster');
+ const boss=art.indexOf('const detailedBoss=!creatureV3&&!studioMonster&&Boolean(desktopSprites?.drawMonster');
+ const illustrated=art.indexOf('const illustrated=!creatureV3&&!studioMonster&&!detailedBoss&&Boolean(desktopBestiary?.drawMonster');
+ assert.ok(v3>0&&studio>v3&&boss>studio&&illustrated>boss,
+  'ordem V3 > Atelier > boss PNG > bestiario deve ser mantida');
+ assert.match(art,/const animated=creatureV3\|\|studioMonster\|\|detailedBoss\|\|illustrated/);
+ assert.match(art,/const top=creatureV3\?creaturesV3\.measure\(ty,m\.boss\)\.healthTop:studioMonster/);
+ assert.match(art,/const width=creatureV3\?creaturesV3\.measure\(ty,m\.boss\)\.width:studioMonster/);
+ assert.ok(html.indexOf('/creatures-v3.js')>html.indexOf('/desktop-bestiary16.js'));
+ assert.ok(html.indexOf('/creatures-v3.js')<html.indexOf('/art16.js'));
 });
 test('classe do servidor, nome e posicionamento obedecem a arte desenhada em PC',()=>{
  const art=source('art16.js');
