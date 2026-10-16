@@ -14,6 +14,11 @@
  const VERSION='approved-combat25d-v1';
  const ROLES=Object.freeze(['guardiao','arqueiro','curandeiro']);
  const FRAMES=Object.freeze(['ready','windup','aim','release','recover']);
+ // Calibração de altura VISÍVEL (não do canvas transparente):
+ // idle 64x80 × 1.45 ≈ 109/103/102px. Ataque 192x160 tem
+ // 109/123/109px de silhueta na primeira pose; normalizamos por classe.
+ const SCALES=Object.freeze({guardiao:1.00,arqueiro:.84,curandeiro:.94});
+ function scaleFor(role){return SCALES[role]||1}
  const ROW=Object.freeze({0:1,1:2,2:0,3:3}); // Norte Leste Sul Oeste
  const DIR_BY_KIND=Object.freeze({north:0,east:1,south:2,west:3});
  const SOURCES=Object.freeze({
@@ -77,14 +82,15 @@
     sw:cellWidth,sh:cellHeight};
  }
  function drawHero(ctx,{role,x=0,y=0,dir=2,now=0,attackAt=null,
-    appearance=null,scale=.72,glow=false}={}){
+    appearance=null,scale=null,glow=false}={}){
   if(!ROLES.includes(role)||!ctx?.drawImage||!isStandard(appearance))return false;
   const frame=attackFrame(now-attackAt);
   if(frame<0||!Number.isFinite(attackAt))return false;
   const img=active(role);if(!img){if(!pending.has(role))void load(role);return false;}
   const r=frameRect(role,dir,frame);
-  const w=Math.max(1,Math.round(r.sw*scale)),h=Math.max(1,Math.round(r.sh*scale));
-  const left=Math.round(x-w/2),top=Math.round(y-h+Math.min(10,7*scale));
+  const factor=Number.isFinite(scale)&&scale>0?scale:scaleFor(role);
+  const w=Math.max(1,Math.round(r.sw*factor)),h=Math.max(1,Math.round(r.sh*factor));
+  const left=Math.round(x-w/2),top=Math.round(y-h+Math.min(10,7*factor));
   ctx.save();
   ctx.imageSmoothingEnabled=false;
   if(glow&&ctx.beginPath&&ctx.ellipse){
@@ -121,7 +127,7 @@
  }
  function start(){return Promise.all(Object.keys(SOURCES).map(load))}
  if(typeof document!=='undefined')void start();
- return Object.freeze({VERSION,ROLES,FRAMES,SOURCES,
+ return Object.freeze({VERSION,ROLES,FRAMES,SOURCES,SCALES,scaleFor,
   load,start,isReady:key=>!!active(key),hasFailed:key=>failures.has(key),
   normDir,attackFrame,frameRect,drawHero,drawProjectile,isStandard});
 });
