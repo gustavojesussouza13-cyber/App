@@ -4,6 +4,8 @@ on:
     branches: [os-peregrinos-online]
     paths:
       - 'public/world-25d.mjs'
+      - 'public/aurora-combat25d.js'
+      - 'public/aurora-creatures25d.js'
       - 'public/peregrino-aurora25d.js'
       - 'public/peregrino-runway25d.js'
       - 'public/approved-classes25d.js'
@@ -62,5 +64,6 @@ jobs:
             /tmp/os-peregrinos-25d-browser.png
             /tmp/os-peregrinos-peregrino-atlas.png
             /tmp/peregrino-runway-16-quadros-reais.png
+            /tmp/os-peregrinos-25d-combate-criaturas.png
             /tmp/os-peregrinos-classes-aprovadas-25d.png
           if-no-files-found: ignore
