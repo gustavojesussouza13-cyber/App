@@ -27,6 +27,32 @@ try{
  await page.locator('#classic').click();
  assert.equal(await layer.evaluate(c=>c.style.display),'block','WebGL deve ser reativável');
  await page.waitForTimeout(500);
+ const combat=await page.evaluate(()=>{
+  const effects=window.OsPeregrinosAuroraCombat25D;
+  const sprites=window.OsPeregrinosAuroraCreatures25D;
+  if(!effects||!sprites)return null;
+  return {
+   roles:Object.keys(effects.ROLES),
+   species:sprites.ROLES.map(type=>{
+    const sprite=sprites.prepare(type,2,'walk',1);
+    if(!sprite)return {type,pixels:0};
+    const rgba=sprite.getContext('2d').getImageData(0,0,64,80).data;
+    let pixels=0;for(let i=3;i<rgba.length;i+=4)if(rgba[i]>120)pixels++;
+    return {type,pixels};
+   })
+  };
+ });
+ assert.ok(combat,'módulos 2.5D de combate e criaturas precisam estar carregados');
+ assert.deepEqual(combat.roles,['peregrino','guardiao','arqueiro','curandeiro']);
+ assert.deepEqual(combat.species.map(x=>x.type),['limo','lobo','aranha','esqueleto','golem']);
+ assert.ok(combat.species.every(x=>x.pixels>120),'cada criatura precisa ter pixels desenhados: '+JSON.stringify(combat.species));
+ await page.locator('#role').selectOption('guardiao');
+ await page.locator('#testAttack').click();
+ await page.locator('#testSkill').click();
+ await page.locator('#creature').selectOption('aranha');
+ await page.locator('#testCreature').click();
+ await page.waitForTimeout(250);
+ await page.screenshot({path:'/tmp/os-peregrinos-25d-combate-criaturas.png',fullPage:true});
  const checkAlignment=async()=>{
   const bounds=await page.evaluate(()=>{
    const source=document.querySelector('#game').getBoundingClientRect();
