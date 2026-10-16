@@ -43,7 +43,21 @@ function line(x0,y0,x1,y1,c){x0=Math.round(x0);y0=Math.round(y0);x1=Math.round(x
 // Rasterização scanline: nenhum polígono usa antialias de caminhos vetoriais.
 function poly(pts,c){const ys=pts.map(v=>v[1]);let min=Math.max(0,Math.floor(Math.min(...ys))),max=Math.min(79,Math.ceil(Math.max(...ys)));for(let y=min;y<=max;y++){const scan=y+.5,xs=[];for(let i=0;i<pts.length;i++){const u=pts[i],v=pts[(i+1)%pts.length];if((u[1]<=scan&&v[1]>scan)||(v[1]<=scan&&u[1]>scan))xs.push(u[0]+(scan-u[1])*(v[0]-u[0])/(v[1]-u[1]))}xs.sort((a,b)=>a-b);for(let j=0;j+1<xs.length;j+=2){const x0=Math.ceil(xs[j]-.5),x1=Math.floor(xs[j+1]-.5);if(x1>=x0)rect(x0,y,x1-x0+1,1,c)}}}
 function dotPattern(frame,bob){for(let i=0;i<12;i++){let x=24+((i*7+frame*2)%16),y=41+((i*11+frame)%17)+bob;if(((i+frame)%3)!==0)pixel(x,y,i%2?colors.furDark:colors.furLight)}}
-function drawBat(row,frame){g.clearRect(0,0,64,80);let flap=0,bob=0;
+function drawBat(row,frame){g.clearRect(0,0,64,80);
+// Morte: nos dois quadros finais o corpo realmente desaba no chão,
+// em vez de permanecer pairando com os olhos fechados.
+if(row===5&&frame>=2){const fall=frame===3?2:0;
+poly([[5,66+fall],[13,60+fall],[20,63+fall],[27,66+fall],[35,63+fall],[44,66+fall],[52,60+fall],[59,66+fall],[55,72+fall],[8,72+fall]],colors.outline);
+poly([[7,66+fall],[15,63+fall],[23,68+fall],[28,68+fall],[35,66+fall],[44,69+fall],[52,63+fall],[57,68+fall],[52,70+fall],[12,70+fall]],colors.wingDark);
+line(7,66+fall,22,69+fall,colors.edge);line(57,66+fall,44,69+fall,colors.edge);
+poly([[26,60+fall],[33,58+fall],[39,61+fall],[42,68+fall],[35,72+fall],[27,71+fall],[24,66+fall]],colors.furDark);
+poly([[29,62+fall],[35,60+fall],[39,64+fall],[37,69+fall],[28,68+fall]],colors.fur);
+rect(28,64+fall,4,1,colors.outline);rect(35,64+fall,4,1,colors.outline);
+line(30,70+fall,27,73+fall,colors.bone);line(37,70+fall,40,73+fall,colors.bone);
+for(let i=0;i<9;i++)pixel(14+i*4,74+fall,i%2?colors.furDark:colors.edge);
+return;
+}
+let flap=0,bob=0;
 if(row===1){flap=[-9,-3,7,1][frame];bob=[0,-2,0,2][frame]}
 else if(row===2){flap=[-1,-4,-7,-9][frame];bob=-1}
 else if(row===3){flap=[-9,-5,2,8][frame];bob=[-4,-2,1,4][frame]}
