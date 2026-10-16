@@ -18,13 +18,19 @@ test('PC retorna ao Atelier detalhado antes dos recortes PNG e dos bonecos V3',(
  assert.match(art,/const animated=studioHero\|\|detailed/);
  assert.match(art,/const detailed=studioNpc\|\|pngNpc\|\|illustratedNpcV3/);
 });
-test('criaturas e chefes no PC usam animação exclusiva do Atelier antes do atlas minúsculo',()=>{
+test('criaturas 2.5D priorizam sprites nativos e o modo clássico preserva o Atelier e PNGs',()=>{
  const art=source('art16.js');
- assert.match(art,/const studioMonster=Boolean\(spriteStudio\?\.drawMonster/);
- assert.match(art,/const detailedBoss=!studioMonster&&Boolean/);
- assert.match(art,/const illustrated=!studioMonster&&!detailedBoss&&Boolean/);
- assert.match(art,/const top=studioMonster\?\(m\.boss\?\(premiumPc\?155:123\):\(premiumPc\?100:85\)\)/);
- assert.match(art,/const width=studioMonster\?\(m\.boss\?\(premiumPc\?124:98\):\(premiumPc\?80:68\)\)/);
+ // Apenas no modo 2.5D usamos o novo desenho das cinco espécies principais.
+ assert.match(art,/const auroraMonster=Boolean\(useAurora25d&&/);
+ assert.match(art,/OsPeregrinosAuroraCreatures25D\?\.draw/);
+ // Em 2D clássico, auroraMonster é false e o Studio continua sendo o primeiro.
+ assert.match(art,/const studioMonster=!auroraMonster&&Boolean\(spriteStudio\?\.drawMonster/);
+ assert.match(art,/const detailedBoss=!auroraMonster&&!studioMonster&&Boolean/);
+ assert.match(art,/const illustrated=!auroraMonster&&!studioMonster&&!detailedBoss&&Boolean/);
+ assert.match(art,/const animated=auroraMonster\|\|studioMonster\|\|detailedBoss/);
+ // Barras de vida e seleção continuam alinhadas aos dois conjuntos de sprites.
+ assert.match(art,/const top=auroraMonster\?\(m\.boss\?137:102\):studioMonster/);
+ assert.match(art,/const width=auroraMonster\?\(m\.boss\?106:76\):studioMonster/);
 });
 test('classe do servidor, nome e posicionamento obedecem a arte desenhada em PC',()=>{
  const art=source('art16.js');
