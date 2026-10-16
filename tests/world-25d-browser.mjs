@@ -65,6 +65,41 @@ try{
   await page.locator('#role').selectOption(role);
   assert.match(await page.locator('#heroName').innerText(),new RegExp(role==='guardiao'?'Guardião':role==='arqueiro'?'Arqueiro':role==='curandeiro'?'Curandeiro':'Peregrino'));
  }
+ await page.waitForFunction(()=>['guardiao','arqueiro','curandeiro'].every(role=>
+   window.OsPeregrinosApprovedClasses25D?.isReady(role)),null,{timeout:12000});
+ const approved=await page.evaluate(()=>{
+  const api=window.OsPeregrinosApprovedClasses25D;
+  return api.ROLES.map(role=>{
+   const c=document.createElement('canvas');c.width=160;c.height=170;
+   const ctx=c.getContext('2d');
+   function getFrame(dir,action,now){
+    ctx.clearRect(0,0,c.width,c.height);
+    const drawn=api.draw(ctx,{role,x:80,y:162,dir,action,now,scale:1.45,glow:false});
+    const bytes=ctx.getImageData(0,0,c.width,c.height).data;
+    let opaque=0;for(let k=3;k<bytes.length;k+=4)if(bytes[k]>100)opaque++;
+    return {drawn,opaque,data:c.toDataURL('image/png')};
+   }
+   const front=getFrame(2,'idle',0),back=getFrame(0,'idle',0);
+   const right=getFrame(1,'idle',0),left=getFrame(3,'idle',0);
+   const walk=getFrame(2,'walk',200);
+   return {role,front:front.opaque,back:back.opaque,right:right.opaque,
+    left:left.opaque,walk:walk.opaque,directions: new Set([front.data,back.data,right.data,left.data]).size,
+    walkChanged:front.data!==walk.data,drawn:front.drawn&&back.drawn&&right.drawn&&left.drawn&&walk.drawn,
+    attackFallback:api.draw(ctx,{role,x:80,y:160,action:'attack'}),source:api.source(role)};
+  });
+ });
+ assert.deepEqual(approved.map(x=>x.role),['guardiao','arqueiro','curandeiro']);
+ assert.ok(approved.every(x=>x.drawn),'os três PNGs devem renderizar no navegador');
+ assert.ok(approved.every(x=>Math.min(x.front,x.back,x.right,x.left,x.walk)>350),
+  'cada direção deve conter pixels opacos do desenho');
+ assert.ok(approved.every(x=>x.directions===4),'todas as direções devem ser distintas após espelhar oeste');
+ assert.ok(approved.every(x=>x.walkChanged),'cada classe deve ter um quadro de caminhada diferente');
+ assert.ok(approved.every(x=>x.attackFallback===false),'ataques usam os sprites originais como fallback');
+ assert.ok(approved.every(x=>x.source.includes('.png')),'origem deve apontar ao PNG aprovado do jogo');
+ await page.locator('#role').selectOption('guardiao');
+ await page.waitForTimeout(180);
+ await page.screenshot({path:'/tmp/os-peregrinos-classes-aprovadas-25d.png',fullPage:true});
+ await page.locator('#role').selectOption('peregrino');
  await page.waitForFunction(()=>window.OsPeregrinosRunway25D?.isReady(),null,{timeout:12000});
  const genuine=await page.evaluate(()=>{
   const api=window.OsPeregrinosRunway25D;
