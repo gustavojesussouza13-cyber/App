@@ -13,8 +13,8 @@
  if(root)root.OsPeregrinosApprovedClasses25D=api;
 })(typeof globalThis!=='undefined'?globalThis:this,function(root){
  const FW=64,FH=80;
- // Habilitar somente depois da publicação dos três PNGs reais aprovados.
- const ASSETS_READY=root.OsPeregrinosApprovedArtEnabled===true;
+ // Os três atlases PNG foram versionados e verificados nesta branch experimental.
+ const ASSETS_READY=true;
  const roles=['guardiao','arqueiro','curandeiro'];
  const source=role=>'/assets/approved-classes/'+role+'-sprites-3x2-64x80.png?v=approved-v1';
  const loaded=new Map(),failed=new Set(),pending=new Map();
