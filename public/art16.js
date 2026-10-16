@@ -441,14 +441,15 @@ function create({ctx,W,H}){
   // As três artes aprovadas só substituem a aparência padrão no 2.5D.
   // Sem o arquivo PNG ou durante ataque/dano, usa os heróis atuais.
   const approvedHero=Boolean(useAurora25d&&p.role!=='peregrino'&&
-    !state.hurt&&!attacking&&!state.dead&&
+    !state.hurt&&!attacking&&!(pose?.action==='attack'&&state.elapsed<540)&&!state.dead&&
     window.OsPeregrinosApprovedClasses25D?.draw(g,{
       role:p.role,x:p.x,y:p.y,dir,appearance:p.appearance,now,
       action:moved?'walk':'idle',glow:local,scale:1.45
     }));
   // Ataques detalhados aprovados: apenas quatro direções e estado de ataque.
   // Se o PNG ainda não foi carregado, caímos para a animação anterior.
-  const combatHero=Boolean(useAurora25d&&p.role!=='peregrino'&&attacking&&
+  const combatHero=Boolean(useAurora25d&&p.role!=='peregrino'&&
+    (attacking||(pose?.action==='attack'&&state.elapsed<540))&&
    !state.hurt&&window.OsPeregrinosApprovedCombat25D?.drawHero(g,{
     role:p.role,x:p.x,y:p.y,dir,now,attackAt:pose?.at,
     appearance:p.appearance,scale:.72,glow:local
