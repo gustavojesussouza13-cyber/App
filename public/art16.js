@@ -258,6 +258,9 @@ function create({ctx,W,H}){
   g.restore();
  }
  function drawProjectile(g,shot){
+  // Só eventos confirmados pelo servidor alimentam esta fila de projéteis.
+  // Na visualização 2.5D, utiliza o PNG aprovado; 2D clássico mantém efeito antigo.
+  if(useAurora25d&&window.OsPeregrinosApprovedCombat25D?.drawProjectile(g,shot))return;
   if(shot.kind==='magic'||shot.kind==='magic-impact'){drawHolyBolt(g,shot);return}
   g.save();g.translate(Math.round(shot.x),Math.round(shot.y));
   if(shot.kind==='impact'){
@@ -723,14 +726,15 @@ function create({ctx,W,H}){
     character(ctx,p,false,now,p.moving!==false,attacking,pose);
     combat25d?.drawSteps(ctx,{x:p.x,y:p.y,dir:p.dir,role:p.role,now,moving:p.moving!==false});
     if(pose)combat25d?.drawHero(ctx,{x:p.x,y:p.y,dir:p.dir,role:p.role,now,
-     attackAt:attacking?pose.at:null,hurtAt:pose.action==='hurt'?pose.at:null});
+     attackAt:attacking&&!window.OsPeregrinosApprovedCombat25D?.isReady(p.role)?pose.at:null,
+     hurtAt:pose.action==='hurt'?pose.at:null});
    }})}
   actors.push({depth:y,paint:()=>{
    character(ctx,{name,role,appearance,x,y,dir},true,now,moving,
     now-lastAction<370,heroPose||{action:'attack',at:lastAction});
    combat25d?.drawSteps(ctx,{x,y,dir,role,now,moving});
    combat25d?.drawHero(ctx,{x,y,dir,role,now,
-    attackAt:now-lastAction<420?lastAction:null,
+    attackAt:now-lastAction<420&&!window.OsPeregrinosApprovedCombat25D?.isReady(role)?lastAction:null,
     hurtAt:heroPose?.action==='hurt'?heroPose.at:null,
     skill:!!lastActionWasSkill});
   }});
