@@ -46,6 +46,39 @@ try{
  assert.deepEqual(combat.roles,['peregrino','guardiao','arqueiro','curandeiro']);
  assert.deepEqual(combat.species.map(x=>x.type),['limo','lobo','aranha','esqueleto','golem']);
  assert.ok(combat.species.every(x=>x.pixels>120),'cada criatura precisa ter pixels desenhados: '+JSON.stringify(combat.species));
+
+ await page.waitForFunction(()=>['guardiao','arqueiro','curandeiro','flecha','magia'].every(key=>
+  window.OsPeregrinosApprovedCombat25D?.isReady(key)),null,{timeout:12000});
+ const readyCombat=await page.evaluate(()=>{
+  const api=window.OsPeregrinosApprovedCombat25D;
+  const hero=api.ROLES.map(role=>{
+   const snapshots=[];
+   for(const dir of [0,1,2,3]){
+    const c=document.createElement('canvas');c.width=256;c.height=256;
+    const g=c.getContext('2d');
+    const drawn=api.drawHero(g,{role,x:128,y:233,dir,now:230,attackAt:0,scale:.72});
+    const rgba=g.getImageData(0,0,256,256).data;let n=0;
+    for(let k=3;k<rgba.length;k+=4)if(rgba[k]>100)n++;
+    snapshots.push({dir,drawn,n,png:c.toDataURL('image/png')});
+   }
+   return {role,frames:snapshots,unique:new Set(snapshots.map(x=>x.png)).size};
+  });
+  const arrows=['arrow','holy-bolt'].map(projectile=>{
+   const c=document.createElement('canvas');c.width=256;c.height=256;
+   const g=c.getContext('2d');
+   const drawn=api.drawProjectile(g,{projectile,kind:projectile==='arrow'?'arrow':'magic',
+    x:128,y:128,angle:0,progress:.4});
+   const rgba=g.getImageData(0,0,256,256).data;let n=0;
+   for(let k=3;k<rgba.length;k+=4)if(rgba[k]>100)n++;
+   return {projectile,drawn,n};
+  });
+  return {hero,arrows};
+ });
+ assert.ok(readyCombat.hero.every(x=>x.unique>=3&&x.frames.every(y=>y.drawn&&y.n>500)),
+  '20 quadros por classe devem desenhar pixels reais nas 4 direções: '+
+  JSON.stringify(readyCombat.hero.map(x=>({role:x.role,unique:x.unique,pixels:x.frames.map(y=>y.n)}))));
+ assert.ok(readyCombat.arrows.every(x=>x.drawn&&x.n>20),
+  'Flecha e magia aprovadas devem renderizar pixels reais: '+JSON.stringify(readyCombat.arrows));
  await page.locator('#role').selectOption('guardiao');
  await page.locator('#testAttack').click();
  await page.locator('#testSkill').click();
