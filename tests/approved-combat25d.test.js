@@ -77,3 +77,19 @@ test('Escala corrigida preserva altura visível entre caminhada e ataque por cla
  assert.doesNotMatch(art,/appearance:p\.appearance,scale:\.72,glow:local/);
  assert.doesNotMatch(lab,/attackAt:demoAttackAt,glow:true,scale:\.63/);
 });
+
+test('Habilidade (K/botão) mantém a mesma escala de ataque e não reduz o personagem',()=>{
+ const art=content('art16.js');
+ const mmo=content('mmo.js');
+ assert.match(mmo,/send\('skill',\{target:session\.target\|\|null\}\);lastActionWasSkill=true/);
+ assert.match(mmo,/send\(skill\?'skill':'attack',\{target:session\.target\}\);lastActionWasSkill=Boolean\(skill\)/);
+ assert.match(art,/const combatPose=pose\?\.action==='attack'\|\|pose\?\.action==='skill'/);
+ assert.match(art,/const animatingCombat=combatPose&&state\.elapsed<540/);
+ assert.match(art,/const actionPose=heroPose\|\|\{action:lastActionWasSkill\?'skill':'attack',at:lastAction\}/);
+ assert.match(art,/attackAt:pose\?\.at/);
+ assert.match(art,/appearance:p\.appearance,glow:local/);
+ assert.doesNotMatch(art,/scale:\.72/);
+ const lab=content('visual-25d.html');
+ assert.match(lab,/testSkill/);
+ assert.doesNotMatch(lab,/scale:\.63/);
+});
