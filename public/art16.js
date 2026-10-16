@@ -20,6 +20,7 @@ function create({ctx,W,H}){
  const desktopSprites=window.OsPeregrinosDesktopSprites16?.create({windowRef:window});
  const desktopCharactersV3=window.OsPeregrinosDesktopCharactersV3?.create({windowRef:window,documentRef:document});
  const desktopBestiary=window.OsPeregrinosDesktopBestiary16?.create({windowRef:window});
+ const creaturesV3=window.OsPeregrinosCreaturesV3?.create({windowRef:window});
  const worldProps=window.OsPeregrinosWorldPropsArtisan64?.create({documentRef:document});
  let cache=null,objects=[],artReady=false;
  // Três últimas regiões: o retorno pelo atlas não reconstrói milhares de tiles.
@@ -511,10 +512,11 @@ function create({ctx,W,H}){
   const state={type:ty,moving:m.moving===true,attacking:acting,hurt,dead,
    elapsed:pose?Math.max(0,now-pose.at):0};
   const premiumPc=Boolean(desktopCharactersV3?.enabled);
-  const studioMonster=Boolean(spriteStudio?.drawMonster(g,{...m,x,y},now,{...state,desktopPremium:premiumPc}));
-  const detailedBoss=!studioMonster&&Boolean(desktopSprites?.drawMonster(g,{...m,x,y},now,state));
-  const illustrated=!studioMonster&&!detailedBoss&&Boolean(desktopBestiary?.drawMonster(g,{...m,x,y},now,state));
-  const animated=studioMonster||detailedBoss||illustrated||Boolean(spriteStudio?.drawMonster(g,{...m,x,y},now,state));
+  const creatureV3=Boolean(creaturesV3?.drawMonster(g,{...m,x,y},now,state));
+  const studioMonster=!creatureV3&&Boolean(spriteStudio?.drawMonster(g,{...m,x,y},now,{...state,desktopPremium:premiumPc}));
+  const detailedBoss=!creatureV3&&!studioMonster&&Boolean(desktopSprites?.drawMonster(g,{...m,x,y},now,state));
+  const illustrated=!creatureV3&&!studioMonster&&!detailedBoss&&Boolean(desktopBestiary?.drawMonster(g,{...m,x,y},now,state));
+  const animated=creatureV3||studioMonster||detailedBoss||illustrated||Boolean(spriteStudio?.drawMonster(g,{...m,x,y},now,state));
   if(!animated){
    if(ty==='cavaleiro'||ty==='sentinela'||ty==='chefe'){
     const key=ty==='chefe'?'chefe_andar':ty==='sentinela'?'sentinela_andar':'cavaleiro_andar';
@@ -541,11 +543,11 @@ function create({ctx,W,H}){
    }
    g.restore();
   }
-  const top=studioMonster?(m.boss?(premiumPc?155:123):(premiumPc?100:85)):detailedBoss?121:illustrated?(m.boss?137:83):m.boss?90:56;
-  const width=studioMonster?(m.boss?(premiumPc?124:98):(premiumPc?80:68)):detailedBoss?90:illustrated?(m.boss?110:62):m.boss?61:45;
+  const top=creatureV3?creaturesV3.measure(ty,m.boss).healthTop:studioMonster?(m.boss?(premiumPc?155:123):(premiumPc?100:85)):detailedBoss?121:illustrated?(m.boss?137:83):m.boss?90:56;
+  const width=creatureV3?creaturesV3.measure(ty,m.boss).width:studioMonster?(m.boss?(premiumPc?124:98):(premiumPc?80:68)):detailedBoss?90:illustrated?(m.boss?110:62):m.boss?61:45;
   g.fillStyle='#231d1b';g.fillRect(x-width/2,y-top,width,7);
   g.fillStyle=m.boss?'#f6b66d':'#b1d976';g.fillRect(x-width/2+1,y-top+1,Math.max(0,(width-2)*m.hp/Math.max(1,m.maxHp)),5);
-  if(selected){g.strokeStyle='#ffe29d';g.lineWidth=2;g.strokeRect(x-width/2-6,y-top-1,width+12,studioMonster?(m.boss?(premiumPc?165:132):(premiumPc?110:95)):detailedBoss?132:illustrated?(m.boss?149:97):m.boss?101:70)}
+  if(selected){g.strokeStyle='#ffe29d';g.lineWidth=2;g.strokeRect(x-width/2-6,y-top-1,width+12,creatureV3?creaturesV3.measure(ty,m.boss).selectionHeight:studioMonster?(m.boss?(premiumPc?165:132):(premiumPc?110:95)):detailedBoss?132:illustrated?(m.boss?149:97):m.boss?101:70)}
   if(selected||m.boss){g.save();g.fillStyle='#ffefc8';g.font='bold 12px monospace';g.textAlign='center';g.shadowColor='#000';g.shadowBlur=0;g.fillText(m.name,x,y-top-9);g.restore()}
  }
  function prop(g,o){
