@@ -100,6 +100,17 @@ try{
  await page.waitForTimeout(180);
  await page.screenshot({path:'/tmp/os-peregrinos-classes-aprovadas-25d.png',fullPage:true});
  await page.locator('#role').selectOption('peregrino');
+ const approvedUrl=url.replace('visual-25d.html','classes-aprovadas-25d.html');
+ const classPage=await browser.newPage({viewport:{width:1340,height:920}});
+ const classResp=await classPage.goto(approvedUrl,{waitUntil:'domcontentloaded'});
+ assert.equal(classResp?.status(),200,'galeria das três classes deve existir no Render');
+ await classPage.waitForFunction(()=>[...document.querySelectorAll('.card .status')].every(el=>el.textContent.includes('PNG real carregado')),null,{timeout:14000});
+ assert.equal(await classPage.locator('.card').count(),3);
+ await classPage.locator('[data-role="guardiao"] select').selectOption('3');
+ await classPage.locator('[data-role="arqueiro"] select').selectOption('1');
+ await classPage.locator('[data-role="curandeiro"] select').selectOption('0');
+ await classPage.screenshot({path:'/tmp/os-peregrinos-classes-aprovadas-25d.png',fullPage:true});
+ await classPage.close();
  await page.waitForFunction(()=>window.OsPeregrinosRunway25D?.isReady(),null,{timeout:12000});
  const genuine=await page.evaluate(()=>{
   const api=window.OsPeregrinosRunway25D;
