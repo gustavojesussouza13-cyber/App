@@ -51,9 +51,13 @@ button{cursor:pointer}button:hover{background:#365951}button:focus-visible{outli
  <label>Região / bioma<select id="biome"><option value="pradaria">Vale das Oliveiras</option><option value="floresta">Floresta Antiga</option><option value="cidade">Auren — Praça</option><option value="rio">Rios de Aurora</option><option value="deserto">Areias do Sul</option><option value="montanha">Alturas</option></select></label>
  <button id="night" type="button">☾ Anoitecer</button>
  <button id="classic" type="button">Ver apenas Canvas 2D</button>
+ <label>Criatura principal<select id="creature"><option value="lobo">Lobo</option><option value="limo">Limo</option><option value="aranha">Aranha</option><option value="esqueleto">Esqueleto</option><option value="golem">Golem</option></select></label>
+ <button id="testAttack" type="button">⚔ Ver ataque da classe</button>
+ <button id="testSkill" type="button">✦ Ver habilidade da classe</button>
+ <button id="testCreature" type="button">◆ Ver ataque da criatura</button>
  <div id="status" role="status">Preparando renderizador WebGL…</div>
  <p><b>Controles:</b> WASD ou setas para andar. No celular, arraste o dedo sobre a área do jogo.</p>
- <p><b>Peregrino:</b> sprites reais do Runway, extraídos da imagem rosa e transformados em PNG transparente (16 quadros). As demais classes continuam com suas artes originais. Câmera ortográfica e cenário WebGL.</p>
+ <p><b>Peregrino:</b> atlas real do Runway (16 quadros). Guardião, Arqueiro e Curandeiro: PNGs aprovados. Novos efeitos de combate em pixels e cinco criaturas autorais, sem custos do Runway.</p>
  <a style="color:#e7d79f;font-size:13px;display:block" href="/classes-aprovadas-25d.html">Inspecionar Guardião, Arqueiro e Curandeiro aprovados →</a>
  <a style="color:#f1dca3;font-size:13px" href="/peregrino-runway-preview.html">Inspecionar sprites REAIS do Runway →</a>
  <a style="color:#e5c995;font-size:13px" href="/peregrino-atlas25d.html">Comparar com o Peregrino original →</a>
@@ -65,10 +69,14 @@ button{cursor:pointer}button:hover{background:#365951}button:focus-visible{outli
 <script src="/peregrino-artisan64.js"></script>
 <script src="/peregrino-aurora25d.js"></script>
 <script src="/pixel-atelier-v1.js"></script>
+<script src="/character-atelier16.js"></script>
 <script src="/heroes-master64.js"></script>
 <script src="/aurora-heroes25d.js"></script>
 <script src="/approved-classes25d.js?v=approved-classes-v2"></script>
 <script src="/peregrino-runway25d.js?v=runway-original-v1"></script>
+<script src="/world-art-master64.js"></script>
+<script src="/aurora-creatures25d.js?v=creatures-25d-v1"></script>
+<script src="/aurora-combat25d.js?v=combat-pixels-v1"></script>
 <script type="module">
 const $=id=>document.getElementById(id),canvas=$('game'),ctx=canvas.getContext('2d',{alpha:true}),mini=$('mini'),mctx=mini.getContext('2d');
 const W=canvas.width,H=canvas.height,WIDTH=1536,HEIGHT=1024;
@@ -76,6 +84,7 @@ const labels={peregrino:'Peregrino',guardiao:'Guardião',arqueiro:'Arqueiro',cur
 const palettes={peregrino:['#26618a','#e0c788'],guardiao:['#7c4a51','#bcc6cd'],arqueiro:['#3e7958','#d4a15d'],curandeiro:['#dddac8','#7fcbd5']};
 const player={x:768,y:512,dir:2,role:'peregrino'},keys=new Set();
 let view=null,day=true,mode3d=true,last=0,drag=null;
+let demoAttackAt=-10000,demoSkill=false,creatureAttackAt=-10000;
 const textures=new Map();
 function pixelActor(kind) {
  if(textures.has(kind))return textures.get(kind);
@@ -148,10 +157,28 @@ function frame(t){
  if(!mode3d)fallbackTerrain(camX,camY);
  for(const npc of actors)drawActor(npc,camX,camY,t);
  drawActor(player,camX,camY,t);
+ const effects=window.OsPeregrinosAuroraCombat25D;
+ const heroX=player.x-camX,heroY=player.y-camY;
+ const movement=keys.size>0||Boolean(drag);
+ effects?.drawSteps(ctx,{x:heroX,y:heroY,dir:player.dir,role:$('role').value,now:t,moving:movement});
+ effects?.drawHero(ctx,{x:heroX,y:heroY,dir:player.dir,role:$('role').value,now:t,
+   attackAt:demoAttackAt,skill:demoSkill});
+ const creatureType=$('creature').value;
+ const cx=600-camX,cy=660-camY;
+ ctx.fillStyle='#112a247a';ctx.beginPath();ctx.ellipse(cx,cy+3,26,9,0,0,Math.PI*2);ctx.fill();
+ const attacking=t-creatureAttackAt<500;
+ window.OsPeregrinosAuroraCreatures25D?.draw(ctx,{type:creatureType,x:cx,y:cy,
+   action:attacking?'attack':'idle',dir:2,frame:Math.floor(t/135)});
+ effects?.drawCreature(ctx,{type:creatureType,x:cx,y:cy,now:t,at:creatureAttackAt,action:'attack'});
+ ctx.textAlign='center';ctx.font='bold 13px system-ui';ctx.fillStyle='#fff0c5';
+ ctx.fillText(creatureType.toUpperCase(),cx,cy-117);
  miniMap();
  requestAnimationFrame(frame);
 }
-$('role').addEventListener('change',()=>{$('heroName').textContent=labels[$('role').value]+' · Nv. 35'});
+$('role').addEventListener('change',()=>{$('heroName').textContent=labels[$('role').value]+' · Nv. 35';demoAttackAt=-10000});
+$('testAttack').addEventListener('click',()=>{demoAttackAt=performance.now();demoSkill=false});
+$('testSkill').addEventListener('click',()=>{demoAttackAt=performance.now();demoSkill=true});
+$('testCreature').addEventListener('click',()=>{creatureAttackAt=performance.now()});
 $('night').addEventListener('click',()=>{day=!day;view?.setNight(!day);$('night').textContent=day?'☾ Anoitecer':'☀ Amanhecer'});
 $('classic').addEventListener('click',()=>{if(!view)return;mode3d=!mode3d;if(view)view.canvas.style.display=mode3d?'block':'none';$('classic').textContent=mode3d?'Ver apenas Canvas 2D':'Ativar Canvas 3D · 2.5D'});
 window.addEventListener('keydown',e=>{const key=e.key.toLowerCase();if(['w','a','s','d','arrowup','arrowleft','arrowright','arrowdown'].includes(key)){keys.add(key);e.preventDefault()}});
