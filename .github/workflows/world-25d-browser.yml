@@ -1,5 +1,7 @@
 name: Mundo Aberto 2.5D - navegador e WebGL
 on:
+  push:
+    branches: [feature/mundo-aberto-25d-webgl-preview]
   pull_request:
     branches: [os-peregrinos-online]
     paths:
@@ -48,6 +50,8 @@ jobs:
           curl -fsS http://127.0.0.1:3106/peregrino-aurora25d.js >/dev/null
           curl -fsS http://127.0.0.1:3106/aurora-heroes25d.js >/dev/null
           curl -fsS http://127.0.0.1:3106/assets/peregrino/peregrino-runway-walk.png >/dev/null
+      - name: Testes de regressão completos do MMORPG e da arte 2.5D
+        run: node --test tests/*.test.js
       - name: Testar preview 2.5D do commit (sem esperar deploy Render)
         env:
           WORLD25D_URL: http://127.0.0.1:3106/visual-25d.html
