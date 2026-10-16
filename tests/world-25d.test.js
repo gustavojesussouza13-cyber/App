@@ -120,12 +120,12 @@ test('A spritesheet original do Runway está instalada como PNG real, não apena
  assert.ok(fs.existsSync(path.join(__dirname,'..','public/peregrino-runway-preview.html')));
 });
 
-test('Sprites aprovados aguardam PNGs reais e nunca quebram os personagens legados',()=>{
+test('Sprites aprovados carregam PNGs reais e preservam fallback do motor clássico',()=>{
  const loader=read('public/approved-classes25d.js');
  const mmo=read('public/art16.js');
  const lab=read('public/visual-25d.html');
  const html=read('public/mundo.html');
- assert.match(loader,/ASSETS_READY=root\.OsPeregrinosApprovedArtEnabled===true/);
+ assert.match(loader,/ASSETS_READY=true/);
  assert.match(loader,/if\(!ASSETS_READY\)return Promise\.resolve\(false\)/);
  assert.match(loader,/if\(typeof document!=='undefined'&&ASSETS_READY\)void start\(\)/);
  assert.match(loader,/assets\/approved-classes/);
@@ -133,4 +133,14 @@ test('Sprites aprovados aguardam PNGs reais e nunca quebram os personagens legad
  assert.match(mmo,/OsPeregrinosApprovedClasses25D\?\.draw/);
  assert.match(html,/approved-classes25d\.js/);
  assert.match(lab,/approved-classes25d\.js/);
+ for(const role of ['guardiao','arqueiro','curandeiro']){
+  const file=path.join(__dirname,'..','public/assets/approved-classes',role+'-sprites-3x2-64x80.png');
+  assert.ok(fs.existsSync(file),'asset PNG obrigatório: '+role);
+  const bytes=fs.readFileSync(file);
+  assert.deepEqual(Array.from(bytes.subarray(0,8)),[137,80,78,71,13,10,26,10]);
+  assert.equal(bytes.readUInt32BE(16),192,'largura do atlas: '+role);
+  assert.equal(bytes.readUInt32BE(20),160,'altura do atlas: '+role);
+  assert.ok(bytes.includes(Buffer.from('tRNS')),'atlas precisa ter transparência: '+role);
+  assert.ok(bytes.length>5000,'atlas não pode estar vazio: '+role);
+ }
 });
