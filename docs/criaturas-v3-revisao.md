@@ -1,53 +1,41 @@
-# Criaturas V3 — revisão experimental (NÃO PUBLICAR)
+# Os Peregrinos — Criaturas V3 (PR #60: validação experimental)
 
-Esta branch sai de `os-peregrinos-online` e prepara o renderizador das cinco criaturas aprovadas visualmente: Limo, Lobo, Aranha, Esqueleto e Golem.
+**Situação: os cinco PNGs foram enviados à branch de revisão; ainda sem merge ou deploy no Render.**
 
-## Mudanças de código
+## Objetivo
 
-- `public/creatures-v3.js`: carrega sprites somente em desktop, com quadro-fonte fixo de 192×160 px e seis estados × quatro quadros.
-- `public/art16.js`: dá prioridade ao novo renderizador e usa SpriteStudio/bestiário clássico se qualquer PNG estiver ausente ou inválido.
-- `public/mundo.html`: registra o módulo com `defer` antes de `art16.js`.
-- `tests/creatures-v3-renderer.test.js`: testa prioridades técnicas, fallback, escala constante, espelhamento e chefes em mocks.
+Integrar ao MMORPG cinco criaturas aprovadas visualmente: **Limo, Lobo, Aranha, Esqueleto e Golem**. Cada atlas tem exatamente 768 × 960 pixels (4 colunas × 6 linhas), quatro quadros de 192 × 160 para cada um de seis estados: repouso, caminhada, preparação, ataque, dano e morte.
 
-## BLOQUEADOR: atlas PNGs ainda NÃO foram enviados a esta branch
+## Arquivos incorporados (16/10/2026)
 
-O pacote local aprovado nesta conversa contém cinco atlas PNG preliminares RGBA de 768×960 px, 24 quadros cada, e seus metadados. A conexão GitHub disponível nesta execução só aceitou arquivos de texto; não foi possível enviar as cinco imagens binárias pela mesma rota. **Não considerar este PR completo nem pronto para merge.**
+- `public/assets/creatures-v3/limo_v3.png`
+- `public/assets/creatures-v3/lobo_v3.png`
+- `public/assets/creatures-v3/aranha_v3.png`
+- `public/assets/creatures-v3/esqueleto_v3.png`
+- `public/assets/creatures-v3/golem_v3.png`
 
-Faltam, sob `public/assets/creatures-v3/`:
-- `limo_v3.png`
-- `lobo_v3.png`
-- `aranha_v3.png`
-- `esqueleto_v3.png`
-- `golem_v3.png`
+Os cinco blobs foram comparados com os hashes Git dos arquivos aprovados. A validação de SHA-256 e dimensões é coberta por `tests/creatures-v3-assets.test.js`.
 
-Os JSONs de metadados podem acompanhar os PNGs, mas o código consulta apenas os PNGs, sem depender dos JSONs. Os arquivos podem ser extraídos do ZIP `Os_Peregrinos_Integracao_V3_Offline_14_Testes.zip` entregue no chat; preserve os nomes e estrutura `public/assets/creatures-v3/`.
+O commit que incluiu os cinco PNGs foi `fa1a1811ceb5540252c46c843705b37ed2cefbac`.
 
-## Validação necessária antes de merge/deploy
+## Integração de código
 
-1. Adicionar os cinco PNGs e testar dimensões 768×960 px, canal alfa e 24 recortes de 192×160.
-2. Executar `npm test` no checkout completo. Testes anteriores do pacote local passaram (14/14), mas isso não verifica a versão remota com assets.
-3. Abrir `/mundo.html` em desktop e validar repouso, caminhada, preparação, ataque, dano e morte.
-4. Confirmar escala fixa, direção horizontal, barra de vida, hitbox intacta e ausência de regressões nos monstros de outros tipos.
-5. Inspecionar bordas/halos das extrações e implementar vistas traseiras próprias em uma iteração futura.
-6. Solicitar aprovação da integração funcional antes de qualquer merge ou deploy de produção no Render.
+- `public/creatures-v3.js`: módulo de renderização somente desktop, sem alterar hitbox, persistência, física ou combate de servidor.
+- `public/art16.js`: tenta V3 antes do SpriteStudio, bestiário e recortes originais; preserva os anteriores como fallback por espécie.
+- `public/mundo.html`: carrega `creatures-v3.js` antes do motor.
+- `tests/creatures-v3-renderer.test.js`: valida estados, espelhamento, tamanhos constantes de desenho e fallback.
+- `tests/pc-atlas-priority-v4.test.js`: verifica precedência V3 > Atelier > bestiário sem enfraquecer a identidade de heróis e NPCs.
+- `scripts/enviar-atlases-criaturas-v3.mjs`: script auxiliar com dry-run e validação SHA antes de envio (já não é necessário para os cinco arquivos incorporados).
 
-A ausência das imagens deve ativar o *fallback* para a arte antiga e não deve quebrar o jogo. **Não alterar `main`, o banco de dados ou o serviço Render de produção por este PR.**
+## Checklist para conclusão
 
+- [x] PR de revisão isolado da branch publicada.
+- [x] Cinco atlas incorporados na branch experimental e blobs conferidos.
+- [x] Código de integração e fallback aplicado.
+- [x] Testes antigos de precedência atualizados para a nova prioridade.
+- [ ] Confirmar GitHub Actions com todos os testes verdes após commit dos PNGs.
+- [ ] Testar o MMORPG em navegador real, incluindo animações com eventos do servidor para ataque/dano/morte, chefes, direções, hitboxes e barras de HP.
+- [ ] Revisar visualmente halos/artefatos de transparência em cenário com contraste.
+- [ ] Confirmar com o usuário a aprovação **funcional** antes de merge/deploy.
 
-## Bloqueio automático de arte ausente ou alterada (16/10/2026)
-
-O teste `tests/creatures-v3-assets.test.js` confere a existência e o SHA-256 exato de cada PNG aprovado (além de PNG RGBA 768×960, 8 bits), e é descoberto pelo `npm test` da aplicação. Sem os 5 PNGs, **esses cinco testes falham de propósito**, para bloquear integração incompleta. Rodaram 5/5 aprovados na cópia local que contém os PNGs originais. Isso não comprova que estejam presentes no repositório remoto.
-
-O `scripts/enviar-atlases-criaturas-v3.mjs` também exige SHA-256 antes de aceitar um envio. Valide primeiro:
-
-```sh
-node scripts/enviar-atlases-criaturas-v3.mjs /caminho/do/pacote --dry-run
-```
-
-Depois, em uma máquina com autenticação GitHub previamente configurada (`gh auth login`) e com os PNGs do pacote técnico extraído:
-
-```sh
-node scripts/enviar-atlases-criaturas-v3.mjs /caminho/do/pacote --confirm-upload
-```
-
-O script atua exclusivamente na branch `feature/criaturas-v3-review-20261016`; jamais opera na `main` ou no Render. Não compartilhe credenciais na conversa. Mesmo com os arquivos enviados e os testes automatizados passando, a validação visual em navegador ainda é obrigatória antes do merge.
+**Não publicar no Render de produção antes de completar o checklist.** As pranchas V3 foram aprovadas visualmente, mas esse aval não substitui a inspeção da integração em execução.
