@@ -7,6 +7,9 @@ on:
     paths:
       - 'public/world-25d.mjs'
       - 'public/aurora-combat25d.js'
+      - 'public/combat-approved25d.js'
+      - 'public/assets/combat-approved/**'
+      - 'tests/approved-combat25d.test.js'
       - 'public/aurora-creatures25d.js'
       - 'public/peregrino-aurora25d.js'
       - 'public/peregrino-runway25d.js'
@@ -50,6 +53,9 @@ jobs:
           curl -fsS http://127.0.0.1:3106/peregrino-aurora25d.js >/dev/null
           curl -fsS http://127.0.0.1:3106/aurora-heroes25d.js >/dev/null
           curl -fsS http://127.0.0.1:3106/assets/peregrino/peregrino-runway-walk.png >/dev/null
+          for asset in guardiao-combat arqueiro-combat curandeiro-combat projectile-flecha projectile-magia; do
+            curl -fsS "http://127.0.0.1:3106/assets/combat-approved/${asset}-approved.png" >/dev/null
+          done
       - name: Testes de regressão completos do MMORPG e da arte 2.5D
         run: node --test tests/*.test.js
       - name: Testar preview 2.5D do commit (sem esperar deploy Render)
