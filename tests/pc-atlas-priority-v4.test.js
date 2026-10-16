@@ -18,13 +18,21 @@ test('PC retorna ao Atelier detalhado antes dos recortes PNG e dos bonecos V3',(
  assert.match(art,/const animated=studioHero\|\|detailed/);
  assert.match(art,/const detailed=studioNpc\|\|pngNpc\|\|illustratedNpcV3/);
 });
-test('criaturas e chefes no PC usam animação exclusiva do Atelier antes do atlas minúsculo',()=>{
- const art=source('art16.js');
- assert.match(art,/const studioMonster=Boolean\(spriteStudio\?\.drawMonster/);
- assert.match(art,/const detailedBoss=!studioMonster&&Boolean/);
- assert.match(art,/const illustrated=!studioMonster&&!detailedBoss&&Boolean/);
- assert.match(art,/const top=studioMonster\?\(m\.boss\?\(premiumPc\?155:123\):\(premiumPc\?100:85\)\)/);
- assert.match(art,/const width=studioMonster\?\(m\.boss\?\(premiumPc\?124:98\):\(premiumPc\?80:68\)\)/);
+test('Morcego V4 antecede V3, mantendo Atelier e bestiário como fallback',()=>{
+ const art=source('art16.js'),html=source('mundo.html');
+ const bat=art.indexOf("const batV4Drawn=ty==='morcego'&&Boolean(batV4?.drawMonster");
+ const v3=art.indexOf('const creatureV3=!batV4Drawn&&Boolean(creaturesV3?.drawMonster');
+ const studio=art.indexOf('const studioMonster=!spriteDim&&Boolean(spriteStudio?.drawMonster');
+ const boss=art.indexOf('const detailedBoss=!spriteDim&&!studioMonster&&Boolean(desktopSprites?.drawMonster');
+ const illustrated=art.indexOf('const illustrated=!spriteDim&&!studioMonster&&!detailedBoss&&Boolean(desktopBestiary?.drawMonster');
+ assert.ok(bat>0&&v3>bat&&studio>v3&&boss>studio&&illustrated>boss,
+  'priority: bat V4 > five V3 creatures > Atelier > boss > legacy bestiary');
+ assert.ok(art.includes('const animated=Boolean(spriteDim)||studioMonster||detailedBoss||illustrated'));
+ assert.ok(art.includes('const top=spriteDim?spriteDim.healthTop:studioMonster'));
+ assert.ok(art.includes('const width=spriteDim?spriteDim.width:studioMonster'));
+ assert.ok(html.indexOf('/creatures-v3.js')>html.indexOf('/desktop-bestiary16.js'));
+ assert.ok(html.indexOf('/creatures-v3.js')<html.indexOf('/morcego-v4.js'));
+ assert.ok(html.indexOf('/morcego-v4.js')<html.indexOf('/art16.js'));
 });
 test('classe do servidor, nome e posicionamento obedecem a arte desenhada em PC',()=>{
  const art=source('art16.js');
@@ -36,7 +44,7 @@ test('classe do servidor, nome e posicionamento obedecem a arte desenhada em PC'
 test('versões atualizadas invalidam cache do Chrome sem mudar mobile',()=>{
  const html=source('mundo.html'),studio=source('sprite-studio.js');
  assert.match(html,/sprite-studio\.js\?v=world-art-master64-v4/);
- assert.match(html,/art16\.js\?v=world-props-artisan64-v1/);
+ assert.ok(html.includes('/art16.js?v=world-props-artisan64-v1-morcego-v4'));
  assert.match(studio,/state\.desktopPremium===true/);
  assert.ok(html.indexOf('/sprite-studio.js')<html.indexOf('/art16.js'));
  assert.doesNotMatch(source('mmo.css'),/class-skill-fx-v1/);
