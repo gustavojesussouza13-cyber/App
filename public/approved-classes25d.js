@@ -53,10 +53,17 @@
   if(!roles.includes(role)||!ctx?.drawImage||!isStandard(appearance)||
     (action!=='idle'&&action!=='walk'))return false;
   const img=loaded.get(role);if(!img){if(!pending.has(role))void load(role);return false;}
-  const step=action==='walk'&&Math.floor(now/155)%2===1;
+  // Os quadros aprovados possuem duas poses. Intermediários naturais de
+  // 1-3 pixels dão ritmo distinto a cada profissão sem distorcer o atlas.
+  const tempo=role==='guardiao'?185:role==='arqueiro'?128:155;
+  const walking=action==='walk';
+  const step=walking&&Math.floor(now/tempo)%2===1;
+  const stride=walking?Math.sin(now*Math.PI/tempo):0;
+  const lift=walking?Math.round(Math.max(0,stride)*(role==='guardiao'?2:3)):0;
+  const sway=walking?Math.round(stride*(role==='guardiao'?1:2)):0;
   const {sx,sy,sw,sh,flip}=frameRect(dir,step);
   const w=Math.round(FW*scale),h=Math.round(FH*scale);
-  const px=Math.round(x-w/2),py=Math.round(y-h+6*scale);
+  const px=Math.round(x-w/2+sway),py=Math.round(y-h+6*scale-lift);
   ctx.save();ctx.imageSmoothingEnabled=false;
   if(glow){
    ctx.globalAlpha=.15;
