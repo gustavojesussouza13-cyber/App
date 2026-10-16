@@ -20,12 +20,17 @@ canvas{display:block;width:100%;height:auto;image-rendering:pixelated;border:2px
 <button type="button" data-state="morte" aria-pressed="false">Morte</button>
 <button type="button" id="boss" aria-pressed="false">Modo chefe</button>
 </div><canvas id="preview" width="1180" height="520" aria-label="Sprites V3 das cinco criaturas"></canvas>
-<p id="status">Carregando cinco PNGs RGBA...</p>
+<p id="status" role="status" aria-live="polite">Iniciando verificação dos cinco PNGs RGBA...</p><button type="button" id="retry" hidden onclick="location.reload()">Tentar novamente</button>
 <small>Atlas: 4 × 6 quadros de 192 × 160 px. A transparência deve ser real. Não publicar esta página na produção sem revisão visual.</small>
-</main><script src="/creatures-v3.js?v=qa-v3"></script><script>
+</main><script>
+window.__v3BootError=function(message){const el=document.getElementById("status");if(el){el.textContent="Erro no laboratório V3: "+message;el.style.color="#ffadad";document.getElementById("retry").hidden=false;}};
+window.addEventListener("error",function(e){if(!window.__CREATURES_V3_QA__)window.__v3BootError(e.message||"Falha ao executar o JavaScript");});
+setTimeout(function(){if(!window.__CREATURES_V3_QA__)window.__v3BootError("script não iniciou. Confira bloqueadores, rede e console.");else if(window.__CREATURES_V3_QA__.engine.loadedTypes.length!==5)window.__v3BootError("alguns PNGs não carregaram ( "+window.__CREATURES_V3_QA__.engine.loadedTypes.length+"/5 ).");},12000);
+</script><script src="/creatures-v3.js?v=qa-v3-diagnostico" onerror="window.__v3BootError('creatures-v3.js não encontrado ou bloqueado')"></script><script>
 (function(){
  'use strict';
  const api=window.OsPeregrinosCreaturesV3;
+ if(!api||typeof api.create!=='function'){window.__v3BootError('motor creatures-v3.js indisponível');return;}
  const engine=api.create({windowRef:{matchMedia:function(){return {matches:true}}}});
  const canvas=document.getElementById('preview'),g=canvas.getContext('2d');
  const names=['limo','lobo','aranha','esqueleto','golem'];
