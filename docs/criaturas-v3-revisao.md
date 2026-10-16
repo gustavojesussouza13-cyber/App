@@ -32,3 +32,22 @@ Os JSONs de metadados podem acompanhar os PNGs, mas o código consulta apenas os
 6. Solicitar aprovação da integração funcional antes de qualquer merge ou deploy de produção no Render.
 
 A ausência das imagens deve ativar o *fallback* para a arte antiga e não deve quebrar o jogo. **Não alterar `main`, o banco de dados ou o serviço Render de produção por este PR.**
+
+
+## Bloqueio automático de arte ausente ou alterada (16/10/2026)
+
+O teste `tests/creatures-v3-assets.test.js` confere a existência e o SHA-256 exato de cada PNG aprovado (além de PNG RGBA 768×960, 8 bits), e é descoberto pelo `npm test` da aplicação. Sem os 5 PNGs, **esses cinco testes falham de propósito**, para bloquear integração incompleta. Rodaram 5/5 aprovados na cópia local que contém os PNGs originais. Isso não comprova que estejam presentes no repositório remoto.
+
+O `scripts/enviar-atlases-criaturas-v3.mjs` também exige SHA-256 antes de aceitar um envio. Valide primeiro:
+
+```sh
+node scripts/enviar-atlases-criaturas-v3.mjs /caminho/do/pacote --dry-run
+```
+
+Depois, em uma máquina com autenticação GitHub previamente configurada (`gh auth login`) e com os PNGs do pacote técnico extraído:
+
+```sh
+node scripts/enviar-atlases-criaturas-v3.mjs /caminho/do/pacote --confirm-upload
+```
+
+O script atua exclusivamente na branch `feature/criaturas-v3-review-20261016`; jamais opera na `main` ou no Render. Não compartilhe credenciais na conversa. Mesmo com os arquivos enviados e os testes automatizados passando, a validação visual em navegador ainda é obrigatória antes do merge.
