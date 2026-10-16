@@ -18,7 +18,7 @@ test('PC retorna ao Atelier detalhado antes dos recortes PNG e dos bonecos V3',(
  assert.match(art,/const animated=studioHero\|\|detailed/);
  assert.match(art,/const detailed=studioNpc\|\|pngNpc\|\|illustratedNpcV3/);
 });
-test('Morcego, Serpente, Fera, Escorpião, Fantasma e Vespa V4 antecedem V3 com fallback legado',()=>{
+test('Morcego, Serpente, Fera, Escorpião, Fantasma, Vespa e Cavaleiro V4 antecedem V3 com fallback legado',()=>{
  const art=source('art16.js'),html=source('mundo.html');
  const bat=art.indexOf("const batV4Drawn=ty==='morcego'&&Boolean(batV4?.drawMonster");
  const serpent=art.indexOf("const serpentV4Drawn=ty==='serpente'&&Boolean(serpentV4?.drawMonster");
@@ -26,12 +26,13 @@ test('Morcego, Serpente, Fera, Escorpião, Fantasma e Vespa V4 antecedem V3 com 
  const scorpion=art.indexOf("const scorpionV4Drawn=ty==='escorpiao'&&Boolean(scorpionV4?.drawMonster");
  const ghost=art.indexOf("const ghostV4Drawn=ty==='fantasma'&&Boolean(ghostV4?.drawMonster");
  const wasp=art.indexOf("const waspV4Drawn=ty==='vespa'&&Boolean(waspV4?.drawMonster");
- const v3=art.indexOf('const creatureV3=!batV4Drawn&&!serpentV4Drawn&&!beastV4Drawn&&!scorpionV4Drawn&&!ghostV4Drawn&&!waspV4Drawn&&Boolean(creaturesV3?.drawMonster');
+ const knight=art.indexOf("const knightV4Drawn=ty==='cavaleiro'&&Boolean(knightV4?.drawMonster");
+ const v3=art.indexOf('const creatureV3=!batV4Drawn&&!serpentV4Drawn&&!beastV4Drawn&&!scorpionV4Drawn&&!ghostV4Drawn&&!waspV4Drawn&&!knightV4Drawn&&Boolean(creaturesV3?.drawMonster');
  const studio=art.indexOf('const studioMonster=!spriteDim&&Boolean(spriteStudio?.drawMonster');
  const boss=art.indexOf('const detailedBoss=!spriteDim&&!studioMonster&&Boolean(desktopSprites?.drawMonster');
  const illustrated=art.indexOf('const illustrated=!spriteDim&&!studioMonster&&!detailedBoss&&Boolean(desktopBestiary?.drawMonster');
- assert.ok(bat>0&&serpent>bat&&beast>serpent&&scorpion>beast&&ghost>scorpion&&wasp>ghost&&v3>wasp&&studio>v3&&boss>studio&&illustrated>boss,
-  'priority: bat/serpent/beast/scorpion/ghost/wasp V4 > five V3 creatures > Atelier > boss > legacy bestiary');
+ assert.ok(bat>0&&serpent>bat&&beast>serpent&&scorpion>beast&&ghost>scorpion&&wasp>ghost&&knight>wasp&&v3>knight&&studio>v3&&boss>studio&&illustrated>boss,
+  'priority: bat/serpent/beast/scorpion/ghost/wasp/knight V4 > five V3 creatures > Atelier > boss > legacy bestiary');
  assert.ok(art.includes('const animated=Boolean(spriteDim)||studioMonster||detailedBoss||illustrated'));
  assert.ok(art.includes('const top=spriteDim?spriteDim.healthTop:studioMonster'));
  assert.ok(art.includes('const width=spriteDim?spriteDim.width:studioMonster'));
@@ -42,7 +43,8 @@ test('Morcego, Serpente, Fera, Escorpião, Fantasma e Vespa V4 antecedem V3 com 
  assert.ok(html.indexOf('/fera-v4.js')<html.indexOf('/escorpiao-v4.js'));
  assert.ok(html.indexOf('/escorpiao-v4.js')<html.indexOf('/fantasma-v4.js'));
  assert.ok(html.indexOf('/fantasma-v4.js')<html.indexOf('/vespa-v4.js'));
- assert.ok(html.indexOf('/vespa-v4.js')<html.indexOf('/art16.js'));
+ assert.ok(html.indexOf('/vespa-v4.js')<html.indexOf('/cavaleiro-v4.js'));
+ assert.ok(html.indexOf('/cavaleiro-v4.js')<html.indexOf('/art16.js'));
 });
 test('classe do servidor, nome e posicionamento obedecem a arte desenhada em PC',()=>{
  const art=source('art16.js');
@@ -54,7 +56,7 @@ test('classe do servidor, nome e posicionamento obedecem a arte desenhada em PC'
 test('versões atualizadas invalidam cache do Chrome sem mudar mobile',()=>{
  const html=source('mundo.html'),studio=source('sprite-studio.js');
  assert.match(html,/sprite-studio\.js\?v=world-art-master64-v4/);
- assert.ok(html.includes('/art16.js?v=world-props-artisan64-v1-vespa-v4'));
+ assert.ok(html.includes('/art16.js?v=world-props-artisan64-v1-cavaleiro-v4'));
  assert.match(studio,/state\.desktopPremium===true/);
  assert.ok(html.indexOf('/sprite-studio.js')<html.indexOf('/art16.js'));
  assert.doesNotMatch(source('mmo.css'),/class-skill-fx-v1/);
