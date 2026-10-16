@@ -24,6 +24,13 @@ function harness(desktop=true) {
  };
  return {images,ops,renderer,canvas};
 }
+test('wide touchscreen desktops still show V3; narrow mobile remains fallback',()=>{
+ const queries=[];
+ const host={matchMedia(query){queries.push(query);return {matches:query==='(min-width: 901px)'}}};
+ assert.equal(api.isDesktop(host),true);
+ assert.deepEqual(queries,['(min-width: 901px)']);
+ assert.equal(api.isDesktop({matchMedia:()=>({matches:false})}),false);
+});
 test('five approved families with 24 frames and six states',()=>{
  assert.deepEqual([...api.TYPES].sort(),['aranha','esqueleto','golem','limo','lobo']);
  assert.deepEqual(api.FRAME,{width:192,height:160,cols:4,rows:6});
