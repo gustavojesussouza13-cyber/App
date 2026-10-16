@@ -452,7 +452,7 @@ function create({ctx,W,H}){
     (attacking||(pose?.action==='attack'&&state.elapsed<540))&&
    !state.hurt&&window.OsPeregrinosApprovedCombat25D?.drawHero(g,{
     role:p.role,x:p.x,y:p.y,dir,now,attackAt:pose?.at,
-    appearance:p.appearance,scale:.72,glow:local
+    appearance:p.appearance,glow:local
    }));
   if(combatHero||runwayHero||approvedHero||(useAurora25d&&
    window.OsPeregrinosHeroesAurora25D?.draw(g,{
