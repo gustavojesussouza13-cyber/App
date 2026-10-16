@@ -443,7 +443,14 @@ function create({ctx,W,H}){
       role:p.role,x:p.x,y:p.y,dir,appearance:p.appearance,now,
       action:moved?'walk':'idle',glow:local,scale:1.45
     }));
-  if(runwayHero||approvedHero||(useAurora25d&&
+  // Ataques detalhados aprovados: apenas quatro direções e estado de ataque.
+  // Se o PNG ainda não foi carregado, caímos para a animação anterior.
+  const combatHero=Boolean(useAurora25d&&p.role!=='peregrino'&&attacking&&
+   !state.hurt&&window.OsPeregrinosApprovedCombat25D?.drawHero(g,{
+    role:p.role,x:p.x,y:p.y,dir,now,attackAt:pose?.at,
+    appearance:p.appearance,scale:.72,glow:local
+   }));
+  if(combatHero||runwayHero||approvedHero||(useAurora25d&&
    window.OsPeregrinosHeroesAurora25D?.draw(g,{
     role:p.role,x:p.x,y:p.y,dir,appearance:p.appearance,
     action:state.hurt?'hurt':attacking?'attack':moved?'walk':'idle',
@@ -729,7 +736,12 @@ function create({ctx,W,H}){
   }});
   actors.sort((a,b)=>a.depth-b.depth);
   for(const a of actors)a.paint();
-  for(const shot of projectiles)drawProjectile(ctx,shot);
+  // O projétil existe apenas após um acerto confirmado pelo servidor;
+  // este renderer nunca cria tiros extras nem calcula dano.
+  for(const shot of projectiles){
+   const fine=useWorld25d&&window.OsPeregrinosApprovedCombat25D?.drawProjectile(ctx,shot);
+   if(!fine)drawProjectile(ctx,shot);
+  }
   // Camada mágica exclusivamente PC: pixels inteiros sobre o mundo,
   // depois dos atores e antes dos indicadores de dano/vida.
   if(typeof drawSkillEffects==='function')drawSkillEffects(ctx,skillEffects);
