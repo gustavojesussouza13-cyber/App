@@ -741,12 +741,9 @@ function create({ctx,W,H}){
   }});
   actors.sort((a,b)=>a.depth-b.depth);
   for(const a of actors)a.paint();
-  // O projétil existe apenas após um acerto confirmado pelo servidor;
-  // este renderer nunca cria tiros extras nem calcula dano.
-  for(const shot of projectiles){
-   const fine=useWorld25d&&window.OsPeregrinosApprovedCombat25D?.drawProjectile(ctx,shot);
-   if(!fine)drawProjectile(ctx,shot);
-  }
+  // Estes projéteis só existem depois da confirmação de um acerto pelo servidor.
+  // A própria função seleciona o atlas aprovado exclusivamente no modo 2.5D.
+  for(const shot of projectiles)drawProjectile(ctx,shot);
   // Camada mágica exclusivamente PC: pixels inteiros sobre o mundo,
   // depois dos atores e antes dos indicadores de dano/vida.
   if(typeof drawSkillEffects==='function')drawSkillEffects(ctx,skillEffects);
