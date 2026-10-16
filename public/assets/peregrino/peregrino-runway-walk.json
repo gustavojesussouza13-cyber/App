@@ -1,0 +1,24 @@
+{
+  "source": "Runway",
+  "taskId": "ef4014c5-292b-4fd5-afb6-222c138b8de6",
+  "layout": "4-colunas-x-4-linhas",
+  "frameWidth": 128,
+  "frameHeight": 160,
+  "columns": 4,
+  "rows": 4,
+  "directions": {
+    "south": 0,
+    "north": 1,
+    "east": 2,
+    "west": 3
+  },
+  "westMirrored": true,
+  "frameCount": 16,
+  "sourceSize": [
+    2560,
+    1712
+  ],
+  "image": "peregrino-runway-walk.png",
+  "action": "walk",
+  "warning": "Os quadros vieram de geração artística. Ataque, dano e morte usam animações originais como fallback."
+}

@@ -411,6 +411,7 @@ function create({ctx,W,H}){
   if(side&&role==='curandeiro')pix('#fffaf0',-19,-41,5,19);
   return role;
  }
+ let useAurora25d=false;
  function character(g,p,local,now,moved,attacking=false,pose=null){
   const key=heroSheets[p.role]||'gustavo_andar',w=53,h=65;
   drawShadow(g,p.x,p.y,w);
@@ -423,6 +424,39 @@ function create({ctx,W,H}){
   // Mesmo sprite autoral de 64×80 nos aparelhos móveis e no PC.
   // Ajustamos somente a apresentação na tela, nunca colisão ou hitbox.
   const premiumPc=Boolean(desktopCharactersV3?.enabled);
+  // Nova aparência só é ativada quando o WebGL 2.5D está visível.
+  // O modo clássico mantém integralmente seus sprites anteriores.
+  // O Peregrino usa PRIMEIRO os 16 quadros reais processados do Runway.
+  // Para trajes personalizados e ações sem quadros (ataque/dano/morte),
+  // o herói autoral de 64x80 permanece disponível como fallback.
+  const runwayHero=Boolean(useAurora25d&&p.role==='peregrino'&&
+   !state.hurt&&!attacking&&!state.dead&&
+   window.OsPeregrinosRunway25D?.draw(g,{
+    x:p.x,y:p.y,dir,appearance:p.appearance,now,moving:moved,
+    action:moved?'walk':'idle',glow:local,scale:.73
+   }));
+  // As três artes aprovadas só substituem a aparência padrão no 2.5D.
+  // Sem o arquivo PNG ou durante ataque/dano, usa os heróis atuais.
+  const approvedHero=Boolean(useAurora25d&&p.role!=='peregrino'&&
+    !state.hurt&&!attacking&&!state.dead&&
+    window.OsPeregrinosApprovedClasses25D?.draw(g,{
+      role:p.role,x:p.x,y:p.y,dir,appearance:p.appearance,now,
+      action:moved?'walk':'idle',glow:local,scale:1.45
+    }));
+  if(runwayHero||approvedHero||(useAurora25d&&
+   window.OsPeregrinosHeroesAurora25D?.draw(g,{
+    role:p.role,x:p.x,y:p.y,dir,appearance:p.appearance,
+    action:state.hurt?'hurt':attacking?'attack':moved?'walk':'idle',
+    frame:Math.floor(now/130),scale:1.32,glow:local
+   }))){
+   // Artes Aurora detalhadas por classe: não altera controles nem simulação.
+   g.save();g.textAlign='center';g.font=(local?'bold 15px':'bold 13px')+' monospace';
+   g.shadowColor='#000b';g.shadowBlur=0;g.lineWidth=3;g.strokeStyle='#0e271e';
+   const roleName={guardiao:'Guardião',curandeiro:'Curandeiro',arqueiro:'Arqueiro',peregrino:'Peregrino'}[p.role]||'Peregrino';
+   const label=(p.name||roleName)+(local?' · '+roleName:' · Lv.'+(p.level||1));
+   g.strokeText(label,p.x,p.y-115);g.fillStyle=local?'#ffe4a3':'#f1edd4';
+   g.fillText(label,p.x,p.y-115);g.restore();return;
+  }
   const studioHero=Boolean(spriteStudio?.drawHero(g,p,now,{...state,desktopPremium:premiumPc}));
   const pngSprite=!studioHero&&Boolean(desktopSprites?.drawHero(g,p,now,state));
   const illustratedV3=!studioHero&&!pngSprite&&Boolean(desktopCharactersV3?.drawHero(g,p,now,state));
@@ -636,16 +670,19 @@ function create({ctx,W,H}){
   const {zone,zones,x,y,dir,appearance,monsters,players,projectiles=[],npcs=[],portals=[],kingdomBases=[],storyStage=0,cameraX,cameraY,name,role,target,now,fx,lastAction,lastActionWasSkill=false,skillEffects=[],drawSkillEffects=null,moving,monsterActions=new Map(),playerActions=new Map(),fallen=[],heroPose=null}=opt;
   ctx.imageSmoothingEnabled=false;
   const biome=biomeThemes[opt.zoneBiome||zones[zone]?.biome]||'meadow';
+  const useWorld25d=Boolean(opt.world25dActive);
+  useAurora25d=useWorld25d;
   if(!artReady){ctx.fillStyle='#193629';ctx.fillRect(0,0,W,H);ctx.textAlign='center';ctx.fillStyle='#efd39d';ctx.font='bold 20px Georgia,serif';ctx.fillText('✦ Preparando o mundo 16-bit…',W/2,H/2);return}
   if(!cache||cache.z!==zone||cache.biome!==biome)terrain(zone,biome);
-  ctx.drawImage(cache.canvas,cameraX,cameraY,W,H,0,0,W,H);
+  if(useWorld25d)ctx.clearRect(0,0,W,H);
+  else ctx.drawImage(cache.canvas,cameraX,cameraY,W,H,0,0,W,H);
   // Só no PC: reduzir concorrência visual do terreno sem apagar textura.
   // O tratamento é ANTERIOR aos atores; sprites, HUD e minimapa ficam vivos.
-  if(desktopSprites?.enabled){ctx.fillStyle='#0d20200d';ctx.fillRect(0,0,W,H)}
-  if(pixelDetail)pixelDetail.drawAtmosphere(ctx,{z:zone,biome,cameraX,cameraY,W,H,now});
+  if(!useWorld25d&&desktopSprites?.enabled){ctx.fillStyle='#0d20200d';ctx.fillRect(0,0,W,H)}
+  if(!useWorld25d&&pixelDetail)pixelDetail.drawAtmosphere(ctx,{z:zone,biome,cameraX,cameraY,W,H,now});
   ctx.save();ctx.translate(-cameraX,-cameraY);
   const actors=[];
-  for(const o of objects){if(o.x<cameraX-115||o.x>cameraX+W+115||o.y<cameraY-132||o.y>cameraY+H+135)continue;actors.push({depth:o.y,paint:()=>prop(ctx,o)})}
+  if(!useWorld25d)for(const o of objects){if(o.x<cameraX-115||o.x>cameraX+W+115||o.y<cameraY-132||o.y>cameraY+H+135)continue;actors.push({depth:o.y,paint:()=>prop(ctx,o)})}
   for(const p of portals){if(p.x<cameraX-140||p.x>cameraX+W+140||p.y<cameraY-125||p.y>cameraY+H+125)continue;
    actors.push({depth:p.y-1,paint:()=>portal(ctx,p,now,{x,y})});
   }

@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Os Peregrinos · Classes aprovadas · Ateliê 2.5D</title>
+<style>
+:root{color-scheme:dark;font:15px/1.5 system-ui,Arial,sans-serif;color:#e8e9dc;background:#0c1b23}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 50% 0%,#294d4c,#0c1b23 72%)}
+main{max-width:1300px;padding:25px 14px 45px;margin:auto}
+header{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:14px;border-bottom:1px solid #ae9470;padding-bottom:17px}
+header b{font:700 29px Georgia,serif;color:#f3d9a7}
+header small{display:block;color:#a9d5c1;letter-spacing:.12em}
+a{color:#f3d9a7;text-decoration-thickness:1px}
+p{color:#bfd2c7}
+.cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin:23px 0}
+.card{background:linear-gradient(#172f38,#10242e);border:1px solid #967d5d;border-radius:13px;padding:17px;box-shadow:0 10px 30px #0005}
+.card h2{margin:0;color:#f1d7a0;font:700 25px Georgia,serif}
+.card .subtitle{font-size:12px;color:#a2c9b6;margin:3px 0 12px}
+.checker{background-color:#1a2c33;background-image:linear-gradient(45deg,#2b4546 25%,transparent 25%),linear-gradient(-45deg,#2b4546 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#2b4546 75%),linear-gradient(-45deg,transparent 75%,#2b4546 75%);background-size:24px 24px;background-position:0 0,0 12px,12px -12px,-12px 0}
+.preview{display:block;width:100%;height:246px;border:1px solid #617c74;border-radius:8px;image-rendering:pixelated}
+.controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:12px 0}
+label{color:#f1d7a0;font-size:12px}select,button{background:#294a51;color:#f5e6c1;border:1px solid #a28c66;border-radius:7px;padding:7px;font:inherit;cursor:pointer}
+select{flex:1;min-width:92px}
+.sheet{display:block;width:100%;max-width:384px;image-rendering:pixelated;border:1px solid #60766f;border-radius:7px}
+.status{font:600 12px ui-monospace,monospace;color:#9de0b6;min-height:22px}
+.foot{margin-top:18px;padding:15px;border:1px solid #5f7971;background:#142f38;border-radius:10px;color:#bfd3c9}
+@media(max-width:910px){.cards{grid-template-columns:1fr}.preview{max-width:420px;height:240px}}
+</style></head>
+<body><main>
+<header><div><small>OS PEREGRINOS · CRÔNICAS DA AURORA</small><b>Ateliê 2.5D — Artes aprovadas</b></div><a href="/visual-25d.html">← Voltar ao Mundo Aberto 2.5D</a></header>
+<p>Os desenhos aprovados do Guardião, Arqueiro e Curandeiro foram transformados em PNGs transparentes de verdade e podem ser inspecionados aqui. Use o seletor para conferir as quatro direções e os dois quadros de movimento.</p>
+<div class="cards">
+<section class="card" data-role="guardiao"><h2>Guardião</h2><div class="subtitle">Armadura azul, aço e escudo dourado</div><canvas class="preview checker" width="248" height="230"></canvas><div class="controls"><label>Direção</label><select aria-label="Direção do Guardião"><option value="2">Frente</option><option value="0">Costas</option><option value="1">Direita</option><option value="3">Esquerda</option></select><button type="button">Pausar</button></div><div class="status">Carregando...</div><a class="download" download="guardiao-sprites-3x2-64x80.png">Abrir PNG original</a><p>Atlas original:</p><img class="sheet checker" width="192" height="160" alt="6 sprites transparentes do Guardião"></section>
+<section class="card" data-role="arqueiro"><h2>Arqueiro</h2><div class="subtitle">Capuz verde, couro e arco de madeira</div><canvas class="preview checker" width="248" height="230"></canvas><div class="controls"><label>Direção</label><select aria-label="Direção do Arqueiro"><option value="2">Frente</option><option value="0">Costas</option><option value="1">Direita</option><option value="3">Esquerda</option></select><button type="button">Pausar</button></div><div class="status">Carregando...</div><a class="download" download="arqueiro-sprites-3x2-64x80.png">Abrir PNG original</a><p>Atlas original:</p><img class="sheet checker" width="192" height="160" alt="6 sprites transparentes do Arqueiro"></section>
+<section class="card" data-role="curandeiro"><h2>Curandeiro</h2><div class="subtitle">Manto marfim, ouro e cajado de Aurora</div><canvas class="preview checker" width="248" height="230"></canvas><div class="controls"><label>Direção</label><select aria-label="Direção do Curandeiro"><option value="2">Frente</option><option value="0">Costas</option><option value="1">Direita</option><option value="3">Esquerda</option></select><button type="button">Pausar</button></div><div class="status">Carregando...</div><a class="download" download="curandeiro-sprites-3x2-64x80.png">Abrir PNG original</a><p>Atlas original:</p><img class="sheet checker" width="192" height="160" alt="6 sprites transparentes do Curandeiro"></section>
+</div>
+<div class="foot">O Peregrino continua com sua folha do Runway. As fortalezas 3D, o combate, a colisão e os dados do servidor não foram modificados. As ações que ainda não têm quadros nas novas folhas usam os sprites anteriores.</div>
+</main>
+<script src="/appearance16.js"></script>
+<script src="/approved-classes25d.js?v=approved-classes-v2"></script>
+<script>
+'use strict';
+const atlas=window.OsPeregrinosApprovedClasses25D;
+for(const card of document.querySelectorAll('.card')){
+ const role=card.dataset.role;
+ const canvas=card.querySelector('canvas');
+ const context=canvas.getContext('2d',{alpha:true});
+ const select=card.querySelector('select'),button=card.querySelector('button');
+ const status=card.querySelector('.status');
+ const img=card.querySelector('img'),link=card.querySelector('a.download');
+ img.src=link.href=atlas.source(role);
+ let moving=true,frame=0;
+ function draw(){
+  context.clearRect(0,0,canvas.width,canvas.height);
+  // O renderizador só aceita caminhar/idle; 200ms alterna os dois quadros.
+  atlas.draw(context,{role,x:canvas.width/2,y:canvas.height-5,dir:+select.value,
+    action:moving?'walk':'idle',now:frame%2?200:0,scale:2.36});
+  frame++;
+ }
+ select.addEventListener('change',()=>{frame=0;draw()});
+ button.addEventListener('click',()=>{moving=!moving;button.textContent=moving?'Pausar':'Animar';draw()});
+ atlas.load(role).then(ok=>{
+  status.textContent=ok?'✓ PNG real carregado · 192×160 · 6 quadros':
+   'Erro ao carregar PNG; o jogo utilizará os sprites anteriores.';
+  if(ok){draw();setInterval(()=>{if(moving)draw()},190)}
+ });
+}
+</script>
+</body></html>

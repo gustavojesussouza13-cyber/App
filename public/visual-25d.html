@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Os Peregrinos — Laboratório 2.5D</title>
+<meta name="description" content="Prévia interativa isolada do mundo aberto 2.5D de Os Peregrinos; fortalezas 3D intocadas.">
+<style>
+:root{color-scheme:dark;--bg:#0a141a;--box:#172628;--line:#a78a58;--gold:#f1dca3}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 50% 0%,#27463f,#0b141a 75%);font:15px/1.5 system-ui,Arial,sans-serif;color:#e8edde}
+main{max-width:1160px;margin:auto;padding:20px 12px 40px}
+header{display:flex;gap:10px;justify-content:space-between;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+header b{font:700 24px Georgia,serif;color:var(--gold)}header small{display:block;letter-spacing:.15em;color:#bbd3c1}
+.nav{display:flex;gap:8px;flex-wrap:wrap}.nav a{color:#e4d7ad;border:1px solid #817855;padding:8px 12px;text-decoration:none;border-radius:6px}
+.panels{display:grid;grid-template-columns:1fr 260px;gap:13px}
+.stage{position:relative;width:100%;aspect-ratio:5/3;border:5px solid #a78a58;background:#1c3635;box-shadow:0 14px 45px #000a;overflow:hidden}
+/* A prévia é sempre 100% responsiva: ambos os canvas devem usar o mesmo layout CSS,
+   não dimensões em pixels calculadas antes da atualização da grid. */
+.stage #world25dBackdrop{width:100%!important;height:100%!important;left:0!important;top:0!important;max-width:none!important;max-height:none!important;}
+#game{position:relative;width:100%;height:100%;display:block;background:transparent;image-rendering:pixelated}
+.hud{position:absolute;z-index:5;pointer-events:none;background:#102229ec;border:2px solid #bda06b;box-shadow:0 4px 15px #0009;color:#f5e6bd}
+.hero{left:10px;top:10px;width:205px;padding:10px}
+.hero strong{display:block;font:700 17px Georgia,serif}.hero small{display:block;color:#c5d4c2}
+.life,.mana{height:10px;margin:6px 0;border:1px solid #ceb784;background:#51262d}.life:before{content:"";display:block;width:82%;height:100%;background:#ca5553}.mana{background:#1b293b}.mana:before{content:"";display:block;width:69%;height:100%;background:#4f9eca}
+.minimap{right:10px;top:10px;width:132px;padding:8px;text-align:center}
+.minimap strong{display:block;color:#f5dda7}.minimap canvas{width:100px;height:64px;display:block;margin:5px auto;border:1px solid #7c916d}
+.skills{bottom:10px;left:50%;transform:translateX(-50%);padding:6px;display:flex;gap:5px}
+.skill{width:41px;height:37px;border:2px solid #a88b5f;background:#35535a;color:#fcdb9c;display:grid;place-items:center;font-size:23px}
+.chat{left:10px;bottom:10px;width:240px;padding:9px;font-size:11px}.chat b{color:var(--gold)}
+aside{border:2px solid #867553;background:#112528e8;padding:15px;display:grid;gap:13px;align-content:start}
+aside h2{font:700 19px Georgia,serif;margin:0;color:var(--gold)}aside p{font-size:13px;margin:0;color:#c7d7cb}
+label{display:grid;gap:4px;color:#d5c28c;font-size:12px;font-weight:600}select,button{padding:10px;color:#f7e7bc;background:#29413e;border:1px solid #988256;border-radius:5px;font:inherit}
+button{cursor:pointer}button:hover{background:#365951}button:focus-visible{outline:2px solid #e6dcad}
+#status{font-size:12px;color:#a4e0c4;min-height:2em}footer{margin-top:12px;font-size:13px;color:#bbcdbd}
+@media(max-width:860px){.panels{grid-template-columns:1fr}.stage{aspect-ratio:5/3}.chat{display:none}.hero{transform:scale(.75);transform-origin:top left}.minimap{transform:scale(.75);transform-origin:top right}.skills{transform:translateX(-50%) scale(.7);transform-origin:bottom center}}
+</style>
+</head>
+<body>
+<main>
+<header><div><small>OS PEREGRINOS · CRÔNICAS DA AURORA</small><b>Laboratório do Mundo Aberto 2.5D</b></div><nav class="nav"><a href="https://os-peregrinos-online.onrender.com/mundo.html">↗ Jogo publicado</a><a href="https://os-peregrinos-online.onrender.com/">⌂ Início</a></nav></header>
+<section class="panels"><div class="stage" id="stage">
+ <canvas id="game" width="960" height="576" aria-label="Prévia 2.5D do mundo de Auren, mova o personagem com WASD"></canvas>
+ <div class="hud hero"><strong id="heroName">Peregrino · Nv. 35</strong><small>Aventureiro de Auren</small><div class="life"></div><div class="mana"></div><small>HP 1420/1720 · MP 560/810</small></div>
+ <div class="hud minimap"><strong>✦ AUREN</strong><canvas id="mini" width="100" height="64"></canvas><small>Continente · 2.5D</small></div>
+ <div class="hud skills" aria-label="Habilidades ilustrativas"><span class="skill">⚔</span><span class="skill">✧</span><span class="skill">✚</span><span class="skill">☄</span><span class="skill">♜</span><span class="skill">◈</span></div>
+ <div class="hud chat"><b>PRÉVIA DE TECNOLOGIA</b><div>Mundo 2D + iluminação e cenário WebGL</div><div>Fortalezas 3D não foram modificadas</div></div>
+</div>
+<aside>
+ <h2>Configurar prévia</h2><p>Esta página testa o motor visual sem depender de login, servidor multiplayer ou banco de dados.</p>
+ <label>Classe de personagem<select id="role"><option value="peregrino">Peregrino</option><option value="guardiao">Guardião</option><option value="arqueiro">Arqueiro</option><option value="curandeiro">Curandeiro</option></select></label>
+ <label>Região / bioma<select id="biome"><option value="pradaria">Vale das Oliveiras</option><option value="floresta">Floresta Antiga</option><option value="cidade">Auren — Praça</option><option value="rio">Rios de Aurora</option><option value="deserto">Areias do Sul</option><option value="montanha">Alturas</option></select></label>
+ <button id="night" type="button">☾ Anoitecer</button>
+ <button id="classic" type="button">Ver apenas Canvas 2D</button>
+ <div id="status" role="status">Preparando renderizador WebGL…</div>
+ <p><b>Controles:</b> WASD ou setas para andar. No celular, arraste o dedo sobre a área do jogo.</p>
+ <p><b>Peregrino:</b> sprites reais do Runway, extraídos da imagem rosa e transformados em PNG transparente (16 quadros). As demais classes continuam com suas artes originais. Câmera ortográfica e cenário WebGL.</p>
+ <a style="color:#e7d79f;font-size:13px;display:block" href="/classes-aprovadas-25d.html">Inspecionar Guardião, Arqueiro e Curandeiro aprovados →</a>
+ <a style="color:#f1dca3;font-size:13px" href="/peregrino-runway-preview.html">Inspecionar sprites REAIS do Runway →</a>
+ <a style="color:#e5c995;font-size:13px" href="/peregrino-atlas25d.html">Comparar com o Peregrino original →</a>
+</aside></section>
+<footer>Protótipo experimental de renderização, não a versão publicada do MMORPG. Sem alterações em combate, progressão, saves ou fortalezas.</footer>
+</main>
+<script type="importmap">{"imports":{"/vendor/three.module.js":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js"}}</script>
+<script src="/appearance16.js"></script>
+<script src="/peregrino-artisan64.js"></script>
+<script src="/peregrino-aurora25d.js"></script>
+<script src="/pixel-atelier-v1.js"></script>
+<script src="/heroes-master64.js"></script>
+<script src="/aurora-heroes25d.js"></script>
+<script src="/approved-classes25d.js?v=approved-classes-v2"></script>
+<script src="/peregrino-runway25d.js?v=runway-original-v1"></script>
+<script type="module">
+const $=id=>document.getElementById(id),canvas=$('game'),ctx=canvas.getContext('2d',{alpha:true}),mini=$('mini'),mctx=mini.getContext('2d');
+const W=canvas.width,H=canvas.height,WIDTH=1536,HEIGHT=1024;
+const labels={peregrino:'Peregrino',guardiao:'Guardião',arqueiro:'Arqueiro',curandeiro:'Curandeiro'};
+const palettes={peregrino:['#26618a','#e0c788'],guardiao:['#7c4a51','#bcc6cd'],arqueiro:['#3e7958','#d4a15d'],curandeiro:['#dddac8','#7fcbd5']};
+const player={x:768,y:512,dir:2,role:'peregrino'},keys=new Set();
+let view=null,day=true,mode3d=true,last=0,drag=null;
+const textures=new Map();
+function pixelActor(kind) {
+ if(textures.has(kind))return textures.get(kind);
+ const a=document.createElement('canvas');a.width=24;a.height=32;
+ const c=a.getContext('2d'),[coat,metal]=palettes[kind]||palettes.peregrino;
+ function p(x,y,w,h,color){c.fillStyle=color;c.fillRect(x,y,w,h)}
+ p(6,7,12,4,'#293445');p(8,3,8,7,'#413a34');p(8,8,8,6,'#deb28a');
+ p(7,15,10,10,coat);p(8,15,8,2,metal);p(6,17,2,9,'#a58b6b');
+ p(16,17,2,9,'#a58b6b');p(7,25,4,5,'#404549');p(13,25,4,5,'#404549');
+ p(9,11,2,1,'#292720');p(14,11,2,1,'#292720');
+ p(11,18,2,7,metal);
+ if(kind==='guardiao'){p(2,15,4,11,'#b5c0c6');p(3,16,2,9,'#6b7895')}
+ if(kind==='arqueiro'){p(18,7,2,20,'#ad8857');p(19,8,2,2,'#e8c993')}
+ if(kind==='curandeiro'){p(18,7,2,21,'#d6ccaa');p(16,4,6,5,'#72d6ec')}
+ textures.set(kind,a);return a;
+}
+const actors=[{x:663,y:442,name:'Lia',role:'curandeiro'},{x:910,y:560,name:'Thalor',role:'guardiao'},{x:780,y:700,name:'Lunara',role:'arqueiro'}];
+function drawActor(a,camX,camY,now){
+ const sx=Math.round(a.x-camX),sy=Math.round(a.y-camY);
+ const moving=a===player && (keys.size>0||Boolean(drag));
+ const lift=moving?Math.round(Math.sin(now/100)*2):0;
+ ctx.fillStyle='#13282071';ctx.beginPath();ctx.ellipse(sx,sy+4,18,7,0,0,Math.PI*2);ctx.fill();
+ const role=a===player?$('role').value:a.role;
+ const runway=role==='peregrino'&&Boolean(window.OsPeregrinosRunway25D?.draw(ctx,{
+  x:sx,y:sy,dir:a.dir??2,now,moving,action:moving?'walk':'idle',
+  glow:a===player,scale:.73
+ }));
+ const approved=role!=='peregrino'&&Boolean(window.OsPeregrinosApprovedClasses25D?.draw(ctx,{
+  role,x:sx,y:sy,dir:a.dir??2,now,action:moving?'walk':'idle',
+  glow:a===player,scale:1.45
+ }));
+ const premium=runway||approved||Boolean(window.OsPeregrinosHeroesAurora25D?.draw(ctx,{
+  role,x:sx,y:sy,dir:a.dir??2,action:moving?'walk':'idle',
+  frame:Math.floor(now/130),glow:a===player,scale:1.32
+ }));
+ if(!premium){ctx.imageSmoothingEnabled=false;ctx.drawImage(pixelActor(role),sx-24,sy-60+lift,48,64);}
+ const textY=runway?sy-123:approved?sy-112:premium?sy-115:sy-69+lift;
+ ctx.textAlign='center';ctx.font='bold 14px system-ui,Arial';ctx.lineWidth=3;ctx.strokeStyle='#101b23';
+ ctx.strokeText(a.name||labels[$('role').value],sx,textY);
+ ctx.fillStyle=a===player?'#ffe4a0':'#e9f2d9';ctx.fillText(a.name||labels[$('role').value],sx,textY);
+}
+function fallbackTerrain(camX,camY){
+ ctx.fillStyle='#496b58';ctx.fillRect(0,0,W,H);
+ ctx.strokeStyle='#68836d';ctx.lineWidth=1;
+ for(let x=-camX%38;x<W;x+=38){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}
+ for(let y=-camY%38;y<H;y+=38){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
+ ctx.strokeStyle='#c6b18b';ctx.lineWidth=70;ctx.beginPath();
+ for(let x=0;x<=1536;x+=10){const y=496+Math.sin((x)/225)*54+Math.sin(x/79)*12;
+ if(x===0)ctx.moveTo(x-camX,y-camY);else ctx.lineTo(x-camX,y-camY)}ctx.stroke();
+}
+function miniMap(){
+ mctx.fillStyle='#416c58';mctx.fillRect(0,0,100,64);
+ mctx.fillStyle='#cab28d';mctx.fillRect(0,30,100,4);
+ mctx.fillStyle='#ffe9a3';mctx.fillRect(player.x/WIDTH*100-2,player.y/HEIGHT*64-2,5,5);
+}
+function frame(t){
+ const dt=Math.min(.06,(t-last)/1000||0);last=t;
+ let dx=(keys.has('d')||keys.has('arrowright')?1:0)-(keys.has('a')||keys.has('arrowleft')?1:0);
+ let dy=(keys.has('s')||keys.has('arrowdown')?1:0)-(keys.has('w')||keys.has('arrowup')?1:0);
+ if(drag){dx+=drag.x;dy+=drag.y}
+ const mag=Math.hypot(dx,dy);
+ if(mag){player.dir=Math.abs(dx)>Math.abs(dy)?dx>0?1:3:dy>0?2:0;player.x=Math.max(25,Math.min(WIDTH-25,player.x+dx/mag*174*dt));player.y=Math.max(25,Math.min(HEIGHT-25,player.y+dy/mag*174*dt));}
+ const camX=Math.min(WIDTH-W,Math.max(0,player.x-W/2));
+ const camY=Math.min(HEIGHT-H,Math.max(0,player.y-H/2));
+ if(mode3d&&view){
+  try{view.render({zone:0,biome:$('biome').value,cameraX:camX,cameraY:camY,now:t})}
+  catch(e){$('status').textContent='WebGL indisponível. Modo Canvas 2D ativado.';console.warn(e);mode3d=false;}
+ }
+ ctx.clearRect(0,0,W,H);
+ if(!mode3d)fallbackTerrain(camX,camY);
+ for(const npc of actors)drawActor(npc,camX,camY,t);
+ drawActor(player,camX,camY,t);
+ miniMap();
+ requestAnimationFrame(frame);
+}
+$('role').addEventListener('change',()=>{$('heroName').textContent=labels[$('role').value]+' · Nv. 35'});
+$('night').addEventListener('click',()=>{day=!day;view?.setNight(!day);$('night').textContent=day?'☾ Anoitecer':'☀ Amanhecer'});
+$('classic').addEventListener('click',()=>{if(!view)return;mode3d=!mode3d;if(view)view.canvas.style.display=mode3d?'block':'none';$('classic').textContent=mode3d?'Ver apenas Canvas 2D':'Ativar Canvas 3D · 2.5D'});
+window.addEventListener('keydown',e=>{const key=e.key.toLowerCase();if(['w','a','s','d','arrowup','arrowleft','arrowright','arrowdown'].includes(key)){keys.add(key);e.preventDefault()}});
+window.addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));
+canvas.addEventListener('pointerdown',e=>{drag={x:0,y:0,startX:e.clientX,startY:e.clientY};canvas.setPointerCapture(e.pointerId)});
+canvas.addEventListener('pointermove',e=>{if(!drag)return;drag.x=Math.max(-1,Math.min(1,(e.clientX-drag.startX)/42));drag.y=Math.max(-1,Math.min(1,(e.clientY-drag.startY)/42))});
+canvas.addEventListener('pointerup',()=>{drag=null});canvas.addEventListener('pointercancel',()=>{drag=null});
+try{const {createWorld25D}=await import('/world-25d.mjs');view=createWorld25D({shell:$('stage'),canvas,width:W,height:H});$('status').textContent='✓ WebGL 2.5D pronto. Escolha um bioma ou mova o Peregrino.'}
+catch(e){console.warn(e);mode3d=false;$('classic').disabled=true;$('classic').textContent='WebGL não disponível';$('status').textContent='WebGL indisponível: exibindo versão 2D de segurança.'}
+window.OsPeregrinosRunway25D?.load().then(ok=>{
+ if(ok){$('status').textContent='✓ WebGL + sprites originais do Runway carregados (Peregrino: 16 quadros).';}
+ else {$('status').textContent='WebGL pronto; sprites Runway indisponíveis, usando Peregrino original.';}
+});
+requestAnimationFrame(frame);
+</script>
+</body></html>
