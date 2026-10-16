@@ -114,7 +114,7 @@ test('A spritesheet original do Runway está instalada como PNG real, não apena
  assert.match(loader,/allowsAppearance/);
  assert.match(loader,/action!=='idle'&&action!=='walk'/);
  assert.match(mmo,/const runwayHero=Boolean\(useAurora25d&&p\.role==='peregrino'/);
- assert.match(mmo,/if\(runwayHero\|\|/);
+ assert.match(mmo,/if\(combatHero\|\|runwayHero\|\|approvedHero\|\|/);
  assert.match(lab,/peregrino-runway25d\.js/);
  assert.match(read('public/mundo.html'),/peregrino-runway25d\.js/);
  assert.ok(fs.existsSync(path.join(__dirname,'..','public/peregrino-runway-preview.html')));
