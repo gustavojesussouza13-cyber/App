@@ -1,0 +1,49 @@
+{
+  "version": "approved-combat25d-v1",
+  "approvedFor": "experimental-2.5d-only",
+  "directions": [
+    "south",
+    "north",
+    "east",
+    "west"
+  ],
+  "directionToRow": {
+    "south": 0,
+    "north": 1,
+    "east": 2,
+    "west": 3
+  },
+  "actionFrames": [
+    "ready",
+    "windup",
+    "aim",
+    "release",
+    "recover"
+  ],
+  "source": "Approved visual asset extraction, 2026-10-15",
+  "hero": {
+    "roles": [
+      "guardiao",
+      "arqueiro",
+      "curandeiro"
+    ],
+    "columns": 5,
+    "rows": 4,
+    "cellWidth": 192,
+    "cellHeight": 160,
+    "framesPerRole": 20
+  },
+  "projectiles": {
+    "kinds": [
+      "projectile-flecha",
+      "projectile-magia"
+    ],
+    "columns": 8,
+    "rows": 4,
+    "cellWidth": 128,
+    "cellHeight": 128,
+    "framesPerKind": 32,
+    "meaning": "0–5 voo, 6–7 impacto"
+  },
+  "notes": "Ataques e projéteis puramente visuais; acertos são autorizados pelo servidor. Não alterar fortalezas 3D nem versão original."
+}
