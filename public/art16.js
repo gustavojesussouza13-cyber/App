@@ -23,6 +23,7 @@ function create({ctx,W,H}){
  const creaturesV3=window.OsPeregrinosCreaturesV3?.create({windowRef:window});
  const batV4=window.OsPeregrinosBatV4?.create({windowRef:window});
  const serpentV4=window.OsPeregrinosSerpentV4?.create({windowRef:window});
+ const beastV4=window.OsPeregrinosBeastV4?.create({windowRef:window});
  const worldProps=window.OsPeregrinosWorldPropsArtisan64?.create({documentRef:document});
  let cache=null,objects=[],artReady=false;
  // Três últimas regiões: o retorno pelo atlas não reconstrói milhares de tiles.
@@ -516,8 +517,9 @@ function create({ctx,W,H}){
   const premiumPc=Boolean(desktopCharactersV3?.enabled);
   const batV4Drawn=ty==='morcego'&&Boolean(batV4?.drawMonster(g,{...m,x,y},now,state));
   const serpentV4Drawn=ty==='serpente'&&Boolean(serpentV4?.drawMonster(g,{...m,x,y},now,state));
-  const creatureV3=!batV4Drawn&&!serpentV4Drawn&&Boolean(creaturesV3?.drawMonster(g,{...m,x,y},now,state));
-  const spriteDim=batV4Drawn?batV4.measure(m.boss):serpentV4Drawn?serpentV4.measure(m.boss):creatureV3?creaturesV3.measure(ty,m.boss):null;
+  const beastV4Drawn=ty==='fera'&&Boolean(beastV4?.drawMonster(g,{...m,x,y},now,state));
+  const creatureV3=!batV4Drawn&&!serpentV4Drawn&&!beastV4Drawn&&Boolean(creaturesV3?.drawMonster(g,{...m,x,y},now,state));
+  const spriteDim=batV4Drawn?batV4.measure(m.boss):serpentV4Drawn?serpentV4.measure(m.boss):beastV4Drawn?beastV4.measure(m.boss):creatureV3?creaturesV3.measure(ty,m.boss):null;
   const studioMonster=!spriteDim&&Boolean(spriteStudio?.drawMonster(g,{...m,x,y},now,{...state,desktopPremium:premiumPc}));
   const detailedBoss=!spriteDim&&!studioMonster&&Boolean(desktopSprites?.drawMonster(g,{...m,x,y},now,state));
   const illustrated=!spriteDim&&!studioMonster&&!detailedBoss&&Boolean(desktopBestiary?.drawMonster(g,{...m,x,y},now,state));
@@ -699,9 +701,9 @@ function create({ctx,W,H}){
   for(const n of npcs){if(n.x<cameraX-100||n.x>cameraX+W+100||n.y<cameraY-105||n.y>cameraY+H+105)continue;
    actors.push({depth:n.y,paint:()=>npcActor(ctx,n,n.index===storyStage,n.index!==null&&n.index<storyStage,now)});
   }
-  for(const m of monsters){const margin=['morcego','serpente'].includes(types[Math.max(0,m.species|0)])?(m.boss?210:155):90;
+  for(const m of monsters){const margin=['morcego','serpente','fera'].includes(types[Math.max(0,m.species|0)])?(m.boss?220:155):90;
    if(m.x<cameraX-margin||m.x>cameraX+W+margin||m.y<cameraY-margin||m.y>cameraY+H+margin)continue;actors.push({depth:m.y,paint:()=>monster(ctx,m,target===m.id,now,monsterActions.get(m.id))})}
-  for(const m of fallen){const margin=['morcego','serpente'].includes(types[Math.max(0,m.species|0)])?(m.boss?210:155):90;
+  for(const m of fallen){const margin=['morcego','serpente','fera'].includes(types[Math.max(0,m.species|0)])?(m.boss?220:155):90;
    if(m.x<cameraX-margin||m.x>cameraX+W+margin||m.y<cameraY-margin||m.y>cameraY+H+margin)continue;actors.push({depth:m.y-1,paint:()=>monster(ctx,m,false,now,{action:'death',at:m.defeatedAt})})}
   for(const p of players){if(p.x<cameraX-75||p.x>cameraX+W+75||p.y<cameraY-95||p.y>cameraY+H+75)continue;actors.push({depth:p.y,paint:()=>character(ctx,p,false,now,p.moving!==false,playerActions.has(p.name)&&now-playerActions.get(p.name).at<390&&playerActions.get(p.name).action==='attack',playerActions.get(p.name))})}
   actors.push({depth:y,paint:()=>character(ctx,{name,role,appearance,x,y,dir},true,now,moving,now-lastAction<370,heroPose||{action:'attack',at:lastAction})});
