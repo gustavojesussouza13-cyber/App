@@ -57,3 +57,23 @@ test('O MMO prioriza quadros de ataque aprovados e mantém a regra do servidor p
  assert.match(fx,/hit\.projectile/);
  assert.match(lab,/const roleForShot=/);
 });
+
+test('Escala corrigida preserva altura visível entre caminhada e ataque por classe',()=>{
+ const expected={guardiao:1.0,arqueiro:.84,curandeiro:.94};
+ assert.deepEqual(api.SCALES,expected);
+ // Alturas medidas dos pixels alfa nos PNGs aprovados: quadros frontais, pose 0.
+ const idle={guardiao:75,arqueiro:71,curandeiro:70};
+ const attack={guardiao:107,arqueiro:121,curandeiro:106};
+ for(const role of api.ROLES){
+  const walkHeight=idle[role]*1.45;
+  const attackHeight=attack[role]*api.scaleFor(role);
+  assert.ok(Math.abs(attackHeight/walkHeight-1)<.07,
+    role+': altura muda demais ao atacar ('+walkHeight+' vs '+attackHeight+')');
+ }
+ const src=content('combat-approved25d.js');
+ const art=content('art16.js');
+ const lab=content('visual-25d.html');
+ assert.match(src,/const factor=Number\.isFinite\(scale\)&&scale>0\?scale:scaleFor\(role\)/);
+ assert.doesNotMatch(art,/appearance:p\.appearance,scale:\.72,glow:local/);
+ assert.doesNotMatch(lab,/attackAt:demoAttackAt,glow:true,scale:\.63/);
+});
