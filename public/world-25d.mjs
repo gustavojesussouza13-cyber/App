@@ -195,7 +195,7 @@ export function createWorld25D({shell,canvas,width=960,height=576}) {
   renderer.domElement.id='world25dBackdrop';
   Object.assign(renderer.domElement.style,{
     position:'absolute',left:'0',top:'0',width:'100%',height:'100%',
-    pointerEvents:'none',zIndex:'0',display:'block',imageRendering:'auto'
+    pointerEvents:'none',zIndex:'0',display:'block',imageRendering:'auto',maxWidth:'none',maxHeight:'none',minWidth:'0',minHeight:'0'
   });
   shell.style.position='relative';
   canvas.style.position='relative';
@@ -299,6 +299,9 @@ export function createWorld25D({shell,canvas,width=960,height=576}) {
     ambient.intensity=night?.77:1.8+pulse;
     sun.intensity=night?.42:1.6+pulse;
     renderer.toneMappingExposure=night?.78:1.14;
+    // Em layouts responsivos o Canvas 2D pode mudar de tamanho sem um ResizeObserver imediato.
+    // Sincronizar aqui evita que o WebGL fique mais largo que a área de jogo após rotação/redimensionamento.
+    alignBackdrop();
     renderer.render(scene,camera);
     return true;
   }
