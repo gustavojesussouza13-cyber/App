@@ -138,7 +138,7 @@
   if(action==='attack'){
    // Telégrafo desenhado sobre a silhueta, sem alterar IA/alcance real.
    for(let i=0;i<8;i++){
-    const a=i*Math.PI/4+((type==='aranha'||type==='dragao')?.3:0);
+    const a=i*Math.PI/4+((type==='aranha'||type==='dragao')?0.3:0);
     pixel(g,i%2?main:highlight,x+Math.cos(a)*radius,
       y-27+Math.sin(a)*radius*.65,4,4);
    }
