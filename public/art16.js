@@ -27,6 +27,7 @@ function create({ctx,W,H}){
  const scorpionV4=window.OsPeregrinosScorpionV4?.create({windowRef:window});
  const ghostV4=window.OsPeregrinosGhostV4?.create({windowRef:window});
  const waspV4=window.OsPeregrinosWaspV4?.create({windowRef:window});
+ const knightV4=window.OsPeregrinosKnightV4?.create({windowRef:window});
  const worldProps=window.OsPeregrinosWorldPropsArtisan64?.create({documentRef:document});
  let cache=null,objects=[],artReady=false;
  // Três últimas regiões: o retorno pelo atlas não reconstrói milhares de tiles.
@@ -524,8 +525,9 @@ function create({ctx,W,H}){
   const scorpionV4Drawn=ty==='escorpiao'&&Boolean(scorpionV4?.drawMonster(g,{...m,x,y},now,state));
   const ghostV4Drawn=ty==='fantasma'&&Boolean(ghostV4?.drawMonster(g,{...m,x,y},now,state));
   const waspV4Drawn=ty==='vespa'&&Boolean(waspV4?.drawMonster(g,{...m,x,y},now,state));
-  const creatureV3=!batV4Drawn&&!serpentV4Drawn&&!beastV4Drawn&&!scorpionV4Drawn&&!ghostV4Drawn&&!waspV4Drawn&&Boolean(creaturesV3?.drawMonster(g,{...m,x,y},now,state));
-  const spriteDim=batV4Drawn?batV4.measure(m.boss):serpentV4Drawn?serpentV4.measure(m.boss):beastV4Drawn?beastV4.measure(m.boss):scorpionV4Drawn?scorpionV4.measure(m.boss):ghostV4Drawn?ghostV4.measure(m.boss):waspV4Drawn?waspV4.measure(m.boss):creatureV3?creaturesV3.measure(ty,m.boss):null;
+  const knightV4Drawn=ty==='cavaleiro'&&Boolean(knightV4?.drawMonster(g,{...m,x,y},now,state));
+  const creatureV3=!batV4Drawn&&!serpentV4Drawn&&!beastV4Drawn&&!scorpionV4Drawn&&!ghostV4Drawn&&!waspV4Drawn&&!knightV4Drawn&&Boolean(creaturesV3?.drawMonster(g,{...m,x,y},now,state));
+  const spriteDim=batV4Drawn?batV4.measure(m.boss):serpentV4Drawn?serpentV4.measure(m.boss):beastV4Drawn?beastV4.measure(m.boss):scorpionV4Drawn?scorpionV4.measure(m.boss):ghostV4Drawn?ghostV4.measure(m.boss):waspV4Drawn?waspV4.measure(m.boss):knightV4Drawn?knightV4.measure(m.boss):creatureV3?creaturesV3.measure(ty,m.boss):null;
   const studioMonster=!spriteDim&&Boolean(spriteStudio?.drawMonster(g,{...m,x,y},now,{...state,desktopPremium:premiumPc}));
   const detailedBoss=!spriteDim&&!studioMonster&&Boolean(desktopSprites?.drawMonster(g,{...m,x,y},now,state));
   const illustrated=!spriteDim&&!studioMonster&&!detailedBoss&&Boolean(desktopBestiary?.drawMonster(g,{...m,x,y},now,state));
@@ -707,9 +709,9 @@ function create({ctx,W,H}){
   for(const n of npcs){if(n.x<cameraX-100||n.x>cameraX+W+100||n.y<cameraY-105||n.y>cameraY+H+105)continue;
    actors.push({depth:n.y,paint:()=>npcActor(ctx,n,n.index===storyStage,n.index!==null&&n.index<storyStage,now)});
   }
-  for(const m of monsters){const margin=['morcego','serpente','fera','escorpiao','fantasma','vespa'].includes(types[Math.max(0,m.species|0)])?(m.boss?220:155):90;
+  for(const m of monsters){const margin=['morcego','serpente','fera','escorpiao','fantasma','vespa','cavaleiro'].includes(types[Math.max(0,m.species|0)])?(m.boss?220:155):90;
    if(m.x<cameraX-margin||m.x>cameraX+W+margin||m.y<cameraY-margin||m.y>cameraY+H+margin)continue;actors.push({depth:m.y,paint:()=>monster(ctx,m,target===m.id,now,monsterActions.get(m.id))})}
-  for(const m of fallen){const margin=['morcego','serpente','fera','escorpiao','fantasma','vespa'].includes(types[Math.max(0,m.species|0)])?(m.boss?220:155):90;
+  for(const m of fallen){const margin=['morcego','serpente','fera','escorpiao','fantasma','vespa','cavaleiro'].includes(types[Math.max(0,m.species|0)])?(m.boss?220:155):90;
    if(m.x<cameraX-margin||m.x>cameraX+W+margin||m.y<cameraY-margin||m.y>cameraY+H+margin)continue;actors.push({depth:m.y-1,paint:()=>monster(ctx,m,false,now,{action:'death',at:m.defeatedAt})})}
   for(const p of players){if(p.x<cameraX-75||p.x>cameraX+W+75||p.y<cameraY-95||p.y>cameraY+H+75)continue;actors.push({depth:p.y,paint:()=>character(ctx,p,false,now,p.moving!==false,playerActions.has(p.name)&&now-playerActions.get(p.name).at<390&&playerActions.get(p.name).action==='attack',playerActions.get(p.name))})}
   actors.push({depth:y,paint:()=>character(ctx,{name,role,appearance,x,y,dir},true,now,moving,now-lastAction<370,heroPose||{action:'attack',at:lastAction})});
