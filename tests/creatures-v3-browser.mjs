@@ -38,6 +38,7 @@ try{
  for(const state of ['caminhada','preparacao','ataque','habilidade','dano','morte']){
   await page.locator('[data-state="'+state+'"]').click();
   assert.equal(await page.locator('[data-state="'+state+'"]').getAttribute('aria-pressed'),'true');
+  await page.waitForFunction(expected => document.querySelector('#status')?.textContent?.includes(expected),state,{timeout:2500});
   assert.match(await page.locator('#status').innerText(),new RegExp(state));
  }
  await page.locator('#boss').click();
