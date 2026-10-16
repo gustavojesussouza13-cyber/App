@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Os Peregrinos — Morcego V4 · revisão pixel a pixel</title>
+<style>
+:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#09151f;color:#eef0e7;font:15px/1.55 system-ui,Arial,sans-serif}
+main{max-width:1180px;margin:auto;padding:30px 18px 80px}h1{font:700 34px Georgia,serif;color:#e4ce93;margin:0 0 4px}
+p{color:#b9cbd0;max-width:820px}.eyebrow{text-transform:uppercase;letter-spacing:.17em;color:#89bbc4;font-size:11px;font-weight:700}
+.content{display:grid;grid-template-columns:minmax(240px,360px) minmax(280px,1fr);gap:24px;align-items:start;margin:24px 0}
+.panel{background:#112632;border:1px solid #426076;border-radius:12px;padding:18px;box-shadow:0 18px 50px #030c1433}
+.panel h2{font:700 19px Georgia,serif;color:#efdcad;margin:0 0 12px}.panel canvas{image-rendering:pixelated;image-rendering:crisp-edges;display:block;max-width:100%;height:auto;margin:auto;background:linear-gradient(160deg,#173340,#091720)}
+#actor{width:100%;aspect-ratio:6/5;border:1px solid #365066;border-radius:6px}
+#atlas{width:100%;max-width:768px;background:#17202a;border:1px solid #3e5969;border-radius:5px}
+.controls{display:flex;flex-wrap:wrap;gap:7px;margin:14px 0}button{padding:9px 12px;border-radius:5px;border:1px solid #597585;background:#24424e;color:#eff5ea;cursor:pointer}button[aria-pressed=true]{border-color:#d3b874;background:#526049;color:#fff4d5}button:focus-visible{outline:2px solid #e8c37b}
+#download{background:#745838;color:#fff6e2;border-color:#b39155;font-weight:700}small{color:#a9bcc4}code{color:#dceabc}
+@media(max-width:750px){.content{grid-template-columns:1fr}}
+</style>
+</head><body><main>
+<div class="eyebrow">Os Peregrinos · Laboratório artístico experimental</div>
+<h1>Morcego — Bestiário V4</h1>
+<p>Primeira criatura candidata da nova leva. Desenhada por coordenadas inteiras, pixel a pixel, em uma grade nativa de <strong>64 × 80</strong>. Esta página é uma <strong>prévia de aprovação</strong>: não altera monstros, combate, sprites V3, servidores nem fortalezas 3D.</p>
+<div class="content">
+<section class="panel"><h2>Animação ampliada</h2><canvas id="actor" width="384" height="320" aria-label="Animação do Morcego V4"></canvas>
+<div class="controls" id="controls"></div><p id="stateName">Repouso</p><small>Ampliação por números inteiros; suavização desativada.</small></section>
+<section class="panel"><h2>Spritesheet técnica · 24 quadros</h2><canvas id="atlas" width="768" height="960" aria-label="Atlas do Morcego V4 com quatro colunas e seis linhas"></canvas>
+<div class="controls"><button id="download" type="button">Baixar PNG RGBA experimental</button></div>
+<small>4 colunas × 6 linhas. Cada quadro: 192 × 160 px. Arte nativa 64 × 80 px com pixels quadrados em escala 2× e margem lateral de 32 px. Alfa transparente.</small>
+<p id="diagnostic" role="status"></p></section>
+</div>
+<p><strong>Ainda não aprovado para o jogo:</strong> conferir silhueta, detalhes, direções, impacto das asas e legibilidade em movimento antes de transformar este conceito na sprite final integrada.</p>
+</main><script>
+'use strict';
+(function(){
+const states=['Repouso','Caminhada','Preparação','Ataque','Dano','Morte'];
+const colors={outline:'#111523',bone:'#293147',wingDark:'#242842',wing:'#3c4663',wingLight:'#5b6685',edge:'#7c82a3',furDark:'#332e43',fur:'#57516a',furLight:'#94869a',ear:'#96708e',eye:'#f0c17d',fire:'#ffdf9d',blood:'#b45e7b',shadow:'#222339'};
+const atlas=document.getElementById('atlas'),a=atlas.getContext('2d');a.imageSmoothingEnabled=false;
+const preview=document.getElementById('actor'),p=preview.getContext('2d');p.imageSmoothingEnabled=false;
+const tiny=document.createElement('canvas');tiny.width=64;tiny.height=80;const g=tiny.getContext('2d');
+function pixel(x,y,c){g.fillStyle=c;g.fillRect(Math.round(x),Math.round(y),1,1)}
+function rect(x,y,w,h,c){g.fillStyle=c;g.fillRect(Math.round(x),Math.round(y),Math.round(w),Math.round(h))}
+function line(x0,y0,x1,y1,c){x0=Math.round(x0);y0=Math.round(y0);x1=Math.round(x1);y1=Math.round(y1);let dx=Math.abs(x1-x0),dy=Math.abs(y1-y0),sx=x0<x1?1:-1,sy=y0<y1?1:-1,e=dx-dy;for(;;){pixel(x0,y0,c);if(x0===x1&&y0===y1)break;const twice=2*e;if(twice>-dy){e-=dy;x0+=sx}if(twice<dx){e+=dx;y0+=sy}}}
+// Rasterização scanline: nenhum polígono usa antialias de caminhos vetoriais.
+function poly(pts,c){const ys=pts.map(v=>v[1]);let min=Math.max(0,Math.floor(Math.min(...ys))),max=Math.min(79,Math.ceil(Math.max(...ys)));for(let y=min;y<=max;y++){const scan=y+.5,xs=[];for(let i=0;i<pts.length;i++){const u=pts[i],v=pts[(i+1)%pts.length];if((u[1]<=scan&&v[1]>scan)||(v[1]<=scan&&u[1]>scan))xs.push(u[0]+(scan-u[1])*(v[0]-u[0])/(v[1]-u[1]))}xs.sort((a,b)=>a-b);for(let j=0;j+1<xs.length;j+=2){const x0=Math.ceil(xs[j]-.5),x1=Math.floor(xs[j+1]-.5);if(x1>=x0)rect(x0,y,x1-x0+1,1,c)}}}
+function dotPattern(frame,bob){for(let i=0;i<12;i++){let x=24+((i*7+frame*2)%16),y=41+((i*11+frame)%17)+bob;if(((i+frame)%3)!==0)pixel(x,y,i%2?colors.furDark:colors.furLight)}}
+function drawBat(row,frame){g.clearRect(0,0,64,80);
+// Morte: nos dois quadros finais o corpo realmente desaba no chão,
+// em vez de permanecer pairando com os olhos fechados.
+if(row===5&&frame>=2){const fall=frame===3?2:0;
+poly([[5,66+fall],[13,60+fall],[20,63+fall],[27,66+fall],[35,63+fall],[44,66+fall],[52,60+fall],[59,66+fall],[55,72+fall],[8,72+fall]],colors.outline);
+poly([[7,66+fall],[15,63+fall],[23,68+fall],[28,68+fall],[35,66+fall],[44,69+fall],[52,63+fall],[57,68+fall],[52,70+fall],[12,70+fall]],colors.wingDark);
+line(7,66+fall,22,69+fall,colors.edge);line(57,66+fall,44,69+fall,colors.edge);
+poly([[26,60+fall],[33,58+fall],[39,61+fall],[42,68+fall],[35,72+fall],[27,71+fall],[24,66+fall]],colors.furDark);
+poly([[29,62+fall],[35,60+fall],[39,64+fall],[37,69+fall],[28,68+fall]],colors.fur);
+rect(28,64+fall,4,1,colors.outline);rect(35,64+fall,4,1,colors.outline);
+line(30,70+fall,27,73+fall,colors.bone);line(37,70+fall,40,73+fall,colors.bone);
+for(let i=0;i<9;i++)pixel(14+i*4,74+fall,i%2?colors.furDark:colors.edge);
+return;
+}
+let flap=0,bob=0;
+if(row===1){flap=[-9,-3,7,1][frame];bob=[0,-2,0,2][frame]}
+else if(row===2){flap=[-1,-4,-7,-9][frame];bob=-1}
+else if(row===3){flap=[-9,-5,2,8][frame];bob=[-4,-2,1,4][frame]}
+else if(row===4){flap=[5,2,-2,1][frame];bob=[1,3,0,2][frame]}
+else if(row===5){flap=11;bob=[5,7,9,11][frame]}
+else{flap=[-1,0,2,0][frame];bob=[0,-1,0,1][frame]}
+const y=v=>v+bob;
+for(let side of [-1,1]){
+ const X=x=>side===-1?x:64-x;
+ const pts=[[30,y(38)],[23,y(30)],[15,y(26+flap)],[7,y(23+flap)],[3,y(31+flap)],[7,y(44+flap/2)],[13,y(40+flap/3)],[18,y(46)],[23,y(41)],[29,y(47)]];
+ poly(pts.map(v=>[X(v[0]),v[1]]),colors.outline);
+ const interior=[[29,y(38)],[22,y(32)],[15,y(28+flap)],[8,y(26+flap)],[5,y(32+flap)],[8,y(41+flap/2)],[13,y(38+flap/3)],[18,y(43)],[23,y(39)],[29,y(45)]];
+ poly(interior.map(v=>[X(v[0]),v[1]]),row===4?colors.blood:colors.wingDark);
+ poly([[25,y(35)],[18,y(30)],[12,y(30+flap)],[16,y(35+flap/3)],[24,y(43)]].map(v=>[X(v[0]),v[1]]),colors.wing);
+ line(X(29),y(39),X(7),y(24+flap),colors.edge);
+ line(X(28),y(40),X(7),y(43+flap/2),colors.wingLight);
+ line(X(27),y(40),X(13),y(39+flap/3),colors.edge);
+ for(let k=0;k<4;k++)pixel(X(12+k*3),y(31+Math.round(flap*(1-k/5))),colors.wingLight);
+ // Pequenas falanges nas pontas, individualmente desenhadas.
+ line(X(7),y(23+flap),X(4),y(22+flap),colors.bone);
+ pixel(X(3),y(23+flap),colors.edge);
+}
+// Corpo e cauda, com duas camadas de sombra. Tudo em coordenadas nativas.
+poly([[27,y(36)],[32,y(32)],[38,y(36)],[40,y(48)],[37,y(60)],[33,y(64)],[27,y(61)],[24,y(50)]],colors.outline);
+poly([[27,y(39)],[32,y(35)],[36,y(39)],[38,y(49)],[35,y(59)],[29,y(59)],[26,y(48)]],colors.furDark);
+poly([[30,y(43)],[35,y(42)],[36,y(52)],[33,y(58)],[28,y(53)]],colors.fur);
+for(let n=0;n<8;n++){const xx=28+(n*3)%9,yy=y(45+((n*7)%13));pixel(xx,yy,n%3===0?colors.furLight:colors.furDark)}
+poly([[30,y(59)],[32,y(67)],[34,y(61)],[37,y(65)],[34,y(68)],[31,y(69)],[28,y(65)]],colors.outline);
+for(let side of [-1,1]){const X=x=>side<0?x:64-x;
+poly([[29,y(28)],[25,y(15)],[24,y(13)],[20,y(23)],[25,y(35)]].map(v=>[X(v[0]),v[1]]),colors.outline);
+poly([[27,y(27)],[24,y(17)],[23,y(24)],[26,y(32)]].map(v=>[X(v[0]),v[1]]),colors.ear);
+line(X(24),y(18),X(26),y(29),colors.furLight)}
+poly([[25,y(29)],[29,y(23)],[35,y(23)],[39,y(29)],[40,y(38)],[37,y(43)],[26,y(43)],[23,y(37)]],colors.outline);
+poly([[27,y(29)],[31,y(25)],[35,y(26)],[38,y(31)],[38,y(38)],[35,y(41)],[27,y(40)],[25,y(35)]],colors.fur);
+rect(29,y(26),6,2,colors.furLight);rect(28,y(30),2,1,colors.furLight);rect(36,y(31),2,1,colors.furLight);
+// Olhos âmbar: highlights de um pixel. Morte substitui por pálpebras.
+const ey=row===5?colors.furDark:row===4?colors.fire:colors.eye;
+rect(27,y(33),4,2,colors.outline);rect(34,y(33),4,2,colors.outline);
+rect(28,y(33),2,1,ey);rect(35,y(33),2,1,ey);
+if(row!==5){pixel(28,y(33),colors.fire);pixel(35,y(33),colors.fire)}
+rect(30,y(37),4,2,colors.outline);pixel(31,y(36),colors.furLight);pixel(32,y(36),colors.furLight);
+if(row===3||row===2){rect(29,y(40),6,3,colors.outline);pixel(30,y(41),'#eec6aa');pixel(33,y(41),'#eec6aa');pixel(30,y(42),'#fff0d2');pixel(34,y(42),'#fff0d2')}
+else{pixel(29,y(40),'#eec6aa');pixel(35,y(40),'#eec6aa')}
+// Garras do Morcego, 1px nítido.
+for(let side of [-1,1]){const X=x=>side<0?x:64-x;
+line(X(28),y(59),X(26),y(63),colors.bone);pixel(X(25),y(64),colors.furLight);line(X(29),y(60),X(29),y(65),colors.bone)}
+if(row===2||row===3){for(let k=0;k<4;k++){pixel(17+k*10,y(16+((k+frame)%3)*3),colors.fire);pixel(12+k*12,y(48+k%2*4),colors.ear)}}
+if(row===4){for(let k=0;k<6;k++){pixel(17+(k*7)%31,y(23+(k*9)%37),colors.blood)}}
+if(row===5){rect(27,y(33),4,1,colors.outline);rect(34,y(33),4,1,colors.outline)}
+}
+function drawFrame(row,frame){drawBat(row,frame);a.drawImage(tiny,32+frame*192,row*160,128,160)}
+for(let row=0;row<6;row++)for(let frame=0;frame<4;frame++)drawFrame(row,frame);
+const control=document.getElementById('controls');let current=0;
+states.forEach((name,i)=>{const b=document.createElement('button');b.type='button';b.textContent=name;b.setAttribute('aria-pressed',String(i===current));b.addEventListener('click',()=>{current=i;document.getElementById('stateName').textContent=name;[...control.children].forEach((q,j)=>q.setAttribute('aria-pressed',String(j===i)))});control.append(b)});
+function animate(now){const frame=Math.floor(now/160)%4;p.fillStyle='#112935';p.fillRect(0,0,384,320);p.fillStyle='#28443d';p.fillRect(0,255,384,65);p.drawImage(atlas,frame*192,current*160,192,160,0,0,384,320);requestAnimationFrame(animate)}requestAnimationFrame(animate);
+document.getElementById('download').addEventListener('click',()=>{const link=document.createElement('a');link.href=atlas.toDataURL('image/png');link.download='morcego-v4-conceito-768x960.png';link.click()});
+const nonempty=[];for(let row=0;row<6;row++)for(let frame=0;frame<4;frame++){const d=a.getImageData(frame*192,row*160,192,160).data;let opaque=0;for(let k=3;k<d.length;k+=4)if(d[k]>0)opaque++;nonempty.push(opaque)}
+document.getElementById('diagnostic').textContent=(nonempty.length===24&&nonempty.every(v=>v>100))?'✓ 24/24 quadros preenchidos · dimensões 768 × 960 · RGBA com transparência':'Verificação de quadros incompleta';
+})();
+</script></body></html>
