@@ -15,7 +15,7 @@
   limo:[96,83],lobo:[112,96],aranha:[108,93],esqueleto:[94,112],golem:[120,124]
  });
  function isDesktop(host){
-  try{return !!host?.matchMedia?.'(min-width: 901px)'?.matches}
+  try{return !!host?.matchMedia?.('(min-width: 901px)')?.matches}
   catch{return false}
  }
  function measure(type,boss=false){
