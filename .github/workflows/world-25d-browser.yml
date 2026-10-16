@@ -6,6 +6,9 @@ on:
       - 'public/world-25d.mjs'
       - 'public/peregrino-aurora25d.js'
       - 'public/peregrino-runway25d.js'
+      - 'public/approved-classes25d.js'
+      - 'public/classes-aprovadas-25d.html'
+      - 'public/assets/approved-classes/**'
       - 'public/peregrino-runway-preview.html'
       - 'public/assets/peregrino/peregrino-runway-walk.png'
       - 'public/assets/peregrino/peregrino-runway-walk.json'
@@ -59,4 +62,5 @@ jobs:
             /tmp/os-peregrinos-25d-browser.png
             /tmp/os-peregrinos-peregrino-atlas.png
             /tmp/peregrino-runway-16-quadros-reais.png
+            /tmp/os-peregrinos-classes-aprovadas-25d.png
           if-no-files-found: ignore
