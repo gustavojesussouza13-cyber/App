@@ -37,7 +37,7 @@ setTimeout(function(){if(!window.__CREATURES_V3_QA__)window.__v3BootError("scrip
  const names=['limo','lobo','aranha','esqueleto','golem'];
  const assetDetails=document.getElementById('asset-details');
  const assetChecks=Object.create(null);
- function showAssetChecks(){assetDetails.textContent=names.map(t=>t+': '+(assetChecks[t]||'verificando...')).join('\\n')}
+ function showAssetChecks(){assetDetails.textContent=names.map(t=>t+': '+(assetChecks[t]||'verificando...')).join('\n')}
  names.forEach(function(type){
    const img=new Image();
    const url='/assets/creatures-v3/'+type+'_v3.png?v=diagnostico-20261016';
