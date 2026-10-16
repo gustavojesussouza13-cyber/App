@@ -1,0 +1,74 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Os Peregrinos — Laboratório V3 (experimental)</title>
+<style>
+:root{color-scheme:dark}*{box-sizing:border-box}body{background:#091722;color:#eef2e9;margin:0;font:15px/1.5 system-ui,Arial}
+main{max-width:1200px;padding:26px 15px 50px;margin:auto}h1{font:700 30px Georgia;color:#f7dba7}
+p{color:#b6ccd0}.controls{display:flex;flex-wrap:wrap;gap:8px;margin:20px 0}button{border:1px solid #81928b;color:#fff0d1;background:#24424c;padding:10px 16px;border-radius:5px;cursor:pointer}
+button[aria-pressed=true]{background:#53765a;border-color:#d5d9a2}button:focus-visible{outline:2px solid #f4d59d}
+canvas{display:block;width:100%;height:auto;image-rendering:pixelated;border:2px solid #52717d;background:#172d35}
+#status{font-weight:bold;color:#9de2b5}small{color:#b9c3bc}
+</style></head><body><main><h1>Os Peregrinos — Criaturas V3</h1>
+<p>Teste isolado das artes do GitHub; não executa combate, WebSocket ou salvamento. Os sprites usados são os mesmos carregados pelo MMORPG.</p>
+<div class="controls" id="controls">
+<button type="button" data-state="repouso" aria-pressed="true">Repouso</button>
+<button type="button" data-state="caminhada" aria-pressed="false">Caminhada</button>
+<button type="button" data-state="preparacao" aria-pressed="false">Preparação</button>
+<button type="button" data-state="ataque" aria-pressed="false">Ataque</button>
+<button type="button" data-state="habilidade" aria-pressed="false">Habilidade</button>
+<button type="button" data-state="dano" aria-pressed="false">Dano</button>
+<button type="button" data-state="morte" aria-pressed="false">Morte</button>
+<button type="button" id="boss" aria-pressed="false">Modo chefe</button>
+</div><canvas id="preview" width="1180" height="520" aria-label="Sprites V3 das cinco criaturas"></canvas>
+<p id="status">Carregando cinco PNGs RGBA...</p>
+<small>Atlas: 4 × 6 quadros de 192 × 160 px. A transparência deve ser real. Não publicar esta página na produção sem revisão visual.</small>
+</main><script src="/creatures-v3.js?v=qa-v3"></script><script>
+(function(){
+ 'use strict';
+ const api=window.OsPeregrinosCreaturesV3;
+ const engine=api.create({windowRef:{matchMedia:function(){return {matches:true}}}});
+ const canvas=document.getElementById('preview'),g=canvas.getContext('2d');
+ const names=['limo','lobo','aranha','esqueleto','golem'];
+ let state='repouso',boss=false,begin=performance.now();
+ const params=function(now){
+  const elapsed=Math.max(0,now-begin);
+  return {moving:state==='caminhada',preparing:state==='preparacao',
+   attacking:state==='ataque',skill:state==='habilidade',hurt:state==='dano',
+   dead:state==='morte',elapsed:state==='ataque'||state==='habilidade'?elapsed%460:state==='dano'?elapsed%310:elapsed};
+ };
+ window.__CREATURES_V3_QA__={engine,names,get state(){return state},setState:function(s){
+  state=s;begin=performance.now();document.querySelectorAll('[data-state]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.state===s)));},
+  drawOnce:function(type,s,now){
+   const c=document.createElement('canvas');c.width=180;c.height=190;
+   const ctx=c.getContext('2d');const obj={type,x:90,y:180,dir:2,boss:false,species:names.indexOf(type)};
+   const base={type,moving:s==='caminhada',preparing:s==='preparacao',attacking:s==='ataque',
+    skill:s==='habilidade',hurt:s==='dano',dead:s==='morte',elapsed:260};
+   const ok=engine.drawMonster(ctx,obj,now,base);
+   return {ok,data:c.toDataURL('image/png'),measure:engine.measure(type)};
+  }};
+ document.getElementById('controls').addEventListener('click',function(e){
+  if(e.target.dataset.state)window.__CREATURES_V3_QA__.setState(e.target.dataset.state);
+ });
+ document.getElementById('boss').addEventListener('click',function(e){boss=!boss;e.target.setAttribute('aria-pressed',String(boss))});
+ function frame(now){
+  requestAnimationFrame(frame);g.imageSmoothingEnabled=false;
+  g.fillStyle='#1b303c';g.fillRect(0,0,canvas.width,canvas.height);
+  for(let y=0;y<520;y+=25)for(let x=0;x<1180;x+=25){if(((x+y)/25)%2===0){g.fillStyle='#233b47';g.fillRect(x,y,25,25)}}
+  g.fillStyle='#4a6a54';g.fillRect(0,320,1180,200);
+  for(let i=0;i<names.length;i++){
+   const type=names[i],x=118+231*i,y=322;
+   const options={...params(now),type};
+   engine.drawMonster(g,{type,x,y,boss,dir:i%2===0?2:3,species:i},now,options);
+   g.font='bold 19px system-ui';g.textAlign='center';g.fillStyle='#f9e2b4';g.fillText(type.toUpperCase(),x,385);
+   g.fillStyle='#e4d1ac';g.font='14px system-ui';
+   const size=engine.measure(type,boss);g.fillText(size.width+' × '+size.height,x,409);
+  }
+  const loaded=engine.loadedTypes.length;
+  const status=document.getElementById('status');
+  status.textContent=loaded===5?'5/5 atlas V3 carregados · '+state+' · '+(boss?'chefe':'normal'):
+   'Carregando PNGs V3: '+loaded+'/5';
+  status.dataset.ready=String(loaded===5);
+ }
+ requestAnimationFrame(frame);
+})();
+</script></body></html>
