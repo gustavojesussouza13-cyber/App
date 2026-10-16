@@ -79,6 +79,38 @@ try{
   JSON.stringify(readyCombat.hero.map(x=>({role:x.role,unique:x.unique,pixels:x.frames.map(y=>y.n)}))));
  assert.ok(readyCombat.arrows.every(x=>x.drawn&&x.n>20),
   'Flecha e magia aprovadas devem renderizar pixels reais: '+JSON.stringify(readyCombat.arrows));
+
+ // Regressão real: repouso, ataque e habilidade não podem mudar a
+ // altura visual do corpo quando o atlas de combate é ativado.
+ const skillScale=await page.evaluate(()=>{
+  const idle=window.OsPeregrinosApprovedClasses25D;
+  const combat=window.OsPeregrinosApprovedCombat25D;
+  function bounds(draw){
+   const c=document.createElement('canvas');c.width=420;c.height=420;
+   const g=c.getContext('2d',{willReadFrequently:true});
+   if(!draw(g))return null;
+   const bytes=g.getImageData(0,0,420,420).data;
+   let minY=420,maxY=-1;
+   for(let y=0;y<420;y++)for(let x=0;x<420;x++){
+    if(bytes[(y*420+x)*4+3]>120){minY=Math.min(minY,y);maxY=Math.max(maxY,y)}
+   }
+   return {top:minY,bottom:maxY,height:maxY-minY+1};
+  }
+  return combat.ROLES.map(role=>{
+   const walk=bounds(g=>idle.draw(g,{role,x:210,y:300,dir:2,action:'idle',now:1000,scale:1.45}));
+   const attack=bounds(g=>combat.drawHero(g,{role,x:210,y:300,dir:2,attackAt:1000,now:1010,glow:false}));
+   const skill=bounds(g=>combat.drawHero(g,{role,x:210,y:300,dir:2,attackAt:1000,now:1010,glow:false}));
+   return {role,walk,attack,skill};
+  });
+ });
+ assert.ok(skillScale.every(x=>x.walk&&x.attack&&x.skill),
+  'repouso, ataque e habilidade precisam desenhar as 3 classes');
+ assert.ok(skillScale.every(x=>x.attack.height/x.walk.height>.82&&x.attack.height/x.walk.height<1.23),
+  'ataque não pode encolher o corpo: '+JSON.stringify(skillScale));
+ assert.ok(skillScale.every(x=>Math.abs(x.attack.bottom-x.walk.bottom)<18),
+  'pés devem manter alinhamento durante ataque: '+JSON.stringify(skillScale));
+ assert.ok(skillScale.every(x=>x.skill.height===x.attack.height&&x.skill.bottom===x.attack.bottom),
+  'habilidade deve usar mesmo tamanho e alinhamento do ataque: '+JSON.stringify(skillScale));
  await page.locator('#role').selectOption('guardiao');
  await page.locator('#testAttack').click();
  await page.locator('#testSkill').click();
