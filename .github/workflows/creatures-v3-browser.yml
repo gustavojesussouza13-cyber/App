@@ -1,0 +1,50 @@
+name: Criaturas V3 - navegador Chromium
+on:
+  pull_request:
+    branches: [os-peregrinos-online]
+    paths:
+      - 'public/creatures-v3.js'
+      - 'public/laboratorio-criaturas-v3.html'
+      - 'public/assets/creatures-v3/**'
+      - 'tests/creatures-v3-browser.mjs'
+      - '.github/workflows/creatures-v3-browser.yml'
+  workflow_dispatch:
+jobs:
+  chromium:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Instalar dependencias e Chromium
+        run: |
+          npm install --ignore-scripts --no-audit --no-fund
+          npm install --no-save --ignore-scripts playwright@1.56.1 --no-audit --no-fund
+          npx playwright install --with-deps chromium
+      - name: Subir servidor isolado (sem Render)
+        run: |
+          PORT=3107 HOST=127.0.0.1 NODE_ENV=test npm start >/tmp/peregrinos-v3-server.log 2>&1 &
+          for i in $(seq 1 45); do
+            if curl -fsS http://127.0.0.1:3107/laboratorio-criaturas-v3.html >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/peregrinos-v3-server.log
+          exit 1
+      - name: Testar 5 atlas e 7 estados em navegador real
+        env:
+          CREATURES_V3_QA_URL: http://127.0.0.1:3107/laboratorio-criaturas-v3.html
+        run: node tests/creatures-v3-browser.mjs
+      - name: Salvar captura para revisao
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: criaturas-v3-chromium-preview
+          path: /tmp/criaturas-v3-github-browser.png
+          if-no-files-found: ignore
+      - name: Exibir logs se falhar
+        if: failure()
+        run: cat /tmp/peregrinos-v3-server.log
