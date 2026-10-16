@@ -422,6 +422,10 @@ function create({ctx,W,H}){
   const state={moving:moved,attacking,hurt:pose?.action==='hurt',
    elapsed:pose?Math.max(0,now-pose.at):0,
    seed:local?0:(p.name?.length||0)*107};
+  // Ataque comum e habilidade compartilham as MESMAS dimensões do corpo.
+  // O tipo diferencia somente os efeitos e a lógica já controlada pelo servidor.
+  const combatPose=pose?.action==='attack'||pose?.action==='skill';
+  const animatingCombat=combatPose&&state.elapsed<540;
   // Qualidade PC V5: o Atelier tem rostos, classe e animações completas.
   // O atlas clássico truncava rosto/cachecol/armas, e o V3 usava blocos.
   // Mesmo sprite autoral de 64×80 nos aparelhos móveis e no PC.
@@ -441,7 +445,7 @@ function create({ctx,W,H}){
   // As três artes aprovadas só substituem a aparência padrão no 2.5D.
   // Sem o arquivo PNG ou durante ataque/dano, usa os heróis atuais.
   const approvedHero=Boolean(useAurora25d&&p.role!=='peregrino'&&
-    !state.hurt&&!attacking&&!(pose?.action==='attack'&&state.elapsed<540)&&!state.dead&&
+    !state.hurt&&!attacking&&!animatingCombat&&!state.dead&&
     window.OsPeregrinosApprovedClasses25D?.draw(g,{
       role:p.role,x:p.x,y:p.y,dir,appearance:p.appearance,now,
       action:moved?'walk':'idle',glow:local,scale:1.45
@@ -449,7 +453,7 @@ function create({ctx,W,H}){
   // Ataques detalhados aprovados: apenas quatro direções e estado de ataque.
   // Se o PNG ainda não foi carregado, caímos para a animação anterior.
   const combatHero=Boolean(useAurora25d&&p.role!=='peregrino'&&
-    (attacking||(pose?.action==='attack'&&state.elapsed<540))&&
+    (attacking||animatingCombat)&&
    !state.hurt&&window.OsPeregrinosApprovedCombat25D?.drawHero(g,{
     role:p.role,x:p.x,y:p.y,dir,now,attackAt:pose?.at,
     appearance:p.appearance,glow:local
@@ -457,7 +461,7 @@ function create({ctx,W,H}){
   if(combatHero||runwayHero||approvedHero||(useAurora25d&&
    window.OsPeregrinosHeroesAurora25D?.draw(g,{
     role:p.role,x:p.x,y:p.y,dir,appearance:p.appearance,
-    action:state.hurt?'hurt':attacking?'attack':moved?'walk':'idle',
+    action:state.hurt?'hurt':attacking||animatingCombat?'attack':moved?'walk':'idle',
     frame:Math.floor(now/130),scale:1.32,glow:local
    }))){
    // Artes Aurora detalhadas por classe: não altera controles nem simulação.
@@ -731,8 +735,12 @@ function create({ctx,W,H}){
      hurtAt:pose.action==='hurt'?pose.at:null});
    }})}
   actors.push({depth:y,paint:()=>{
+   // Mesma sprite de combate calibrada para ataque e habilidade: não reduzir
+   // o corpo quando o jogador usa K ou o botão de habilidade no celular.
+   const actionAge=now-lastAction;
+   const actionPose=heroPose||{action:lastActionWasSkill?'skill':'attack',at:lastAction};
    character(ctx,{name,role,appearance,x,y,dir},true,now,moving,
-    now-lastAction<370,heroPose||{action:'attack',at:lastAction});
+    actionAge>=0&&actionAge<370,actionPose);
    combat25d?.drawSteps(ctx,{x,y,dir,role,now,moving});
    combat25d?.drawHero(ctx,{x,y,dir,role,now,
     attackAt:now-lastAction<420&&!window.OsPeregrinosApprovedCombat25D?.isReady(role)?lastAction:null,
