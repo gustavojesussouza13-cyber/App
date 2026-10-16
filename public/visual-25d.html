@@ -110,7 +110,7 @@ function drawActor(a,camX,camY,now){
  ctx.fillStyle='#13282071';ctx.beginPath();ctx.ellipse(sx,sy+4,18,7,0,0,Math.PI*2);ctx.fill();
  const role=a===player?$('role').value:a.role;
  const combat=role!=='peregrino'&&a===player&&Boolean(window.OsPeregrinosApprovedCombat25D?.drawHero(ctx,{
-  role,x:sx,y:sy,dir:a.dir??2,now,attackAt:demoAttackAt,glow:true,scale:.63
+  role,x:sx,y:sy,dir:a.dir??2,now,attackAt:demoAttackAt,glow:true
  }));
  const runway=!combat&&role==='peregrino'&&Boolean(window.OsPeregrinosRunway25D?.draw(ctx,{
   x:sx,y:sy,dir:a.dir??2,now,moving,action:moving?'walk':'idle',
