@@ -70,3 +70,40 @@ test('mirrored walking and boss variants preserve canvas state',()=>{
  assert.equal(h.ops.filter(c=>c[0]==='save').length,h.ops.filter(c=>c[0]==='restore').length);
  assert.ok(api.measure('lobo',true).width>api.measure('lobo',false).width);
 });
+
+
+test('server combat phases use the intended atlas rows for all five creatures',()=>{
+ const h=harness();h.images.forEach(im=>im.load());
+ const states=[
+  [{moving:false},api.ROWS.repouso],
+  [{moving:true},api.ROWS.caminhada],
+  [{preparing:true},api.ROWS.preparacao],
+  [{attacking:true,elapsed:80},api.ROWS.preparacao],
+  [{attacking:true,elapsed:260},api.ROWS.ataque],
+  [{skill:true,elapsed:260},api.ROWS.ataque],
+  [{hurt:true,elapsed:140},api.ROWS.dano],
+  [{dead:true,elapsed:440},api.ROWS.morte]
+ ];
+ for(const type of api.TYPES){
+  for(const [state,row] of states){
+   h.ops.length=0;
+   assert.equal(h.renderer.drawMonster(h.canvas,{type,x:100,y:170},600,{type,...state}),true);
+   const op=h.ops.find(x=>x[0]==='drawImage');
+   assert.equal(op[3],row*api.FRAME.height,type+' row wrong');
+   assert.ok(op[2]>=0&&op[2]<4*api.FRAME.width,type+' column invalid');
+  }
+ }
+});
+test('boss and normal sprites preserve destination size across all combat phases',()=>{
+ const h=harness();h.images.forEach(im=>im.load());
+ for(const type of api.TYPES)for(const boss of [false,true]){
+  const sizes=[];
+  for(const state of [{moving:true},{attacking:true,elapsed:20},{attacking:true,elapsed:300},{hurt:true,elapsed:150},{dead:true,elapsed:500}]){
+   h.ops.length=0;
+   assert.equal(h.renderer.drawMonster(h.canvas,{type,x:120,y:190,boss},600,{type,...state}),true);
+   const op=h.ops.find(x=>x[0]==='drawImage');
+   sizes.push(op.slice(8,10));
+  }
+  for(const size of sizes)assert.deepEqual(size,sizes[0],type+' boss='+boss+' changed size');
+ }
+});
