@@ -15,7 +15,30 @@ test('V7 QA catalog contains 30 original object crops, 20 tile candidates and fo
  }
  const gate=JSON.parse(fs.readFileSync(path.join(base,'assets/scenery-v7/availability.json'),'utf8'));
  assert.equal(gate.version,'v7');assert.equal(gate.approved,true);
- assert.deepEqual(gate.files,['arbusto_flores_01']);
+ assert.deepEqual(gate.files,['arbusto_flores_01','arvore_folhosa_01','rocha_musgo_01']);
+ assert.equal(gate.quality_gate,'three_sprite_pilot');
+ const expected={
+  arbusto_flores_01:[75,42],
+  arvore_folhosa_01:[88,156],
+  rocha_musgo_01:[56,51]
+ };
+ for(const [id,[width,height]] of Object.entries(expected)){
+  const binary=fs.readFileSync(path.join(base,'assets/scenery-v7/sprites',id+'.png'));
+  assert.ok(binary.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])),'PNG signature '+id);
+  assert.equal(binary.readUInt32BE(16),width,'width '+id);
+  assert.equal(binary.readUInt32BE(20),height,'height '+id);
+  assert.ok(binary.includes(Buffer.from('tRNS'))||binary.includes(Buffer.from('RGBA')),'transparency '+id);
+  assert.ok(binary.byteLength<6000,'optimized network sprite '+id);
+ }
+ const crypto=require('node:crypto');
+ for(const [id,expectedSha] of [
+  ['arvore_folhosa_01','87894f51bb8b6d780e17d9ea2e10349f4a99fa77'],
+  ['rocha_musgo_01','39114acf990205074c5a44dd55b3e29308521bdb']
+ ]){
+  const binary=fs.readFileSync(path.join(base,'assets/scenery-v7/sprites',id+'.png'));
+  const sha=crypto.createHash('sha1').update(Buffer.from('blob '+binary.length+'\\0'.replace('\\0','\\u0000'))).update(binary).digest('hex');
+  assert.equal(sha,expectedSha,'Git blob integrity for '+id);
+ }
  const png=fs.readFileSync(path.join(base,'assets/scenery-v7/sprites/arbusto_flores_01.png'));
  assert.ok(png.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])),'must be a real PNG');
  assert.equal(png.readUInt32BE(16),75);
@@ -81,5 +104,5 @@ test('V7 laboratory explicitly warns about unpublished art and distinguishes the
  assert.ok(lab.includes('id="artgate"')&&lab.includes('V7 NÃO PUBLICADA'));
  assert.ok(lab.includes('view.v7Status.loaded')&&lab.includes('view.v7Ready'));
  assert.equal(manifest.approved,true,'Only checked pilot is allowed');
- assert.deepEqual(manifest.files,['arbusto_flores_01']);
+ assert.deepEqual(manifest.files,['arbusto_flores_01','arvore_folhosa_01','rocha_musgo_01']);
 });
