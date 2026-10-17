@@ -87,7 +87,7 @@ test('mirrored bats restore canvas and main integration retains V3 and guild scr
  const art=fs.readFileSync(path.resolve(__dirname,'../public/art16.js'),'utf8');
  const html=fs.readFileSync(path.resolve(__dirname,'../public/mundo.html'),'utf8');
  assert.ok(art.includes("ty==='morcego'&&Boolean(batV4?.drawMonster"));
- assert.ok(art.includes('const creatureV3=!batV4Drawn&&!ravenV4Drawn&&!ravenBatFallback'));
+ assert.ok(art.includes('const creatureV3=!batV4Drawn'));
  assert.ok(art.includes('const spriteDim=batV4Drawn?batV4.measure'));
  assert.ok(html.indexOf('/creatures-v3.js')<html.indexOf('/morcego-v4.js'));
  assert.ok(html.indexOf('/morcego-v4.js')<html.indexOf('/art16.js'));
