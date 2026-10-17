@@ -11,6 +11,7 @@ const frontier=require('./frontier-world');
 const kingdoms=require('./kingdom-politics');
 const rpg=require('./rpg-attributes');
 const creatureRpg=require('./monster-progression');
+const regionMonsters=require('./region-monster-species');
 const {ChatGuard,inspectNickname}=require('./chat-safety');
 
 const HISTORIC_ZONES=[
@@ -219,16 +220,16 @@ class World {
    if(this.monsters.has(zone))return this.monsters.get(zone);
    const isFrontier=frontier.isFrontier(zone);
    const mons=[];const dungeon=zone>=12&&!isFrontier;
+   const speciesId=regionMonsters.speciesForRegion(zone);
    // Densidade inspirada na campanha clássica: 13 criaturas comuns + chefe por área,
    // e um pouco mais nas masmorras (em vez das antigas 24–30 por região).
    const count=dungeon?(zone>=16?14:18):14;
    for(let i=0;i<count;i++){
     const boss=i===count-1;const seed=isFrontier?frontier.spawnSeed(zone,i):hash32(zone*9217+i*5711+77);
-    const speciesId=boss?(dungeon?31:(zone+11)%32):(zone*2+i*7+((seed>>4)%5))%SPECIES.length;
     const sp=SPECIES[speciesId],tier=zoneDifficulty(zone),mult=(boss?5.5:1)*(crownDungeonZone(zone)?1.65:1);
     const trait=procedural.monsterTrait(zone,i,boss);
     const eliteNames=['Guardião das Raízes','Marechal das Cinzas','Oráculo das Vozes','Arauto do Amanhecer'];
-    const baseName=boss&&!isFrontier&&zone>=16?'★ '+eliteNames[Math.floor((zone-16)/6)]+' · Piso '+dungeonDepth(zone):(boss?'★ ':'')+sp[0];
+    const baseName=boss&&!isFrontier&&zone>=16?'★ '+sp[0]+' · '+eliteNames[Math.floor((zone-16)/6)]+' · Piso '+dungeonDepth(zone):(boss?'★ ':'')+sp[0];
     const name=zone>=16&&!boss&&['Raro','Épico'].includes(trait.rarity)?trait.rarity+' · '+baseName:baseName;
     const chosen={x:130+hash32(seed+1)%(ZONE_W-260),y:130+hash32(seed+2)%(ZONE_H-260)};
     const home=terrain.nearestWalkable(zone,chosen.x,chosen.y,ZONES);

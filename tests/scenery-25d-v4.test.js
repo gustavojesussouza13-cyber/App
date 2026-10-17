@@ -154,3 +154,6 @@ require('./scenery-25d-v74-portals.test.js');
 
 // V7.5 class preview and signed-in experimental-only dungeon test passes.
 require('./appearance-v75-and-dungeon-keys.test.js');
+
+// Ecologia: uma espécie por mapa, com um chefe da mesma espécie.
+require('./region-monster-species.test.js');
