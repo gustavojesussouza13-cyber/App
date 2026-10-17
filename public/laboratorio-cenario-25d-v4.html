@@ -31,7 +31,7 @@ button{cursor:pointer}button[aria-pressed="true"]{background:#725333;border-colo
 <p>Laboratório de comparação em tempo real. Escolha qualquer um dos dez biomas e compare os cenários Original, V4, V4.2 e V5, além de um modo de TESTE do carregamento de sprites PNG reais do atlas clássico já existente. Esse teste de infraestrutura ainda não utiliza o novo atlas artístico da prancha. O cenário usa objetos estáticos, iluminação e texturas em pixels; não altera nenhuma colisão, personagem, missão, guilda ou fortaleza 3D.</p>
 <div class="controls">
 <label>Visual do cenário<select id="quality">
-<option value="v7">Cenário V7 — sete PNGs detalhados e fallback V5</option>
+<option value="v7">Cenário V7 — 9 objetos e 20 tiles de terreno PNG</option>
 <option value="v5">Cenário V5 — mapa pixelado composto</option>
 <option value="atlas">Teste de atlas PNG real — recursos existentes</option>
 <option value="v42">Cenário V4.2 — acabamento artesanal</option>
@@ -51,6 +51,7 @@ button{cursor:pointer}button[aria-pressed="true"]{background:#725333;border-colo
 <strong>V7 ainda não está publicada.</strong> O PNG detalhado será usado somente quando o pacote for aprovado e carregado. Até lá, o que você vê é o cenário V5, não a arte definitiva.
 </p>
 <h2>Sprites PNG reais publicados — lote V7</h2>
+<p><a href="/laboratorio-terreno-v7.html" style="display:inline-block;background:#274956;border:1px solid #9a9f82;padding:10px 14px;border-radius:7px;color:#f9e5b8">Ver antes e depois V5 × V7 dos 20 tiles reais, em todos os biomas</a></p>
 <p><a href="/laboratorio-arquitetura-v7.html" style="display:inline-block;background:#274956;border:1px solid #9a9f82;padding:10px 14px;border-radius:7px;color:#f9e5b8">Abrir revisão detalhada de arquitetura V7: escala, transparência e arquivos pendentes</a></p>
 <div class="v7-gallery" id="v7-gallery">
  <figure><img src="/assets/scenery-v7/sprites/arvore_folhosa_01.png" alt="Árvore folhosa V7, pixel art original" loading="eager"><figcaption>Árvore folhosa — 88 × 156</figcaption></figure>
@@ -122,14 +123,14 @@ try{
    if(q.value==='v7'){
     const count=view.v7Status.loaded;
     const ready=view.v7Ready;
-    artgate.textContent=ready
-      ?'V7 experimental: '+count+' PNG(s) carregado(s). Elementos sem arquivo válido continuam com a arte V5.'
-      :'V7 NÃO PUBLICADA: nenhum sprite aprovado foi carregado. Você está vendo a V5 como fallback; não é a aparência da V7.';
+    artgate.textContent=ready||view.v7TerrainReady
+      ?'V7 experimental: '+count+' objetos PNG carregados e '+(view.v7TerrainReady?'20 tiles de terreno reais carregados.':'terreno V5 de fallback.')+' Elementos sem PNG válido continuam na V5.'
+      :'V7 ainda não carregada: vendo apenas a V5 como fallback.';
    }
    const label=q.value==='old'?'Cenário original':q.value==='v4'?'Primeiro Cenário V4':q.value==='v42'?'Cenário V4.2':q.value==='v5'?'Cenário V5':q.value==='v7'?'Cenário V7 (etapa de PNGs aprovados)':'Teste de atlas PNG real';
    const stats=view.sceneryStats;
    status.textContent=label+' · '+tags[current][1]+' · '+(stats?stats.staticProps+' objetos estáticos · '+stats.drawBatches+' grupos de renderização':'terreno anterior')+' · Câmera vertical '+panY.value+(q.value==='atlas'?(view.atlasReady?' · PNG carregado':' · carregando PNG / fallback V5'):'')
-   +(q.value==='v7'?(view.v7Ready?' · PNGs V7 carregados: '+view.v7Status.loaded:' · PNGs V7 ainda não publicados: mostrando cenário V5 sem risco'):'')
+   +(q.value==='v7'?((view.v7Ready||view.v7TerrainReady)?' · PNGs de objetos: '+view.v7Status.loaded+' · Tiles de terreno: '+view.v7TerrainStatus.tiles:' · aguardando V7; fallback V5'):'')
    +' · Sem alterações de colisões';
   }
   frame++;
