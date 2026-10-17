@@ -94,9 +94,9 @@ test('the Sentinela species uses the new visual while V3, Morcego, Serpente and 
  assert.ok(match);
  assert.equal((match[1].match(/'sentinela'/g)||[]).length,1);
  assert.ok(art.includes("const sentinelV4Drawn=ty==='sentinela'&&Boolean(sentinelV4?.drawMonster"));
- assert.ok(art.includes('const creatureV3=!batV4Drawn&&!serpentV4Drawn&&!beastV4Drawn&&!scorpionV4Drawn&&!ghostV4Drawn&&!waspV4Drawn&&!knightV4Drawn&&!dragonV4Drawn&&!sentinelV4Drawn'));
+ assert.ok(art.includes('const creatureV3=!batV4Drawn&&!serpentV4Drawn&&!beastV4Drawn&&!scorpionV4Drawn&&!ghostV4Drawn&&!waspV4Drawn&&!knightV4Drawn&&!dragonV4Drawn&&!sentinelV4Drawn&&!basiliskV4Drawn'));
  assert.ok(art.includes('sentinelV4Drawn?sentinelV4.measure(m.boss)'));
- assert.ok(art.includes("'cavaleiro','sentinela'].includes(types[Math.max(0,m.species|0)])"));
+ assert.ok(art.includes("'cavaleiro','sentinela','basilisco'].includes(types[Math.max(0,m.species|0)])"));
  assert.equal((match[1].match(/'sentinela'/g)||[]).length,1);
  const parts=['/creatures-v3.js','/morcego-v4.js','/serpente-v4.js','/fera-v4.js','/escorpiao-v4.js','/fantasma-v4.js','/vespa-v4.js','/cavaleiro-v4.js','/dragao-v4.js','/sentinela-v4.js','/art16.js'];
  for(let i=1;i<parts.length;i++)assert.ok(html.indexOf(parts[i-1])<html.indexOf(parts[i]));
