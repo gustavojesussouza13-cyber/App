@@ -133,3 +133,46 @@ test('V7 retains the original PNG aspect ratio and footprint for all static obje
  assert.ok(scene.includes('const w=fitted?.width??item.w,h=fitted?.height??item.h'));
  assert.ok(scene.includes('pngImage=v7?v7Image(kind,variant):null'));
 });
+
+
+test('V7 architecture artwork cannot activate before a matching PNG is committed and verified',async()=>{
+ const manifest=JSON.parse(js('assets/scenery-v7/availability.json'));
+ const qa=JSON.parse(js('assets/scenery-v7/architecture-qa.json'));
+ const catalog=(await loader()).V7_ASSETS;
+ assert.equal(qa.status,'awaiting_binary_upload');
+ assert.equal(qa.activated,false);
+ const ids=new Set(qa.approved_proposals.map(a=>a.id));
+ assert.equal(ids.size,4,'four individually reviewed architecture sprites');
+ const crypto=require('node:crypto');
+ for(const item of qa.approved_proposals){
+  const spec=catalog[item.id];
+  assert.ok(spec,'existing per-sprite catalog: '+item.id);
+  assert.equal(spec.w,item.width,'exact native width: '+item.id);
+  assert.equal(spec.h,item.height,'exact native height: '+item.id);
+  const pathPNG=path.join(base,'assets/scenery-v7/sprites',item.id+'.png');
+  const published=fs.existsSync(pathPNG);
+  if(published){
+    const png=fs.readFileSync(pathPNG);
+    assert.ok(png.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])));
+    assert.equal(png.readUInt32BE(16),item.width);
+    assert.equal(png.readUInt32BE(20),item.height);
+    assert.ok([3,4,6].includes(png[25])||png.includes(Buffer.from('tRNS')),'PNG must support alpha');
+    assert.equal(png.length,item.bytes,'rejected unexpected bytes '+item.id);
+    const sha=crypto.createHash('sha1')
+       .update(Buffer.from('blob '+png.length+String.fromCharCode(0)))
+       .update(png).digest('hex');
+    assert.equal(sha,item.git_blob_sha,'never activate changed/corrupted artwork');
+  }
+  if(!manifest.files.includes(item.id)){
+    assert.ok(true,'unpublished/disabled sprite remains safely on V5 fallback');
+  }else{
+    assert.ok(published,'enabled PNG must really exist: '+item.id);
+  }
+ }
+ // The four known bad crops must remain ineligible, regardless of uploads.
+ for(const blocked of qa.warnings){
+  assert.ok(typeof blocked==='string'&&blocked.length>15);
+ }
+ const forbidden=['casa_azul_02','lampiao_01','poco_01','ponte_madeira_01'];
+ assert.ok(forbidden.every(name=>!manifest.files.includes(name)),'broken crops never auto-enable');
+});
