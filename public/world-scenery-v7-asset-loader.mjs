@@ -38,7 +38,7 @@ export const V7_ASSETS=Object.freeze({
  estatua_ruinas_01:{group:'statue',state:'ready',w:65,h:148},
  estandarte_azul_01:{group:'banner',state:'ready',w:48,h:85},
  cerca_portao_01:{group:'fence',state:'ready',w:80,h:47},
- barril_01:{group:'barrel',state:'ready',w:52,h:62},
+ barril_01:{group:'barrel',state:'ready',w:45,h:58},
  caixa_01:{group:'crate',state:'ready',w:40,h:45},
  placa_01:{group:'sign',state:'ready',w:44,h:74},
  lampiao_01:{group:'lamp',state:'pending',w:57,h:114},
