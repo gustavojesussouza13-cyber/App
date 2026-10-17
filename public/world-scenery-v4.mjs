@@ -1,5 +1,5 @@
 'use strict';
-import {finishSceneryGround,finishSceneryRoad,finishScenerySprite,EXTRA_KINDS,EXTRA_SIZES,ART_VERSION} from '/world-scenery-v4-art.mjs';
+import {finishSceneryGround,finishSceneryRoad,finishScenerySprite,EXTRA_KINDS,EXTRA_SIZES,ART_VERSION} from './world-scenery-v4-art.mjs';
 /**
  * OS PEREGRINOS · CENÁRIO V4 2.5D / PRÉVIA EXPERIMENTAL
  * Mundo aberto SOMENTE: solo, estradas, água, construções e decoração estática.
