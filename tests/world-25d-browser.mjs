@@ -291,5 +291,70 @@ try{
  await page.screenshot({path:'/tmp/os-peregrinos-anjo-caido-v4-morte-25d.png',fullPage:true});
  assert.ok(!pageErrors.some(e=>/angel|anjo-caido|ReferenceError/i.test(e)),'No JS errors from the new creature');
  console.log('ANJO_CAIDO_V4_25D_OK',JSON.stringify(angelCheck));
+
+ // Real Chromium visual validation of corrected Corvo V4 sprites in the 2.5D world.
+ const ravenResponse=await page.goto(url,{waitUntil:'domcontentloaded',timeout:40000});
+ assert.equal(ravenResponse?.status(),200);
+ await page.waitForFunction(()=>document.querySelector('#ravenStatus')?.textContent?.includes('efeito pronto'),null,{timeout:20000});
+ const ravenCheck=await page.evaluate(async()=>{
+  const api=window.OsPeregrinosRavenV4;
+  if(!api||api.FRAME.width!==192||api.FRAME.height!==160||api.ASSETS.length!==4)throw Error('Corvo V4 renderer absent or invalid');
+  const walkDistinct=[],hurtDiff=[],solid=[],fxSolid=[];
+  for(let d=0;d<4;d++){
+   const img=new Image();img.src=api.ASSETS[d];await img.decode();
+   if(img.naturalWidth!==768||img.naturalHeight!==960)throw Error('Invalid raven atlas dimensions: '+d);
+   const cv=document.createElement('canvas');cv.width=192;cv.height=160;
+   const g=cv.getContext('2d',{willReadFrequently:true}),keys=[];
+   for(let col=0;col<4;col++){
+    g.clearRect(0,0,192,160);
+    g.drawImage(img,col*192,160,192,160,0,0,192,160);
+    keys.push(cv.toDataURL('image/png'));
+   }
+   walkDistinct.push(new Set(keys).size);
+   const pixels=g.getImageData(0,0,192,160).data;let occupied=0;
+   for(let i=3;i<pixels.length;i+=4)if(pixels[i]>16)occupied++;
+   solid.push(occupied);
+   g.clearRect(0,0,192,160);g.drawImage(img,0,4*160,192,160,0,0,192,160);
+   const hurt=g.getImageData(0,0,192,160).data;
+   g.clearRect(0,0,192,160);g.drawImage(img,0,0,192,160,0,0,192,160);
+   const idle=g.getImageData(0,0,192,160).data;
+   let diff=0;for(let i=0;i<hurt.length;i+=4)if(hurt[i]!==idle[i]||hurt[i+1]!==idle[i+1]||hurt[i+2]!==idle[i+2]||hurt[i+3]!==idle[i+3])diff++;
+   hurtDiff.push(diff);
+  }
+  const fx=new Image();fx.src=api.FXSHEET;await fx.decode();
+  const c=document.createElement('canvas');c.width=192;c.height=160;
+  const ctx=c.getContext('2d',{willReadFrequently:true});
+  for(let d=0;d<4;d++){
+   ctx.clearRect(0,0,192,160);ctx.drawImage(fx,0,d*160,192,160,0,0,192,160);
+   let count=0;const pixels=ctx.getImageData(0,0,192,160).data;
+   for(let i=3;i<pixels.length;i+=4)if(pixels[i]>16)count++;
+   fxSolid.push(count);
+  }
+  return {walkDistinct,hurtDiff,solid,fxSolid,fxSize:[fx.naturalWidth,fx.naturalHeight]};
+ });
+ assert.deepEqual(ravenCheck.walkDistinct,[4,4,4,4],'walking must have 4 different poses per direction');
+ assert.ok(ravenCheck.hurtDiff.every(n=>n>150),'hurt must differ visually from idle');
+ assert.ok(ravenCheck.solid.every(n=>n>2000),'each direction must have opaque body');
+ assert.ok(ravenCheck.fxSolid.every(n=>n>200),'every effect direction must contain visible pixels');
+ assert.deepEqual(ravenCheck.fxSize,[768,640]);
+ for(let d=0;d<4;d++){
+  await page.locator('#ravenDirection').selectOption(String(d));
+  assert.match(await page.locator('#ravenStatus').innerText(),/Corvo V4 nativo/);
+ }
+ await page.locator('#ravenDirection').selectOption('1');
+ await page.locator('#ravenAction').selectOption('walk');
+ await page.waitForTimeout(330);
+ await page.screenshot({path:'/tmp/os-peregrinos-corvo-v4-caminhada-25d.png',fullPage:true});
+ await page.locator('#ravenAction').selectOption('attack');
+ await page.waitForTimeout(340);
+ await page.screenshot({path:'/tmp/os-peregrinos-corvo-v4-ataque-25d.png',fullPage:true});
+ await page.locator('#ravenAction').selectOption('hurt');
+ await page.waitForTimeout(140);
+ await page.screenshot({path:'/tmp/os-peregrinos-corvo-v4-dano-25d.png',fullPage:true});
+ await page.locator('#ravenAction').selectOption('death');
+ await page.waitForTimeout(550);
+ await page.screenshot({path:'/tmp/os-peregrinos-corvo-v4-morte-25d.png',fullPage:true});
+ assert.ok(!pageErrors.some(e=>/raven|corvo-v4|ReferenceError/i.test(e)),'Raven renderer JavaScript errors');
+ console.log('CORVO_OCASO_V4_25D_OK',JSON.stringify(ravenCheck));
  console.log('WORLD_25D_BROWSER_OK',JSON.stringify({url,classes:4,biomes:6,canvas:'webgl'}));
 }finally{await browser.close()}
