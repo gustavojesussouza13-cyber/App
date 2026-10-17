@@ -3,6 +3,7 @@ import {finishSceneryGround,finishSceneryRoad,finishScenerySprite,EXTRA_KINDS,EX
 import {createDesignedTerrainTexture,reservedSceneryLandmarks,drawDesignedHouseCanvas,MAP_ART_VERSION} from './world-scenery-v5-landforms.mjs';
 import {createAtlasGroundTexture,createAtlasPropTexture,atlasLoaded,ASSET_BACKED_VERSION} from './world-scenery-v6-asset-adapter.mjs';
 import {createV7PropTexture,v7Image,v7FitSize,isV7Ready,SCENERY_V7_VERSION} from './world-scenery-v7-asset-loader.mjs';
+import {v7TerrainImage,v7TerrainReady,V7_TERRAIN_VERSION} from './world-scenery-v7-terrain.mjs';
 /**
  * OS PEREGRINOS · CENÁRIO V4 2.5D / PRÉVIA EXPERIMENTAL
  * Mundo aberto SOMENTE: solo, estradas, água, construções e decoração estática.
@@ -531,8 +532,10 @@ function addWaterV4(THREE,group,zone,biome){
 export function buildSceneryV4(THREE,group,zone,biome,{detail=true,composition=false,atlas=false,v7=false}={}){
  if(!THREE||!group||!BIOMES.includes(biome))return false;
  const useV7=Boolean(v7&&composition&&isV7Ready());
- const useAtlas=Boolean(atlas&&!useV7&&composition&&atlasLoaded());
- const groundMap=(useAtlas&&createAtlasGroundTexture(THREE,zone,biome))||(composition?createDesignedTerrainTexture(THREE,zone,biome):groundTextureV4(THREE,zone,biome,detail));
+ const useV7Terrain=Boolean(v7&&composition&&v7TerrainReady());
+ const useAtlas=Boolean(atlas&&!useV7&&!useV7Terrain&&composition&&atlasLoaded());
+ const groundMap=(useAtlas&&createAtlasGroundTexture(THREE,zone,biome))||
+  (composition?createDesignedTerrainTexture(THREE,zone,biome,{v7Atlas:useV7Terrain?v7TerrainImage():null}):groundTextureV4(THREE,zone,biome,detail));
  const ground=new THREE.Mesh(new THREE.PlaneGeometry(1536,1024),new THREE.MeshBasicMaterial({map:groundMap}));
  ground.rotation.x=-Math.PI/2;ground.position.set(768,0,512);ground.name='scenery-v4-ground';group.add(ground);
  if(!composition){
@@ -543,5 +546,5 @@ export function buildSceneryV4(THREE,group,zone,biome,{detail=true,composition=f
  }
  const objects=composition?planSceneryV5(zone,biome):planSceneryV4(zone,biome,{detail});
  const batches=placeSpriteInstances(THREE,group,objects,biome,detail,composition,useAtlas,useV7);
- return Object.freeze({zone,biome,staticProps:objects.length,drawBatches:batches,ground:composition?'composed-authored-pixelmap':detail?'pixel-cluster-v42':'tile-textured',path:composition?'connected-map-path':detail?'authored-texture-v42':'authored-texture',art:useV7?SCENERY_V7_VERSION:useAtlas?ASSET_BACKED_VERSION:composition?MAP_ART_VERSION:detail?ART_VERSION:'scenery-v4-base',artKinds:detail?EXTRA_KINDS.length:0,water:['river','coast','swamp'].includes(biome)});
+ return Object.freeze({zone,biome,staticProps:objects.length,drawBatches:batches,ground:composition?'composed-authored-pixelmap':detail?'pixel-cluster-v42':'tile-textured',path:composition?'connected-map-path':detail?'authored-texture-v42':'authored-texture',art:useV7Terrain?V7_TERRAIN_VERSION:useV7?SCENERY_V7_VERSION:useAtlas?ASSET_BACKED_VERSION:composition?MAP_ART_VERSION:detail?ART_VERSION:'scenery-v4-base',terrainTiles:useV7Terrain?20:0,artKinds:detail?EXTRA_KINDS.length:0,water:['river','coast','swamp'].includes(biome)});
 }
