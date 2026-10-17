@@ -36,7 +36,7 @@ test('V7 QA catalog contains 30 original object crops, 20 tile candidates and fo
   ['rocha_musgo_01','39114acf990205074c5a44dd55b3e29308521bdb']
  ]){
   const binary=fs.readFileSync(path.join(base,'assets/scenery-v7/sprites',id+'.png'));
-  const sha=crypto.createHash('sha1').update(Buffer.from('blob '+binary.length+'\\0'.replace('\\0','\\u0000'))).update(binary).digest('hex');
+  const sha=crypto.createHash('sha1').update(Buffer.from('blob '+binary.length+String.fromCharCode(0))).update(binary).digest('hex');
   assert.equal(sha,expectedSha,'Git blob integrity for '+id);
  }
  const png=fs.readFileSync(path.join(base,'assets/scenery-v7/sprites/arbusto_flores_01.png'));
