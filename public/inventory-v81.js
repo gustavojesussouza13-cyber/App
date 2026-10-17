@@ -145,11 +145,11 @@
   if(!host||!quickbar)return null;
   const getState=options.getState||(()=>null),send=options.send||(()=>false),onMessage=options.onMessage||(()=>{});
   const $$=id=>doc.getElementById(id);
-  const state={open:false,tab:'all',selected:null,assign:false,items:[],quick:Array(QUICK_COUNT).fill(null),role:'peregrino',coins:0,level:1,name:'',appearance:null};
-  const icons=new Map();
+  const state={open:false,tab:'all',selected:null,assign:false,items:[],quick:Array(QUICK_COUNT).fill(null),quickInitialized:false,role:'peregrino',coins:0,level:1,name:'',appearance:null};
+  // Canvas cloneNode does NOT clone painted pixels: draw each original icon.
   const labels={all:'Inventário',equipment:'Equipamento',consumables:'Consumíveis',quests:'Missões'};
   const descriptions={elmo:'Elmo',arma:'Arma',escudo:'Escudo',armadura:'Armadura',amuleto:'Amuleto',anel:'Anel',botas:'Botas'};
-  const canvasIcon=(kind)=>{if(!icons.has(kind))icons.set(kind,iconCanvas(kind,doc));return icons.get(kind).cloneNode(true)};
+  const canvasIcon=(kind)=>iconCanvas(kind,doc);
   function find(id){return state.items.find(i=>i.id===id)||null}
   function use(id){
    const item=find(id);
@@ -273,10 +273,11 @@
   }
   function sync(data,catalog={},relics={}){
    if(!data)return;
+   if(data.name&&state.name!==data.name){state.quick.fill(null);state.quickInitialized=false;state.selected=null;}
    state.items=owned(data.inventory,catalog,relics);
    state.role=data.role||state.role;state.name=data.name||state.name;state.level=data.level||1;
    state.coins=Number(data.coins)||0;state.appearance=data.appearance||null;
-   if(state.quick.every(x=>x===null))state.quick=defaultQuick(state.items);
+   if(!state.quickInitialized){state.quick=defaultQuick(state.items);state.quickInitialized=true;}
    if(state.selected&&!find(state.selected))state.selected=null;
    render();
   }
