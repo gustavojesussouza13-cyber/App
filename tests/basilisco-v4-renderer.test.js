@@ -72,5 +72,5 @@ test('2.5D registration keeps guild untouched and retains prior-art fallback',()
  assert.match(art,/const basiliskV4Drawn=ty==='basilisco'&&Boolean\(basiliskV4\?\.drawMonster/);
  assert.match(art,/!sentinelV4Drawn&&!basiliskV4Drawn/);
  assert.match(art,/basiliskV4Drawn\?basiliskV4\.measure\(m\.boss\)/);
- assert.match(art,/ty==='basilisco'\?'serpente':ty/);
+ assert.match(art,/ty==='basilisco'\?'serpente':ty==='anjo-caido'\?'fantasma':ty/);
 });
