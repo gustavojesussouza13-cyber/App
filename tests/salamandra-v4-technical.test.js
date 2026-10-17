@@ -18,7 +18,7 @@ function png(p){
  }
  return {width,height,raw:zlib.inflateSync(Buffer.concat(parts))};
 }
-test('Salamandra 32 has 4 distinct native directions, transparent RGBA, 24 technical cells each',()=>{
+test('Salamandra 24 has 4 distinct native directions, transparent RGBA, 24 technical cells each',()=>{
  const hashes=new Set();
  for(const dir of names){
   const p=open(dir),sheet=png(p);hashes.add(crypto.createHash('sha256').update(p).digest('hex'));
@@ -54,8 +54,8 @@ function harness(){
  const g={imageSmoothingEnabled:true,save(){events.push(['save'])},restore(){events.push(['restore'])},drawImage(...a){events.push(['draw',...a])}};
  return {images,events,g,renderer,load(){images.forEach((i,n)=>i.load(768,n===4?640:960))}};
 }
-test('Salamandra renderer uses only species 32, no mirroring, aligned ground, separate attack FX',()=>{
- const h=harness(),monster={species:32,type:'salamandra',x:256,y:340};
+test('Salamandra renderer uses only species 24, no mirroring, aligned ground, separate attack FX',()=>{
+ const h=harness(),monster={species:24,type:'salamandra',x:256,y:340};
  assert.equal(h.renderer.drawMonster(h.g,{...monster,dir:2},0),false);
  h.load();assert.equal(h.renderer.ready,true);
  for(let dir=0;dir<4;dir++){
@@ -68,16 +68,24 @@ test('Salamandra renderer uses only species 32, no mirroring, aligned ground, se
   assert.equal(draws[1][3],dir*160,'FX direction row');
   assert.equal(h.events.at(-1)[0],'restore');
  }
- h.events.length=0;assert.equal(h.renderer.drawMonster(h.g,{...monster,species:23},600),false);
+ h.events.length=0;assert.equal(h.renderer.drawMonster(h.g,{...monster,species:32},600),false);
  assert.equal(h.renderer.drawMonster(h.g,{...monster,type:'limo'},600),false);
 });
-test('Salamandra remains isolated: no existing monster ID, fortress, V3 or official game edited',()=>{
+test('Salamandra modifies only art of existing species 24; V3 and fortress stay unchanged',()=>{
  const files=['creatures-v3.js','art16.js','mundo.html'];
  const contents=files.map(f=>fs.readFileSync(path.join(pub,f),'utf8'));
  assert.ok(contents[0].includes("['limo','lobo','aranha','esqueleto','golem']"));
  const match=contents[1].match(/const types=\[([^\]]+)\]/);
  assert.ok(match);assert.equal([...match[1].matchAll(/'[^']+'/g)].length,32);
- for(const v of contents){assert.ok(!v.includes('/salamandra-v4.js'));assert.ok(!v.includes('salamandra_v4_'))}
- assert.equal(api.SPECIES,32);
+ const {SPECIES}=require('../world-engine');
+ assert.equal(SPECIES.length,32,'the 32 existing species remain');
+ assert.equal(SPECIES[24][0],'Salamandra','existing Salamandra keeps its server identity');
+ const types=[...match[1].matchAll(/'([^']+)'/g)].map(x=>x[1]);
+ assert.equal(types[24],'salamandra');assert.equal(types[26],'dragao');
+ assert.ok(contents[1].includes("const salamanderV4Drawn=ty==='salamandra'&&Number(m.species)===24"));
+ assert.ok(contents[1].includes("const salamanderDragonFallback=ty==='salamandra'&&!salamanderV4Drawn"));
+ assert.ok(contents[2].includes('/salamandra-v4.js?v=salamandra-v4-game-experimental-1'));
+ assert.ok(!contents[2].includes('/salamandra-v4-preview.js'));
+ assert.equal(api.SPECIES,24);
  assert.ok(fs.readFileSync(path.join(pub,'laboratorio-salamandra-v4-tecnico.html'),'utf8').includes('variações procedurais'));
 });
