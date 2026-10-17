@@ -1,0 +1,63 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Anjo Caído V4 — laboratório experimental 2.5D</title>
+<style>
+:root{color-scheme:dark}*{box-sizing:border-box}
+body{margin:0;padding:22px;background:#101b21;color:#e5ebdd;font:15px system-ui}
+h1{font:700 30px Georgia;color:#e2c48e;margin:0 0 8px}p{max-width:760px;color:#baccc5;line-height:1.5}
+label{display:grid;gap:7px}select{background:#203139;color:#fff;border:1px solid #647d73;border-radius:6px;padding:9px}
+.controls{display:flex;flex-wrap:wrap;gap:18px;align-items:center;margin:24px 0}
+.panel{display:grid;gap:10px;padding:14px;border:1px solid #526c60;border-radius:8px;background:#14262c}
+.group{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.canvas-wrap{background:linear-gradient(#253f3d 48%,#52654a 48%,#405439 56%,#31442b 56%);
+border:1px solid #526c60;position:relative;aspect-ratio:1.65;display:grid;place-items:center;overflow:hidden}
+canvas{width:100%;height:100%;image-rendering:pixelated}
+#status{font-weight:600}small{color:#9aada6}
+</style></head><body>
+<h1>Anjo Caído V4 — laboratório experimental</h1>
+<p>Sprites originais de quatro direções. Cada atlas deve medir 768 × 960 pixels e conter 24 quadros de 192 × 160. Este laboratório não modifica combate, servidor ou fortaleza 3D.</p>
+<div class="controls">
+<label>Ação<select id="action"><option value="0">Repouso</option><option value="1">Caminhada</option><option value="2">Preparação</option><option value="3">Ataque (magia)</option><option value="4">Dano</option><option value="5">Morte</option></select></label>
+<label>Escala<select id="scale"><option value="1">Normal</option><option value="1.45">Chefe (145%)</option></select></label>
+<label>Velocidade<select id="speed"><option value="180">Lenta (180 ms)</option><option value="135" selected>Jogo (135 ms)</option><option value="90">Rápida (90 ms)</option></select></label>
+</div><p id="status" role="status">Carregando os atlas aprovados…</p>
+<div class="group" id="group"></div>
+<script>
+'use strict';
+const dirNames=['Trás','Direita','Frente','Esquerda'];
+const sources=['tras','direita','frente','esquerda'];
+const fxRows=[0,1,2,3];const atlas=[],canvases=[];let missing=0;
+const action=document.querySelector('#action'),scale=document.querySelector('#scale'),speed=document.querySelector('#speed'),status=document.querySelector('#status');
+const fx=new Image();fx.src='/assets/creatures-v4/anjo_caido_v4_magia_fx.png?v=anjo-caido-v4-review-1';
+for(let d=0;d<4;d++){
+ const section=document.createElement('section');section.className='panel';
+ const title=document.createElement('strong');title.textContent=dirNames[d];
+ const wrap=document.createElement('div');wrap.className='canvas-wrap';
+ const canvas=document.createElement('canvas');canvas.width=420;canvas.height=290;
+ wrap.append(canvas);section.append(title,wrap);document.querySelector('#group').append(section);
+ canvases.push(canvas);const im=new Image();
+ im.src='/assets/creatures-v4/anjo_caido_v4_'+sources[d]+'.png?v=anjo-caido-v4-review-1';atlas.push(im);
+}
+function frame(time){
+ const row=Number(action.value),col=Math.floor(time/Number(speed.value))%4,factor=Number(scale.value);
+ let count=0;
+ for(let d=0;d<4;d++){
+  const c=canvases[d],g=c.getContext('2d');g.clearRect(0,0,c.width,c.height);g.imageSmoothingEnabled=false;
+  const img=atlas[d];if(img.complete&&img.naturalWidth===768&&img.naturalHeight===960){
+   count++;const w=Math.round(184*factor),h=Math.round(154*factor),x=Math.round(c.width/2-w/2),y=Math.round(c.height*.76-h);
+   g.drawImage(img,col*192,row*160,192,160,x,y,w,h);
+   if(row===3&&fx.complete&&fx.naturalWidth===768&&fx.naturalHeight===640){
+    const fw=Math.round(w*1.42),fh=Math.round(h*1.14);
+    const offset=d===1?w*.46:d===3?-w*.46:0;
+    g.drawImage(fx,col*192,fxRows[d]*160,192,160,Math.round(c.width/2-fw/2+offset),Math.round(c.height*.76-h*.92-fh/2),fw,fh);
+   }
+  }else{
+   g.fillStyle='#f8d9a0';g.font='14px system-ui';g.textAlign='center';g.fillText('PNG aguardando publicação',c.width/2,c.height/2);
+  }
+ }
+ const fxState=fx.complete&&fx.naturalWidth===768&&fx.naturalHeight===640;
+ status.textContent=count===4&&fxState?'✓ Cinco arquivos reais carregados.':'⚠ Arte pendente: '+count+'/4 direções; magia '+(fxState?'carregado':'ausente')+'. Não publicar esta revisão.';
+ requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script></body></html>
