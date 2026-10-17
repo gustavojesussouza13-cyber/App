@@ -12,7 +12,13 @@
 })(typeof globalThis!=='undefined'?globalThis:this,function(root){
  const W=128,H=160,COLS=4;
  const SOURCE='/assets/peregrino/peregrino-runway-walk.png?v=runway-peregrino-v1';
- const ROW=Object.freeze({0:1,1:2,2:0,3:3});
+ // V7.9: the authored 4x4 sheet has FRONT (row 0), BACK (row 1)
+ // and a RIGHT-facing profile (row 2). Row 3 is another RIGHT-facing
+ // drawing, not an actual left-facing silhouette. Mirror only LEFT.
+ // Keep the UP/BACK mapping unchanged: dir=0 remains row 1.
+ const ROW=Object.freeze({0:1,1:2,2:0,3:2});
+ const MIRROR=Object.freeze({0:false,1:false,2:false,3:true});
+ function mirrored(dir){return MIRROR[dir]===true;}
  let image=null,ready=false,failed=false,pending=null;
  function load(){
   if(pending)return pending;
@@ -144,6 +150,13 @@ function gaitFrame(dir,index){
   }
   // Generated 8-pose cycle uses existing high-resolution painting. If local
   // Canvas APIs are unavailable, retain the verified original 4-frame sheet.
+  // Mirror within the sprite's own rectangle, NEVER the whole canvas.
+  // The right-facing pose becomes a real left-facing pose without
+  // recoloring, resizing, changing the movement vector or reversing UP.
+  if(mirrored(dir)){
+   ctx.translate(px*2+dw,0);
+   ctx.scale(-1,1);
+  }
   if(pose)ctx.drawImage(pose,0,0,W,H,px,py,dw,dh);
   else ctx.drawImage(image,sx,sy,sw,sh,px,py,dw,dh);
   ctx.restore();
@@ -151,8 +164,8 @@ function gaitFrame(dir,index){
  }
  if(typeof document!=='undefined')void load();
  return Object.freeze({
-  VERSION:'runway-original-peregrino-v78-real-stride',SOURCE,WIDTH:W,HEIGHT:H,
+  VERSION:'runway-original-peregrino-v79-left-facing-fixed',SOURCE,WIDTH:W,HEIGHT:H,
   load,isReady:()=>ready,hasFailed:()=>failed,
-  frameRect,wrapFrame,legMotion,leatherPixel,synthesizeGaitFrame,gaitFrame,allowsAppearance,draw
+  frameRect,mirrored,wrapFrame,legMotion,leatherPixel,synthesizeGaitFrame,gaitFrame,allowsAppearance,draw
  });
 });

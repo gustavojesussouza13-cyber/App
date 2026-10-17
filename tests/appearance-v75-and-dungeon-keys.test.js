@@ -116,7 +116,7 @@ test('V7.7 keeps four distinct authored Peregrino walk frames in front, profile 
  for(const direction of [0,1,2,3]){
   const rects=[0,1,2,3].map(i=>runway.frameRect(direction,i));
   assert.deepEqual(rects.map(x=>x.sx),[0,128,256,384],'all four 128px columns');
-  assert.ok(rects.every(x=>x.sy==={0:160,1:320,2:0,3:480}[direction]));
+  assert.ok(rects.every(x=>x.sy==={0:160,1:320,2:0,3:320}[direction]));
   assert.ok(rects.every(x=>x.sw===128&&x.sh===160),'source pixels never resampled for frame selection');
  }
  const samples=[],orig=global.OsPeregrinosRunway25D;
@@ -146,7 +146,7 @@ test('V7.7 keeps four distinct authored Peregrino walk frames in front, profile 
 
 test('V7.8 synthesizes missing opposite-stride legs from exact source RGBA, not a replacement template',()=>{
  const w=require('../public/peregrino-runway25d.js');
- assert.equal(w.VERSION,'runway-original-peregrino-v78-real-stride');
+ assert.equal(w.VERSION,'runway-original-peregrino-v79-left-facing-fixed');
  assert.equal(w.wrapFrame(9),1);
  const width=128,height=160,source=new Uint8ClampedArray(width*height*4);
  // Two genuinely separate painted leather boots at the source footprint.
@@ -177,4 +177,28 @@ test('V7.8 synthesizes missing opposite-stride legs from exact source RGBA, not 
  assert.ok(src.includes('const pose=walking?gaitFrame(dir,index):null;'));
  assert.ok(src.includes('if(pose)ctx.drawImage(pose,0,0,W,H,px,py,dw,dh);'));
  assert.ok(src.includes("const CYCLE=8"));
+});
+
+test('V7.9 LEFT face is mirrored authentic right profile while UP orientation is unchanged',()=>{
+ const w=require('../public/peregrino-runway25d.js');
+ assert.deepEqual([0,1,2,3].map(dir=>w.frameRect(dir,0).sy),[160,320,0,320],
+  'north back row untouched; left now uses painted right profile');
+ assert.deepEqual([0,1,2,3].map(dir=>w.mirrored(dir)),[false,false,false,true],
+  'ONLY left is mirrored');
+ for(let frame=0;frame<4;frame++){
+  assert.equal(w.frameRect(3,frame).sx,w.frameRect(1,frame).sx);
+  assert.equal(w.frameRect(3,frame).sy,w.frameRect(1,frame).sy);
+  assert.equal(w.frameRect(0,frame).sy,160);
+ }
+ // Verify actual pixel painter flips only the character, and restores the
+ // drawing context without mirroring labels, roads or other players.
+ const source=require('node:fs').readFileSync(require('node:path').resolve(__dirname,'../public/peregrino-runway25d.js'),'utf8');
+ assert.ok(source.includes('ctx.translate(px*2+dw,0);'));
+ assert.ok(source.includes('ctx.scale(-1,1);'));
+ assert.ok(source.includes('ctx.restore();'));
+ assert.ok(source.includes('if(mirrored(dir)){'));
+ const art=read('art16.js'),game=read('mmo.js'),page=read('mundo.html');
+ assert.ok(!art.includes('OsPeregrinosFacingV79'),'north-backward proposal was not deployed');
+ assert.ok(game.includes('session.dir=Math.abs(dx)>Math.abs(dy)?dx>0?1:3:dy>0?2:0;'));
+ assert.ok(page.includes('runway-left-facing-v79'));
 });
