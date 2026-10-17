@@ -111,3 +111,73 @@ test('V7 20-tile visual laboratory imports only actual exported browser symbols'
  assert.ok(page.includes('drawDesignedTerrainCanvas(zone,biome,{v7Atlas:useAtlas?atlas:null})'),'compare exactly same zone and biome before and after');
  assert.ok(page.includes('ctx.drawImage(atlas,r.sx,r.sy,32,32,0,0,128,128)'),'gallery uses actual 32px tiles, no stock image');
 });
+
+
+test('V7 finishes all biomes with deterministic source-pixel fragments, without resizing or extra geometry',async()=>{
+ const [v7]=await modules();
+ const biomes=['meadow','forest','river','desert','mountain','ruins','swamp','coast','city','dungeon'];
+ const atlas='original-20tile-PNG',calls=[];
+ const mock=()=>({
+  drawImage(a,sx,sy,sw,sh,dx,dy,dw,dh){
+   assert.equal(a,atlas);
+   assert.ok(sx>=0&&sy>=0&&sx+sw<=160&&sy+sh<=128,'crop inside V7 RGB atlas');
+   assert.ok(sw>=1&&sw<=8&&sh>=1&&sh<=8,'at most 8px transition slivers');
+   assert.equal(sw,dw,'no stretched horizontal fragment');
+   assert.equal(sh,dh,'no stretched vertical fragment');
+   assert.ok(dx>=0&&dy>=0&&dx+dw<=768&&dy+dh<=512,'never paint outside tilemap');
+   calls.push([sx,sy,sw,sh,dx,dy]);
+  }
+ });
+ for(const biome of biomes)for(const zone of [0,3]){
+  calls.length=0;
+  const state=mock();
+  assert.equal(v7.paintV7BaseTransitions(state,atlas,zone,biome),true);
+  assert.ok(calls.length>5,'there must be meaningful stitched interfaces in '+biome);
+  assert.ok(calls.length<5000,'map init must remain bounded');
+  const original=JSON.stringify(calls);
+  calls.length=0;
+  v7.paintV7BaseTransitions(state,atlas,zone,biome);
+  assert.equal(JSON.stringify(calls),original,'stable borders for players returning to same map');
+  assert.equal(v7.v7BaseTileId(zone,biome,0,0),v7.v7BaseTileId(zone,biome,0,0));
+ }
+ assert.equal(v7.paintV7BaseTransitions(mock(),null,0,'meadow'),false,'V5 fallback needs no extra painting');
+ assert.equal(v7.paintV7BaseTransitions(mock(),atlas,0,'unrecognized'),false);
+ const terrain=jpg('world-scenery-v5-landforms.mjs').toString();
+ assert.ok(terrain.includes('if(edgeFinish)paintV7BaseTransitions'));
+ assert.ok(terrain.includes('edgeFinish=true'));
+ assert.ok(terrain.includes('if(v7Atlas){')&&terrain.includes('}else{'),'V5 remains exact original');
+});
+test('V7 staggered road and water contours stay inside original traversable and water footprints',async()=>{
+ const [v7]=await modules();
+ const zones=[0,1,5,9];
+ for(const zone of zones){
+  for(const biome of ['meadow','city','desert','ruins']){
+   const roadAt=(x,z)=>248+Math.sin((x*2+z*117)/225)*27;
+   const limit=['city','ruins','mountain','dungeon'].includes(biome)?18:21;
+   for(let x=0;x<=768;x+=4){
+    const center=roadAt(x,zone)+Math.sin(x*.082+zone)*2;
+    const north=v7.v7RoadEdgeAt(x,zone,biome,roadAt,-1);
+    const south=v7.v7RoadEdgeAt(x,zone,biome,roadAt,1);
+    assert.ok(Number.isInteger(north)&&Number.isInteger(south));
+    assert.ok(north<south);
+    assert.ok(Math.abs(north-center)<=limit+1,'road never expands beyond old grass lip');
+    assert.ok(Math.abs(south-center)<=limit+1,'road never expands beyond old grass lip');
+   }
+  }
+  for(let y=0;y<=512;y+=2){
+   const center=(420+92*Math.sin(y*2/150+zone))/2;
+   const oldHalf=39+Math.sin(y*.09)*4;
+   const left=v7.v7RiverBankAt(y,zone,-1),right=v7.v7RiverBankAt(y,zone,1);
+   assert.ok(left>center-oldHalf+2&&right<center+oldHalf-2,'river texture retains original shoreline');
+   assert.ok(left<right,'river remains continuous');
+  }
+  const start=v7.v7CoastWaterline(zone);
+  assert.ok(start>=345&&start<=392,'coast must follow the original V5 coastal band');
+  const wave=6*Math.sin(start*.10+zone)+3*Math.sin(start*.23);
+  assert.ok(start>=365+wave,'coastal texture cannot cover original sandy V5 shore');
+ }
+ const html=jpg('laboratorio-terreno-v7.html').toString();
+ assert.ok(html.includes('value="v7raw"'));
+ assert.ok(html.includes('edgeFinish:false'));
+ assert.ok(html.includes('v7TileRect(id)'),'actual original tile sheet remains previewed');
+});
