@@ -29,19 +29,19 @@ test('only four dungeon roots are unlocked, original game economy and narrative 
  assert.ok(!s.includes("inventory['chave_masmorra_1']"));
  assert.ok(s.includes('previewDungeonPasses:p.previewDungeonPasses||[]'));
 });
-test('V7.5 customization loads four approved class image sources, without the obsolete hero preview',()=>{
+test('V7.6 customization loads four approved class image sources, without the obsolete hero preview',()=>{
  const src=read('appearance-class-preview-v75.js'),editor=read('appearance-editor.js'),page=read('mundo.html'),mmo=read('mmo.js');
  for(const k of ['peregrino','guardiao','arqueiro','curandeiro']){
   assert.ok(src.includes(k));
   assert.ok(src.includes(k==='peregrino'?'peregrino-runway-walk.png':k+'-sprites-3x2-64x80.png'));
  }
- assert.ok(editor.includes("title.textContent='PRÉVIA DA CLASSE V7.5'"));
+ assert.ok(editor.includes("title.textContent='PERSONALIZAÇÃO DA CLASSE V7.6'"));
  assert.ok(editor.includes('preview.draw(ctx,{role:kind'));
  assert.ok(!editor.includes("previewStudio?.obtain('hero'"));
- assert.ok(page.includes('/appearance-class-preview-v75.js?v=classes-4-approved-v75'));
+ assert.ok(page.includes('/appearance-class-preview-v75.js?v=classes-4-personalizaveis-v76'));
  assert.ok(page.indexOf('/appearance-class-preview-v75.js')<page.indexOf('/appearance-editor.js'));
  assert.ok(mmo.includes('onRoleChange:value=>'));
- assert.ok(page.includes('sprites PNG atuais · V7.5'));
+ assert.ok(page.includes('cabelo · olhos · pele · cores · V7.6'));
 });
 
 test('real current source PNGs for four classes have approved dimensions',()=>{
@@ -56,4 +56,54 @@ test('real current source PNGs for four classes have approved dimensions',()=>{
   assert.equal(png.readUInt32BE(20),h,file);
  }
  assert.ok(read('laboratorio-classes-v75.html').includes('appearance-class-preview-v75.js'));
+});
+
+test('V7.6 applies all seven editable settings into the real approved-sprite rendering path',()=>{
+ const artist=require('../public/appearance-sprite-v76.js'),art=require('../public/appearance16.js');
+ assert.equal(artist.needsCustomization(art.DEFAULT),false);
+ const alternatives={
+  skin:'profundo',hairStyle:'longo',hairColor:'azul',eyes:'verde',
+  outfit:'vinho',cape:'marinho',accessory:'tiara'
+ };
+ const source={width:128,height:160,data:new Uint8ClampedArray(128*160*4)};
+ for(let y=0;y<160;y++)for(let x=0;x<128;x++){
+  const i=(y*128+x)*4;
+  source.data.set(y<75?[188,127,78,255]:[40,110,190,255],i);
+ }
+ function mockCanvas(){
+  const data=new Uint8ClampedArray(source.data);
+  const strokes=[];
+  const ctx={
+   fillStyle:'#000000',
+   imageSmoothingEnabled:true,
+   drawImage(){},
+   getImageData(){return {data:new Uint8ClampedArray(data),width:128,height:160};},
+   putImageData(image){data.set(image.data);},
+   fillRect(x,y,w,h){strokes.push([this.fillStyle,x,y,w,h]);},
+  };
+  return {canvas:{getContext:()=>ctx},ctx,data,strokes};
+ }
+ for(const [key,value] of Object.entries(alternatives)){
+  const a={...art.DEFAULT,[key]:value};
+  assert.equal(artist.needsCustomization(a),true,key+' recognized');
+  let changed=false;
+  for(const role of ['peregrino','guardiao','arqueiro','curandeiro']){
+   const scene=mockCanvas();
+   const img=scene.ctx.getImageData();
+   artist.applyColors(img,a,role,2);
+   artist.details(scene.ctx,a,role,2);
+   if(img.data.some((v,i)=>v!==source.data[i])||scene.strokes.length>0)changed=true;
+  }
+  assert.ok(changed,key+' affects actual sprite pixels');
+ }
+ const missing=mockCanvas();
+ assert.equal(artist.drawWorld(missing.ctx,{role:'peregrino',appearance:art.DEFAULT,x:80,y:100}),false,
+  'standard sprites keep their existing renderer');
+ const renderer=read('appearance-class-preview-v75.js'),world=read('art16.js'),page=read('mundo.html');
+ assert.ok(renderer.includes('appearance,scale:1,preview:true'));
+ assert.ok(world.includes('OsPeregrinosAppearanceSpriteV76?.drawWorld(g'));
+ assert.ok(page.indexOf('/appearance-sprite-v76.js')<page.indexOf('/appearance-editor.js'));
+ assert.ok(!renderer.includes('scale:.92,appearance:null'));
+ assert.ok(!read('appearance-editor.js').includes('ainda não estão pintadas neste PNG'));
+ assert.ok(read('laboratorio-classes-v75.html').includes('appearance:changed'));
 });
