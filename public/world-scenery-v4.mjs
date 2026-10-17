@@ -43,6 +43,18 @@ export function seeded(zone,extra=0){
 }
 const range=(v,a,b)=>Math.max(a,Math.min(b,v));
 function select(rand,options){let x=rand(),acc=0;for(const [k,p] of options){acc+=p;if(x<=acc)return k;}return options.at(-1)[0];}
+const DISTRIBUTIONS_V4=Object.freeze({
+ meadow:[['tree',.31],['shrub',.20],['flower',.18],['rock',.12],['fence',.09],['house',.05],['sign',.05]],
+ forest:[['tree',.52],['pine',.15],['shrub',.14],['rock',.08],['log',.06],['ruin',.05]],
+ river:[['tree',.22],['reeds',.23],['shrub',.14],['rock',.15],['bridge',.03],['house',.06],['flower',.17]],
+ desert:[['cactus',.32],['rock',.23],['ruin',.14],['arch',.11],['shrub',.10],['sign',.10]],
+ mountain:[['pine',.25],['rock',.32],['ruin',.10],['arch',.10],['shrub',.13],['sign',.10]],
+ ruins:[['ruin',.32],['arch',.23],['rock',.17],['shrub',.12],['tree',.08],['pillar',.08]],
+ swamp:[['tree',.29],['reeds',.25],['shrub',.14],['rock',.12],['log',.12],['ruin',.08]],
+ coast:[['palm',.25],['shrub',.22],['rock',.18],['reeds',.12],['house',.09],['sign',.08],['flower',.06]],
+ city:[['house',.27],['barrel',.13],['crate',.11],['fence',.15],['lamp',.09],['tree',.10],['flower',.09],['well',.06]],
+ dungeon:[['pillar',.28],['ruin',.26],['rock',.18],['altar',.12],['arch',.11],['lamp',.05]]
+});
 const DISTRIBUTIONS=Object.freeze({
  meadow:[['tree',.24],['shrub',.18],['flower',.15],['rock',.10],['fence',.07],['house',.06],['sign',.05],['stump',.05],['mushroom',.05],['statue',.05]],
  forest:[['tree',.36],['pine',.13],['shrub',.13],['rock',.08],['log',.06],['ruin',.05],['mushroom',.11],['stump',.08]],
@@ -63,7 +75,7 @@ const SIZES=Object.freeze({
  cactus:[67,94],sign:[47,73],altar:[104,92],bridge:[137,105],
  ...EXTRA_SIZES
 });
-export function planSceneryV4(zone,biome,{width=1536,height=1024}={}){
+export function planSceneryV4(zone,biome,{width=1536,height=1024,detail=true}={}){
  if(!BIOMES.includes(biome))throw Error('Bioma desconhecido: '+biome);
  const rnd=seeded(zone,BIOMES.indexOf(biome)+19),out=[];
  const target=biome==='forest'?180:biome==='city'?105:biome==='desert'?85:biome==='dungeon'?95:biome==='ruins'?140:150;
@@ -73,7 +85,7 @@ export function planSceneryV4(zone,biome,{width=1536,height=1024}={}){
   if(biome==='coast'&&z>680)continue;
   if(biome==='river'&&Math.abs(x-(420+92*Math.sin(z/150+zone)))<99)continue;
   if(zone===0&&x>688&&x<845&&z>265&&z<408)continue;
-  const kind=select(rnd,DISTRIBUTIONS[biome]);
+  const kind=select(rnd,(detail?DISTRIBUTIONS:DISTRIBUTIONS_V4)[biome]);
   out.push(Object.freeze({kind,x,z,variant:Math.floor(rnd()*4),...({w:SIZES[kind][0],h:SIZES[kind][1]})}));
  }
  if(biome==='city'){
@@ -121,7 +133,7 @@ function bricks(g,rnd,colors,x,y,w,h,step=13){
   }
  }
 }
-function groundTextureV4(THREE,zone,biome){
+function groundTextureV4(THREE,zone,biome,detail=true){
  const {c,g}=newCanvas(256,256),rnd=seeded(zone,34+BIOMES.indexOf(biome)),colors=THEMES[biome],dry=['desert','city','mountain','dungeon','ruins'].includes(biome);
  for(let ty=0;ty<8;ty++)for(let tx=0;tx<8;tx++){
   const x=tx*32,y=ty*32,n=rnd();
@@ -146,10 +158,10 @@ function groundTextureV4(THREE,zone,biome){
   }
   if(biome==='swamp'&&n>.72){p(g,'#345d5b',x+5,y+17,19,7);p(g,'#78a99b',x+8,y+18,8,2);}
  }
- finishSceneryGround(g,biome,zone);
+ if(detail)finishSceneryGround(g,biome,zone);
  return canvasTexture(THREE,c,{repeatX:9,repeatY:6});
 }
-function roadTextureV4(THREE,zone,biome){
+function roadTextureV4(THREE,zone,biome,detail=true){
  const {c,g}=newCanvas(128,128),rnd=seeded(zone,90+BIOMES.indexOf(biome));
  const colors=THEMES[biome],stone=['city','ruins','mountain','dungeon'].includes(biome);
  p(g,stone?colors[5]:colors[4],0,0,128,128);
@@ -165,7 +177,7 @@ function roadTextureV4(THREE,zone,biome){
    p(g,colors[2],x+1,y+1,3,2);
   }
  }
- finishSceneryRoad(g,biome,zone);
+ if(detail)finishSceneryRoad(g,biome,zone);
  return canvasTexture(THREE,c,{repeatX:ZONE_REPEAT_X,repeatY:1});
 }
 const ZONE_REPEAT_X=20;
@@ -309,10 +321,10 @@ function drawSprite(g,kind,biome,variant){
   }
  }
 }
-function spriteTexture(THREE,kind,biome,variant){
+function spriteTexture(THREE,kind,biome,variant,detail=true){
  const {c,g}=newCanvas(96,128);
  drawSprite(g,kind,biome,variant);
- finishScenerySprite(g,{kind,biome,variant});
+ if(detail)finishScenerySprite(g,{kind,biome,variant});
  const texture=canvasTexture(THREE,c);
  texture.wrapS=texture.wrapT=THREE.ClampToEdgeWrapping;
  return texture;
@@ -330,7 +342,7 @@ function roadGeometryV4(THREE,zone,width=40){
  g.setAttribute('uv',new THREE.Float32BufferAttribute(uvs,2));
  g.setIndex(ix);g.computeVertexNormals();return g;
 }
-function placeSpriteInstances(THREE,group,plan,biome){
+function placeSpriteInstances(THREE,group,plan,biome,detail=true){
  const buckets=new Map();
  for(const item of plan){
   const key=item.kind+':'+item.variant;
@@ -340,7 +352,7 @@ function placeSpriteInstances(THREE,group,plan,biome){
  const dummy=new THREE.Object3D();
  for(const [key,arr] of buckets){
   const [kind,variantString]=key.split(':'),variant=+variantString;
-  const texture=spriteTexture(THREE,kind,biome,variant);
+  const texture=spriteTexture(THREE,kind,biome,variant,detail);
   const mat=new THREE.MeshBasicMaterial({map:texture,transparent:true,alphaTest:.12,depthWrite:false,side:THREE.DoubleSide});
   const mesh=new THREE.InstancedMesh(new THREE.PlaneGeometry(1,1),mat,arr.length);
   mesh.name='scenery-v4-'+key;
@@ -382,15 +394,15 @@ function addWaterV4(THREE,group,zone,biome){
   }
  }
 }
-export function buildSceneryV4(THREE,group,zone,biome){
+export function buildSceneryV4(THREE,group,zone,biome,{detail=true}={}){
  if(!THREE||!group||!BIOMES.includes(biome))return false;
- const ground=new THREE.Mesh(new THREE.PlaneGeometry(1536,1024),new THREE.MeshBasicMaterial({map:groundTextureV4(THREE,zone,biome)}));
+ const ground=new THREE.Mesh(new THREE.PlaneGeometry(1536,1024),new THREE.MeshBasicMaterial({map:groundTextureV4(THREE,zone,biome,detail)}));
  ground.rotation.x=-Math.PI/2;ground.position.set(768,0,512);ground.name='scenery-v4-ground';group.add(ground);
  const road=new THREE.Mesh(roadGeometryV4(THREE,zone),new THREE.MeshBasicMaterial({
-   map:roadTextureV4(THREE,zone,biome),side:THREE.DoubleSide
+   map:roadTextureV4(THREE,zone,biome,detail),side:THREE.DoubleSide
  }));road.name='scenery-v4-road';group.add(road);
  addWaterV4(THREE,group,zone,biome);
- const objects=planSceneryV4(zone,biome);
- const batches=placeSpriteInstances(THREE,group,objects,biome);
- return Object.freeze({zone,biome,staticProps:objects.length,drawBatches:batches,ground:'pixel-cluster-v42',path:'authored-texture-v42',art:ART_VERSION,artKinds:EXTRA_KINDS.length,water:['river','coast','swamp'].includes(biome)});
+ const objects=planSceneryV4(zone,biome,{detail});
+ const batches=placeSpriteInstances(THREE,group,objects,biome,detail);
+ return Object.freeze({zone,biome,staticProps:objects.length,drawBatches:batches,ground:detail?'pixel-cluster-v42':'tile-textured',path:detail?'authored-texture-v42':'authored-texture',art:detail?ART_VERSION:'scenery-v4-base',artKinds:detail?EXTRA_KINDS.length:0,water:['river','coast','swamp'].includes(biome)});
 }
