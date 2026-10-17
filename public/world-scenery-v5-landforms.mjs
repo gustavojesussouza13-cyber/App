@@ -248,3 +248,92 @@ export function createDesignedTerrainTexture(THREE,zone,biome){
  tex.anisotropy=1;
  return tex;
 }
+
+
+/**
+ * Full-size house pixel painting for semantic V5 settlement landmarks.
+ * 192×160 original pixels instead of stretching the previous tiny 96×128
+ * primitive. Keeps the larger building proportion to a 93×116 adventurer.
+ */
+export function drawDesignedHouseCanvas(biome='meadow',variant=0){
+ if(!PAL[biome])throw Error('Bioma inválido: '+biome);
+ const can=document.createElement('canvas');can.width=192;can.height=160;
+ const g=can.getContext('2d',{alpha:true});g.imageSmoothingEnabled=false;
+ const r=randGen(941+variant*193+Object.keys(PAL).indexOf(biome)*119);
+ const c=PAL[biome];
+ const brick=['desert','mountain','ruins','dungeon'].includes(biome);
+ const wall=brick?['#645b50','#9b927a','#d4c6a3','#ede1bb']:['#695a49','#b7a78b','#d7c3a1','#f0dcc0'];
+ const roofs=biome==='desert'?['#795b45','#a57c52','#d9a66e','#f0c78a']:
+             biome==='coast'?['#324e6a','#4b7592','#6996af','#b6cad0']:
+             biome==='forest'||biome==='swamp'?['#3c4d47','#4f6752','#6e9370','#bed0a1']:
+             variant%2?['#453a48','#76515d','#a87678','#ceaaa4']:
+                       ['#303e52','#405d77','#6786a2','#adbec9'];
+ // The roof has a real gable silhouette, not a block or 3D cone.
+ pix(g,'#1d2d31',13,73,166,79);
+ pix(g,wall[1],18,77,156,71);pix(g,wall[2],21,78,149,68);
+ pix(g,wall[3],23,81,142,5);
+ // Masonry, mortar grid and slight cracks.
+ for(let y=82;y<147;y+=11)for(let x=23;x<168;x+=21){
+  const dx=(y/11|0)%2?7:0;
+  pix(g,wall[0],x+dx,y+10,19,1);
+  pix(g,r()>.37?wall[1]:wall[3],x+dx+2,y+2,12,3);
+  pix(g,wall[0],x+dx+20,y,1,10);
+  if(r()>.84){pix(g,'#625c53',x+dx+6,y+5,2,4);}
+ }
+ // Chimney behind the gabled roof; stone rim and engraved courses.
+ pix(g,'#31393b',145,23,24,43);
+ pix(g,wall[1],147,20,19,42);
+ pix(g,wall[3],145,19,24,5);
+ for(let y=26;y<60;y+=9){pix(g,wall[0],148,y,16,2);pix(g,wall[3],151,y+2,8,2);}
+ // Roof row-by-row, symmetric left/right profiles, two-color shingles.
+ for(let y=14;y<=83;y+=2){
+  const width=Math.min(93,Math.floor((y-14)*1.29)+8);
+  const x1=96-width,x2=96+width;
+  pix(g,y>78?'#2c2e37':roofs[0],x1-3,y,x2-x1+6,4);
+  pix(g,roofs[1],x1,y,x2-x1,2);
+  if(y>21&&y%6===2){
+   for(let x=x1+3;x<x2-4;x+=10){
+    pix(g,r()>.3?roofs[2]:roofs[1],x+(y%11),y,7,2);
+    pix(g,roofs[3],x+1+(y%11),y,3,1);
+    if(r()>.8)pix(g,roofs[0],x+3,y+2,5,1);
+   }
+  }
+ }
+ // Swooping gable with carved trim and a little emblem.
+ pix(g,'#e0bf7f',90,26,12,4);
+ pix(g,'#503c33',93,29,6,7);pix(g,'#e0c78f',95,31,2,4);
+ // Wooden porch frame and overhead arch.
+ pix(g,'#352e30',76,105,43,44);
+ pix(g,'#7d5b3e',79,108,38,41);
+ pix(g,'#a78358',82,110,32,37);
+ pix(g,'#342f34',85,115,26,34);
+ pix(g,'#694a39',88,117,20,31);
+ for(let y=119;y<144;y+=8){pix(g,'#ac8258',90,y,16,2);}
+ pix(g,'#e4c78c',105,133,3,3);
+ pix(g,'#463b32',74,102,47,7);
+ pix(g,'#c7a679',78,104,39,3);
+ // Lit windows both sides, with mullions and decorated sills.
+ for(const x of [31,138]){
+  pix(g,'#433b39',x-4,95,30,29);
+  pix(g,'#aa8057',x-1,97,25,24);
+  pix(g,'#f7d69a',x+2,99,19,19);
+  pix(g,'#fff0be',x+5,101,10,12);
+  pix(g,'#765941',x+11,99,3,20);
+  pix(g,'#765941',x+2,108,19,3);
+  pix(g,'#3e473e',x-7,120,37,5);
+  pix(g,'#b6ab7c',x-4,121,30,3);
+  pix(g,'#4a663d',x+1,124,24,5);
+  for(let j=0;j<5;j++){const xx=x+(r()*23|0),yy=120+(r()*8|0);
+   pix(g,j%2?'#e3a9a2':'#e8cb89',xx,yy,3,3);}
+ }
+ // Thick stone footings and front steps.
+ pix(g,'#3a403b',14,147,166,8);pix(g,wall[0],16,148,162,4);
+ pix(g,'#7b7767',72,148,50,6);pix(g,'#b5ad93',77,149,40,3);
+ pix(g,'#6e6553',80,155,34,4);pix(g,'#d5c5a4',84,155,26,2);
+ for(let i=0;i<15;i++){const x=17+(r()*158|0),y=145+(r()*9|0);
+  if(x>76&&x<120)continue;
+  pix(g,c[1],x,y,3+(r()*4|0),2);
+  if(i%3===0)pix(g,'#ead1a0',x+2,y-2,2,2);
+ }
+ return can;
+}
