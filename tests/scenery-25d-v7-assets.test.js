@@ -14,8 +14,14 @@ test('V7 QA catalog contains 30 original object crops, 20 tile candidates and fo
   assert.ok(v.w>=32&&v.h>=35&&v.state==='ready'||v.state==='pending');
  }
  const gate=JSON.parse(fs.readFileSync(path.join(base,'assets/scenery-v7/availability.json'),'utf8'));
- assert.equal(gate.version,'v7');assert.equal(gate.approved,false);
- assert.deepEqual(gate.files,[]);
+ assert.equal(gate.version,'v7');assert.equal(gate.approved,true);
+ assert.deepEqual(gate.files,['arbusto_flores_01']);
+ const png=fs.readFileSync(path.join(base,'assets/scenery-v7/sprites/arbusto_flores_01.png'));
+ assert.ok(png.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])),'must be a real PNG');
+ assert.equal(png.readUInt32BE(16),75);
+ assert.equal(png.readUInt32BE(20),42);
+ assert.ok(png.includes(Buffer.from('tRNS')),'RGBA transparency must remain in palette PNG');
+ assert.ok(png.byteLength<5000,'asset should be small');
 });
 test('V7 maps actual characters and props without using unapproved crops',async()=>{
  const m=await loader();
@@ -74,6 +80,6 @@ test('V7 laboratory explicitly warns about unpublished art and distinguishes the
  const manifest=JSON.parse(js('assets/scenery-v7/availability.json'));
  assert.ok(lab.includes('id="artgate"')&&lab.includes('V7 NÃO PUBLICADA'));
  assert.ok(lab.includes('view.v7Status.loaded')&&lab.includes('view.v7Ready'));
- assert.equal(manifest.approved,false,'Do not enable unverified files');
- assert.deepEqual(manifest.files,[]);
+ assert.equal(manifest.approved,true,'Only checked pilot is allowed');
+ assert.deepEqual(manifest.files,['arbusto_flores_01']);
 });
