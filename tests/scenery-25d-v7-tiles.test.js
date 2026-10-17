@@ -181,3 +181,46 @@ test('V7 staggered road and water contours stay inside original traversable and 
  assert.ok(html.includes('edgeFinish:false'));
  assert.ok(html.includes('v7TileRect(id)'),'actual original tile sheet remains previewed');
 });
+
+
+test('V7.2 bridge is drawn once across the road and river in the same pixel canvas without creating 3D cards',async()=>{
+ const [v7]=await modules();
+ const terrain=jpg('world-scenery-v5-landforms.mjs').toString();
+ const world=jpg('world-scenery-v4.mjs').toString();
+ assert.ok(terrain.includes("if(v7Atlas&&biome==='river')paintV72Bridge("),'bridge is part of existing 2D ground canvas');
+ assert.ok(!world.includes("new THREE.Mesh('v72-bridge"),'V7.2 must not create an overlapping 3D card');
+ for(const zone of [0,1,2,3,5,9,15]){
+  const roadAt=(x,z)=>(496+Math.sin((x*2+z*117)/225)*54+Math.sin((x*2)/79+z*2)*12)/2;
+  const anchor=v7.v72BridgeAnchor(zone,roadAt);
+  assert.ok(anchor&&Object.isFrozen(anchor),'bridge crossing resolved safely for zone '+zone);
+  assert.ok(anchor.left>=8&&anchor.right<=760&&anchor.width===100,'safe 100px bridge footprint');
+  const riv=(420+92*Math.sin(anchor.y*2/150+zone))/2;
+  assert.ok(Math.abs(anchor.x-riv)<3,'bridge precisely over V5 river '+zone);
+  assert.ok(Math.abs(anchor.y-roadAt(anchor.x,zone))<1,'bridge aligned to original road '+zone);
+  const operations=[];
+  const ctx={
+   fillStyle:'#000',save(){operations.push(['save'])},restore(){operations.push(['restore'])},
+   beginPath(){},moveTo(){},lineTo(){},closePath(){},clip(){operations.push(['clip'])},
+   fillRect(x,y,w,h){
+    assert.ok(x>=anchor.left-3&&x+w<=anchor.right+3,'rails/posts remain within bridge horizontal span');
+    assert.ok(y>anchor.y-36&&y+h<anchor.y+36,'no bridge pixels outside road vicinity');
+    operations.push(['fillRect']);
+   },
+   drawImage(img,sx,sy,sw,sh,x,y,w,h){
+    assert.equal(img,'atlas');assert.deepEqual([sw,sh,w,h],[32,32,32,32]);
+    assert.ok(sx>=0&&sx+32<=160&&sy>=0&&sy+32<=128);
+    operations.push(['drawImage']);
+   }
+  };
+  assert.equal(v7.paintV72Bridge(ctx,'atlas',zone,'river',roadAt),true);
+  assert.equal(operations.filter(op=>op[0]==='clip').length,1,'single clipping operation');
+  assert.equal(operations.filter(op=>op[0]==='save').length,1);
+  assert.equal(operations.filter(op=>op[0]==='restore').length,1);
+  assert.ok(operations.filter(op=>op[0]==='drawImage').length>100,'original wooden PNG texture used as bridge deck');
+  operations.length=0;
+  assert.equal(v7.paintV72Bridge(ctx,'atlas',zone,'forest',roadAt),false,'not painted outside river biome');
+  assert.equal(operations.length,0);
+ }
+ assert.equal(v7.paintV72Bridge({},null,1,'river',()=>250),false,'no bridge if V7 atlas absent');
+ assert.equal(v7.v72BridgeAnchor(0,null),null);
+});
