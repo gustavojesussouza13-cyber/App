@@ -1,7 +1,7 @@
 {
   "batch": "scenery-v7-architecture-qa-20261017",
-  "status": "awaiting_binary_upload",
-  "activated": false,
+  "status": "partial_binary_upload",
+  "activated": true,
   "source": "Cenario_V7_Recortes_Tecnicos.zip",
   "treatment": "Pillow FASTOCTREE palette 56 colors, original unscaled shape, alpha verified; technical compression only",
   "approved_proposals": [
@@ -39,13 +39,21 @@
     }
   ],
   "warnings": [
-    "All four PNG bytes MUST be uploaded and hash-verified before enabling any in availability.json.",
-    "Potential extra pixels around the lower edge of blue and red houses must be checked visually at final scale.",
+    "Only the two file-hash-verified PNGs casa_azul_01 and caixa_01 are active; red house and ruins portal require binary upload before activation.",
+    "Potential extra pixels around the lower edge of blue and red houses require visual confirmation in the live game.",
     "Never use incomplete house, lantern, well or bridge crops."
   ],
   "protected": [
     "guild-scene-3d.mjs",
     "V3 creature families",
     "production branch"
+  ],
+  "activated_ids": [
+    "casa_azul_01",
+    "caixa_01"
+  ],
+  "staged_pending_ids": [
+    "casa_vermelha_01",
+    "portal_ruinas_01"
   ]
 }
