@@ -31,7 +31,8 @@ aside{border:2px solid #867553;background:#112528e8;padding:15px;display:grid;ga
 aside h2{font:700 19px Georgia,serif;margin:0;color:var(--gold)}aside p{font-size:13px;margin:0;color:#c7d7cb}
 label{display:grid;gap:4px;color:#d5c28c;font-size:12px;font-weight:600}select,button{padding:10px;color:#f7e7bc;background:#29413e;border:1px solid #988256;border-radius:5px;font:inherit}
 button{cursor:pointer}button:hover{background:#365951}button:focus-visible{outline:2px solid #e6dcad}
-#status{font-size:12px;color:#a4e0c4;min-height:2em}footer{margin-top:12px;font-size:13px;color:#bbcdbd}
+#status{font-size:12px;color:#a4e0c4;min-height:2em}
+.sentinel-controls{display:grid;gap:9px;border-top:1px solid #817855;padding-top:12px}.sentinel-controls h3{font:700 17px Georgia,serif;color:#f1dca3;margin:0}.sentinel-controls .checkline{display:flex;flex-direction:row;align-items:center;gap:8px}.sentinel-controls .checkline input{accent-color:#e7ca83}.sentinel-controls #sentinelStatus{color:#a4e0c4;font-size:12px;min-height:2.5em}footer{margin-top:12px;font-size:13px;color:#bbcdbd}
 @media(max-width:860px){.panels{grid-template-columns:1fr}.stage{aspect-ratio:5/3}.chat{display:none}.hero{transform:scale(.75);transform-origin:top left}.minimap{transform:scale(.75);transform-origin:top right}.skills{transform:translateX(-50%) scale(.7);transform-origin:bottom center}}
 </style>
 </head>
@@ -49,6 +50,14 @@ button{cursor:pointer}button:hover{background:#365951}button:focus-visible{outli
  <h2>Configurar prévia</h2><p>Esta página testa o motor visual sem depender de login, servidor multiplayer ou banco de dados.</p>
  <label>Classe de personagem<select id="role"><option value="peregrino">Peregrino</option><option value="guardiao">Guardião</option><option value="arqueiro">Arqueiro</option><option value="curandeiro">Curandeiro</option></select></label>
  <label>Região / bioma<select id="biome"><option value="pradaria">Vale das Oliveiras</option><option value="floresta">Floresta Antiga</option><option value="cidade">Auren — Praça</option><option value="rio">Rios de Aurora</option><option value="deserto">Areias do Sul</option><option value="montanha">Alturas</option></select></label>
+ <section class="sentinel-controls" aria-labelledby="sentinelTitle">
+  <h3 id="sentinelTitle">Sentinela V4 · comparação 2.5D</h3>
+  <p>Observe a criatura junto ao Peregrino, com tamanho e posição usados no MMORPG experimental.</p>
+  <label>Animação da Sentinela<select id="sentinelAction"><option value="idle">Repouso</option><option value="walk">Caminhada</option><option value="prepare">Preparação</option><option value="attack">Ataque</option><option value="hurt">Dano</option><option value="death">Morte</option></select></label>
+  <label>Orientação<select id="sentinelDirection"><option value="1">Direita</option><option value="3">Esquerda</option></select></label>
+  <label class="checkline"><input type="checkbox" id="sentinelBoss"> Comparar tamanho do chefe</label>
+  <p id="sentinelStatus" role="status" aria-live="polite">Carregando atlas real da Sentinela V4…</p>
+ </section>
  <button id="night" type="button">☾ Anoitecer</button>
  <button id="classic" type="button">Ver apenas Canvas 2D</button>
  <div id="status" role="status">Preparando renderizador WebGL…</div>
@@ -69,6 +78,8 @@ button{cursor:pointer}button:hover{background:#365951}button:focus-visible{outli
 <script src="/aurora-heroes25d.js"></script>
 <script src="/approved-classes25d.js?v=approved-classes-v2"></script>
 <script src="/peregrino-runway25d.js?v=runway-original-v1"></script>
+<script src="/creatures-v3.js?v=review-v3"></script>
+<script src="/sentinela-v4.js?v=sentinela-v4-approved-1"></script>
 <script type="module">
 const $=id=>document.getElementById(id),canvas=$('game'),ctx=canvas.getContext('2d',{alpha:true}),mini=$('mini'),mctx=mini.getContext('2d');
 const W=canvas.width,H=canvas.height,WIDTH=1536,HEIGHT=1024;
@@ -93,6 +104,38 @@ function pixelActor(kind) {
  textures.set(kind,a);return a;
 }
 const actors=[{x:663,y:442,name:'Lia',role:'curandeiro'},{x:910,y:560,name:'Thalor',role:'guardiao'},{x:780,y:700,name:'Lunara',role:'arqueiro'}];
+const sentinelActor={x:935,y:508,type:'sentinela',species:11};
+const sentinelRenderer=window.OsPeregrinosSentinelV4?.create({windowRef:window});
+let sentinelActionAt=performance.now();
+$('sentinelAction').addEventListener('change',()=>{sentinelActionAt=performance.now()});
+function drawSentinel(camX,camY,now){
+ const sx=Math.round(sentinelActor.x-camX),sy=Math.round(sentinelActor.y-camY);
+ const boss=$('sentinelBoss').checked;
+ const dir=Number($('sentinelDirection').value);
+ const action=$('sentinelAction').value;
+ const elapsed=Math.max(0,now-sentinelActionAt);
+ const state={type:'sentinela'};
+ if(action==='walk')state.moving=true;
+ if(action==='prepare')state.preparing=true;
+ if(action==='attack'){state.attacking=true;state.elapsed=elapsed%800}
+ if(action==='hurt'){state.hurt=true;state.elapsed=elapsed%350}
+ if(action==='death'){state.dead=true;state.elapsed=elapsed%720}
+ const x=sx+(action==='walk'?Math.round(Math.sin(now/380)*16):0);
+ ctx.save();
+ ctx.fillStyle='#0c1f2177';ctx.beginPath();ctx.ellipse(x,sy+4,boss?54:37,boss?13:9,0,0,Math.PI*2);ctx.fill();
+ const drawn=Boolean(sentinelRenderer?.drawMonster(ctx,{type:'sentinela',species:11,x,y:sy,dir,boss},now,state));
+ if(drawn){
+  const measure=sentinelRenderer.measure(boss);
+  ctx.textAlign='center';ctx.font='bold 14px system-ui,Arial';ctx.lineWidth=3;ctx.strokeStyle='#101b23';
+  ctx.strokeText(boss?'Sentinela V4 · Chefe':'Sentinela V4',x,sy-measure.healthTop);
+  ctx.fillStyle='#aceaff';ctx.fillText(boss?'Sentinela V4 · Chefe':'Sentinela V4',x,sy-measure.healthTop);
+ }
+ ctx.restore();
+ const note=drawn?'✓ Atlas real carregado · posição dos pés e escala do jogo preservadas':
+   'Carregando atlas V4 (visual exclusivo para PC com mais de 900 px)…';
+ if($('sentinelStatus').textContent!==note)$('sentinelStatus').textContent=note;
+}
+
 function drawActor(a,camX,camY,now){
  const sx=Math.round(a.x-camX),sy=Math.round(a.y-camY);
  const moving=a===player && (keys.size>0||Boolean(drag));
@@ -146,8 +189,11 @@ function frame(t){
  }
  ctx.clearRect(0,0,W,H);
  if(!mode3d)fallbackTerrain(camX,camY);
- for(const npc of actors)drawActor(npc,camX,camY,t);
- drawActor(player,camX,camY,t);
+ const sortedActors=[...actors,player,sentinelActor].sort((a,b)=>a.y-b.y);
+ for(const actor of sortedActors){
+  if(actor===sentinelActor)drawSentinel(camX,camY,t);
+  else drawActor(actor,camX,camY,t);
+ }
  miniMap();
  requestAnimationFrame(frame);
 }
