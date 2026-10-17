@@ -29,14 +29,15 @@ test('Morcego, Serpente, Fera, Escorpião, Fantasma, Vespa, Cavaleiro, Dragão e
  const knight=art.indexOf("const knightV4Drawn=ty==='cavaleiro'&&Boolean(knightV4?.drawMonster");
  const dragon=art.indexOf("const dragonV4Drawn=ty==='dragao'&&Boolean(dragonV4?.drawMonster");
  const sentinel=art.indexOf("const sentinelV4Drawn=ty==='sentinela'&&Boolean(sentinelV4?.drawMonster");
+ const aurora=art.indexOf("const auroraSentinelDrawn=ty==='chefe'&&Number(m.species)===31&&Boolean(sentinelV4?.drawMonster");
  const basilisk=art.indexOf("const basiliskV4Drawn=ty==='basilisco'&&Boolean(basiliskV4?.drawMonster");
  const angel=art.indexOf("const angelV4Drawn=ty==='anjo-caido'&&Boolean(fallenAngelV4?.drawMonster");
  const ghostFallback=art.indexOf("const ghostAngelFallback=ty==='anjo-caido'&&!angelV4Drawn");
- const v3=art.indexOf('const creatureV3=!batV4Drawn&&!serpentV4Drawn&&!beastV4Drawn&&!scorpionV4Drawn&&!ghostV4Drawn&&!waspV4Drawn&&!knightV4Drawn&&!dragonV4Drawn&&!sentinelV4Drawn&&!basiliskV4Drawn&&!angelV4Drawn&&!ghostAngelFallback&&Boolean(creaturesV3?.drawMonster');
+ const v3=art.indexOf('const creatureV3=!batV4Drawn&&!serpentV4Drawn&&!beastV4Drawn&&!scorpionV4Drawn&&!ghostV4Drawn&&!waspV4Drawn&&!knightV4Drawn&&!dragonV4Drawn&&!sentinelV4Drawn&&!auroraSentinelDrawn&&!basiliskV4Drawn&&!angelV4Drawn&&!ghostAngelFallback&&Boolean(creaturesV3?.drawMonster');
  const studio=art.indexOf('const studioMonster=!spriteDim&&Boolean(spriteStudio?.drawMonster');
  const boss=art.indexOf('const detailedBoss=!spriteDim&&!studioMonster&&Boolean(desktopSprites?.drawMonster');
  const illustrated=art.indexOf('const illustrated=!spriteDim&&!studioMonster&&!detailedBoss&&Boolean(desktopBestiary?.drawMonster');
- assert.ok(bat>0&&serpent>bat&&beast>serpent&&scorpion>beast&&ghost>scorpion&&wasp>ghost&&knight>wasp&&dragon>knight&&sentinel>dragon&&basilisk>sentinel&&angel>basilisk&&ghostFallback>angel&&v3>ghostFallback&&studio>v3&&boss>studio&&illustrated>boss,
+ assert.ok(bat>0&&serpent>bat&&beast>serpent&&scorpion>beast&&ghost>scorpion&&wasp>ghost&&knight>wasp&&dragon>knight&&sentinel>dragon&&aurora>sentinel&&basilisk>aurora&&angel>basilisk&&ghostFallback>angel&&v3>ghostFallback&&studio>v3&&boss>studio&&illustrated>boss,
   'priority: bat/serpent/beast/scorpion/ghost/wasp/knight/dragon/sentinel V4 > five V3 creatures > Atelier > boss > legacy bestiary');
  assert.ok(art.includes('const animated=Boolean(spriteDim)||studioMonster||detailedBoss||illustrated'));
  assert.ok(art.includes('const top=spriteDim?spriteDim.healthTop:studioMonster'));
