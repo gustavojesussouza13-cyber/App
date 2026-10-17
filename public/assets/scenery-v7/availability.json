@@ -1,15 +1,17 @@
 {
   "version": "v7",
   "approved": true,
-  "quality_gate": "five_sprite_pilot",
+  "quality_gate": "seven_sprite_architecture_pilot",
   "files": [
     "arbusto_flores_01",
     "arvore_folhosa_01",
     "rocha_musgo_01",
     "pinheiro_01",
-    "barril_01"
+    "barril_01",
+    "casa_azul_01",
+    "caixa_01"
   ],
-  "reason": "Cinco sprites V7 experimentais originais com transparência e proporções verificadas: arbusto, árvore, rocha, pinheiro e barril. PNGs restantes, casas e tiles aguardam QA; fallback V5 ativo para ausentes.",
+  "reason": "Piloto experimental 7 sprites PNG originais: cinco anteriormente aprovados, casa azul 104×147 e caixa 34×45, todos com dados íntegros. Casa vermelha, portal e demais itens aguardam transferência; fallback V5 permanece para cada ausência.",
   "source": "Pranchas originais autorais de cenário Os Peregrinos V5/V7",
   "technical_crops": 30,
   "technical_tiles": 20,
