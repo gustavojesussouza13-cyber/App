@@ -347,5 +347,65 @@ try{
  await page.screenshot({path:'/tmp/os-peregrinos-corvo-v4-death-25d.png',fullPage:true});
  assert.ok(!pageErrors.some(e=>/raven|corvo-ocaso|ReferenceError/i.test(e)),'Raven V4 JS errors');
  console.log('CORVO_OCASO_V4_25D_OK',JSON.stringify(ravenCheck));
+
+ // Espinho Vivo V4: actual approved PNGs in Chromium, not a simulated canvas-only mock.
+ const thornNavigation=await page.goto(url,{waitUntil:'domcontentloaded',timeout:40000});
+ assert.equal(thornNavigation?.status(),200);
+ await page.waitForFunction(()=>document.querySelector('#thornStatus')?.textContent?.includes('efeito pronto'),null,{timeout:20000});
+ const thornCheck=await page.evaluate(async()=>{
+  const api=window.OsPeregrinosLivingThornV4;
+  if(!api||api.FRAME.width!==192||api.FRAME.height!==160)throw Error('Espinho renderer missing');
+  const walks=[],hurts=[],solid=[],fxCounts=[];
+  for(let d=0;d<4;d++){
+   const img=new Image();img.src=api.ASSETS[d];await img.decode();
+   if(img.naturalWidth!==768||img.naturalHeight!==960)throw Error('Espinho atlas malformed '+d);
+   const c=document.createElement('canvas');c.width=192;c.height=160;
+   const g=c.getContext('2d',{willReadFrequently:true}),set=[];
+   for(let frame=0;frame<4;frame++){
+    g.clearRect(0,0,192,160);
+    g.drawImage(img,frame*192,160,192,160,0,0,192,160);
+    set.push(c.toDataURL('image/png'));
+   }
+   walks.push(new Set(set).size);
+   const pixels=g.getImageData(0,0,192,160).data;
+   let opaque=0;for(let i=3;i<pixels.length;i+=4)if(pixels[i]>16)opaque++;
+   solid.push(opaque);
+   g.clearRect(0,0,192,160);g.drawImage(img,0,4*160,192,160,0,0,192,160);
+   const hurt=c.toDataURL('image/png');
+   g.clearRect(0,0,192,160);g.drawImage(img,0,0,192,160,0,0,192,160);
+   hurts.push(hurt!==c.toDataURL('image/png'));
+  }
+  const fx=new Image();fx.src=api.FX;await fx.decode();
+  if(fx.naturalWidth!==768||fx.naturalHeight!==640)throw Error('Espinho thorn FX size incorrect');
+  const c=document.createElement('canvas');c.width=192;c.height=160;
+  const ctx=c.getContext('2d',{willReadFrequently:true});
+  for(let d=0;d<4;d++){
+   ctx.clearRect(0,0,192,160);ctx.drawImage(fx,0,d*160,192,160,0,0,192,160);
+   const pixels=ctx.getImageData(0,0,192,160).data;let occupied=0;
+   for(let i=3;i<pixels.length;i+=4)if(pixels[i]>16)occupied++;
+   fxCounts.push(occupied);
+  }
+  return {walks,hurts,solid,fxCounts};
+ });
+ assert.deepEqual(thornCheck.walks,[4,4,4,4],'all 4 native directions need four distinct walk frames');
+ assert.ok(thornCheck.hurts.every(Boolean),'visible reaction to damage in every direction');
+ assert.ok(thornCheck.solid.every(x=>x>1200),'all four bodies must contain visible pixels');
+ assert.ok(thornCheck.fxCounts.every(x=>x>30),'all directions require thorn attack particles');
+ for(let dir=0;dir<4;dir++)await page.locator('#thornDirection').selectOption(String(dir));
+ await page.locator('#thornDirection').selectOption('1');
+ await page.locator('#thornAction').selectOption('walk');
+ await page.waitForTimeout(310);
+ await page.screenshot({path:'/tmp/os-peregrinos-espinho-v4-walk-25d.png',fullPage:true});
+ await page.locator('#thornAction').selectOption('attack');
+ await page.waitForTimeout(300);
+ await page.screenshot({path:'/tmp/os-peregrinos-espinho-v4-attack-25d.png',fullPage:true});
+ await page.locator('#thornAction').selectOption('hurt');
+ await page.waitForTimeout(150);
+ await page.screenshot({path:'/tmp/os-peregrinos-espinho-v4-hurt-25d.png',fullPage:true});
+ await page.locator('#thornAction').selectOption('death');
+ await page.waitForTimeout(590);
+ await page.screenshot({path:'/tmp/os-peregrinos-espinho-v4-death-25d.png',fullPage:true});
+ assert.ok(!pageErrors.some(e=>/thorn|espinho-vivo|ReferenceError/i.test(e)),'Espinho V4 renderer errors');
+ console.log('ESPINHO_VIVO_V4_25D_OK',JSON.stringify(thornCheck));
  console.log('WORLD_25D_BROWSER_OK',JSON.stringify({url,classes:4,biomes:6,canvas:'webgl'}));
 }finally{await browser.close()}
