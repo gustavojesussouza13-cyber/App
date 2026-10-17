@@ -1,0 +1,73 @@
+<!doctype html><html lang="pt-BR"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Os Peregrinos — laboratório de terreno pixelado V7</title>
+<style>
+*{box-sizing:border-box}html{color-scheme:dark}body{margin:0;background:#101f27;color:#f4eedf;font:15px/1.45 system-ui,sans-serif}
+main{max-width:1220px;margin:auto;padding:20px}h1,h2{font-family:Georgia,serif;color:#f1d8aa}h1{font-size:30px;margin-bottom:8px}
+p{color:#cbd4ce}a{color:#ffda94}.controls{display:flex;gap:10px;flex-wrap:wrap;padding:14px;background:#20343a;border-radius:10px;border:1px solid #516c6c;align-items:end}
+label{display:flex;flex-direction:column;gap:5px}select,button{background:#324952;border:1px solid #778a83;border-radius:6px;padding:9px;color:#fff0d9;font:inherit}
+button{cursor:pointer}.maps{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:15px}
+section{padding:10px;border-radius:9px;background:#1a3038;border:1px solid #536f74}h3{margin:0 0 9px;font-size:16px;color:#f7d7a2}
+canvas{width:100%;height:auto;aspect-ratio:3/2;image-rendering:pixelated;background:#274b42}
+#tiles{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px;padding:10px;background:#1d3236;border:1px solid #53716e;border-radius:8px}
+.tile{margin:0;min-width:0;text-align:center}.tile canvas{width:100%;max-width:120px;aspect-ratio:1;image-rendering:pixelated}
+.tile figcaption{color:#dcd4b4;font-size:12px;overflow-wrap:anywhere;margin-top:3px}#status{border:1px solid #8caa92;color:#ecdec2;background:#223e35;border-radius:7px;padding:12px;margin:12px 0}
+.note{background:#2b302e;border:1px solid #8e8066;border-radius:7px;padding:12px;margin:16px 0}
+@media(max-width:700px){.maps{grid-template-columns:1fr}#tiles{grid-template-columns:repeat(4,minmax(0,1fr))}main{padding:11px}h1{font-size:25px}}
+</style></head><body><main>
+<h1>Os Peregrinos · Tiles de Terreno V7</h1>
+<p>Comparador real entre o terreno V5 e o atlas V7 de 20 tiles originais de 32 × 32 pixels. O mapa preserva a mesma estrada, rio, costa, desníveis e disposição dos monumentos.</p>
+<div class="controls">
+ <label>Bioma<select id="biome">
+ <option value="meadow">Pradaria</option><option value="forest">Floresta</option><option value="river">Rio</option>
+ <option value="desert">Deserto</option><option value="mountain">Montanha</option><option value="ruins">Ruínas</option>
+ <option value="swamp">Pântano</option><option value="coast">Costa</option><option value="city">Cidade</option><option value="dungeon">Masmorra</option>
+ </select></label>
+ <label>Região <select id="zone"><option value="0">Região 1</option><option value="1">Região 2</option><option value="4">Região 5</option><option value="9">Região 10</option></select></label>
+ <label>Comparar com<select id="baseline">
+ <option value="v5">V5 — terreno anterior</option>
+ <option value="v7raw">V7 — sem encaixe dos tiles</option>
+ </select></label>
+ <button id="refresh">Recarregar prévia</button>
+ <a href="/laboratorio-cenario-25d-v4.html">Abrir mundo 2.5D</a>
+</div>
+<p id="status" role="status">Verificando PNG e manifesto V7...</p>
+<div class="maps">
+ <section><h3 id="baseline-title">Antes — mapa V5</h3><canvas id="previous" width="768" height="512"></canvas></section>
+ <section><h3>Depois — V7 com bordas pixeladas</h3><canvas id="next" width="768" height="512"></canvas></section>
+</div>
+<h2>Os 20 tiles originais</h2>
+<div id="tiles" aria-label="Galeria de tiles V7"></div>
+<p class="note">O acabamento intercala pequenas faixas de pixels dos próprios tiles de 32×32 nas emendas e usa margens com degraus pixelados. Não cria texturas externas, objetos tridimensionais adicionais nem novos colliders. A prévia mostra o chão estático, não a fortaleza 3D nem a simulação de colisões. Elementos V5 (vegetação organizada, barrancos e caminhos conectados) permanecem por cima da nova textura. A V7 é experimental e ainda exige aprovação artística.</p>
+<script type="module">
+import {drawDesignedTerrainCanvas} from '/world-scenery-v5-landforms.mjs';
+import {preloadV7Terrain,v7TerrainImage,v7TileRect,v7TerrainStatus} from '/world-scenery-v7-terrain.mjs';
+import {V7_TILES} from '/world-scenery-v7-asset-loader.mjs';
+const $=id=>document.getElementById(id),status=$('status'),tiles=$('tiles');
+function draw(){
+ const zone=Number($('zone').value),biome=$('biome').value,atlas=v7TerrainImage();
+ const previousV7=$('baseline').value==='v7raw';
+ $('baseline-title').textContent=previousV7?'Antes — V7 sem encaixe dos tiles':'Antes — mapa V5';
+ for(const [id,useAtlas] of [['previous',false],['next',true]]){
+  const cv=$(id),ctx=cv.getContext('2d');ctx.imageSmoothingEnabled=false;
+  const ground=id==='previous'&&previousV7
+   ?drawDesignedTerrainCanvas(zone,biome,{v7Atlas:atlas,edgeFinish:false})
+   :drawDesignedTerrainCanvas(zone,biome,{v7Atlas:useAtlas?atlas:null});
+  ctx.clearRect(0,0,cv.width,cv.height);ctx.drawImage(ground,0,0);
+ }
+ status.textContent=atlas?'V7: 20 tiles originais carregados, emendas intercaladas com pixels reais e margens ajustadas ao mapa anterior. A comparação da esquerda mostra '+(previousV7?'V7 sem encaixe entre tiles.':'V5 original.')+' Nenhum objeto ou colisão foi reposicionado.':'Atlas V7 não carregado: a coluna “Depois” está mostrando a V5 como fallback. Não confunda isso com a nova arte.';
+}
+function gallery(){
+ tiles.replaceChildren();const atlas=v7TerrainImage();if(!atlas)return;
+ for(const id of V7_TILES){
+  const r=v7TileRect(id),fig=document.createElement('figure');fig.className='tile';
+  const can=document.createElement('canvas');can.width=128;can.height=128;
+  const ctx=can.getContext('2d');ctx.imageSmoothingEnabled=false;
+  ctx.drawImage(atlas,r.sx,r.sy,32,32,0,0,128,128);
+  const cap=document.createElement('figcaption');cap.textContent=id;fig.append(can,cap);tiles.append(fig);
+ }
+}
+for(const key of ['biome','zone','baseline'])$(key).addEventListener('change',draw);
+$('refresh').addEventListener('click',async()=>{await preloadV7Terrain();gallery();draw();});
+(async()=>{try{await preloadV7Terrain();gallery();draw();}catch(error){console.warn(error);draw();}})();
+</script></main></body></html>

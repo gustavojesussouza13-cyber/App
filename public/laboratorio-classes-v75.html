@@ -1,0 +1,72 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Os Peregrinos — Quatro classes V7.5</title>
+<style>*{box-sizing:border-box}body{background:#101f22;color:#f3e2c8;font:14px system-ui;margin:0}main{max-width:1080px;padding:24px;margin:auto}
+h1{color:#edcd8b;font:700 30px Georgia;margin:0 0 10px}p{line-height:1.7;color:#bfcfc7}
+.controls{display:flex;gap:14px;margin:22px 0;flex-wrap:wrap}select,button{background:#203a35;color:#f7dfaa;border:1px solid #a9ad78;padding:9px 12px;font:inherit;border-radius:7px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:16px}
+.cell{background:#19312e;border:1px solid #698a70;border-radius:12px;padding:14px;text-align:center}
+.cell canvas{display:block;margin:auto;background:repeating-linear-gradient(45deg,#27453b,#27453b 12px,#2b4e43 12px,#2b4e43 24px);
+border:1px solid #b9aa7e;width:min(100%,192px);height:240px;image-rendering:pixelated}
+.cell h2{color:#f2d297;font:700 20px Georgia}.cell small{color:#9bbba5}
+a{color:#f7db96}.top{margin:22px 0}.tag{background:#2e5940;border:1px solid #86ac75;padding:5px 8px;border-radius:5px}
+</style></head><body><main>
+<h1>Os Peregrinos — direção esquerda corrigida V7.9</h1>
+<p>Sprites <strong>PNG reais publicados</strong>, incluindo o Peregrino 128×160 e os atlases 64×80 do Guardião, Arqueiro e Curandeiro. Os mesmos arquivos agora alimentam o preview de personalização experimental. Sem bonecos Hero Studio antigos na prévia.</p>
+<div class="controls"><label>Direção <select id="dir"><option value="2">Frente</option><option value="0">Costas</option><option value="1">Lado</option><option value="3">Outro lado</option></select></label>
+<label>Animação <select id="act"><option value="idle">Parado</option><option value="walk">Andando</option></select></label>
+<button id="next">Próximo quadro</button></div>
+<div class="controls" id="options"></div>
+<div class="grid" id="gallery"></div>
+<p class="top"><a href="/mundo.html">Abrir MMORPG experimental e testar a personalização</a></p>
+<p>Altere os sete controles acima e confira as modificações aplicadas aos PNGs das quatro classes. A prévia e o jogo experimental utilizam o mesmo compositor de pixels, sem suavização.</p>
+</main>
+<script src="/appearance16.js?v=atelier-custom-v1"></script>
+<script src="/approved-classes25d.js?v=approved-classes-v2"></script>
+<script src="/peregrino-runway25d.js?v=runway-left-facing-v79"></script>
+<script src="/appearance-sprite-v76.js?v=personalizacao-gait-v78"></script><script src="/appearance-class-preview-v75.js?v=classes-4-passada-v78"></script>
+<script>
+const preview=window.PeregrinosAppearanceClassPreviewV75;
+const roles=Object.entries(preview.ROLES),root=document.getElementById('gallery');
+const canvasByRole={};
+for(const [id,name] of roles){
+ const card=document.createElement('article');card.className='cell';
+ const h=document.createElement('h2');h.textContent=name;
+ const canvas=document.createElement('canvas');canvas.width=128;canvas.height=160;
+ const note=document.createElement('small');note.textContent='Carregando PNG…';
+ card.append(h,canvas,note);root.append(card);canvasByRole[id]={canvas,note};
+}
+const app=window.PeregrinosAppearance16;
+const changed={...app.DEFAULT};
+const names={skin:'Tom de pele',hairStyle:'Corte de cabelo',hairColor:'Cor do cabelo',eyes:'Cor dos olhos',outfit:'Traje',cape:'Capa',accessory:'Acessório'};
+for(const [key,opts] of Object.entries(app.OPTIONS)){
+ const label=document.createElement('label');label.textContent=names[key];
+ const select=document.createElement('select');select.dataset.key=key;
+ for(const [value,name]of Object.entries(opts)){
+  const option=document.createElement('option');option.value=value;option.textContent=name;select.append(option);
+ }
+ select.value=changed[key];
+ select.addEventListener('change',()=>{changed[key]=select.value;render();});
+ label.append(select);document.getElementById('options').append(label);
+}
+let frame=0;
+async function render(){
+ const dir=Number(document.getElementById('dir').value),action=document.getElementById('act').value;
+ for(const [role,{canvas,note}] of Object.entries(canvasByRole)){
+  const ctx=canvas.getContext('2d');ctx.imageSmoothingEnabled=false;
+  ctx.clearRect(0,0,128,160);
+  const ready=preview.draw(ctx,{role,dir,action,frame,appearance:changed});
+  note.textContent=ready?'Arte aprovada · '+preview.status(role).source.split('/').pop():'PNG não carregado';
+ }
+}
+document.getElementById('dir').addEventListener('change',render);
+document.getElementById('act').addEventListener('change',()=>{frame=0;render()});
+// Automatically animate all four authentic Peregrino walk poses, including
+// the rear view. Use the source pixels unmodified and nearest-neighbour.
+setInterval(()=>{
+ if(document.hidden||document.getElementById('act').value!=='walk')return;
+ frame=(frame+1)%8;render();
+},118);
+document.getElementById('next').addEventListener('click',()=>{frame++;render()});
+Promise.all(roles.map(([role])=>preview.ensureLoaded(role))).then(render);
+render();
+</script></body></html>

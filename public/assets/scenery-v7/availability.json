@@ -1,0 +1,26 @@
+{
+  "version": "v7",
+  "approved": true,
+  "quality_gate": "nine_sprite_architecture_pilot",
+  "files": [
+    "arbusto_flores_01",
+    "arvore_folhosa_01",
+    "rocha_musgo_01",
+    "pinheiro_01",
+    "barril_01",
+    "casa_azul_01",
+    "caixa_01",
+    "casa_vermelha_01",
+    "portal_ruinas_01"
+  ],
+  "reason": "Nove PNGs V7 reais, com transparência, dimensões nativas e hashes Git íntegros. Casa vermelha e portal de ruínas publicados com 56 cores. Demais recortes aguardam revisão; fallback V5 mantido.",
+  "source": "Pranchas originais autorais de cenário Os Peregrinos V5/V7",
+  "technical_crops": 30,
+  "technical_tiles": 20,
+  "qa_pending": [
+    "casa_azul_02",
+    "lampiao_01",
+    "poco_01",
+    "ponte_madeira_01"
+  ]
+}

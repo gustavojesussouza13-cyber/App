@@ -11,6 +11,7 @@ const frontier=require('./frontier-world');
 const kingdoms=require('./kingdom-politics');
 const rpg=require('./rpg-attributes');
 const creatureRpg=require('./monster-progression');
+const regionMonsters=require('./region-monster-species');
 const {ChatGuard,inspectNickname}=require('./chat-safety');
 
 const HISTORIC_ZONES=[
@@ -134,6 +135,7 @@ const ACHIEVEMENTS=Object.freeze({
  'vigilia-completa':{name:'Guardião dos Quatro Testemunhos',coins:750}
 });
 const appearance16=require('./public/appearance16');
+const experimentalDungeonPass=require('./experimental-dungeon-test-pass');
 const defaultSave=()=>({attributes:{},energy:null,crownKeyIssuedAt:0,level:1,xp:0,hp:135,coins:60,zone:0,x:ZONE_W/2,y:ZONE_H/2,role:'peregrino',appearance:null,inventory:{pocao:3},kills:0,quests:[],visited:[0],guild:null,guildFounded:false,achievements:[],bossRelics:[],blocked:[],story:freshStory()});
 function hpMax(s){return rpg.calculateAttributes(s).stats.maxHp}
 function xpNeed(level){return 70+level*level*35}
@@ -218,16 +220,16 @@ class World {
    if(this.monsters.has(zone))return this.monsters.get(zone);
    const isFrontier=frontier.isFrontier(zone);
    const mons=[];const dungeon=zone>=12&&!isFrontier;
+   const speciesId=regionMonsters.speciesForRegion(zone);
    // Densidade inspirada na campanha clássica: 13 criaturas comuns + chefe por área,
    // e um pouco mais nas masmorras (em vez das antigas 24–30 por região).
    const count=dungeon?(zone>=16?14:18):14;
    for(let i=0;i<count;i++){
     const boss=i===count-1;const seed=isFrontier?frontier.spawnSeed(zone,i):hash32(zone*9217+i*5711+77);
-    const speciesId=boss?(dungeon?31:(zone+11)%32):(zone*2+i*7+((seed>>4)%5))%SPECIES.length;
     const sp=SPECIES[speciesId],tier=zoneDifficulty(zone),mult=(boss?5.5:1)*(crownDungeonZone(zone)?1.65:1);
     const trait=procedural.monsterTrait(zone,i,boss);
     const eliteNames=['Guardião das Raízes','Marechal das Cinzas','Oráculo das Vozes','Arauto do Amanhecer'];
-    const baseName=boss&&!isFrontier&&zone>=16?'★ '+eliteNames[Math.floor((zone-16)/6)]+' · Piso '+dungeonDepth(zone):(boss?'★ ':'')+sp[0];
+    const baseName=boss&&!isFrontier&&zone>=16?'★ '+sp[0]+' · '+eliteNames[Math.floor((zone-16)/6)]+' · Piso '+dungeonDepth(zone):(boss?'★ ':'')+sp[0];
     const name=zone>=16&&!boss&&['Raro','Épico'].includes(trait.rarity)?trait.rarity+' · '+baseName:baseName;
     const chosen={x:130+hash32(seed+1)%(ZONE_W-260),y:130+hash32(seed+2)%(ZONE_H-260)};
     const home=terrain.nearestWalkable(zone,chosen.x,chosen.y,ZONES);
@@ -310,7 +312,7 @@ class World {
   if(!gate||dist(p,gate)>96){this.tell(p,'Aproxime-se da passagem para atravessar.');return}
   this.travel(p,z);
  }
- ownStatus(p){const s=p.save,build=rpg.calculateAttributes(s);build.impacts=Object.fromEntries(rpg.ATTRIBUTE_KEYS.map(key=>[key,rpg.allocationPreview(s,key)]));return {type:'character',rpg:build,energy:Math.floor(s.energy??build.stats.maxEnergy),maxEnergy:build.stats.maxEnergy,id:p.id,name:p.name,administrator:!!p.isAdministrator,level:s.level,xp:s.xp,nextXp:xpNeed(s.level),hp:s.hp,maxHp:hpMax(s),coins:s.coins,role:s.role,appearance:appearance16.normalize(s.appearance),inventory:s.inventory,crownKeyIssuedAt:s.crownKeyIssuedAt||0,kills:s.kills,quests:s.quests,visited:s.visited,guild:s.guild,guildFounded:s.guildFounded===true,party:p.party||null,story:journal(s.story),achievements:s.achievements,bossRelics:s.bossRelics,blocked:s.blocked,zone:p.zone,x:p.x,y:p.y}}
+ ownStatus(p){const s=p.save,build=rpg.calculateAttributes(s);build.impacts=Object.fromEntries(rpg.ATTRIBUTE_KEYS.map(key=>[key,rpg.allocationPreview(s,key)]));return {type:'character',rpg:build,energy:Math.floor(s.energy??build.stats.maxEnergy),maxEnergy:build.stats.maxEnergy,id:p.id,name:p.name,administrator:!!p.isAdministrator,level:s.level,xp:s.xp,nextXp:xpNeed(s.level),hp:s.hp,maxHp:hpMax(s),coins:s.coins,role:s.role,appearance:appearance16.normalize(s.appearance),inventory:s.inventory,previewDungeonPasses:p.previewDungeonPasses||[],crownKeyIssuedAt:s.crownKeyIssuedAt||0,kills:s.kills,quests:s.quests,visited:s.visited,guild:s.guild,guildFounded:s.guildFounded===true,party:p.party||null,story:journal(s.story),achievements:s.achievements,bossRelics:s.bossRelics,blocked:s.blocked,zone:p.zone,x:p.x,y:p.y}}
  tell(p,msg,type='notice'){this.send(p.socket,{type,text:msg})}
  unlockAchievement(p,id){
   const award=ACHIEVEMENTS[id],s=p.save;
@@ -407,8 +409,10 @@ class World {
    s.energy=rpg.calculateAttributes(s).stats.maxEnergy;
   }
   if(owner&&c.roomTransferRole){this.saved.characters[uid]=safeSave(s);this.dirty=true}
-  const p={lastRegenAt:now,lastCombatAt:0,lastResourceBroadcast:0,attackCounter:0,id:crypto.randomUUID(),uid,name,isAccount:!!owner,isAdministrator:!!owner?.administrator,socket:c.socket,save:s,x:s.x,y:s.y,zone:s.zone,dir:2,lastMove:Date.now(),moveCredit:12,lastAttack:0,lastSpell:0,lastChat:0,lastUse:0,party:null,live:true};
+  const previewDungeonPasses=experimentalDungeonPass.issue(owner,process.env);
+  const p={previewDungeonPasses,lastRegenAt:now,lastCombatAt:0,lastResourceBroadcast:0,attackCounter:0,id:crypto.randomUUID(),uid,name,isAccount:!!owner,isAdministrator:!!owner?.administrator,socket:c.socket,save:s,x:s.x,y:s.y,zone:s.zone,dir:2,lastMove:Date.now(),moveCredit:12,lastAttack:0,lastSpell:0,lastChat:0,lastUse:0,party:null,live:true};
   c.worldPlayer=p;c.socket._worldClient=c;this.players.set(p.id,p);
+  if(previewDungeonPasses.length===4){this.tell(p,'✦ Teste experimental autorizado: as quatro chaves de acesso às masmorras estão ativas nesta sessão. A Coroa e as Crônicas oficiais não foram alteradas.');}
   this.send(c.socket,{type:'welcome',room:c.worldRoom?{id:c.worldRoom.id,name:c.worldRoom.name}:null,self:this.ownStatus(p),zones:this.zoneInfo(),mainSurface:frontier.MAIN_SURFACE_IDS.map(z=>this.currentRegion(z)),shop:Object.fromEntries(Object.entries(GOODS).filter(([key,item])=>!item.storyOnly)),relics:RELICS,quests:QUESTS,achievements:ACHIEVEMENTS,portals:this.zonePortals(p.zone),npcs:NPCS.map(publicNpc),merchants:Object.keys(MERCHANT_STOCK).map(id=>{const n=byId.get(id);return {id,name:n.name,zone:n.zone,region:ZONES[n.zone][0]}}),maxPlayers:60,online:this.players.size+this.getOnline(),monsterTotal:this.totalMonsters(),region:this.currentRegion(p.zone),infiniteFrontier:true,generation:{seed:procedural.SEED,version:procedural.VERSION,chunkSize:procedural.CHUNK_SIZE}});
   this.broadcast({type:'system',text:p.name+' chegou ao mundo.'},q=>q.id!==p.id);
   this.dirty=true;this.snapshotTo(p);
@@ -734,18 +738,18 @@ class World {
   if(!legal){this.tell(p,'Use uma passagem conectada a esta região.');return}
   const enteringCrownDungeon=requiresCrownKey(a,b);
   const enteringOrdinaryDungeon=b>=12&&b<CROWN_DUNGEON_ROOT&&dungeonRoot(a)!==b;
-  if(enteringCrownDungeon&&(p.save.inventory[CROWN_DUNGEON_KEY]||0)<1){
+  if(enteringCrownDungeon&&!experimentalDungeonPass.canEnter(p,CROWN_DUNGEON_ROOT)&&(p.save.inventory[CROWN_DUNGEON_KEY]||0)<1){
    this.tell(p,'A Câmara da Aurora exige a Chave da Coroa Continental, reivindicada pelo líder do reino politicamente soberano.');return
   }
   if(enteringOrdinaryDungeon){
    const chapter=storyDungeonChapter(b);
    // A chave só é liberada pela história; comprar e negociar não contorna o enredo.
    // Reentrada permanente evita bloquear a campanha ao sair da masmorra.
-   if(chapter===null||p.save.story.stage<=chapter){
+   if(!experimentalDungeonPass.canEnter(p,b)&&(chapter===null||p.save.story.stage<=chapter)){
     this.tell(p,'A chave desta masmorra é conquistada nas Crônicas. Complete a missão do NPC para abrir esta passagem.');return
    }
   }
-  if(enteringCrownDungeon)p.save.inventory[CROWN_DUNGEON_KEY]--;
+  if(enteringCrownDungeon&&!experimentalDungeonPass.canEnter(p,CROWN_DUNGEON_ROOT))p.save.inventory[CROWN_DUNGEON_KEY]--;
   p.zone=b;p.save.zone=b;
   if(options.atlas)p.lastAtlasTravel=Date.now();
   this.ensureMonsters(b);

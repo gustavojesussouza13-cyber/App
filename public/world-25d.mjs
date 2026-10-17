@@ -6,6 +6,12 @@
  * Este arquivo nunca importa nem altera os módulos das fortalezas de guilda.
  */
 import * as THREE from '/vendor/three.module.js';
+import {buildSceneryV4,SCENERY_V4_VERSION} from '/world-scenery-v4.mjs';
+import {preloadSceneryAtlas,atlasLoaded} from '/world-scenery-v6-asset-adapter.mjs';
+import {preloadV7Assets,isV7Ready,v7Stats} from '/world-scenery-v7-asset-loader.mjs';
+import {preloadV7Terrain,v7TerrainReady,v7TerrainStatus} from '/world-scenery-v7-terrain.mjs';
+import {preloadV72Assets,v72Ready,v72Status} from '/world-scenery-v72-asset-loader.mjs';
+import {buildCanonicalScenery} from '/world-scenery-v72-canonical.mjs';
 
 const ZONE_WIDTH = 1536;
 const ZONE_HEIGHT = 1024;
@@ -181,7 +187,7 @@ function addAuroraShrine(group) {
  return {crystal,halo,light};
 }
 
-export function createWorld25D({shell,canvas,width=960,height=576}) {
+export function createWorld25D({shell,canvas,width=960,height=576,sceneryV4=true}) {
   if (!shell || !canvas) throw Error('O Canvas 2D e seu contêiner são obrigatórios.');
   const renderer = new THREE.WebGLRenderer({
     alpha:false,antialias:true,powerPreference:'default',
@@ -232,7 +238,8 @@ export function createWorld25D({shell,canvas,width=960,height=576}) {
   sun.position.set(-240,600,190);
   scene.add(ambient,sun);
   let layer=null,activeZone=NaN,activeBiome='',disposed=false,night=false,shrine=null;
-  function rebuild(zone,biome) {
+  let useSceneryV4=Boolean(sceneryV4),useSceneryDetail=true,useSceneryComposition=true,useSceneryAtlas=false,useSceneryV7=false,lastSceneryV4=null,useCanonical=false,activeMapSource=null;
+  function rebuild(zone,biome,sourceMap=null) {
     if(layer){
       scene.remove(layer);
       layer.traverse(o=>{
@@ -248,6 +255,38 @@ export function createWorld25D({shell,canvas,width=960,height=576}) {
     layer=new THREE.Group();
     scene.add(layer);
     shrine=null;
+    // Live official art16 terrain is the geography authority for integration.
+    // Never invent a second layout when a verified canonical snapshot exists.
+    const useSource=Boolean(useCanonical&&sourceMap?.zone===zone&&sourceMap?.biome===biome&&sourceMap?.canvas);
+    if(useSource){
+      lastSceneryV4=buildCanonicalScenery(THREE,layer,sourceMap,{v7:useSceneryV7});
+      activeMapSource=sourceMap.canvas;
+      activeZone=zone;activeBiome=biome;
+      return;
+    }
+    activeMapSource=null;
+    // One V4 static scenery pack covers all historical regions and 10 biomes.
+    // In case of a WebGL/texture failure, fall back to the EXACT prior model.
+    let success=false;
+    if(useSceneryV4)try{
+      lastSceneryV4=buildSceneryV4(THREE,layer,zone,biome,{detail:useSceneryDetail,composition:useSceneryComposition,atlas:useSceneryAtlas,v7:useSceneryV7});
+      success=Boolean(lastSceneryV4);
+    }catch(error){
+      console.warn('[Cenário 2.5D V4] Voltando ao terreno anterior.',error);
+      for(const child of [...layer.children]){
+        child.traverse(obj=>{
+          obj.geometry?.dispose?.();
+          if(obj.material)for(const mat of [obj.material].flat()){
+            mat.map?.dispose?.();
+            mat.dispose?.();
+          }
+        });
+        layer.remove(child);
+      }
+      lastSceneryV4=null;
+    }
+    if(!success){
+      // Original biomes remain available when the new overlay is disabled.
     const colors=palette[biome]||palette.meadow;
     scene.background=new THREE.Color(biome==='dungeon'?'#333941':'#71918c');
     const ground=new THREE.Mesh(
@@ -277,14 +316,16 @@ export function createWorld25D({shell,canvas,width=960,height=576}) {
       } else addTree(layer,x,z,random,colors);
     }
     addMeadowDetails(layer,zone,biome,random);
+    }
+
     if(zone===0&&(biome==='meadow'||biome==='city'))shrine=addAuroraShrine(layer);
     activeZone=zone;
     activeBiome=biome;
   }
-  function render({zone=0,biome='pradaria',cameraX=0,cameraY=0,now=0}={}) {
+  function render({zone=0,biome='pradaria',cameraX=0,cameraY=0,now=0,sourceMap=null}={}) {
     if(disposed)return false;
     const selected=biomeNames[biome]||biome;
-    if(zone!==activeZone||selected!==activeBiome)rebuild(zone,selected);
+    if(zone!==activeZone||selected!==activeBiome||(useCanonical&&sourceMap?.canvas&&sourceMap.canvas!==activeMapSource))rebuild(zone,selected,sourceMap);
     const cx=cameraX+width/2,cz=cameraY+height/2;
     camera.position.set(cx,1350,cz);
     camera.lookAt(cx,0,cz);
@@ -306,6 +347,37 @@ export function createWorld25D({shell,canvas,width=960,height=576}) {
     return true;
   }
   function setNight(value){night=Boolean(value);}
+  function setSceneryCanonical(value){useCanonical=Boolean(value);activeZone=NaN;activeBiome='';}
+  function setSceneryV4(value){useSceneryV4=Boolean(value);activeZone=NaN;activeBiome='';}
+  function setSceneryDetail(value){useSceneryDetail=Boolean(value);activeZone=NaN;activeBiome='';}
+  function setSceneryComposition(value){useSceneryComposition=Boolean(value);activeZone=NaN;activeBiome='';}
+  function setSceneryAtlas(value){
+    useSceneryAtlas=Boolean(value);
+    activeZone=NaN;activeBiome='';
+    if(useSceneryAtlas&&!atlasLoaded()){
+      void preloadSceneryAtlas().then(ok=>{
+        if(ok&&useSceneryAtlas){activeZone=NaN;activeBiome='';}
+      }).catch(err=>console.warn('[Cenário 2.5D] Atlas não disponível; permanecendo no V5.',err));
+    }
+  }
+  function setSceneryV7(value){
+    useSceneryV7=Boolean(value);activeZone=NaN;activeBiome='';
+    if(useSceneryV7&&!v7TerrainReady()){
+      void preloadV7Terrain().then(ok=>{
+        if(ok&&useSceneryV7){activeZone=NaN;activeBiome='';}
+      }).catch(err=>console.warn('[Cenário 2.5D V7] Terreno PNG indisponível; utilizando V5.',err));
+    }
+    if(useSceneryV7&&!v72Ready()){
+      void preloadV72Assets().then(ok=>{
+        if(ok&&useSceneryV7){activeZone=NaN;activeBiome='';}
+      }).catch(err=>console.warn('[Cenário 2.5D V7.2] Arte complementar indisponível; usando fallback V5.',err));
+    }
+    if(useSceneryV7&&!isV7Ready()){
+      void preloadV7Assets().then(ok=>{
+        if(ok&&useSceneryV7){activeZone=NaN;activeBiome='';}
+      }).catch(err=>console.warn('[Cenário 2.5D V7] PNGs ainda pendentes; utilizando V5.',err));
+    }
+  }
   function dispose(){
     if(disposed)return;
     disposed=true;
@@ -325,5 +397,14 @@ export function createWorld25D({shell,canvas,width=960,height=576}) {
     canvas.style.background='';
   }
   window.addEventListener('pagehide',dispose,{once:true});
-  return {render,setNight,dispose,canvas:renderer.domElement};
+  return {render,setNight,setSceneryCanonical,setSceneryV4,setSceneryDetail,setSceneryComposition,setSceneryAtlas,setSceneryV7,dispose,canvas:renderer.domElement,
+    get atlasReady(){return atlasLoaded();},
+    get v7Ready(){return isV7Ready();},
+    get v7Status(){return v7Stats();},
+    get v72Ready(){return v72Ready();},
+    get v72Status(){return v72Status();},
+    get v7TerrainReady(){return v7TerrainReady();},
+    get v7TerrainStatus(){return v7TerrainStatus();},
+    get sceneryVersion(){return useSceneryV4?(useSceneryV7&&v7TerrainReady()?'scenery-v7-20-tiles-original-png':useSceneryV7&&isV7Ready()?'scenery-v7-approved-rgba-pngs':useSceneryAtlas&&atlasLoaded()?'scenery-real-png-atlas':useSceneryComposition?'scenery-v5-composed-topdown':useSceneryDetail?SCENERY_V4_VERSION:'scenery-v4-base'):'legacy';},
+    get sceneryStats(){return lastSceneryV4;}};
 }

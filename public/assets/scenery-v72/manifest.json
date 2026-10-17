@@ -1,0 +1,54 @@
+{
+  "version": "v72-pixel-art-1",
+  "approved": true,
+  "scope": "experimental-world-2.5d-only",
+  "source": "Original pixel-by-pixel artwork created specifically for Os Peregrinos",
+  "files": [
+    "poco_v72",
+    "lampiao_v72",
+    "fonte_v72",
+    "arbusto_v72"
+  ],
+  "sprites": [
+    {
+      "id": "poco_v72",
+      "kind": "well",
+      "width": 80,
+      "height": 124,
+      "git_blob_sha": "7b428c809eb667b4872be9b857c4de4e9d6b467f"
+    },
+    {
+      "id": "lampiao_v72",
+      "kind": "lamp",
+      "width": 57,
+      "height": 114,
+      "git_blob_sha": "725899c82fca5dc84406cd3a40601b383bf12a44"
+    },
+    {
+      "id": "fonte_v72",
+      "kind": "fountain",
+      "width": 104,
+      "height": 105,
+      "git_blob_sha": "f8b1d0e7ab123a344935372576fc5bbe49e2616e"
+    },
+    {
+      "id": "arbusto_v72",
+      "kind": "shrub",
+      "width": 85,
+      "height": 66,
+      "git_blob_sha": "6971297fbcbcd7fc23c993d55f65af8029112644"
+    }
+  ],
+  "qa": {
+    "indexed_png": true,
+    "nearest_filter": true,
+    "alpha": true,
+    "old_v7_crops_still_blocked": [
+      "lampiao_01",
+      "poco_01",
+      "ponte_madeira_01",
+      "casa_azul_02"
+    ],
+    "visual_browser_approval": "pending"
+  }
+}

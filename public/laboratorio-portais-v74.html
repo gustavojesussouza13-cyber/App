@@ -1,0 +1,32 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Os Peregrinos — Portais V7.4 Originais</title>
+<style>*{box-sizing:border-box}body{background:#14232a;color:#eee2c9;margin:0;font:15px system-ui}main{max-width:1200px;margin:auto;padding:24px}h1{font:700 29px Georgia;color:#f4d39d}.lead{color:#c6d1cc;line-height:1.65}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:15px}.cell{padding:14px;background:linear-gradient(#223c40,#263c33);border:1px solid #789186;border-radius:12px;text-align:center}.cell canvas{width:168px;height:210px;image-rendering:pixelated;max-width:100%}h3{margin:0 0 3px;font-size:15px;color:#f9dda8}p.note{font-size:12px;color:#c6cfbf}.links{display:flex;gap:12px;flex-wrap:wrap;margin:20px 0}a{color:#f4d49c}a.primary{display:inline-block;background:#28574f;border:1px solid #a3b99c;padding:11px 15px;border-radius:8px;text-decoration:none}</style></head><body><main><h1>Portais V7.4 — novo acabamento em pixel art</h1>
+<p class="lead">Arte realmente utilizada pelos portais interativos do MMORPG experimental. Seis tipos, com estrutura de pedra original, luzes e runas pixeladas. Mesmo local e destino configurados pelo servidor; nenhum portal decorativo ou falso.</p>
+<div class="links"><a class="primary" href="/mundo.html">Jogar versão experimental →</a><a href="/laboratorio-geografia-oficial-v72.html">Ver mundo V7.3 integral</a></div>
+<div class="grid" id="sprites"></div>
+<p class="note">Sprites renderizados em pixels inteiros, 112×140, sem imagens esticadas ou planos sobrepostos. Efeito arcano alterna discretamente entre seis quadros.</p>
+</main><script src="/portais-v74.js?v=portais-v74-original-20261017"></script><script>
+const variants=[
+ ['surface','Portal entre regiões'],['frontier','Portal da fronteira'],
+ ['dungeon','Entrada da masmorra'],['down','Escadaria descendente'],
+ ['up','Escadaria ascendente'],['gateway','Passagem continental']
+];
+const root=document.getElementById('sprites');
+const elements=variants.map(([kind,name])=>{
+ const card=document.createElement('article');card.className='cell';
+ const heading=document.createElement('h3');heading.textContent=name;
+ const desc=document.createElement('p');desc.className='note';desc.textContent=kind;
+ const canvas=document.createElement('canvas');canvas.width=168;canvas.height=210;
+ card.append(heading,desc,canvas);root.append(card);
+ return {kind,canvas,ctx:canvas.getContext('2d')};
+});
+function frame(now){
+ const p=window.OsPeregrinosPortalsV74;
+ for(const item of elements){
+  const {ctx,canvas,kind}=item;
+  ctx.clearRect(0,0,canvas.width,canvas.height);ctx.imageSmoothingEnabled=false;
+  p.draw(ctx,{x:84,y:194,...(kind==='gateway'?{gateway:true}:kind==='down'?{stair:'down'}:kind==='up'?{stair:'up'}:kind==='dungeon'?{dungeon:true}:kind==='frontier'?{frontier:true}:{})},{now});
+ }
+ requestAnimationFrame(frame);
+}requestAnimationFrame(frame);
+</script></body></html>

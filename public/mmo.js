@@ -34,6 +34,18 @@ async function enableWorld25d(){
   if(!world25d){
    const {createWorld25D}=await import('/world-25d.mjs');
    world25d=createWorld25D({shell:$('canvasShell'),canvas:cvs,width:W,height:H});
+   // In the isolated integration preview, 2.5D paints the ORIGINAL official
+   // terrain layout; V7.2 supplies only compatible cosmetic replacements.
+   const [{preloadV7Terrain},{preloadV7Assets},{preloadV72Assets}]=await Promise.all([
+    import('/world-scenery-v7-terrain.mjs'),import('/world-scenery-v7-asset-loader.mjs'),
+    import('/world-scenery-v72-asset-loader.mjs')
+   ]);
+   const [tilesReady,propsReady,extraReady]=await Promise.all([
+    preloadV7Terrain(),preloadV7Assets(),preloadV72Assets()
+   ]);
+   if(!tilesReady||!propsReady||!extraReady)throw Error('Assets V7.3 ainda não carregados; não ativar cenário híbrido.');
+   world25d.setSceneryCanonical(true);
+   world25d.setSceneryV7(true);
   }
   world25dActive=true;
  }catch(err){
@@ -151,6 +163,10 @@ try{
 const appearanceArt=window.PeregrinosAppearance16;
 const appearanceCreator=window.PeregrinosAppearanceEditor.create($('appearanceCreator'),{
  role:()=>document.querySelector('#registerForm:not([hidden])')?$('registerRole').value:$('role').value,
+ onRoleChange:value=>{
+  const input=document.querySelector('#registerForm:not([hidden])')?$('registerRole'):$('role');
+  if(input){input.value=value;input.dispatchEvent(new Event('change',{bubbles:true}));}
+ },
  onChange:value=>{session.formAppearance=value}
 });
 session.formAppearance=appearanceCreator.read();
@@ -1348,7 +1364,9 @@ function canvasDraw(now,dt){
    try{
     world25d.render({zone:session.zone,
      biome:session.region?.id===session.zone?session.region.biome:(session.zones[session.zone]?.biome||'pradaria'),
-     cameraX:session.cameraX,cameraY:session.cameraY,now});
+     cameraX:session.cameraX,cameraY:session.cameraY,now,
+     sourceMap:classicRenderer.mapSnapshot(session.zone,
+       session.region?.id===session.zone?session.region.biome:(session.zones[session.zone]?.biome||'pradaria'))});
    }catch(err){
     console.warn('[Mundo Aberto 2.5D] Falha na renderização; retomando modo 2D.',err);
     world25dActive=false;updateWorld25dMode();
