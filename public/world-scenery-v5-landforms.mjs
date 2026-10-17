@@ -1,5 +1,5 @@
 'use strict';
-import {paintV7BaseTiles,paintV7Road,paintV7River,paintV7Coast} from './world-scenery-v7-terrain.mjs';
+import {paintV7BaseTiles,paintV7BaseTransitions,paintV7Road,paintV7River,paintV7Coast} from './world-scenery-v7-terrain.mjs';
 /**
  * Os Peregrinos · cenário V5: composição de mapas 2.5D em pixel art.
  * Um único mapa-base 768×512 (2 unidades por pixel) é pintado por região.
@@ -220,7 +220,7 @@ function paintSwamp(g,zone){
   pix(g,'#659e87',x+1,y,12,2);
  }
 }
-export function drawDesignedTerrainCanvas(zone,biome,{v7Atlas=null}={}){
+export function drawDesignedTerrainCanvas(zone,biome,{v7Atlas=null,edgeFinish=true}={}){
  if(!PAL[biome])throw Error('Bioma inválido: '+biome);
  const canvas=document.createElement('canvas');canvas.width=MAP_W;canvas.height=MAP_H;
  const g=canvas.getContext('2d',{alpha:false});
@@ -228,6 +228,7 @@ export function drawDesignedTerrainCanvas(zone,biome,{v7Atlas=null}={}){
  const r=randGen(9113+Math.imul(zone+1,7229)+Object.keys(PAL).indexOf(biome)*997),c=PAL[biome];
  if(v7Atlas){
   paintV7BaseTiles(g,v7Atlas,zone,biome,MAP_W,MAP_H);
+  if(edgeFinish)paintV7BaseTransitions(g,v7Atlas,zone,biome,MAP_W,MAP_H);
  }else{
   for(let y=0;y<MAP_H;y+=TILE)for(let x=0;x<MAP_W;x+=TILE)
    grassTile(g,x,y,r,c,biome);
