@@ -2,6 +2,7 @@
 import {finishSceneryGround,finishSceneryRoad,finishScenerySprite,EXTRA_KINDS,EXTRA_SIZES,ART_VERSION} from './world-scenery-v4-art.mjs';
 import {createDesignedTerrainTexture,reservedSceneryLandmarks,drawDesignedHouseCanvas,MAP_ART_VERSION} from './world-scenery-v5-landforms.mjs';
 import {createAtlasGroundTexture,createAtlasPropTexture,atlasLoaded,ASSET_BACKED_VERSION} from './world-scenery-v6-asset-adapter.mjs';
+import {createV7PropTexture,isV7Ready,SCENERY_V7_VERSION} from './world-scenery-v7-asset-loader.mjs';
 /**
  * OS PEREGRINOS · CENÁRIO V4 2.5D / PRÉVIA EXPERIMENTAL
  * Mundo aberto SOMENTE: solo, estradas, água, construções e decoração estática.
@@ -461,7 +462,7 @@ function roadGeometryV4(THREE,zone,width=40){
  g.setAttribute('uv',new THREE.Float32BufferAttribute(uvs,2));
  g.setIndex(ix);g.computeVertexNormals();return g;
 }
-function placeSpriteInstances(THREE,group,plan,biome,detail=true,composition=false,atlas=false){
+function placeSpriteInstances(THREE,group,plan,biome,detail=true,composition=false,atlas=false,v7=false){
  const buckets=new Map();
  for(const item of plan){
   const key=item.kind+':'+item.variant;
@@ -471,7 +472,8 @@ function placeSpriteInstances(THREE,group,plan,biome,detail=true,composition=fal
  const dummy=new THREE.Object3D();
  for(const [key,arr] of buckets){
   const [kind,variantString]=key.split(':'),variant=+variantString;
-  const texture=(atlas&&kind!=='house'&&createAtlasPropTexture(THREE,kind,variant))
+  const texture=(v7&&createV7PropTexture(THREE,kind,variant))
+    ||(atlas&&kind!=='house'&&createAtlasPropTexture(THREE,kind,variant))
     ||(composition&&kind==='house'
        ?canvasTexture(THREE,drawDesignedHouseCanvas(biome,variant))
        :spriteTexture(THREE,kind,biome,variant,detail));
@@ -519,9 +521,10 @@ function addWaterV4(THREE,group,zone,biome){
   }
  }
 }
-export function buildSceneryV4(THREE,group,zone,biome,{detail=true,composition=false,atlas=false}={}){
+export function buildSceneryV4(THREE,group,zone,biome,{detail=true,composition=false,atlas=false,v7=false}={}){
  if(!THREE||!group||!BIOMES.includes(biome))return false;
- const useAtlas=Boolean(atlas&&composition&&atlasLoaded());
+ const useV7=Boolean(v7&&composition&&isV7Ready());
+ const useAtlas=Boolean(atlas&&!useV7&&composition&&atlasLoaded());
  const groundMap=(useAtlas&&createAtlasGroundTexture(THREE,zone,biome))||(composition?createDesignedTerrainTexture(THREE,zone,biome):groundTextureV4(THREE,zone,biome,detail));
  const ground=new THREE.Mesh(new THREE.PlaneGeometry(1536,1024),new THREE.MeshBasicMaterial({map:groundMap}));
  ground.rotation.x=-Math.PI/2;ground.position.set(768,0,512);ground.name='scenery-v4-ground';group.add(ground);
@@ -532,6 +535,6 @@ export function buildSceneryV4(THREE,group,zone,biome,{detail=true,composition=f
   addWaterV4(THREE,group,zone,biome);
  }
  const objects=composition?planSceneryV5(zone,biome):planSceneryV4(zone,biome,{detail});
- const batches=placeSpriteInstances(THREE,group,objects,biome,detail,composition,useAtlas);
- return Object.freeze({zone,biome,staticProps:objects.length,drawBatches:batches,ground:composition?'composed-authored-pixelmap':detail?'pixel-cluster-v42':'tile-textured',path:composition?'connected-map-path':detail?'authored-texture-v42':'authored-texture',art:useAtlas?ASSET_BACKED_VERSION:composition?MAP_ART_VERSION:detail?ART_VERSION:'scenery-v4-base',artKinds:detail?EXTRA_KINDS.length:0,water:['river','coast','swamp'].includes(biome)});
+ const batches=placeSpriteInstances(THREE,group,objects,biome,detail,composition,useAtlas,useV7);
+ return Object.freeze({zone,biome,staticProps:objects.length,drawBatches:batches,ground:composition?'composed-authored-pixelmap':detail?'pixel-cluster-v42':'tile-textured',path:composition?'connected-map-path':detail?'authored-texture-v42':'authored-texture',art:useV7?SCENERY_V7_VERSION:useAtlas?ASSET_BACKED_VERSION:composition?MAP_ART_VERSION:detail?ART_VERSION:'scenery-v4-base',artKinds:detail?EXTRA_KINDS.length:0,water:['river','coast','swamp'].includes(biome)});
 }
