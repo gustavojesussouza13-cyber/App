@@ -75,39 +75,91 @@ const SIZES=Object.freeze({
  cactus:[67,94],sign:[47,73],altar:[104,92],bridge:[137,105],
  ...EXTRA_SIZES
 });
+/**
+ * Full visible plane for a scenery sprite, in the same map-coordinate space as
+ * instance matrices. Foot-point is (x,z); image is above it by (h-9) px.
+ * Bound checks cover the WHOLE painted sprite rather than just its anchor.
+ */
+export function sceneryVisualBounds(item,pad=0){
+ const gap=Math.max(0,Number(pad)||0),w=Number(item.w),h=Number(item.h);
+ return {left:item.x-w/2-gap,right:item.x+w/2+gap,
+         top:item.z-h+9-gap,bottom:item.z+9+gap};
+}
+export function sceneryOverlaps(a,b,pad=5){
+ const A=sceneryVisualBounds(a,pad),B=sceneryVisualBounds(b,pad);
+ return A.left<B.right&&A.right>B.left&&A.top<B.bottom&&A.bottom>B.top;
+}
+function visualExclusion(item,zone,biome,width,height){
+ const b=sceneryVisualBounds(item,8);
+ // Fully inside canvas, including the canopy/roof, not only the trunk/feet.
+ if(b.left<8||b.right>width-8||b.top<8||b.bottom>height-8)return true;
+ // Every row of road is usable; tall buildings placed BELOW the road are not
+ // allowed to spill their roof into it. Sample across the sprite width.
+ if(item.kind!=='bridge')for(let j=0;j<5;j++){
+  const x=b.left+(b.right-b.left)*j/4,y=roadY(x,zone);
+  if(b.top<y+52&&b.bottom>y-52)return true;
+ }
+ // Zone-zero original Aurora landmark must remain visible in its entirety.
+ if(zone===0&&b.left<853&&b.right>680&&b.top<416&&b.bottom>258)return true;
+ // Water is painted on the ground. Do not let rocks, canopies, or roofs stand
+ // in the river or on the coast. Boats and the actual river bridge are intended.
+ if(biome==='river'&&!['boat','bridge'].includes(item.kind))for(let j=0;j<5;j++){
+  const z=b.top+(b.bottom-b.top)*j/4,x=420+92*Math.sin(z/150+zone);
+  if(b.left<x+70&&b.right>x-70)return true;
+ }
+ if(biome==='coast'&&item.kind!=='boat'&&b.bottom>696)return true;
+ return false;
+}
+export function sceneryOverlapPairs(items,pad=5){
+ let count=0;
+ for(let i=0;i<items.length;i++)
+  for(let j=0;j<i;j++)if(sceneryOverlaps(items[i],items[j],pad))count++;
+ return count;
+}
 export function planSceneryV4(zone,biome,{width=1536,height=1024,detail=true}={}){
  if(!BIOMES.includes(biome))throw Error('Bioma desconhecido: '+biome);
  const rnd=seeded(zone,BIOMES.indexOf(biome)+19),out=[];
  const target=biome==='forest'?180:biome==='city'?105:biome==='desert'?85:biome==='dungeon'?95:biome==='ruins'?140:150;
- for(let n=0;n<target*9&&out.length<target;n++){
-  const x=Math.round(30+rnd()*(width-60)),z=Math.round(30+rnd()*(height-60));
-  if(Math.abs(z-roadY(x,zone))<77)continue;
-  if(biome==='coast'&&z>680)continue;
-  if(biome==='river'&&Math.abs(x-(420+92*Math.sin(z/150+zone)))<99)continue;
-  if(zone===0&&x>688&&x<845&&z>265&&z<408)continue;
-  const kind=select(rnd,(detail?DISTRIBUTIONS:DISTRIBUTIONS_V4)[biome]);
-  out.push(Object.freeze({kind,x,z,variant:Math.floor(rnd()*4),...({w:SIZES[kind][0],h:SIZES[kind][1]})}));
- }
- if(biome==='city'){
-  // Pequenos detalhes estáticos da praça, mas sem tocar na construção 3D da guilda.
-  for(const [x,offset,kind] of [[600,155,'lamp'],[910,155,'lamp'],[690,-145,'flower'],[860,-145,'flower']]){
-   const z=Math.round(roadY(x,zone)+offset);
-   if(z<35||z>height-35)continue;
-   if(zone===0&&x>688&&x<845&&z>265&&z<408)continue;
-   out.push(Object.freeze({kind,x,z,w:SIZES[kind][0],h:SIZES[kind][1],variant:1}));
-  }
- }
+ const tryAdd=item=>{
+  if(visualExclusion(item,zone,biome,width,height))return false;
+  if(out.some(other=>sceneryOverlaps(item,other,5)))return false;
+  out.push(Object.freeze(item));
+  return true;
+ };
+ // Fixed landmarks FIRST so random vegetation cannot hide or cover them.
  if(biome==='river'){
   let best=null,err=Infinity;
   for(let z=300;z<660;z+=4){
    const x=420+92*Math.sin(z/150+zone),delta=Math.abs(z-roadY(x,zone));
    if(delta<err){err=delta;best={kind:'bridge',x:Math.round(x),z,w:137,h:105,variant:0};}
   }
-  if(best)out.push(Object.freeze(best));
+  if(best)tryAdd(best);
+ }
+ if(biome==='city'){
+  for(const [x,offset,kind] of [[600,155,'lamp'],[910,155,'lamp'],[690,-145,'flower'],[860,-145,'flower']]){
+   const z=Math.round(roadY(x,zone)+offset);
+   tryAdd({kind,x,z,w:SIZES[kind][0],h:SIZES[kind][1],variant:1});
+  }
+ }
+ let boats=0;
+ for(let n=0;n<target*22&&out.length<target;n++){
+  let x=Math.round(30+rnd()*(width-60)),z=Math.round(30+rnd()*(height-60));
+  const kind=select(rnd,(detail?DISTRIBUTIONS:DISTRIBUTIONS_V4)[biome]);
+  if(kind==='bridge')continue; // A single real landmark bridge was reserved above.
+  if(kind==='boat'){
+   if(boats>=3)continue;
+   // Place vessels on the actual illustrated water, not on dry terrain.
+   if(biome==='river')x=Math.round(420+92*Math.sin(z/150+zone));
+   else if(biome==='coast')z=Math.round(780+rnd()*190);
+  }
+  const [w,h]=SIZES[kind];
+  const obj={kind,x,z,w,h,variant:Math.floor(rnd()*4)};
+  if(Math.abs(z-roadY(x,zone))<77&&kind!=='bridge')continue;
+  if(biome==='river'&&!['boat','bridge'].includes(kind)&&Math.abs(x-(420+92*Math.sin(z/150+zone)))<99)continue;
+  if(tryAdd(obj)&&kind==='boat')boats++;
  }
  return Object.freeze(out);
 }
-
 function canvasTexture(THREE,canvas,{repeatX=1,repeatY=1}={}){
  const t=new THREE.CanvasTexture(canvas);
  t.colorSpace=THREE.SRGBColorSpace;
