@@ -127,6 +127,17 @@ export async function preloadV7Assets({fetcher=typeof fetch==='function'?fetch:n
  })();
  return promise;
 }
+/**
+ * Fit an actual PNG to the already-reserved static scenery footprint.
+ * Preserves original pixel aspect ratio (no stretched buildings or trees).
+ * Never expands a sprite beyond its collision-safe visual rectangle.
+ */
+export function v7FitSize({nativeWidth,nativeHeight,maxWidth,maxHeight}){
+ const w=Number(nativeWidth),h=Number(nativeHeight),mw=Number(maxWidth),mh=Number(maxHeight);
+ if(![w,h,mw,mh].every(Number.isFinite)||Math.min(w,h,mw,mh)<=0)return null;
+ const scale=Math.min(mw/w,mh/h);
+ return Object.freeze({width:w*scale,height:h*scale});
+}
 export function createV7PropTexture(THREE,kind,variant){
  const image=v7Image(kind,variant);if(!image)return null;
  const texture=new THREE.Texture(image);
