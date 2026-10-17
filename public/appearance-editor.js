@@ -12,7 +12,7 @@
   const current=art.normalize(initial);
   const wrap=document.createElement('div');wrap.className='atelier-custom';
   const left=document.createElement('div');left.className='atelier-custom-preview';
-  const title=document.createElement('strong');title.textContent='PRÉVIA DA CLASSE V7.5';
+  const title=document.createElement('strong');title.textContent='PERSONALIZAÇÃO DA CLASSE V7.6';
   const chosenRole=document.createElement('label');chosenRole.className='atelier-class-title';
   chosenRole.textContent='Classe';
   const picker=document.createElement('select');picker.className='atelier-class-select';
@@ -75,11 +75,10 @@
    const drawn=preview.draw(ctx,{role:kind,dir:Number(direction.value||2),action:animation.value||'idle',frame:poseFrame,appearance:read()});
    const id=++renderNonce;
    if(!drawn){
-    note.textContent='Carregando sprite atual de '+state.name+'…';
+    note.textContent='Carregando renderizador personalizável de '+state.name+'…';
     void preview.ensureLoaded(kind).then(ok=>{if(ok&&id===renderNonce)render();else if(id===renderNonce)note.textContent='PNG indisponível: verifique o arquivo aprovado.'});
    }else{
-    note.textContent=state.name+' · sprite PNG aprovado, sem interpolação. '+
-      (state.custom?'A aparência personalizada é salva, mas as variações ainda não estão pintadas neste PNG.':'Traje padrão.');
+    note.textContent=state.name+' · cores, cabelo, olhos, capa e acessórios aplicados ao PNG · visual atualizado em tempo real.';
    }
   }
   render();

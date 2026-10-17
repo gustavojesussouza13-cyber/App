@@ -446,7 +446,12 @@ function create({ctx,W,H}){
   // O Peregrino usa PRIMEIRO os 16 quadros reais processados do Runway.
   // Para trajes personalizados e ações sem quadros (ataque/dano/morte),
   // o herói autoral de 64x80 permanece disponível como fallback.
-  const runwayHero=Boolean(useAurora25d&&p.role==='peregrino'&&
+  const customizedHero=Boolean(useAurora25d&&!state.hurt&&!attacking&&!state.dead&&
+    window.OsPeregrinosAppearanceSpriteV76?.drawWorld(g,{
+      role:p.role,x:p.x,y:p.y,dir,appearance:p.appearance,
+      action:moved?'walk':'idle',frame:Math.floor(now/145)
+    }));
+  const runwayHero=!customizedHero&&Boolean(useAurora25d&&p.role==='peregrino'&&
    !state.hurt&&!attacking&&!state.dead&&
    window.OsPeregrinosRunway25D?.draw(g,{
     x:p.x,y:p.y,dir,appearance:p.appearance,now,moving:moved,
@@ -454,13 +459,13 @@ function create({ctx,W,H}){
    }));
   // As três artes aprovadas só substituem a aparência padrão no 2.5D.
   // Sem o arquivo PNG ou durante ataque/dano, usa os heróis atuais.
-  const approvedHero=Boolean(useAurora25d&&p.role!=='peregrino'&&
+  const approvedHero=!customizedHero&&Boolean(useAurora25d&&p.role!=='peregrino'&&
     !state.hurt&&!attacking&&!state.dead&&
     window.OsPeregrinosApprovedClasses25D?.draw(g,{
       role:p.role,x:p.x,y:p.y,dir,appearance:p.appearance,now,
       action:moved?'walk':'idle',glow:local,scale:1.45
     }));
-  if(runwayHero||approvedHero||(useAurora25d&&
+  if(customizedHero||runwayHero||approvedHero||(useAurora25d&&
    window.OsPeregrinosHeroesAurora25D?.draw(g,{
     role:p.role,x:p.x,y:p.y,dir,appearance:p.appearance,
     action:state.hurt?'hurt':attacking?'attack':moved?'walk':'idle',

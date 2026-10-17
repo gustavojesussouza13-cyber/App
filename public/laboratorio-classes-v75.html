@@ -10,19 +10,20 @@ border:1px solid #b9aa7e;width:min(100%,192px);height:240px;image-rendering:pixe
 .cell h2{color:#f2d297;font:700 20px Georgia}.cell small{color:#9bbba5}
 a{color:#f7db96}.top{margin:22px 0}.tag{background:#2e5940;border:1px solid #86ac75;padding:5px 8px;border-radius:5px}
 </style></head><body><main>
-<h1>Os Peregrinos — classes atuais V7.5</h1>
+<h1>Os Peregrinos — personalização V7.6</h1>
 <p>Sprites <strong>PNG reais publicados</strong>, incluindo o Peregrino 128×160 e os atlases 64×80 do Guardião, Arqueiro e Curandeiro. Os mesmos arquivos agora alimentam o preview de personalização experimental. Sem bonecos Hero Studio antigos na prévia.</p>
 <div class="controls"><label>Direção <select id="dir"><option value="2">Frente</option><option value="0">Costas</option><option value="1">Lado</option><option value="3">Outro lado</option></select></label>
 <label>Animação <select id="act"><option value="idle">Parado</option><option value="walk">Andando</option></select></label>
 <button id="next">Próximo quadro</button></div>
+<div class="controls" id="options"></div>
 <div class="grid" id="gallery"></div>
 <p class="top"><a href="/mundo.html">Abrir MMORPG experimental e testar a personalização</a></p>
-<p>Os parâmetros de rosto, cabelo e roupa continuam sendo aceitos pelo jogo; como os atlases PNG atuais representam o traje padrão, o editor avisa quando uma variação de aparência ainda não foi redesenhada no PNG.</p>
+<p>Altere os sete controles acima e confira as modificações aplicadas aos PNGs das quatro classes. A prévia e o jogo experimental utilizam o mesmo compositor de pixels, sem suavização.</p>
 </main>
 <script src="/appearance16.js?v=atelier-custom-v1"></script>
 <script src="/approved-classes25d.js?v=approved-classes-v2"></script>
 <script src="/peregrino-runway25d.js?v=runway-original-v1"></script>
-<script src="/appearance-class-preview-v75.js?v=classes-4-approved-v75"></script>
+<script src="/appearance-sprite-v76.js?v=personalizacao-png-real-v76"></script><script src="/appearance-class-preview-v75.js?v=classes-4-personalizaveis-v76"></script>
 <script>
 const preview=window.PeregrinosAppearanceClassPreviewV75;
 const roles=Object.entries(preview.ROLES),root=document.getElementById('gallery');
@@ -34,13 +35,26 @@ for(const [id,name] of roles){
  const note=document.createElement('small');note.textContent='Carregando PNG…';
  card.append(h,canvas,note);root.append(card);canvasByRole[id]={canvas,note};
 }
+const app=window.PeregrinosAppearance16;
+const changed={...app.DEFAULT};
+const names={skin:'Tom de pele',hairStyle:'Corte de cabelo',hairColor:'Cor do cabelo',eyes:'Cor dos olhos',outfit:'Traje',cape:'Capa',accessory:'Acessório'};
+for(const [key,opts] of Object.entries(app.OPTIONS)){
+ const label=document.createElement('label');label.textContent=names[key];
+ const select=document.createElement('select');select.dataset.key=key;
+ for(const [value,name]of Object.entries(opts)){
+  const option=document.createElement('option');option.value=value;option.textContent=name;select.append(option);
+ }
+ select.value=changed[key];
+ select.addEventListener('change',()=>{changed[key]=select.value;render();});
+ label.append(select);document.getElementById('options').append(label);
+}
 let frame=0;
 async function render(){
  const dir=Number(document.getElementById('dir').value),action=document.getElementById('act').value;
  for(const [role,{canvas,note}] of Object.entries(canvasByRole)){
   const ctx=canvas.getContext('2d');ctx.imageSmoothingEnabled=false;
   ctx.clearRect(0,0,128,160);
-  const ready=preview.draw(ctx,{role,dir,action,frame});
+  const ready=preview.draw(ctx,{role,dir,action,frame,appearance:changed});
   note.textContent=ready?'Arte aprovada · '+preview.status(role).source.split('/').pop():'PNG não carregado';
  }
 }

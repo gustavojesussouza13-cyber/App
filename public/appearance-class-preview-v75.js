@@ -33,15 +33,9 @@
   if(!loaded(role))return false;
   const walking=action==='walk'&&Math.abs(Math.floor(frame))%2===1;
   const mode=walking?'walk':'idle',now=walking?175:0;
-  if(role==='peregrino'){
-   return !!root.OsPeregrinosRunway25D.draw(ctx,{
-    x:64,y:154,dir,now,action:mode,moving:walking,frame:walking?1:0,
-    scale:.92,appearance:null,glow:false
-   });
-  }
-  return !!root.OsPeregrinosApprovedClasses25D.draw(ctx,{
-   role,x:64,y:151,dir,action:mode,now,scale:1.58,
-   appearance:null,glow:false
+  return !!root.OsPeregrinosAppearanceSpriteV76?.draw(ctx,{
+   role,x:64,y:160,dir,action:mode,frame:walking?1:0,
+   appearance,scale:1,preview:true
   });
  }
  function status(role,appearance){
@@ -54,5 +48,5 @@
    ready:loaded(role),custom,source:SOURCES[role]||SOURCES.peregrino
   };
  }
- return Object.freeze({VERSION:'appearance-classes-v75-original-20261017',ROLES,SOURCES,loaded,ensureLoaded,draw,status});
+ return Object.freeze({VERSION:'appearance-classes-v76-customizable-20261017',ROLES,SOURCES,loaded,ensureLoaded,draw,status});
 });
