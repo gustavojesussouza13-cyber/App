@@ -80,7 +80,7 @@ test('V5 renderer composes pixelmap without duplicating road plane or rendering 
  assert.ok(renderer.includes('setSceneryComposition(value)'));
  assert.ok(renderer.includes('composition:useSceneryComposition'));
  for(const mode of ['value="old"','value="v4"','value="v42"','value="v5"'])assert.ok(lab.includes(mode));
- assert.ok(lab.includes("view.setSceneryComposition(q.value==='v5'||q.value==='atlas')"));
+ assert.ok(lab.includes("view.setSceneryComposition(['v5','atlas','v7'].includes(q.value))"));
  assert.ok(lab.includes('mode();'),'V5 is initially activated in real WebGL preview');
 });
 
