@@ -151,3 +151,6 @@ require('./scenery-25d-v72-canonical.test.js');
 
 // Updated real portal actor sprites for every live transition type.
 require('./scenery-25d-v74-portals.test.js');
+
+// V7.5 class preview and signed-in experimental-only dungeon test passes.
+require('./appearance-v75-and-dungeon-keys.test.js');
