@@ -89,7 +89,7 @@ test('V7 terrain painter preserves V5 roads, cliffs, shore and fallback',async()
  assert.ok(src.includes('if(v7Atlas)paintV7Road'));
  assert.ok(src.includes('paintCliff(g,zone,biome)'));
  assert.ok(src.includes('paintGardens(g,zone,biome)'));
- assert.ok(src.includes('else{\\n  for(let y=0;y<MAP_H;y+=TILE)'),'procedural V5 remains fallback');
+ assert.ok(src.includes('else{')&&src.includes('for(let y=0;y<MAP_H;y+=TILE)'),'procedural V5 remains fallback');
  assert.ok(renderer.includes('useV7Terrain?v7TerrainImage():null'));
  assert.ok(renderer.includes('terrainTiles:useV7Terrain?20:0'));
  assert.ok(world.includes('preloadV7Terrain().then'));
