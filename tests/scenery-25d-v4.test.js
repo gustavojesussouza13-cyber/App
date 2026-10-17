@@ -90,7 +90,7 @@ test('V4.2 artisan art adds at least ten static environment object families with
  const union=new Set();
  for(let zone=0;zone<32;zone++)for(const biome of v.BIOMES)
   for(const o of v.planSceneryV4(zone,biome))union.add(o.kind);
- for(const k of art.EXTRA_KIN)assert.ok(union.has(k),'new prop not distributed: '+k);
+ for(const k of art.EXTRA_KINDS)assert.ok(union.has(k),'new prop not distributed: '+k);
  const src=fs.readFileSync(path.join(publicDir,'world-scenery-v4.mjs'),'utf8');
  assert.ok(src.includes('finishSceneryGround(g,biome,zone)'));
  assert.ok(src.includes('finishSceneryRoad(g,biome,zone)'));
@@ -101,7 +101,7 @@ test('V4.2 artisan art adds at least ten static environment object families with
  for(const biome of v.BIOMES){
   art.finishSceneryGround(g,biome,4);
   art.finishSceneryRoad(g,biome,4);
-  for(const kind of art.EXTRA_KIN)art.finishScenerySprite(g,{kind,biome,variant:1});
+  for(const kind of art.EXTRA_KINDS)art.finishScenerySprite(g,{kind,biome,variant:1});
  }
  assert.ok(canvasCalls.n>1000,'new art needs distinct pixel clusters, not empty images');
  const preview=fs.readFileSync(path.join(publicDir,'laboratorio-cenario-25d-v4.html'),'utf8');
