@@ -33,7 +33,7 @@ label{display:grid;gap:4px;color:#d5c28c;font-size:12px;font-weight:600}select,b
 button{cursor:pointer}button:hover{background:#365951}button:focus-visible{outline:2px solid #e6dcad}
 #status{font-size:12px;color:#a4e0c4;min-height:2em}
 .sentinel-controls{display:grid;gap:9px;border-top:1px solid #817855;padding-top:12px}.sentinel-controls h3{font:700 17px Georgia,serif;color:#f1dca3;margin:0}.sentinel-controls .checkline{display:flex;flex-direction:row;align-items:center;gap:8px}.sentinel-controls .checkline input{accent-color:#e7ca83}.sentinel-controls #sentinelStatus{color:#a4e0c4;font-size:12px;min-height:2.5em}
-.basilisk-controls{display:grid;gap:9px;border-top:1px solid #817855;padding-top:12px}.basilisk-controls h3{font:700 17px Georgia,serif;color:#f1dca3;margin:0}.basilisk-controls .checkline{display:flex;flex-direction:row;align-items:center;gap:8px}.basilisk-controls .checkline input{accent-color:#e7ca83}.basilisk-controls #basiliskStatus{color:#a4e0c4;font-size:12px;min-height:2.5em}.angel-controls{display:grid;gap:9px;border-top:1px solid #817855;padding-top:12px}.angel-controls h3{font:700 17px Georgia,serif;color:#f1dca3;margin:0}.angel-controls #angelStatus{color:#a4e0c4;font-size:12px;min-height:2.5em}.raven-controls{display:grid;gap:9px;border-top:1px solid #817855;padding-top:12px}.raven-controls h3{font:700 17px Georgia,serif;color:#f1dca3;margin:0}.raven-controls #ravenStatus{color:#a4e0c4;font-size:12px;min-height:2.5em}.thorn-controls{display:grid;gap:9px;border-top:1px solid #817855;padding-top:12px}.thorn-controls h3{font:700 17px Georgia,serif;color:#f1dca3;margin:0}.thorn-controls #thornStatus{color:#a4e0c4;font-size:12px;min-height:2.5em}footer{margin-top:12px;font-size:13px;color:#bbcdbd}
+.basilisk-controls{display:grid;gap:9px;border-top:1px solid #817855;padding-top:12px}.basilisk-controls h3{font:700 17px Georgia,serif;color:#f1dca3;margin:0}.basilisk-controls .checkline{display:flex;flex-direction:row;align-items:center;gap:8px}.basilisk-controls .checkline input{accent-color:#e7ca83}.basilisk-controls #basiliskStatus{color:#a4e0c4;font-size:12px;min-height:2.5em}.angel-controls{display:grid;gap:9px;border-top:1px solid #817855;padding-top:12px}.angel-controls h3{font:700 17px Georgia,serif;color:#f1dca3;margin:0}.angel-controls #angelStatus{color:#a4e0c4;font-size:12px;min-height:2.5em}.raven-controls{display:grid;gap:9px;border-top:1px solid #817855;padding-top:12px}.raven-controls h3{font:700 17px Georgia,serif;color:#f1dca3;margin:0}.raven-controls #ravenStatus{color:#a4e0c4;font-size:12px;min-height:2.5em}.thorn-controls{display:grid;gap:9px;border-top:1px solid #817855;padding-top:12px}.thorn-controls h3{font:700 17px Georgia,serif;color:#f1dca3;margin:0}.thorn-controls #thornStatus{color:#a4e0c4;font-size:12px;min-height:2.5em}.water-controls{display:grid;gap:9px;border-top:1px solid #817855;padding-top:12px}.water-controls h3{font:700 17px Georgia,serif;color:#b8eaff;margin:0}.water-controls #waterStatus{color:#a4e0c4;font-size:12px;min-height:2.5em}footer{margin-top:12px;font-size:13px;color:#bbcdbd}
 @media(max-width:860px){.panels{grid-template-columns:1fr}.stage{aspect-ratio:5/3}.chat{display:none}.hero{transform:scale(.75);transform-origin:top left}.minimap{transform:scale(.75);transform-origin:top right}.skills{transform:translateX(-50%) scale(.7);transform-origin:bottom center}}
 </style>
 </head>
@@ -92,6 +92,15 @@ button{cursor:pointer}button:hover{background:#365951}button:focus-visible{outli
   <label class="checkline"><input type="checkbox" id="thornFocus"> Focar Espinho Vivo ao lado do Peregrino (ocultar outros atores nesta prévia)</label>
   <p id="thornStatus" role="status" aria-live="polite">Carregando os cinco arquivos do Espinho Vivo…</p>
  </section>
+ <section class="water-controls" aria-labelledby="waterTitle">
+  <h3 id="waterTitle">Elemental da Água V4 · revisão visual 2.5D</h3>
+  <p>Quatro direções aquáticas, caminhada, ferimento, dissipação e ondas separadas.</p>
+  <label>Ação<select id="waterAction"><option value="idle">Repouso</option><option value="walk">Caminhada</option><option value="prepare">Preparação</option><option value="attack">Ataque de água</option><option value="hurt">Dano</option><option value="death">Morte</option></select></label>
+  <label>Direção<select id="waterDirection"><option value="0">Costas</option><option value="1" selected>Direita</option><option value="2">Frente</option><option value="3">Esquerda</option></select></label>
+  <label class="checkline"><input type="checkbox" id="waterBoss"> Escala de chefe</label>
+  <label class="checkline"><input type="checkbox" id="waterFocus"> Focar Elemental e Peregrino (ocultar outros personagens na prévia)</label>
+  <p id="waterStatus" role="status" aria-live="polite">Carregando os cinco PNGs aquáticos…</p>
+ </section>
  <button id="night" type="button">☾ Anoitecer</button>
  <button id="classic" type="button">Ver apenas Canvas 2D</button>
  <div id="status" role="status">Preparando renderizador WebGL…</div>
@@ -118,6 +127,7 @@ button{cursor:pointer}button:hover{background:#365951}button:focus-visible{outli
 <script src="/anjo-caido-v4.js?v=anjo-caido-v4-review-1"></script>
 <script src="/corvo-ocaso-v4.js?v=corvo-v4-rev2"></script>
 <script src="/espinho-vivo-v4.js?v=espinho-v4-review1"></script>
+<script src="/elemental-agua-v4.js?v=elemental-agua-v4-review1"></script>
 <script type="module">
 const $=id=>document.getElementById(id),canvas=$('game'),ctx=canvas.getContext('2d',{alpha:true}),mini=$('mini'),mctx=mini.getContext('2d');
 const W=canvas.width,H=canvas.height,WIDTH=1536,HEIGHT=1024;
@@ -147,6 +157,36 @@ const basiliskActor={x:990,y:700,type:'basilisco',species:29};
 const angelActor={x:535,y:655,type:'anjo-caido',species:30};
 const ravenActor={x:1130,y:605,type:'corvo-ocaso',species:7};
 const thornActor={x:930,y:690,type:'espinho-vivo',species:9};
+const waterActor={x:965,y:595,type:'elemental-agua',species:23};
+const waterRenderer=window.OsPeregrinosWaterElementalV4?.create({windowRef:window});
+let waterActionAt=performance.now();
+$('waterAction').addEventListener('change',()=>{waterActionAt=performance.now()});
+$('waterFocus').addEventListener('change',()=>{if($('waterFocus').checked)$('thornFocus').checked=false});
+$('thornFocus').addEventListener('change',()=>{if($('thornFocus').checked)$('waterFocus').checked=false});
+function drawWater(camX,camY,now){
+ const sx=Math.round(waterActor.x-camX),sy=Math.round(waterActor.y-camY);
+ const dir=Number($('waterDirection').value),action=$('waterAction').value,boss=$('waterBoss').checked;
+ const elapsed=Math.max(0,now-waterActionAt),state={type:'elemental-agua'};
+ if(action==='walk')state.moving=true;
+ if(action==='prepare')state.preparing=true;
+ if(action==='attack'){state.attacking=true;state.elapsed=elapsed%800}
+ if(action==='hurt'){state.hurt=true;state.elapsed=elapsed%330}
+ if(action==='death'){state.dead=true;state.elapsed=Math.min(580,elapsed)}
+ const x=sx+(action==='walk'?Math.round(Math.sin(now/440)*10):0);
+ ctx.save();ctx.fillStyle='#124d6977';ctx.beginPath();
+ ctx.ellipse(x,sy+3,boss?58:43,10,0,0,Math.PI*2);ctx.fill();
+ const drawn=Boolean(waterRenderer?.drawMonster(ctx,{type:'elemental-agua',species:23,x,y:sy,dir,boss},now,state));
+ if(drawn){
+  const dim=waterRenderer.measure(boss);ctx.textAlign='center';ctx.font='bold 13px system-ui,Arial';ctx.lineWidth=3;
+  ctx.strokeStyle='#062635';ctx.strokeText('Elemental da Água V4',x,sy-dim.healthTop);
+  ctx.fillStyle='#a8ebff';ctx.fillText('Elemental da Água V4',x,sy-dim.healthTop);
+ }
+ ctx.restore();
+ const status=drawn?'✓ Elemental da Água V4 · '+(waterRenderer.attackReady?'onda pronta':'onda indisponível'):
+   '⚠ Aguardando os cinco PNGs do Elemental (PC > 900px)';
+ if($('waterStatus').textContent!==status)$('waterStatus').textContent=status;
+}
+
 const thornRenderer=window.OsPeregrinosLivingThornV4?.create({windowRef:window});
 let thornActionAt=performance.now();
 $('thornAction').addEventListener('change',()=>{thornActionAt=performance.now()});
@@ -341,7 +381,7 @@ function frame(t){
  }
  ctx.clearRect(0,0,W,H);
  if(!mode3d)fallbackTerrain(camX,camY);
- const visibleActors=$('thornFocus').checked?[player,thornActor]:[...actors,player,sentinelActor,basiliskActor,angelActor,ravenActor,thornActor];
+ const visibleActors=$('waterFocus').checked?[player,waterActor]:$('thornFocus').checked?[player,thornActor]:[...actors,player,sentinelActor,basiliskActor,angelActor,ravenActor,thornActor,waterActor];
  const sortedActors=visibleActors.sort((a,b)=>a.y-b.y);
  for(const actor of sortedActors){
   if(actor===sentinelActor)drawSentinel(camX,camY,t);
@@ -349,6 +389,7 @@ function frame(t){
   else if(actor===angelActor)drawAngel(camX,camY,t);
   else if(actor===ravenActor)drawRaven(camX,camY,t);
   else if(actor===thornActor)drawThorn(camX,camY,t);
+  else if(actor===waterActor)drawWater(camX,camY,t);
   else drawActor(actor,camX,camY,t);
  }
  miniMap();
