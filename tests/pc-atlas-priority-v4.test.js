@@ -25,6 +25,8 @@ test('Morcego, Serpente, Fera, Escorpião, Fantasma, Vespa, Cavaleiro, Dragão e
  const ravenFallback=art.indexOf("const ravenBatFallback=ty==='corvo-ocaso'&&!ravenV4Drawn");
  const serpent=art.indexOf("const serpentV4Drawn=ty==='serpente'&&Boolean(serpentV4?.drawMonster");
  const beast=art.indexOf("const beastV4Drawn=ty==='fera'&&Boolean(beastV4?.drawMonster");
+ const thorn=art.indexOf("const thornV4Drawn=ty==='espinho-vivo'&&Number(m.species)===9&&Boolean(livingThornV4?.drawMonster");
+ const thornFallback=art.indexOf("const thornBeastFallback=ty==='espinho-vivo'&&!thornV4Drawn&&Boolean(beastV4?.drawMonster");
  const scorpion=art.indexOf("const scorpionV4Drawn=ty==='escorpiao'&&Boolean(scorpionV4?.drawMonster");
  const ghost=art.indexOf("const ghostV4Drawn=ty==='fantasma'&&Boolean(ghostV4?.drawMonster");
  const wasp=art.indexOf("const waspV4Drawn=ty==='vespa'&&Boolean(waspV4?.drawMonster");
@@ -35,11 +37,11 @@ test('Morcego, Serpente, Fera, Escorpião, Fantasma, Vespa, Cavaleiro, Dragão e
  const basilisk=art.indexOf("const basiliskV4Drawn=ty==='basilisco'&&Boolean(basiliskV4?.drawMonster");
  const angel=art.indexOf("const angelV4Drawn=ty==='anjo-caido'&&Boolean(fallenAngelV4?.drawMonster");
  const ghostFallback=art.indexOf("const ghostAngelFallback=ty==='anjo-caido'&&!angelV4Drawn");
- const v3=art.indexOf('const creatureV3=!batV4Drawn&&!serpentV4Drawn&&!beastV4Drawn&&!scorpionV4Drawn&&!ghostV4Drawn&&!waspV4Drawn&&!knightV4Drawn&&!dragonV4Drawn&&!sentinelV4Drawn&&!auroraSentinelDrawn&&!basiliskV4Drawn&&!angelV4Drawn&&!ghostAngelFallback&&!ravenV4Drawn&&!ravenBatFallback&&Boolean(creaturesV3?.drawMonster');
+ const v3=art.indexOf('const creatureV3=!batV4Drawn&&!serpentV4Drawn&&!beastV4Drawn&&!scorpionV4Drawn&&!ghostV4Drawn&&!waspV4Drawn&&!knightV4Drawn&&!dragonV4Drawn&&!sentinelV4Drawn&&!auroraSentinelDrawn&&!basiliskV4Drawn&&!angelV4Drawn&&!ghostAngelFallback&&!ravenV4Drawn&&!ravenBatFallback&&!thornV4Drawn&&!thornBeastFallback&&Boolean(creaturesV3?.drawMonster');
  const studio=art.indexOf('const studioMonster=!spriteDim&&Boolean(spriteStudio?.drawMonster');
  const boss=art.indexOf('const detailedBoss=!spriteDim&&!studioMonster&&Boolean(desktopSprites?.drawMonster');
  const illustrated=art.indexOf('const illustrated=!spriteDim&&!studioMonster&&!detailedBoss&&Boolean(desktopBestiary?.drawMonster');
- assert.ok(bat>0&&raven>bat&&ravenFallback>raven&&serpent>ravenFallback&&beast>serpent&&scorpion>beast&&ghost>scorpion&&wasp>ghost&&knight>wasp&&dragon>knight&&sentinel>dragon&&aurora>sentinel&&basilisk>aurora&&angel>basilisk&&ghostFallback>angel&&v3>ghostFallback&&studio>v3&&boss>studio&&illustrated>boss,
+ assert.ok(bat>0&&raven>bat&&ravenFallback>raven&&serpent>ravenFallback&&beast>serpent&&thorn>beast&&thornFallback>thorn&&scorpion>thornFallback&&ghost>scorpion&&wasp>ghost&&knight>wasp&&dragon>knight&&sentinel>dragon&&aurora>sentinel&&basilisk>aurora&&angel>basilisk&&ghostFallback>angel&&v3>ghostFallback&&studio>v3&&boss>studio&&illustrated>boss,
   'priority: bat/serpent/beast/scorpion/ghost/wasp/knight/dragon/sentinel V4 > five V3 creatures > Atelier > boss > legacy bestiary');
  assert.ok(art.includes('const animated=Boolean(spriteDim)||studioMonster||detailedBoss||illustrated'));
  assert.ok(art.includes('const top=spriteDim?spriteDim.healthTop:studioMonster'));
@@ -49,7 +51,8 @@ test('Morcego, Serpente, Fera, Escorpião, Fantasma, Vespa, Cavaleiro, Dragão e
  assert.ok(html.indexOf('/morcego-v4.js')<html.indexOf('/corvo-ocaso-v4.js'));
  assert.ok(html.indexOf('/corvo-ocaso-v4.js')<html.indexOf('/serpente-v4.js'));
  assert.ok(html.indexOf('/serpente-v4.js')<html.indexOf('/fera-v4.js'));
- assert.ok(html.indexOf('/fera-v4.js')<html.indexOf('/escorpiao-v4.js'));
+ assert.ok(html.indexOf('/fera-v4.js')<html.indexOf('/espinho-vivo-v4.js'));
+ assert.ok(html.indexOf('/espinho-vivo-v4.js')<html.indexOf('/escorpiao-v4.js'));
  assert.ok(html.indexOf('/escorpiao-v4.js')<html.indexOf('/fantasma-v4.js'));
  assert.ok(html.indexOf('/fantasma-v4.js')<html.indexOf('/vespa-v4.js'));
  assert.ok(html.indexOf('/vespa-v4.js')<html.indexOf('/cavaleiro-v4.js'));
@@ -69,7 +72,7 @@ test('classe do servidor, nome e posicionamento obedecem a arte desenhada em PC'
 test('versões atualizadas invalidam cache do Chrome sem mudar mobile',()=>{
  const html=source('mundo.html'),studio=source('sprite-studio.js');
  assert.match(html,/sprite-studio\.js\?v=world-art-master64-v4/);
- assert.ok(html.includes('/art16.js?v=world-props-artisan64-v1-corvo-ocaso-v4-preview'));
+ assert.ok(html.includes('/art16.js?v=world-props-artisan64-v1-espinho-v4-review1'));
  assert.match(studio,/state\.desktopPremium===true/);
  assert.ok(html.indexOf('/sprite-studio.js')<html.indexOf('/art16.js'));
  assert.doesNotMatch(source('mmo.css'),/class-skill-fx-v1/);
