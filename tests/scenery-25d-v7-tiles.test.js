@@ -101,7 +101,7 @@ test('V7 terrain painter preserves V5 roads, cliffs, shore and fallback',async()
 test('V7 20-tile visual laboratory imports only actual exported browser symbols',async()=>{
  const [v7]=await modules();
  const page=jpg('laboratorio-terreno-v7.html').toString();
- const imported=page.match(/import\\s*\\{([^}]+)\\}\\s*from\\s*['"]\\/world-scenery-v7-terrain\\.mjs['"]/);
+ const imported=page.match(/import\s*\{([^}]+)\}\s*from\s*['"]\/world-scenery-v7-terrain\.mjs['"]/);
  assert.ok(imported,'visual laboratory must import real atlas module');
  for(const raw of imported[1].split(',')){
   const symbol=raw.trim();
