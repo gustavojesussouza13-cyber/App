@@ -1,7 +1,7 @@
 {
   "version": "v7",
   "approved": true,
-  "quality_gate": "seven_sprite_architecture_pilot",
+  "quality_gate": "nine_sprite_architecture_pilot",
   "files": [
     "arbusto_flores_01",
     "arvore_folhosa_01",
@@ -9,9 +9,11 @@
     "pinheiro_01",
     "barril_01",
     "casa_azul_01",
-    "caixa_01"
+    "caixa_01",
+    "casa_vermelha_01",
+    "portal_ruinas_01"
   ],
-  "reason": "Piloto experimental 7 sprites PNG originais: cinco anteriormente aprovados, casa azul 104×147 e caixa 34×45, todos com dados íntegros. Casa vermelha, portal e demais itens aguardam transferência; fallback V5 permanece para cada ausência.",
+  "reason": "Nove PNGs V7 reais, com transparência, dimensões nativas e hashes Git íntegros. Casa vermelha e portal de ruínas publicados com 56 cores. Demais recortes aguardam revisão; fallback V5 mantido.",
   "source": "Pranchas originais autorais de cenário Os Peregrinos V5/V7",
   "technical_crops": 30,
   "technical_tiles": 20,
