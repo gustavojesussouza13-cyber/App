@@ -163,6 +163,10 @@ try{
 const appearanceArt=window.PeregrinosAppearance16;
 const appearanceCreator=window.PeregrinosAppearanceEditor.create($('appearanceCreator'),{
  role:()=>document.querySelector('#registerForm:not([hidden])')?$('registerRole').value:$('role').value,
+ onRoleChange:value=>{
+  const input=document.querySelector('#registerForm:not([hidden])')?$('registerRole'):$('role');
+  if(input){input.value=value;input.dispatchEvent(new Event('change',{bubbles:true}));}
+ },
  onChange:value=>{session.formAppearance=value}
 });
 session.formAppearance=appearanceCreator.read();
