@@ -84,5 +84,5 @@ test('experiment connects all snake species without touching server, guild 3D or
  assert.ok(html.indexOf('/morcego-v4.js')<html.indexOf('/serpente-v4.js'));
  assert.ok(html.includes('/guild-city-3d.js'));
  const types=art.match(/const types=\[([^\]]+)\]/)?.[1]||'';
- assert.equal((types.match(/'serpente'/g)||[]).length,2,'species 29 is now the independent Basilisco V4');
+ assert.equal((types.match(/'serpente'/g)||[]).length,1,'species 23 now uses exclusive Elemental da Água V4; species 6 remains Serpente');
 });
