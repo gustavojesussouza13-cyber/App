@@ -12,7 +12,7 @@ function atlasMock(){
 function context(){
  const ops=[],ctx={imageSmoothingEnabled:true,fillStyle:'',drawImage(...x){ops.push(['image',...x])},
  fillRect(...x){ops.push(['rect',...x])},
- beginPath(){},rect(){},clip(){},save(){},restore(){},getImageData(){return {data:[40,90,50,255]}}};
+ beginPath(){},moveTo(){},lineTo(){},closePath(){},fill(){},rect(){},clip(){},save(){},restore(){},getImageData(){return {data:[40,90,50,255]}}};
  return {ctx,ops};
 }
 test('canonical source gives V7.3 original tile classes and original object coordinates',()=>{
