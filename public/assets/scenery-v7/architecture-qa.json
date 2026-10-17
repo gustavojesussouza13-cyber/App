@@ -1,0 +1,51 @@
+{
+  "batch": "scenery-v7-architecture-qa-20261017",
+  "status": "awaiting_binary_upload",
+  "activated": false,
+  "source": "Cenario_V7_Recortes_Tecnicos.zip",
+  "treatment": "Pillow FASTOCTREE palette 56 colors, original unscaled shape, alpha verified; technical compression only",
+  "approved_proposals": [
+    {
+      "id": "casa_azul_01",
+      "kind": "house",
+      "width": 104,
+      "height": 147,
+      "bytes": 7223,
+      "git_blob_sha": "2d80bf6f2cb03a18c071aaa9e71645f45b74f345"
+    },
+    {
+      "id": "casa_vermelha_01",
+      "kind": "house",
+      "width": 100,
+      "height": 147,
+      "bytes": 7431,
+      "git_blob_sha": "64445617c34efdfc08c2a8c029e03cfe7bc8a4b2"
+    },
+    {
+      "id": "portal_ruinas_01",
+      "kind": "ruin",
+      "width": 102,
+      "height": 143,
+      "bytes": 7746,
+      "git_blob_sha": "8514996987651bb8d5167f13b75068d7ba924540"
+    },
+    {
+      "id": "caixa_01",
+      "kind": "crate",
+      "width": 34,
+      "height": 45,
+      "bytes": 1170,
+      "git_blob_sha": "fa0aa1bcc3f26fc5af17d016810fdde033493422"
+    }
+  ],
+  "warnings": [
+    "All four PNG bytes MUST be uploaded and hash-verified before enabling any in availability.json.",
+    "Potential extra pixels around the lower edge of blue and red houses must be checked visually at final scale.",
+    "Never use incomplete house, lantern, well or bridge crops."
+  ],
+  "protected": [
+    "guild-scene-3d.mjs",
+    "V3 creature families",
+    "production branch"
+  ]
+}
