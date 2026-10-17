@@ -43,3 +43,17 @@ test('V7.5 customization loads four approved class image sources, without the ob
  assert.ok(mmo.includes('onRoleChange:value=>'));
  assert.ok(page.includes('sprites PNG atuais · V7.5'));
 });
+
+test('real current source PNGs for four classes have approved dimensions',()=>{
+ const specs=[['assets/peregrino/peregrino-runway-walk.png',512,640],
+  ['assets/approved-classes/guardiao-sprites-3x2-64x80.png',192,160],
+  ['assets/approved-classes/arqueiro-sprites-3x2-64x80.png',192,160],
+  ['assets/approved-classes/curandeiro-sprites-3x2-64x80.png',192,160]];
+ for(const [file,w,h]of specs){
+  const png=fs.readFileSync(path.join(pub,file));
+  assert.deepEqual([...png.subarray(0,8)],[137,80,78,71,13,10,26,10]);
+  assert.equal(png.readUInt32BE(16),w,file);
+  assert.equal(png.readUInt32BE(20),h,file);
+ }
+ assert.ok(read('laboratorio-classes-v75.html').includes('appearance-class-preview-v75.js'));
+});
