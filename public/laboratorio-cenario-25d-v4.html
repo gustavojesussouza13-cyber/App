@@ -42,6 +42,9 @@ button{cursor:pointer}button[aria-pressed="true"]{background:#725333;border-colo
 <div class="biomes" id="biomes"></div>
 <div class="stage" id="stage"><canvas id="game" width="960" height="576" aria-label="Prévia 2.5D interativa"></canvas></div>
 <p id="status" role="status">Iniciando ambiente 2.5D…</p>
+<p id="artgate" role="status" style="padding:12px 15px;background:#283023;border:1px solid #b3a16d;border-radius:8px;color:#f2ddb0;display:none">
+<strong>V7 ainda não está publicada.</strong> O PNG detalhado será usado somente quando o pacote for aprovado e carregado. Até lá, o que você vê é o cenário V5, não a arte definitiva.
+</p>
 <div class="info"><article><strong>10 biomas com layout pixelado coeso</strong><p>Campos, floresta, rio, deserto, montanha, ruínas, pântano, costa, cidade e masmorra.</p></article>
 <article><strong>Materiais e profundidade</strong><p>Novo mapa pintado de 768×512 pixels, trilhas coerentes, clareiras, recortes de penhasco e casas em pontos definidos.</p></article>
 <article><strong>Compatível com o jogo</strong><p>Mesmo mapa e posições simuladas, sem alterações na fortaleza, monstros V3 ou persistência.</p></article></div>
@@ -57,7 +60,7 @@ const tags=[
  ['cidade','Cidade de Auren','🏘️',8],['masmorra','Masmorra','🗝️',9]
 ];
 const stage=document.getElementById('stage'),canvas=document.getElementById('game'),g=canvas.getContext('2d');
-const status=document.getElementById('status'),q=document.getElementById('quality'),light=document.getElementById('light'),hero=document.getElementById('hero'),pan=document.getElementById('pan'),panY=document.getElementById('panY');
+const status=document.getElementById('status'),artgate=document.getElementById('artgate'),q=document.getElementById('quality'),light=document.getElementById('light'),hero=document.getElementById('hero'),pan=document.getElementById('pan'),panY=document.getElementById('panY');
 let current=0,view=null,frame=0;
 const atlas={};for(const k of ['guardiao','arqueiro','curandeiro']){const im=new Image();im.src='/assets/approved-classes/'+k+'-sprites-3x2-64x80.png';atlas[k]=im;}
 const buttons=tags.map(([id,title,emoji],i)=>{
@@ -77,6 +80,8 @@ try{
   view.setSceneryComposition(['v5','atlas','v7'].includes(q.value));
   view.setSceneryAtlas(q.value==='atlas');
   view.setSceneryV7(q.value==='v7');
+  artgate.style.display=q.value==='v7'?'block':'none';
+  if(q.value==='v7'){artgate.textContent='V7: verificando se existem PNGs detalhados aprovados. O cenário V5 é usado automaticamente se não houver arquivos válidos.';}
 };
  q.addEventListener('change',mode);mode();
  light.addEventListener('change',()=>view.setNight(light.value==='night'));
@@ -95,6 +100,13 @@ try{
    g.strokeText(label,x,y-h-2);g.fillStyle='#f8eac1';g.fillText(label,x,y-h-2);
   }
   if(frame%24===0){
+   if(q.value==='v7'){
+    const count=view.v7Status.loaded;
+    const ready=view.v7Ready;
+    artgate.textContent=ready
+      ?'V7 experimental: '+count+' PNG(s) carregado(s). Elementos sem arquivo válido continuam com a arte V5.'
+      :'V7 NÃO PUBLICADA: nenhum sprite aprovado foi carregado. Você está vendo a V5 como fallback; não é a aparência da V7.';
+   }
    const label=q.value==='old'?'Cenário original':q.value==='v4'?'Primeiro Cenário V4':q.value==='v42'?'Cenário V4.2':q.value==='v5'?'Cenário V5':q.value==='v7'?'Cenário V7 (etapa de PNGs aprovados)':'Teste de atlas PNG real';
    const stats=view.sceneryStats;
    status.textContent=label+' · '+tags[current][1]+' · '+(stats?stats.staticProps+' objetos estáticos · '+stats.drawBatches+' grupos de renderização':'terreno anterior')+' · Câmera vertical '+panY.value+(q.value==='atlas'?(view.atlasReady?' · PNG carregado':' · carregando PNG / fallback V5'):'')
