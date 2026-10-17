@@ -148,3 +148,6 @@ require('./scenery-25d-v72-art.test.js');
 
 // Official-map geometry remains the sole source of truth for the experimental integration.
 require('./scenery-25d-v72-canonical.test.js');
+
+// Updated real portal actor sprites for every live transition type.
+require('./scenery-25d-v74-portals.test.js');

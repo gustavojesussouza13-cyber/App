@@ -628,9 +628,16 @@ function create({ctx,W,H}){
   }
   const portalFrame=Math.floor(now/180)%4;
   const variant=gateway?1:down?3:up?2:p.dungeon?2:0;
-  if(!worldProps?.draw(g,{kind:'portal',x:0,y:0,w:68,h:92,
-    frame:portalFrame,variant}))cut(g,'portal_aberto',-34,-92,68,92);
-  if(pixelDetail)pixelDetail.drawPortal(g,p,now);
+  // V7.4 replaces BOTH obsolete drawing layers in the experimental world.
+  // Server-defined portal objects still govern the location and interaction.
+  const freshPortal=window.OsPeregrinosPortalsV74?.draw(g,
+    {...p,x:0,y:0},{now,near,documentRef:document});
+  if(!freshPortal){
+   // Emergency art fallback only if the new sprite script itself is missing.
+   if(!worldProps?.draw(g,{kind:'portal',x:0,y:0,w:68,h:92,
+     frame:portalFrame,variant}))cut(g,'portal_aberto',-34,-92,68,92);
+   if(pixelDetail)pixelDetail.drawPortal(g,p,now);
+  }
   for(let j=0;j<(near?7:4);j++){
    const a=j*1.31+now/700;
    const xx=Math.round(Math.cos(a)*22),yy=Math.round(-45+Math.sin(a)*29);
@@ -645,10 +652,12 @@ function create({ctx,W,H}){
   g.textAlign='center';g.shadowColor='#030a08';g.shadowBlur=0;
   const action=gateway?(p.zone===10?'↥ SAÍDA PARA AUREN':'✦ PRÓXIMA MASMORRA'):
    down?'↧ DESCER':up?'↥ SUBIR':p.dungeon?'✦ ENTRAR':'✦ VIAJAR';
-  g.fillStyle='#071911ed';g.fillRect(-83,-108,166,18);
-  g.font='bold 12px monospace';g.fillStyle=tint;g.fillText(action,0,-95);
+  // Keep labels ABOVE the enlarged portal instead of covering its keystone.
+  const labelTop=freshPortal?-159:-108;
+  g.fillStyle='#071911ed';g.fillRect(-83,labelTop,166,18);
+  g.font='bold 12px monospace';g.fillStyle=tint;g.fillText(action,0,labelTop+13);
   g.fillStyle='#f9e9c5';g.font='bold 12px monospace';
-  g.fillText(p.name.slice(0,25),0,-118);
+  g.fillText(p.name.slice(0,25),0,freshPortal?-169:-118);
   g.restore();
  }
  // Mensagem da passagem fica acima de todos os sprites e do minimapa.
