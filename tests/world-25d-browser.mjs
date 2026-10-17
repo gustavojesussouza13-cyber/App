@@ -167,5 +167,67 @@ try{
  const frameAtlas=await page.locator('#atlas').evaluate(img=>({w:img.naturalWidth,h:img.naturalHeight}));
  assert.deepEqual(frameAtlas,{w:512,h:640});
  await page.screenshot({path:'/tmp/peregrino-runway-16-quadros-reais.png',fullPage:true});
+
+ // Basilisco V4: validation in the same 2.5D scene as the Peregrino and Sentinel.
+ const basiliskScene=await page.goto(url,{waitUntil:'domcontentloaded',timeout:40000});
+ assert.equal(basiliskScene?.status(),200);
+ await page.waitForFunction(()=>document.querySelector('#basiliskStatus')?.textContent?.includes('Ácido pronto'),null,{timeout:17000});
+ assert.equal(await page.locator('#basiliskAction').inputValue(),'idle');
+ assert.equal(await page.locator('#basiliskDirection').inputValue(),'1');
+ const fourDirections=await page.evaluate(async()=>{
+  const api=window.OsPeregrinosBasiliskV4;
+  if(!api||api.ASSETS.length!==4||api.FRAME.width!==192||api.FRAME.height!==160)throw Error('Basilisco API absent or wrong frame size');
+  const count=[],distinct=[],hurt=[];
+  for(let d=0;d<4;d++){
+   const img=new Image();img.src=api.ASSETS[d];await img.decode();
+   if(img.naturalWidth!==768||img.naturalHeight!==960)throw Error('Invalid actual sprite image: '+d);
+   const cvs=document.createElement('canvas');cvs.width=192;cvs.height=160;
+   const c=cvs.getContext('2d',{willReadFrequently:true});
+   const hashes=[];
+   for(let col=0;col<4;col++){
+    c.clearRect(0,0,192,160);c.drawImage(img,col*192,160,192,160,0,0,192,160);
+    hashes.push(cvs.toDataURL('image/png'));
+   }
+   distinct.push(new Set(hashes).size);
+   const alpha=c.getImageData(0,0,192,160).data;let pixels=0;for(let k=3;k<alpha.length;k+=4)if(alpha[k]>0)pixels++;
+   count.push(pixels);
+   c.clearRect(0,0,192,160);c.drawImage(img,0,4*160,192,160,0,0,192,160);
+   const damage=cvs.toDataURL('image/png');
+   c.clearRect(0,0,192,160);c.drawImage(img,0,0,192,160,0,0,192,160);
+   hurt.push(damage!==cvs.toDataURL('image/png'));
+  }
+  const fx=new Image();fx.src=api.FXSHEET;await fx.decode();
+  const fxPixels=(()=>{const c=document.createElement('canvas');c.width=192;c.height=160;const g=c.getContext('2d');
+    g.drawImage(fx,0,0,192,160,0,0,192,160);const data=g.getImageData(0,0,192,160).data;
+    let count=0;for(let i=3;i<data.length;i+=4)if(data[i]>16)count++;return count;})();
+  return {count,distinct,hurt,fxWidth:fx.naturalWidth,fxHeight:fx.naturalHeight,fxPixels};
+ });
+ assert.deepEqual(fourDirections.distinct,[4,4,4,4],'walk must contain 4 visually distinct footsteps in each direction');
+ assert.ok(fourDirections.count.every(p=>p>2000),'each walk direction has real visible pixels');
+ assert.ok(fourDirections.hurt.every(Boolean),'hurt must visibly differ from idle in every direction');
+ assert.deepEqual([fourDirections.fxWidth,fourDirections.fxHeight],[768,640]);
+ assert.ok(fourDirections.fxPixels>150,'acid sprite must not be blank');
+ for(let dir=0;dir<4;dir++){
+  await page.locator('#basiliskDirection').selectOption(String(dir));
+  assert.match(await page.locator('#basiliskStatus').innerText(),/Quatro direções reais carregadas/);
+ }
+ await page.locator('#basiliskDirection').selectOption('1');
+ await page.locator('#basiliskAction').selectOption('walk');
+ await page.waitForTimeout(260);
+ await page.screenshot({path:'/tmp/os-peregrinos-basilisco-v4-caminhada-25d.png',fullPage:true});
+ await page.locator('#basiliskAction').selectOption('hurt');
+ await page.waitForTimeout(140);
+ await page.screenshot({path:'/tmp/os-peregrinos-basilisco-v4-dano-25d.png',fullPage:true});
+ await page.locator('#basiliskAction').selectOption('attack');
+ await page.waitForTimeout(280);
+ await page.screenshot({path:'/tmp/os-peregrinos-basilisco-v4-acido-25d.png',fullPage:true});
+ await page.locator('#basiliskBoss').check();
+ await page.locator('#basiliskDirection').selectOption('3');
+ await page.waitForTimeout(220);
+ await page.screenshot({path:'/tmp/os-peregrinos-basilisco-v4-chefe-25d.png',fullPage:true});
+ await page.locator('#basiliskAction').selectOption('idle');
+ await page.locator('#basiliskBoss').uncheck();
+ assert.ok(!pageErrors.some(x=>/basilis|sentinel|ReferenceError/i.test(x)),'Basilisco V4 JS errors: '+JSON.stringify(pageErrors));
+ console.log('BASILISCO_V4_25D_OK',JSON.stringify(fourDirections));
  console.log('WORLD_25D_BROWSER_OK',JSON.stringify({url,classes:4,biomes:6,canvas:'webgl'}));
 }finally{await browser.close()}
