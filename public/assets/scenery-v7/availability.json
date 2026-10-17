@@ -1,9 +1,12 @@
 {
   "version": "v7",
-  "approved": false,
-  "files": [],
-  "reason": "Aguardando auditoria e commit de PNGs RGBA gerados em pacote de revisão; tela usa fallback V5 até lá.",
-  "source": "Pranchas autorais Os Peregrinos V5/V7",
+  "approved": true,
+  "quality_gate": "single_sprite_pilot",
+  "files": [
+    "arbusto_flores_01"
+  ],
+  "reason": "Piloto experimental: somente um sprite RGBA real verificado (75x42). Outros recortes e tiles permanecem desligados até revisão visual.",
+  "source": "Pranchas originais autorais de cenário Os Peregrinos V5/V7",
   "technical_crops": 30,
   "technical_tiles": 20,
   "qa_pending": [
