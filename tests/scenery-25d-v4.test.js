@@ -121,10 +121,10 @@ test('three-way comparison leaves original V4 intact and toggles detailed art in
  }
  const renderer=fs.readFileSync(path.join(publicDir,'world-25d.mjs'),'utf8');
  assert.ok(renderer.includes('setSceneryDetail(value)'));
- assert.ok(renderer.includes('buildSceneryV4(THREE,layer,zone,biome,{detail:useSceneryDetail,composition:useSceneryComposition,atlas:useSceneryAtlas})'));
+ assert.ok(renderer.includes('buildSceneryV4(THREE,layer,zone,biome,{detail:useSceneryDetail,composition:useSceneryComposition,atlas:useSceneryAtlas,v7:useSceneryV7})'));
  const lab=fs.readFileSync(path.join(publicDir,'laboratorio-cenario-25d-v4.html'),'utf8');
  for(const mode of ['value="old"','value="v4"','value="v42"'])assert.ok(lab.includes(mode));
- assert.ok(lab.includes("view.setSceneryDetail(['v42','v5','atlas'].includes(q.value))"));
+ assert.ok(lab.includes("view.setSceneryDetail(['v42','v5','atlas','v7'].includes(q.value))"));
  assert.ok(lab.includes("view.setSceneryV4(q.value!=='old')"));
 });
 
@@ -136,3 +136,6 @@ require('./scenery-25d-v5.test.js');
 
 // Test actual PNG atlas and fallback in the same Render build gate.
 require('./scenery-25d-real-atlas.test.js');
+
+// V7 safe asset-loading and manifest regression checks (run on Render too).
+require('./scenery-25d-v7-assets.test.js');
