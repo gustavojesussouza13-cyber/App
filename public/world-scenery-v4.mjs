@@ -405,7 +405,7 @@ function placeSpriteInstances(THREE,group,plan,biome,detail=true){
  for(const [key,arr] of buckets){
   const [kind,variantString]=key.split(':'),variant=+variantString;
   const texture=spriteTexture(THREE,kind,biome,variant,detail);
-  const mat=// Opaque cut-out sprites: alpha pixels are discarded, not blended across
+  // Opaque cut-out sprites: alpha pixels are discarded, not blended across
   // different render batches. This prevents translucent overlap artifacts.
   const mat=new THREE.MeshBasicMaterial({map:texture,transparent:false,alphaTest:.45,depthWrite:true,side:THREE.DoubleSide});
   const mesh=new THREE.InstancedMesh(new THREE.PlaneGeometry(1,1),mat,arr.length);
