@@ -37,7 +37,7 @@ test('all biome families contain biome-specific decorative and structural art wh
  const original=fs.readFileSync(path.join(publicDir,'guild-scene-3d.mjs'),'utf8');
  assert.ok(original.length>1000);
  const lab=fs.readFileSync(path.join(publicDir,'laboratorio-cenario-25d-v4.html'),'utf8');
- assert.ok(lab.includes('/world-25d.mjs'));assert.ok(lab.includes('Cenário anterior'));
+ assert.ok(lab.includes('/world-25d.mjs'));assert.ok(lab.includes('Cenário original — antes das melhorias'));
 });
 test('Scenery V4 uses static instanced meshes with no writes to game state, DB, player coordinates or monsters',()=>{
  const src=fs.readFileSync(path.join(publicDir,'world-scenery-v4.mjs'),'utf8');
