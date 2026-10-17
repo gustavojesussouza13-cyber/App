@@ -127,3 +127,6 @@ test('three-way comparison leaves original V4 intact and toggles detailed art in
  assert.ok(lab.includes("view.setSceneryDetail(q.value==='v42')"));
  assert.ok(lab.includes("view.setSceneryV4(q.value!=='old')"));
 });
+
+// Also run precise anti-overlap and rendering-order regressions under Render's test command.
+require('./scenery-25d-v4-overlap.test.js');
