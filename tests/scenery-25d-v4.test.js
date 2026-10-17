@@ -139,3 +139,6 @@ require('./scenery-25d-real-atlas.test.js');
 
 // V7 safe asset-loading and manifest regression checks (run on Render too).
 require('./scenery-25d-v7-assets.test.js');
+
+// Original 20-tile V7 texture atlas, geographic clipping and exact binary validation.
+require('./scenery-25d-v7-tiles.test.js');
