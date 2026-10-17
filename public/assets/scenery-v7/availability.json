@@ -1,13 +1,15 @@
 {
   "version": "v7",
   "approved": true,
-  "quality_gate": "three_sprite_pilot",
+  "quality_gate": "five_sprite_pilot",
   "files": [
     "arbusto_flores_01",
     "arvore_folhosa_01",
-    "rocha_musgo_01"
+    "rocha_musgo_01",
+    "pinheiro_01",
+    "barril_01"
   ],
-  "reason": "Piloto V7 experimental: 3 PNGs originais (arbusto, árvore e rocha) selecionados, verificados por testes de assinatura/dimensões/transparência; os outros recortes e tiles permanecem desligados.",
+  "reason": "Cinco sprites V7 experimentais originais com transparência e proporções verificadas: arbusto, árvore, rocha, pinheiro e barril. PNGs restantes, casas e tiles aguardam QA; fallback V5 ativo para ausentes.",
   "source": "Pranchas originais autorais de cenário Os Peregrinos V5/V7",
   "technical_crops": 30,
   "technical_tiles": 20,
