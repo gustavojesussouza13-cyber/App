@@ -92,7 +92,7 @@ test('the Fantasma species uses the new visual while V3, Morcego, Serpente and g
  const html=fs.readFileSync(path.resolve(__dirname,'../public/mundo.html'),'utf8');
  const match=art.match(/const types=\[([^\]]+)\]/);
  assert.ok(match);
- assert.equal((match[1].match(/'fantasma'/g)||[]).length,4);
+ assert.equal((match[1].match(/'fantasma'/g)||[]).length,3,'Anjo Caído agora usa V4 próprio; os demais Fantasmas permanecem');
  assert.ok(art.includes("const ghostV4Drawn=ty==='fantasma'&&Boolean(ghostV4?.drawMonster"));
  assert.ok(art.includes('const creatureV3=!batV4Drawn&&!serpentV4Drawn&&!beastV4Drawn&&!scorpionV4Drawn&&!ghostV4Drawn'));
  assert.ok(art.includes('ghostV4Drawn?ghostV4.measure(m.boss)'));

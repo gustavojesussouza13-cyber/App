@@ -4,7 +4,7 @@
 const SPRITES={"cavaleiro_andar":[0,0,160,192],"cavaleiro_combate":[163,0,160,192],"chefe_andar":[326,0,160,192],"chefe_combate":[489,0,160,192],"eli_andar":[652,0,160,192],"ester_andar":[815,0,160,192],"gustavo_andar":[0,195,160,192],"gustavo_combate":[163,195,160,192],"miriam_andar":[326,195,160,192],"sentinela_andar":[489,195,160,192],"sentinela_combate":[652,195,160,192],"tomas_andar":[815,195,160,192],"viajante_andar":[0,390,160,192],"arvore_1_tema_1":[163,390,104,122],"arvore_1_tema_2":[270,390,104,122],"arvore_1_tema_3":[377,390,104,122],"arvore_2_tema_1":[484,390,104,122],"arvore_2_tema_2":[591,390,104,122],"arvore_2_tema_3":[698,390,104,122],"arvore_3_tema_1":[805,390,104,122],"arvore_3_tema_2":[912,390,104,122],"arvore_3_tema_3":[0,585,104,122],"efeitos_animados":[107,585,256,96],"santuario":[366,585,77,96],"portal_aberto":[446,585,62,84],"portal_fechado":[511,585,62,84],"estandarte":[576,585,52,62],"tenda":[631,585,83,62],"fogueira":[717,585,37,43],"poco":[757,585,50,40],"monstro_aranha":[810,585,30,30],"monstro_dragao":[843,585,30,30],"monstro_escorpiao":[876,585,30,30],"monstro_esqueleto":[909,585,30,30],"monstro_fantasma":[942,585,30,30],"monstro_fera":[975,585,30,30],"monstro_golem":[0,710,30,30],"monstro_limo":[33,710,30,30],"monstro_lobo":[66,710,30,30],"monstro_morcego":[99,710,30,30],"monstro_serpente":[132,710,30,30],"monstro_vespa":[165,710,30,30],"arbusto_1":[198,710,36,29],"arbusto_2":[237,710,36,29],"arbusto_3":[276,710,36,29],"pedra":[315,710,28,20],"agua_01":[346,710,16,16],"agua_02":[365,710,16,16],"agua_03":[384,710,16,16],"agua_04":[403,710,16,16],"agua_05":[422,710,16,16],"agua_06":[441,710,16,16],"agua_07":[460,710,16,16],"agua_08":[479,710,16,16],"grama_01":[498,710,16,16],"grama_02":[517,710,16,16],"grama_03":[536,710,16,16],"grama_04":[555,710,16,16],"grama_05":[574,710,16,16],"grama_06":[593,710,16,16],"grama_07":[612,710,16,16],"grama_08":[631,710,16,16],"pedregulho_01":[650,710,16,16],"pedregulho_02":[669,710,16,16],"pedregulho_03":[688,710,16,16],"pedregulho_04":[707,710,16,16],"pedregulho_05":[726,710,16,16],"pedregulho_06":[745,710,16,16],"pedregulho_07":[764,710,16,16],"pedregulho_08":[783,710,16,16],"terra_01":[802,710,16,16],"terra_02":[821,710,16,16],"terra_03":[840,710,16,16],"terra_04":[859,710,16,16],"terra_05":[878,710,16,16],"terra_06":[897,710,16,16],"terra_07":[916,710,16,16],"terra_08":[935,710,16,16]};
 const atlas=new Image(); atlas.decoding='async';atlas.src='/assets/classic-atlas.png';
 const ZW=1536, ZH=1024, TILE=32;
-const types=['limo','lobo','morcego','esqueleto','aranha','golem','serpente','morcego','golem','fera','escorpiao','fantasma','lobo','golem','fantasma','esqueleto','vespa','aranha','golem','fantasma','lobo','aranha','cavaleiro','serpente','dragao','fera','dragao','golem','sentinela','basilisco','fantasma','chefe'];
+const types=['limo','lobo','morcego','esqueleto','aranha','golem','serpente','morcego','golem','fera','escorpiao','fantasma','lobo','golem','fantasma','esqueleto','vespa','aranha','golem','fantasma','lobo','aranha','cavaleiro','serpente','dragao','fera','dragao','golem','sentinela','basilisco','anjo-caido','chefe'];
 const heroSheets={peregrino:'gustavo_andar',guardiao:'cavaleiro_andar',arqueiro:'viajante_andar',curandeiro:'eli_andar'};
 const biomeThemes={pradaria:'meadow',floresta:'forest',rio:'river',deserto:'desert',montanha:'mountain',ruinas:'ruins',pantano:'swamp',costa:'coast',cidade:'city',masmorra:'dungeon'};
 const rng=n=>{n|=0;n=Math.imul(n^(n>>>16),0x7feb352d);n=Math.imul(n^(n>>>15),0x846ca68b);return((n^(n>>>16))>>>0)/4294967296};
@@ -31,6 +31,7 @@ function create({ctx,W,H}){
  const dragonV4=window.OsPeregrinosDragonV4?.create({windowRef:window});
  const sentinelV4=window.OsPeregrinosSentinelV4?.create({windowRef:window});
  const basiliskV4=window.OsPeregrinosBasiliskV4?.create({windowRef:window});
+ const fallenAngelV4=window.OsPeregrinosFallenAngelV4?.create({windowRef:window});
  const worldProps=window.OsPeregrinosWorldPropsArtisan64?.create({documentRef:document});
  let cache=null,objects=[],artReady=false;
  // Três últimas regiões: o retorno pelo atlas não reconstrói milhares de tiles.
@@ -532,8 +533,10 @@ function create({ctx,W,H}){
   const dragonV4Drawn=ty==='dragao'&&Boolean(dragonV4?.drawMonster(g,{...m,x,y},now,state));
   const sentinelV4Drawn=ty==='sentinela'&&Boolean(sentinelV4?.drawMonster(g,{...m,x,y},now,state));
   const basiliskV4Drawn=ty==='basilisco'&&Boolean(basiliskV4?.drawMonster(g,{...m,x,y},now,state));
-  const creatureV3=!batV4Drawn&&!serpentV4Drawn&&!beastV4Drawn&&!scorpionV4Drawn&&!ghostV4Drawn&&!waspV4Drawn&&!knightV4Drawn&&!dragonV4Drawn&&!sentinelV4Drawn&&!basiliskV4Drawn&&Boolean(creaturesV3?.drawMonster(g,{...m,x,y},now,state));
-  const spriteDim=batV4Drawn?batV4.measure(m.boss):serpentV4Drawn?serpentV4.measure(m.boss):beastV4Drawn?beastV4.measure(m.boss):scorpionV4Drawn?scorpionV4.measure(m.boss):ghostV4Drawn?ghostV4.measure(m.boss):waspV4Drawn?waspV4.measure(m.boss):knightV4Drawn?knightV4.measure(m.boss):dragonV4Drawn?dragonV4.measure(m.boss):sentinelV4Drawn?sentinelV4.measure(m.boss):basiliskV4Drawn?basiliskV4.measure(m.boss):creatureV3?creaturesV3.measure(ty,m.boss):null;
+  const angelV4Drawn=ty==='anjo-caido'&&Boolean(fallenAngelV4?.drawMonster(g,{...m,x,y},now,state));
+  const ghostAngelFallback=ty==='anjo-caido'&&!angelV4Drawn&&Boolean(ghostV4?.drawMonster(g,{...m,x,y},now,{...state,type:'fantasma'}));
+  const creatureV3=!batV4Drawn&&!serpentV4Drawn&&!beastV4Drawn&&!scorpionV4Drawn&&!ghostV4Drawn&&!waspV4Drawn&&!knightV4Drawn&&!dragonV4Drawn&&!sentinelV4Drawn&&!basiliskV4Drawn&&!angelV4Drawn&&!ghostAngelFallback&&Boolean(creaturesV3?.drawMonster(g,{...m,x,y},now,state));
+  const spriteDim=batV4Drawn?batV4.measure(m.boss):serpentV4Drawn?serpentV4.measure(m.boss):beastV4Drawn?beastV4.measure(m.boss):scorpionV4Drawn?scorpionV4.measure(m.boss):ghostV4Drawn?ghostV4.measure(m.boss):waspV4Drawn?waspV4.measure(m.boss):knightV4Drawn?knightV4.measure(m.boss):dragonV4Drawn?dragonV4.measure(m.boss):sentinelV4Drawn?sentinelV4.measure(m.boss):basiliskV4Drawn?basiliskV4.measure(m.boss):angelV4Drawn?fallenAngelV4.measure(m.boss):ghostAngelFallback?ghostV4.measure(m.boss):creatureV3?creaturesV3.measure(ty,m.boss):null;
   const studioMonster=!spriteDim&&Boolean(spriteStudio?.drawMonster(g,{...m,x,y},now,{...state,desktopPremium:premiumPc}));
   const detailedBoss=!spriteDim&&!studioMonster&&Boolean(desktopSprites?.drawMonster(g,{...m,x,y},now,state));
   const illustrated=!spriteDim&&!studioMonster&&!detailedBoss&&Boolean(desktopBestiary?.drawMonster(g,{...m,x,y},now,state));
@@ -545,7 +548,7 @@ function create({ctx,W,H}){
     frameSprite(g,key,2,Math.floor(now/500+m.species)%4,x,y,w,h);
   }else{
     const w=m.boss?65:43,h=m.boss?62:41;
-    cut(g,'monstro_'+(ty==='basilisco'?'serpente':ty),x-w/2,y-h,w,h);
+    cut(g,'monstro_'+(ty==='basilisco'?'serpente':ty==='anjo-caido'?'fantasma':ty),x-w/2,y-h,w,h);
   }
    if(pixelDetail)pixelDetail.drawMonster(g,m,now);
   }
@@ -715,9 +718,9 @@ function create({ctx,W,H}){
   for(const n of npcs){if(n.x<cameraX-100||n.x>cameraX+W+100||n.y<cameraY-105||n.y>cameraY+H+105)continue;
    actors.push({depth:n.y,paint:()=>npcActor(ctx,n,n.index===storyStage,n.index!==null&&n.index<storyStage,now)});
   }
-  for(const m of monsters){const margin=types[Math.max(0,m.species|0)]==='dragao'?(m.boss?310:200):['morcego','serpente','fera','escorpiao','fantasma','vespa','cavaleiro','sentinela','basilisco'].includes(types[Math.max(0,m.species|0)])?(m.boss?220:155):90;
+  for(const m of monsters){const margin=types[Math.max(0,m.species|0)]==='dragao'?(m.boss?310:200):['morcego','serpente','fera','escorpiao','fantasma','vespa','cavaleiro','sentinela','basilisco','anjo-caido'].includes(types[Math.max(0,m.species|0)])?(m.boss?220:155):90;
    if(m.x<cameraX-margin||m.x>cameraX+W+margin||m.y<cameraY-margin||m.y>cameraY+H+margin)continue;actors.push({depth:m.y,paint:()=>monster(ctx,m,target===m.id,now,monsterActions.get(m.id))})}
-  for(const m of fallen){const margin=types[Math.max(0,m.species|0)]==='dragao'?(m.boss?310:200):['morcego','serpente','fera','escorpiao','fantasma','vespa','cavaleiro','sentinela','basilisco'].includes(types[Math.max(0,m.species|0)])?(m.boss?220:155):90;
+  for(const m of fallen){const margin=types[Math.max(0,m.species|0)]==='dragao'?(m.boss?310:200):['morcego','serpente','fera','escorpiao','fantasma','vespa','cavaleiro','sentinela','basilisco','anjo-caido'].includes(types[Math.max(0,m.species|0)])?(m.boss?220:155):90;
    if(m.x<cameraX-margin||m.x>cameraX+W+margin||m.y<cameraY-margin||m.y>cameraY+H+margin)continue;actors.push({depth:m.y-1,paint:()=>monster(ctx,m,false,now,{action:'death',at:m.defeatedAt})})}
   for(const p of players){if(p.x<cameraX-75||p.x>cameraX+W+75||p.y<cameraY-95||p.y>cameraY+H+75)continue;actors.push({depth:p.y,paint:()=>character(ctx,p,false,now,p.moving!==false,playerActions.has(p.name)&&now-playerActions.get(p.name).at<390&&playerActions.get(p.name).action==='attack',playerActions.get(p.name))})}
   actors.push({depth:y,paint:()=>character(ctx,{name,role,appearance,x,y,dir},true,now,moving,now-lastAction<370,heroPose||{action:'attack',at:lastAction})});
