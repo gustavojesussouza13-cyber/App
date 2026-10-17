@@ -32,7 +32,7 @@ async function enableWorld25d(){
  world25dLoading=true;updateWorld25dMode();
  try{
   if(!world25d){
-   const {createWorld25D}=await import('/world-25d.mjs');
+   const {createWorld25D}=await import('/world-25d.mjs?v=foreground-depth-v80');
    world25d=createWorld25D({shell:$('canvasShell'),canvas:cvs,width:W,height:H});
    // In the isolated integration preview, 2.5D paints the ORIGINAL official
    // terrain layout; V7.2 supplies only compatible cosmetic replacements.
@@ -1372,7 +1372,7 @@ function canvasDraw(now,dt){
     world25dActive=false;updateWorld25dMode();
    }
   }
-  classicRenderer.render({world25dActive,zone:session.zone,zones:session.zones,zoneBiome:session.region?.id===session.zone?session.region.biome:null,x:session.x,y:session.y,kingdomBases:visibleKingdomBases,
+  classicRenderer.render({world25dActive,foregroundProps:world25dActive?world25d?.foregroundProps||[]:[],zone:session.zone,zones:session.zones,zoneBiome:session.region?.id===session.zone?session.region.biome:null,x:session.x,y:session.y,kingdomBases:visibleKingdomBases,
     name:session.name||'PEREGRINO',role:session.role,appearance:session.appearance,dir:session.dir,
     monsters:monsterMotion.draw([...session.monsters.values()],dt),players:drawPlayers,projectiles,
     monsterActions:spriteActions.monsters,playerActions:spriteActions.players,fallen:spriteActions.fallen,

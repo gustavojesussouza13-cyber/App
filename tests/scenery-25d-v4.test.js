@@ -157,3 +157,5 @@ require('./appearance-v75-and-dungeon-keys.test.js');
 
 // Ecologia: uma espécie por mapa, com um chefe da mesma espécie.
 require('./region-monster-species.test.js');
+// Actor pixel-quality combat and tree/monster occlusion regression coverage.
+require('./combat-occlusion-v80.test.js');

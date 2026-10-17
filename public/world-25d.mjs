@@ -11,7 +11,7 @@ import {preloadSceneryAtlas,atlasLoaded} from '/world-scenery-v6-asset-adapter.m
 import {preloadV7Assets,isV7Ready,v7Stats} from '/world-scenery-v7-asset-loader.mjs';
 import {preloadV7Terrain,v7TerrainReady,v7TerrainStatus} from '/world-scenery-v7-terrain.mjs';
 import {preloadV72Assets,v72Ready,v72Status} from '/world-scenery-v72-asset-loader.mjs';
-import {buildCanonicalScenery} from '/world-scenery-v72-canonical.mjs';
+import {buildCanonicalScenery,canonicalForegroundObjects} from '/world-scenery-v72-canonical.mjs';
 
 const ZONE_WIDTH = 1536;
 const ZONE_HEIGHT = 1024;
@@ -238,8 +238,10 @@ export function createWorld25D({shell,canvas,width=960,height=576,sceneryV4=true
   sun.position.set(-240,600,190);
   scene.add(ambient,sun);
   let layer=null,activeZone=NaN,activeBiome='',disposed=false,night=false,shrine=null;
+  let foregroundProps=[];
   let useSceneryV4=Boolean(sceneryV4),useSceneryDetail=true,useSceneryComposition=true,useSceneryAtlas=false,useSceneryV7=false,lastSceneryV4=null,useCanonical=false,activeMapSource=null;
   function rebuild(zone,biome,sourceMap=null) {
+    foregroundProps=[];
     if(layer){
       scene.remove(layer);
       layer.traverse(o=>{
@@ -260,6 +262,7 @@ export function createWorld25D({shell,canvas,width=960,height=576,sceneryV4=true
     const useSource=Boolean(useCanonical&&sourceMap?.zone===zone&&sourceMap?.biome===biome&&sourceMap?.canvas);
     if(useSource){
       lastSceneryV4=buildCanonicalScenery(THREE,layer,sourceMap,{v7:useSceneryV7});
+      foregroundProps=canonicalForegroundObjects(sourceMap);
       activeMapSource=sourceMap.canvas;
       activeZone=zone;activeBiome=biome;
       return;
@@ -398,6 +401,7 @@ export function createWorld25D({shell,canvas,width=960,height=576,sceneryV4=true
   }
   window.addEventListener('pagehide',dispose,{once:true});
   return {render,setNight,setSceneryCanonical,setSceneryV4,setSceneryDetail,setSceneryComposition,setSceneryAtlas,setSceneryV7,dispose,canvas:renderer.domElement,
+    get foregroundProps(){return foregroundProps;},
     get atlasReady(){return atlasLoaded();},
     get v7Ready(){return isV7Ready();},
     get v7Status(){return v7Stats();},
