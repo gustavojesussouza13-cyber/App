@@ -1,0 +1,45 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Corvo do Ocaso V4 — laboratório experimental</title><style>:root{color-scheme:dark}*{box-sizing:border-box}
+body{margin:0;padding:24px;background:#101b21;color:#e7eae1;font:15px system-ui,Arial}
+h1{font:700 28px Georgia,serif;color:#e7d0a0;margin:0 0 6px}p{color:#bacbc6;max-width:770px;line-height:1.5}
+.controls{display:flex;gap:20px;flex-wrap:wrap;margin:24px 0}label{display:grid;gap:7px}
+select{background:#234048;color:#fff;border:1px solid #718a81;padding:9px;border-radius:6px}
+.gallery{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.gallery section{border:1px solid #57736c;border-radius:10px;padding:14px;background:#1a2b32}
+.gallery section strong{display:block;margin-bottom:9px;color:#f3dcaa}
+canvas{width:100%;aspect-ratio:1.5;image-rendering:pixelated;background:linear-gradient(#253f3d 53%,#52674f 53%,#354c35 60%);border-radius:6px}
+#status{font-weight:600;color:#e9d5a7;margin-top:20px}</style></head><body>
+<h1>Corvo do Ocaso V4 — revisão no experimental</h1>
+<p>Os cinco PNGs originais estão carregados diretamente do MMORPG: quatro direções, cada uma com 24 quadros de 192 × 160, e ataque separado. Nenhum sprite é espelhado para fingir a direção oposta.</p>
+<div class="controls">
+<label>Ação<select id="action"><option value="0">Repouso</option><option value="1">Caminhada</option><option value="2">Preparação</option><option value="3">Ataque</option><option value="4">Dano</option><option value="5">Morte</option></select></label>
+<label>Escala<select id="scale"><option value="1">Normal</option><option value="1.45">Chefe (145%)</option></select></label>
+<label>Velocidade<select id="speed"><option value="180">Lenta</option><option selected value="135">Padrão</option><option value="90">Rápida</option></select></label>
+</div><div class="gallery" id="gallery"></div><p id="status" role="status">Carregando spritesheets…</p>
+<script>
+const dirs=['tras','direita','frente','esquerda'],names=['Costas','Direita','Frente','Esquerda'];
+const imgs=[],canvases=[];const fx=new Image();fx.src='/assets/creatures-v4/corvo_ocaso_v4_ataque_fx.png?v=corvo-v4-rev2';
+for(let i=0;i<4;i++){const section=document.createElement('section');section.innerHTML='<strong>'+names[i]+'</strong>';const canvas=document.createElement('canvas');canvas.width=400;canvas.height=280;
+ section.append(canvas);document.getElementById('gallery').append(section);canvases.push(canvas);
+ const im=new Image();im.src='/assets/creatures-v4/corvo_ocaso_v4_'+dirs[i]+'.png?v=corvo-v4-rev2';imgs.push(im);}
+function frame(now){
+ const row=+document.getElementById('action').value,col=Math.floor(now/(+document.getElementById('speed').value))%4,scale=+document.getElementById('scale').value;
+ let loaded=0;
+ for(let i=0;i<4;i++){
+  const c=canvases[i],g=c.getContext('2d'),im=imgs[i];
+  g.clearRect(0,0,c.width,c.height);g.imageSmoothingEnabled=false;
+  if(im.complete&&im.naturalWidth===768&&im.naturalHeight===960){
+   loaded++;const w=Math.round(164*scale),h=Math.round(140*scale),x=Math.round(c.width/2-w/2),y=Math.round(c.height*.78-h);
+   g.drawImage(im,col*192,row*160,192,160,x,y,w,h);
+   if(row===3&&fx.complete&&fx.naturalWidth===768&&fx.naturalHeight===640){
+    const fw=Math.round(w*1.57),fh=Math.round(h*1.32),dx=i===1?w*.36:i===3?-w*.36:0;
+    g.drawImage(fx,col*192,i*160,192,160,Math.round(c.width/2-fw/2+dx),Math.round(c.height*.78-h*.94-fh*.5),fw,fh);
+   }
+  }else{g.fillStyle='#ffe0a6';g.font='15px system-ui';g.textAlign='center';g.fillText('PNG ainda não publicado',c.width/2,c.height/2)}
+ }
+ const fxReady=fx.complete&&fx.naturalWidth===768&&fx.naturalHeight===640;
+ document.getElementById('status').textContent=loaded===4&&fxReady?'✓ Os cinco PNGs originais estão carregados.':'⚠ Arquivos indisponíveis: '+loaded+'/4 direções e FX '+(fxReady?'OK':'pendente');
+ requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script></body></html>

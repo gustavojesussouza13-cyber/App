@@ -71,4 +71,8 @@ jobs:
             /tmp/os-peregrinos-anjo-caido-v4-magia-25d.png
             /tmp/os-peregrinos-anjo-caido-v4-dano-25d.png
             /tmp/os-peregrinos-anjo-caido-v4-morte-25d.png
+            /tmp/os-peregrinos-corvo-v4-walk-25d.png
+            /tmp/os-peregrinos-corvo-v4-attack-25d.png
+            /tmp/os-peregrinos-corvo-v4-hurt-25d.png
+            /tmp/os-peregrinos-corvo-v4-death-25d.png
           if-no-files-found: ignore
