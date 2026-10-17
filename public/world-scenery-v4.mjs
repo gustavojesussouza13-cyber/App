@@ -1,6 +1,6 @@
 'use strict';
 import {finishSceneryGround,finishSceneryRoad,finishScenerySprite,EXTRA_KINDS,EXTRA_SIZES,ART_VERSION} from './world-scenery-v4-art.mjs';
-import {createDesignedTerrainTexture,reservedSceneryLandmarks,MAP_ART_VERSION} from './world-scenery-v5-landforms.mjs';
+import {createDesignedTerrainTexture,reservedSceneryLandmarks,drawDesignedHouseCanvas,MAP_ART_VERSION} from './world-scenery-v5-landforms.mjs';
 /**
  * OS PEREGRINOS · CENÁRIO V4 2.5D / PRÉVIA EXPERIMENTAL
  * Mundo aberto SOMENTE: solo, estradas, água, construções e decoração estática.
@@ -167,6 +167,12 @@ export function planSceneryV4(zone,biome,{width=1536,height=1024,detail=true}={}
  * Objects are intentionally arranged around clearings rather than uniformly
  * scattered. All footprints remain static and outside playable road ribbons.
  */
+const V5_SIZES=Object.freeze({
+ ...SIZES,
+ house:[350,230],market:[245,180],ruin:[158,137],
+ arch:[135,133],watchtower:[170,188],well:[96,79],
+ fountain:[137,102],statue:[95,137]
+});
 export function planSceneryV5(zone,biome,{width=1536,height=1024}={}){
  if(!BIOMES.includes(biome))throw Error('Bioma desconhecido: '+biome);
  const rnd=seeded(zone,735+BIOMES.indexOf(biome));
@@ -180,7 +186,7 @@ export function planSceneryV5(zone,biome,{width=1536,height=1024}={}){
   placed.push(Object.freeze(item));return true;
  }
  for(const landmark of reservedSceneryLandmarks(zone,biome)){
-  const wh=SIZES[landmark.kind];
+  const wh=V5_SIZES[landmark.kind];
   if(wh)accept({...landmark,w:wh[0],h:wh[1]});
  }
  // A small number of large well-separated anchors gives a coherent
@@ -206,7 +212,7 @@ export function planSceneryV5(zone,biome,{width=1536,height=1024}={}){
  let boatCount=0;
  for(let tries=0;tries<max*45&&placed.length<max;tries++){
   const idx=Math.floor(rnd()*centres.length),centre=centres[idx];
-  const kind=select(rnd,families[biome]),size=SIZES[kind];
+  const kind=select(rnd,families[biome]),size=V5_SIZES[kind];
   let x=Math.round(centre[0]+(rnd()+rnd()-1)*240),z=Math.round(centre[1]+(rnd()+rnd()-1)*200);
   if(kind==='boat'){
    if(boatCount>=2)continue;
@@ -454,7 +460,7 @@ function roadGeometryV4(THREE,zone,width=40){
  g.setAttribute('uv',new THREE.Float32BufferAttribute(uvs,2));
  g.setIndex(ix);g.computeVertexNormals();return g;
 }
-function placeSpriteInstances(THREE,group,plan,biome,detail=true){
+function placeSpriteInstances(THREE,group,plan,biome,detail=true,composition=false){
  const buckets=new Map();
  for(const item of plan){
   const key=item.kind+':'+item.variant;
@@ -464,7 +470,10 @@ function placeSpriteInstances(THREE,group,plan,biome,detail=true){
  const dummy=new THREE.Object3D();
  for(const [key,arr] of buckets){
   const [kind,variantString]=key.split(':'),variant=+variantString;
-  const texture=spriteTexture(THREE,kind,biome,variant,detail);
+  const texture=composition&&kind==='house'
+   ?canvasTexture(THREE,drawDesignedHouseCanvas(biome,variant))
+   :spriteTexture(THREE,kind,biome,variant,detail);
+  texture.wrapS=texture.wrapT=THREE.ClampToEdgeWrapping;
   // Opaque cut-out sprites: alpha pixels are discarded, not blended across
   // different render batches. This prevents translucent overlap artifacts.
   const mat=new THREE.MeshBasicMaterial({map:texture,transparent:false,alphaTest:.45,depthWrite:true,side:THREE.DoubleSide});
@@ -519,6 +528,6 @@ export function buildSceneryV4(THREE,group,zone,biome,{detail=true,composition=f
   addWaterV4(THREE,group,zone,biome);
  }
  const objects=composition?planSceneryV5(zone,biome):planSceneryV4(zone,biome,{detail});
- const batches=placeSpriteInstances(THREE,group,objects,biome,detail);
+ const batches=placeSpriteInstances(THREE,group,objects,biome,detail,composition);
  return Object.freeze({zone,biome,staticProps:objects.length,drawBatches:batches,ground:composition?'composed-authored-pixelmap':detail?'pixel-cluster-v42':'tile-textured',path:composition?'connected-map-path':detail?'authored-texture-v42':'authored-texture',art:composition?MAP_ART_VERSION:detail?ART_VERSION:'scenery-v4-base',artKinds:detail?EXTRA_KINDS.length:0,water:['river','coast','swamp'].includes(biome)});
 }
