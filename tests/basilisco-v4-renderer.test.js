@@ -70,7 +70,7 @@ test('2.5D registration keeps guild untouched and retains prior-art fallback',()
  assert.ok(html.indexOf('/sentinela-v4.js')<html.indexOf('/basilisco-v4.js'));
  assert.ok(html.indexOf('/basilisco-v4.js')<html.indexOf('/art16.js'));
  assert.match(art,/const basiliskV4Drawn=ty==='basilisco'&&Boolean\(basiliskV4\?\.drawMonster/);
- assert.match(art,/!sentinelV4Drawn&&!basiliskV4Drawn/);
+ assert.match(art,/!sentinelV4Drawn&&!auroraSentinelDrawn&&!basiliskV4Drawn/);
  assert.match(art,/basiliskV4Drawn\?basiliskV4\.measure\(m\.boss\)/);
  assert.match(art,/ty==='basilisco'\?'serpente':ty==='anjo-caido'\?'fantasma':ty/);
 });
