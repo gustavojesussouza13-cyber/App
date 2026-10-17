@@ -35,7 +35,7 @@ test('Morcego, Serpente, Fera, Escorpião, Fantasma, Vespa, Cavaleiro, Dragão e
  const basilisk=art.indexOf("const basiliskV4Drawn=ty==='basilisco'&&Boolean(basiliskV4?.drawMonster");
  const angel=art.indexOf("const angelV4Drawn=ty==='anjo-caido'&&Boolean(fallenAngelV4?.drawMonster");
  const ghostFallback=art.indexOf("const ghostAngelFallback=ty==='anjo-caido'&&!angelV4Drawn");
- const v3=art.indexOf('const creatureV3=!batV4Drawn&&!ravenV4Drawn&&!ravenBatFallback&&!serpentV4Drawn&&!beastV4Drawn&&!scorpionV4Drawn&&!ghostV4Drawn&&!waspV4Drawn&&!knightV4Drawn&&!dragonV4Drawn&&!sentinelV4Drawn&&!auroraSentinelDrawn&&!basiliskV4Drawn&&!angelV4Drawn&&!ghostAngelFallback&&Boolean(creaturesV3?.drawMonster');
+ const v3=art.indexOf('const creatureV3=!batV4Drawn&&!serpentV4Drawn&&!beastV4Drawn&&!scorpionV4Drawn&&!ghostV4Drawn&&!waspV4Drawn&&!knightV4Drawn&&!dragonV4Drawn&&!sentinelV4Drawn&&!auroraSentinelDrawn&&!basiliskV4Drawn&&!angelV4Drawn&&!ghostAngelFallback&&!ravenV4Drawn&&!ravenBatFallback&&Boolean(creaturesV3?.drawMonster');
  const studio=art.indexOf('const studioMonster=!spriteDim&&Boolean(spriteStudio?.drawMonster');
  const boss=art.indexOf('const detailedBoss=!spriteDim&&!studioMonster&&Boolean(desktopSprites?.drawMonster');
  const illustrated=art.indexOf('const illustrated=!spriteDim&&!studioMonster&&!detailedBoss&&Boolean(desktopBestiary?.drawMonster');
