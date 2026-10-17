@@ -64,8 +64,8 @@ for(let dir=0;dir<4;dir++){
  const W=768,H=960,sheet=Buffer.alloc(W*H*4);
  for(let row=0;row<6;row++)for(let col=0;col<4;col++){
   const cw=136,ch=136,anchorX=col*192+96,anchorY=(row+1)*160-5;
-  const lift=row===1?[0,3,1,4][col]:row===2?[0,2,3,4][col]:row===3?[0,0,2,1][col]:0;
-  const swing=row===1?[-5,-1,3,1][col]:row===3?[0,5,11,15][col]:row===4?[-4,4,-3,2][col]:0;
+  const lift=row===0?[0,1,3,2][col]:row===1?[0,3,1,4][col]:row===2?[0,2,3,4][col]:row===3?[0,0,2,1][col]:0;
+  const swing=row===0?[-3,0,2,4][col]:row===1?[-5,-1,3,1][col]:row===3?[0,5,11,15][col]:row===4?[-4,4,-3,2][col]:0;
   const height=row===5?[1,.78,.5,.21][col]:row===4?[1,.97,.92,1][col]:1;
   const width=row===2?[1,1.02,1.04,1.05][col]:row===3?[1,1.03,1.07,1.1][col]:1;
   const rw=Math.round(cw*width),rh=Math.round(ch*height);
