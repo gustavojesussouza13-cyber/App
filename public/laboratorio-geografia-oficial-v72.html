@@ -1,0 +1,57 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Os Peregrinos — Formação Oficial × Cenário V7.2</title>
+<style>*{box-sizing:border-box}body{background:#101e25;color:#e8dec7;font:15px/1.55 system-ui;margin:0}main{max-width:1100px;margin:auto;padding:20px}h1{font:700 30px Georgia;color:#efc789}
+section{background:#162a31;border:1px solid #526e6b;padding:12px;border-radius:12px;margin:15px 0}
+.controls{display:flex;gap:12px;flex-wrap:wrap;align-items:center}select,input{font:inherit;color:#efdec3;background:#283e45;padding:9px;border:1px solid #829a90;border-radius:5px}
+.stage{position:relative;width:100%;max-width:960px;aspect-ratio:5/3;overflow:hidden;margin:auto;background:#203939;border:1px solid #b58f5b}
+.stage canvas{width:100%;height:100%;display:block;image-rendering:pixelated;position:absolute;inset:0}p{color:#c2cbc7}a{color:#f5cf99}
+</style></head><body><main><h1>Os Peregrinos — formação geográfica oficial</h1>
+<p>Compare a formação gerada pelo próprio jogo com a substituição visual experimental V7.2. A ponte, os rios, caminhos e os pontos dos objetos provêm do <strong>mesmo mapa real</strong>. Não há casas ou árvores colocadas em novas posições.</p>
+<section class="controls">
+<label>Bioma <select id="biome"><option value="pradaria">Pradaria</option><option value="floresta">Floresta</option><option value="rio" selected>Rio</option><option value="deserto">Deserto</option><option value="montanha">Montanha</option><option value="ruinas">Ruínas</option><option value="pantano">Pântano</option><option value="costa">Costa</option><option value="cidade">Cidade</option><option value="masmorra">Masmorra</option></select></label>
+<label>Zona <input type="number" id="zone" min="0" max="39" value="2" style="width:80px"></label>
+<label>Visual <select id="view"><option value="v72">Formação oficial + PNGs V7.2</option><option value="original">Arte original 2D</option></select></label>
+<label>Visão X <input type="range" id="x" min="0" max="576" step="16" value="0"></label>
+<label>Visão Y <input type="range" id="y" min="0" max="448" step="16" value="0"></label>
+</section>
+<div class="stage"><canvas id="picture" width="960" height="576"></canvas></div>
+<p id="status">Carregando atlas real do jogo…</p><p>Comparação técnica experimental. NPCs, criaturas, portais interativos e fortalezas continuam gerenciados pelo jogo e não aparecem nesta prévia estática. <a href="/laboratorio-cenario-25d-v4.html">Laboratório artístico V7.2</a>.</p>
+</main>
+<script src="/shading16.js" defer></script>
+<script src="/pixel-detail.js" defer></script>
+<script src="/landscape16.js" defer></script>
+<script src="/procedural-world.js" defer></script>
+<script src="/world-props-artisan64.js" defer></script>
+<script src="/art16.js" defer></script>
+<script type="module">
+import {copyCanonicalMap} from '/world-scenery-v72-canonical.mjs';
+import {preloadV7Assets} from '/world-scenery-v7-asset-loader.mjs';
+import {preloadV72Assets} from '/world-scenery-v72-asset-loader.mjs';
+const canvas=document.getElementById('picture'),ctx=canvas.getContext('2d');
+const controls=['biome','zone','view','x','y'].map(id=>document.getElementById(id));
+const [biome,zone,mode,x,y]=controls;
+const status=document.getElementById('status');
+let api=null,lastKey='',lastPaint=null;
+await Promise.all([preloadV7Assets(),preloadV72Assets()]).catch(()=>{});
+for(let n=0;n<80&&!window.PeregrinoArt16;n++)await new Promise(ok=>setTimeout(ok,50));
+if(window.PeregrinoArt16){
+ api=window.PeregrinoArt16.create({ctx,W:960,H:576});
+}
+function draw(){
+ if(!api?.ready()){status.textContent='Aguardando o atlas clássico…';requestAnimationFrame(draw);return;}
+ const id=Number(zone.value),source=api.mapSnapshot(id,biome.value),key=id+':'+biome.value+':'+mode.value;
+ if(!source){status.textContent='Mapa ainda indisponível';requestAnimationFrame(draw);return;}
+ if(key!==lastKey){
+  lastPaint=copyCanonicalMap(source,{replacement:mode.value==='original'?()=>null:undefined});
+  lastKey=key;
+ }
+ if(lastPaint){
+  ctx.imageSmoothingEnabled=false;ctx.clearRect(0,0,960,576);
+  ctx.drawImage(lastPaint.canvas,Number(x.value),Number(y.value),960,576,0,0,960,576);
+  status.textContent='Região '+id+' · '+source.biome+' · '+lastPaint.staticProps+' objetos nas coordenadas existentes · '+lastPaint.improved+' PNGs novos no mesmo local · ponte e rios originais preservados';
+ }
+ requestAnimationFrame(draw);
+}
+controls.forEach(control=>control.addEventListener('change',()=>{lastKey='';}));
+requestAnimationFrame(draw);
+</script></body></html>

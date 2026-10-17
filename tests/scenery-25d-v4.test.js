@@ -145,3 +145,6 @@ require('./scenery-25d-v7-tiles.test.js');
 
 // Verified original V7.2 PNGs and safe visual placement run in Render build gate.
 require('./scenery-25d-v72-art.test.js');
+
+// Official-map geometry remains the sole source of truth for the experimental integration.
+require('./scenery-25d-v72-canonical.test.js');

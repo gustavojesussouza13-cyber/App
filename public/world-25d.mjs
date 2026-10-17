@@ -11,6 +11,7 @@ import {preloadSceneryAtlas,atlasLoaded} from '/world-scenery-v6-asset-adapter.m
 import {preloadV7Assets,isV7Ready,v7Stats} from '/world-scenery-v7-asset-loader.mjs';
 import {preloadV7Terrain,v7TerrainReady,v7TerrainStatus} from '/world-scenery-v7-terrain.mjs';
 import {preloadV72Assets,v72Ready,v72Status} from '/world-scenery-v72-asset-loader.mjs';
+import {buildCanonicalScenery} from '/world-scenery-v72-canonical.mjs';
 
 const ZONE_WIDTH = 1536;
 const ZONE_HEIGHT = 1024;
@@ -237,8 +238,8 @@ export function createWorld25D({shell,canvas,width=960,height=576,sceneryV4=true
   sun.position.set(-240,600,190);
   scene.add(ambient,sun);
   let layer=null,activeZone=NaN,activeBiome='',disposed=false,night=false,shrine=null;
-  let useSceneryV4=Boolean(sceneryV4),useSceneryDetail=true,useSceneryComposition=true,useSceneryAtlas=false,useSceneryV7=false,lastSceneryV4=null;
-  function rebuild(zone,biome) {
+  let useSceneryV4=Boolean(sceneryV4),useSceneryDetail=true,useSceneryComposition=true,useSceneryAtlas=false,useSceneryV7=false,lastSceneryV4=null,useCanonical=false,activeMapSource=null;
+  function rebuild(zone,biome,sourceMap=null) {
     if(layer){
       scene.remove(layer);
       layer.traverse(o=>{
@@ -254,6 +255,16 @@ export function createWorld25D({shell,canvas,width=960,height=576,sceneryV4=true
     layer=new THREE.Group();
     scene.add(layer);
     shrine=null;
+    // Live official art16 terrain is the geography authority for integration.
+    // Never invent a second layout when a verified canonical snapshot exists.
+    const useSource=Boolean(useCanonical&&sourceMap?.zone===zone&&sourceMap?.biome===biome&&sourceMap?.canvas);
+    if(useSource){
+      lastSceneryV4=buildCanonicalScenery(THREE,layer,sourceMap,{v7:useSceneryV7});
+      activeMapSource=sourceMap.canvas;
+      activeZone=zone;activeBiome=biome;
+      return;
+    }
+    activeMapSource=null;
     // One V4 static scenery pack covers all historical regions and 10 biomes.
     // In case of a WebGL/texture failure, fall back to the EXACT prior model.
     let success=false;
@@ -311,10 +322,10 @@ export function createWorld25D({shell,canvas,width=960,height=576,sceneryV4=true
     activeZone=zone;
     activeBiome=biome;
   }
-  function render({zone=0,biome='pradaria',cameraX=0,cameraY=0,now=0}={}) {
+  function render({zone=0,biome='pradaria',cameraX=0,cameraY=0,now=0,sourceMap=null}={}) {
     if(disposed)return false;
     const selected=biomeNames[biome]||biome;
-    if(zone!==activeZone||selected!==activeBiome)rebuild(zone,selected);
+    if(zone!==activeZone||selected!==activeBiome||(useCanonical&&sourceMap?.canvas&&sourceMap.canvas!==activeMapSource))rebuild(zone,selected,sourceMap);
     const cx=cameraX+width/2,cz=cameraY+height/2;
     camera.position.set(cx,1350,cz);
     camera.lookAt(cx,0,cz);
@@ -336,6 +347,7 @@ export function createWorld25D({shell,canvas,width=960,height=576,sceneryV4=true
     return true;
   }
   function setNight(value){night=Boolean(value);}
+  function setSceneryCanonical(value){useCanonical=Boolean(value);activeZone=NaN;activeBiome='';}
   function setSceneryV4(value){useSceneryV4=Boolean(value);activeZone=NaN;activeBiome='';}
   function setSceneryDetail(value){useSceneryDetail=Boolean(value);activeZone=NaN;activeBiome='';}
   function setSceneryComposition(value){useSceneryComposition=Boolean(value);activeZone=NaN;activeBiome='';}
@@ -385,7 +397,7 @@ export function createWorld25D({shell,canvas,width=960,height=576,sceneryV4=true
     canvas.style.background='';
   }
   window.addEventListener('pagehide',dispose,{once:true});
-  return {render,setNight,setSceneryV4,setSceneryDetail,setSceneryComposition,setSceneryAtlas,setSceneryV7,dispose,canvas:renderer.domElement,
+  return {render,setNight,setSceneryCanonical,setSceneryV4,setSceneryDetail,setSceneryComposition,setSceneryAtlas,setSceneryV7,dispose,canvas:renderer.domElement,
     get atlasReady(){return atlasLoaded();},
     get v7Ready(){return isV7Ready();},
     get v7Status(){return v7Stats();},

@@ -759,7 +759,24 @@ function create({ctx,W,H}){
   // Última camada visível, sem depender da profundidade do portal no mapa.
   portalInteractionHud(ctx,portals,{x,y});
  }
- return {render,ready:()=>artReady,tiles:Object.keys(SPRITES).length};
+ /**
+  * Read-only, canonical visual snapshot. This is the SAME terrain and
+  * decorative prop list used by the original online game (not a replica).
+  * Server portals / NPCs / kingdoms remain actor overlays, never baked here.
+  */
+ function mapSnapshot(zone,biomeCode){
+  if(!artReady||!Number.isInteger(zone)||zone<0)return null;
+  const biome=biomeThemes[biomeCode]||biomeCode;
+  if(!['meadow','forest','river','desert','mountain','ruins','swamp','coast','city','dungeon'].includes(biome))return null;
+  if(!cache||cache.z!==zone||cache.biome!==biome)terrain(zone,biome);
+  const region=cache;
+  return Object.freeze({
+   zone,biome,canvas:region.canvas,
+   objects:region.objects,
+   paintProp:(dest,item)=>{if(cache!==region){cache=region;objects=region.objects}prop(dest,item);}
+  });
+ }
+ return {render,mapSnapshot,ready:()=>artReady,tiles:Object.keys(SPRITES).length};
 }
 window.PeregrinoArt16={create};
 })();

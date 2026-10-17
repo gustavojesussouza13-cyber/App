@@ -34,6 +34,10 @@ async function enableWorld25d(){
   if(!world25d){
    const {createWorld25D}=await import('/world-25d.mjs');
    world25d=createWorld25D({shell:$('canvasShell'),canvas:cvs,width:W,height:H});
+   // In the isolated integration preview, 2.5D paints the ORIGINAL official
+   // terrain layout; V7.2 supplies only compatible cosmetic replacements.
+   world25d.setSceneryCanonical(true);
+   world25d.setSceneryV7(true);
   }
   world25dActive=true;
  }catch(err){
@@ -1348,7 +1352,9 @@ function canvasDraw(now,dt){
    try{
     world25d.render({zone:session.zone,
      biome:session.region?.id===session.zone?session.region.biome:(session.zones[session.zone]?.biome||'pradaria'),
-     cameraX:session.cameraX,cameraY:session.cameraY,now});
+     cameraX:session.cameraX,cameraY:session.cameraY,now,
+     sourceMap:classicRenderer.mapSnapshot(session.zone,
+       session.region?.id===session.zone?session.region.biome:(session.zones[session.zone]?.biome||'pradaria'))});
    }catch(err){
     console.warn('[Mundo Aberto 2.5D] Falha na renderização; retomando modo 2D.',err);
     world25dActive=false;updateWorld25dMode();
