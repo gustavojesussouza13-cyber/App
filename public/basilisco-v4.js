@@ -58,8 +58,9 @@
     drawn=true;
     if(row===3&&fxReady){
      const fw=Math.round(width*1.74),fh=Math.round(height*1.28);
+     const muzzleShift=dir===1?width*.44:dir===3?-width*.44:0;
      try{g.drawImage(fx,frame*192,FX_ROWS[dir]*160,192,160,
-       Math.round(x-fw/2),Math.round(y-height-fh*.07),fw,fh)}
+       Math.round(x-fw/2+muzzleShift),Math.round(y-height-fh*.07),fw,fh)}
      catch(_acidOnlyError){} // An effect error must not erase the correctly drawn creature.
     }
    }catch(_bodyError){}finally{if(saved){try{g.restore()}catch(_restoreError){}}}
