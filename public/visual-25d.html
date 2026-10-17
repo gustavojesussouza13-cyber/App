@@ -89,6 +89,7 @@ button{cursor:pointer}button:hover{background:#365951}button:focus-visible{outli
   <label>Ação<select id="thornAction"><option value="idle">Repouso</option><option value="walk">Caminhada</option><option value="prepare">Preparação</option><option value="attack">Ataque de espinhos</option><option value="hurt">Dano</option><option value="death">Morte</option></select></label>
   <label>Direção<select id="thornDirection"><option value="0">Costas</option><option value="1" selected>Direita</option><option value="2">Frente</option><option value="3">Esquerda</option></select></label>
   <label class="checkline"><input type="checkbox" id="thornBoss"> Escala de chefe</label>
+  <label class="checkline"><input type="checkbox" id="thornFocus"> Focar Espinho Vivo ao lado do Peregrino (ocultar outros atores nesta prévia)</label>
   <p id="thornStatus" role="status" aria-live="polite">Carregando os cinco arquivos do Espinho Vivo…</p>
  </section>
  <button id="night" type="button">☾ Anoitecer</button>
@@ -145,7 +146,7 @@ const sentinelActor={x:935,y:508,type:'sentinela',species:28};
 const basiliskActor={x:990,y:700,type:'basilisco',species:29};
 const angelActor={x:535,y:655,type:'anjo-caido',species:30};
 const ravenActor={x:1130,y:605,type:'corvo-ocaso',species:7};
-const thornActor={x:1130,y:845,type:'espinho-vivo',species:9};
+const thornActor={x:930,y:690,type:'espinho-vivo',species:9};
 const thornRenderer=window.OsPeregrinosLivingThornV4?.create({windowRef:window});
 let thornActionAt=performance.now();
 $('thornAction').addEventListener('change',()=>{thornActionAt=performance.now()});
@@ -340,7 +341,8 @@ function frame(t){
  }
  ctx.clearRect(0,0,W,H);
  if(!mode3d)fallbackTerrain(camX,camY);
- const sortedActors=[...actors,player,sentinelActor,basiliskActor,angelActor,ravenActor,thornActor].sort((a,b)=>a.y-b.y);
+ const visibleActors=$('thornFocus').checked?[player,thornActor]:[...actors,player,sentinelActor,basiliskActor,angelActor,ravenActor,thornActor];
+ const sortedActors=visibleActors.sort((a,b)=>a.y-b.y);
  for(const actor of sortedActors){
   if(actor===sentinelActor)drawSentinel(camX,camY,t);
   else if(actor===basiliskActor)drawBasilisk(camX,camY,t);
