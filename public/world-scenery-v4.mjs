@@ -240,9 +240,11 @@ export function planSceneryV72(zone,biome,initial){
   ruins:[{kind:'ruin',x:785,z:228,w:158,h:137,variant:0}]
  }[biome]||[];
  if(!candidates.length)return initial;
- const drop=new Set(['tree','pine','palm','shrub','flower','rock','stump','reeds','mushroom','barrel','crate','lamp','well','fountain']);
+ // Do not let stochastic decoration consume a semantic landmark footprint.
+ // Houses and the existing settlement anchors are never displaced.
+ const protectedKinds=new Set(['house','market','arch','statue','altar','watchtower']);
  const result=initial.filter(item=>!candidates.some(candidate=>
-  drop.has(item.kind)&&sceneryOverlaps(item,candidate,8)));
+  !protectedKinds.has(item.kind)&&sceneryOverlaps(item,candidate,8)));
  for(const candidate of candidates){
   if(visualExclusion(candidate,zone,biome,1536,1024))continue;
   if(result.some(other=>sceneryOverlaps(other,candidate,8)))continue;
