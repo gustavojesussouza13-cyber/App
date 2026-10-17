@@ -184,3 +184,21 @@ test('V7 architecture activates only the hash-verified PNGs; missing binaries st
  const forbidden=['casa_azul_02','lampiao_01','poco_01','ponte_madeira_01'];
  assert.ok(forbidden.every(name=>!manifest.files.includes(name)),'broken crops never auto-enable');
 });
+
+
+test('V7 architecture QA shows only real approved PNGs, detects missing red house and ruins portal, and supports transparency inspection',()=>{
+ const lab=js('laboratorio-arquitetura-v7.html');
+ const original=js('laboratorio-cenario-25d-v4.html');
+ const manifest=JSON.parse(js('assets/scenery-v7/availability.json'));
+ assert.ok(original.includes('/laboratorio-arquitetura-v7.html'),'2.5D world links detailed architecture QA');
+ for(const id of ['casa_azul_01','casa_vermelha_01','portal_ruinas_01','caixa_01']){
+  assert.ok(lab.includes("'"+id+"'"),'asset must be considered in QA '+id);
+ }
+ assert.ok(!manifest.files.includes('casa_vermelha_01'),'do not claim red house published before actual upload');
+ assert.ok(!manifest.files.includes('portal_ruinas_01'),'do not claim ruins portal published before actual upload');
+ for(const check of ["manifest.approved!==true","!Array.isArray(manifest.files)","a.loaded?'PNG confirmado pelo navegador'","img.naturalWidth===w&&img.naturalHeight===h","image-rendering:pixelated","value=\"checker\"","value=\"meadow\"","value=\"night\""]){
+  assert.ok(lab.includes(check),'QA mechanism missing '+check);
+ }
+ assert.ok(lab.includes("card.dataset.loaded='yes'")||lab.includes("card.dataset.loaded=a.loaded?'yes':'no'"),'filter must reflect actual loaded PNG');
+ assert.ok(!lab.includes('placehold.co')&&!lab.includes('unsplash')&&!lab.includes('picsum'),'no fake stock sprites');
+});
