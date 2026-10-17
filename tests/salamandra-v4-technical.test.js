@@ -89,3 +89,14 @@ test('Salamandra modifies only art of existing species 24; V3 and fortress stay 
  assert.equal(api.SPECIES,24);
  assert.ok(fs.readFileSync(path.join(pub,'laboratorio-salamandra-v4-tecnico.html'),'utf8').includes('variações procedurais'));
 });
+
+test('production npm start regenerates Salamandra atlas without Render build override',()=>{
+ const pkg=require('../package.json');
+ assert.equal(pkg.scripts.prestart,'node scripts/build-salamandra-v4-atlas.js');
+ assert.equal(pkg.scripts.start,'node server.js');
+ const generator=fs.readFileSync(path.resolve(__dirname,'../scripts/build-salamandra-v4-atlas.js'),'utf8');
+ assert.ok(generator.includes("fs.mkdirSync(out,{recursive:true})"));
+ assert.ok(generator.includes("pngEncode(sheet,W,H)"));
+ const server=fs.readFileSync(path.resolve(__dirname,'../server.js'),'utf8');
+ assert.ok(!server.includes('SALAMANDRA_V4_GAME_PREVIEW'));
+});
