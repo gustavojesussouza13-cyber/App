@@ -40,7 +40,9 @@ test('water V4 has four native 192x160 directions with no mirroring',()=>{
  for(let dir=0;dir<4;dir++){
   h.calls.length=0;assert.equal(h.render.drawMonster(h.ctx,{...elemental,dir},0,{}),true);
   const img=h.calls.find(c=>c[0]==='drawImage');assert.ok(img[1].url.includes(api.DIRS[dir]+'.png'));
-  assert.deepEqual(img.slice(2,6),[0,0,192,160]);
+  assert.equal(img[2]%192,0,'source X must align with one 192px frame');
+  assert.ok(img[2]>=0&&img[2]<=576);
+  assert.deepEqual(img.slice(3,6),[0,192,160]);
   assert.equal(h.calls.some(c=>c[0]==='scale'||c[0]==='translate'),false);
   assert.equal(h.calls.at(-1)[0],'restore');
  }
