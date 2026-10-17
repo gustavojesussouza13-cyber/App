@@ -229,5 +229,67 @@ try{
  await page.locator('#basiliskBoss').uncheck();
  assert.ok(!pageErrors.some(x=>/basilis|sentinel|ReferenceError/i.test(x)),'Basilisco V4 JS errors: '+JSON.stringify(pageErrors));
  console.log('BASILISCO_V4_25D_OK',JSON.stringify(fourDirections));
+
+ // Exclusive V4 angel must render in this same real 2.5D scene, independent of ghosts.
+ const angelResponse=await page.goto(url,{waitUntil:'domcontentloaded',timeout:40000});
+ assert.equal(angelResponse?.status(),200);
+ await page.waitForFunction(()=>document.querySelector('#angelStatus')?.textContent?.includes('magia pronta'),null,{timeout:18000});
+ const angelCheck=await page.evaluate(async()=>{
+  const api=window.OsPeregrinosFallenAngelV4;
+  if(!api||api.FRAME.width!==192||api.FRAME.height!==160)throw Error('Anjo Caído 192x160 renderer missing');
+  const walkDistinct=[],hurtDiff=[],occupancy=[],directions=[];
+  for(let d=0;d<4;d++){
+   const img=new Image();img.src=api.ASSETS[d];await img.decode();
+   if(img.naturalWidth!==768||img.naturalHeight!==960)throw Error('Anjo Caído atlas dimensions invalid '+d);
+   const cv=document.createElement('canvas');cv.width=192;cv.height=160;
+   const g=cv.getContext('2d',{willReadFrequently:true}),walk=[];
+   for(let i=0;i<4;i++){g.clearRect(0,0,192,160);g.drawImage(img,i*192,160,192,160,0,0,192,160);walk.push(cv.toDataURL('image/png'));}
+   walkDistinct.push(new Set(walk).size);
+   let alpha=g.getImageData(0,0,192,160).data,solid=0;
+   for(let i=3;i<alpha.length;i+=4)if(alpha[i]>32)solid++;
+   occupancy.push(solid);
+   g.clearRect(0,0,192,160);g.drawImage(img,0,4*160,192,160,0,0,192,160);
+   const hurt=g.getImageData(0,0,192,160).data;
+   g.clearRect(0,0,192,160);g.drawImage(img,0,0,192,160,0,0,192,160);
+   const idle=g.getImageData(0,0,192,160).data;
+   let changed=0;for(let i=0;i<hurt.length;i+=4)if(hurt[i]!==idle[i]||hurt[i+1]!==idle[i+1]||hurt[i+2]!==idle[i+2]||hurt[i+3]!==idle[i+3])changed++;
+   hurtDiff.push(changed);
+   directions.push(img.src);
+  }
+  const spell=new Image();spell.src=api.FXSHEET;await spell.decode();
+  const cvs=document.createElement('canvas');cvs.width=192;cvs.height=160;
+  const ctx=cvs.getContext('2d',{willReadFrequently:true});
+  const fxPixels=[];
+  for(let d=0;d<4;d++){ctx.clearRect(0,0,192,160);ctx.drawImage(spell,0,d*160,192,160,0,0,192,160);
+   const pixels=ctx.getImageData(0,0,192,160).data;let count=0;
+   for(let i=3;i<pixels.length;i+=4)if(pixels[i]>16)count++;
+   fxPixels.push(count);
+  }
+  return {walkDistinct,hurtDiff,occupancy,fxPixels,fxWidth:spell.naturalWidth,fxHeight:spell.naturalHeight};
+ });
+ assert.deepEqual(angelCheck.walkDistinct,[4,4,4,4],'angel walking must change feet/wings in all four directions');
+ assert.ok(angelCheck.hurtDiff.every(x=>x>250),'angel hurt frame must be visibly different from idle');
+ assert.ok(angelCheck.occupancy.every(x=>x>2800),'angel directions must retain large visible sprites');
+ assert.ok(angelCheck.fxPixels.every(x=>x>50),'every magic direction must contain pixels');
+ assert.deepEqual([angelCheck.fxWidth,angelCheck.fxHeight],[768,640]);
+ for(let direction=0;direction<4;direction++){
+  await page.locator('#angelDirection').selectOption(String(direction));
+  assert.match(await page.locator('#angelStatus').innerText(),/Quatro direções reais/);
+ }
+ await page.locator('#angelDirection').selectOption('1');
+ await page.locator('#angelAction').selectOption('walk');
+ await page.waitForTimeout(290);
+ await page.screenshot({path:'/tmp/os-peregrinos-anjo-caido-v4-caminhada-25d.png',fullPage:true});
+ await page.locator('#angelAction').selectOption('attack');
+ await page.waitForTimeout(280);
+ await page.screenshot({path:'/tmp/os-peregrinos-anjo-caido-v4-magia-25d.png',fullPage:true});
+ await page.locator('#angelAction').selectOption('hurt');
+ await page.waitForTimeout(140);
+ await page.screenshot({path:'/tmp/os-peregrinos-anjo-caido-v4-dano-25d.png',fullPage:true});
+ await page.locator('#angelAction').selectOption('death');
+ await page.waitForTimeout(600);
+ await page.screenshot({path:'/tmp/os-peregrinos-anjo-caido-v4-morte-25d.png',fullPage:true});
+ assert.ok(!pageErrors.some(e=>/angel|anjo-caido|ReferenceError/i.test(e)),'No JS errors from the new creature');
+ console.log('ANJO_CAIDO_V4_25D_OK',JSON.stringify(angelCheck));
  console.log('WORLD_25D_BROWSER_OK',JSON.stringify({url,classes:4,biomes:6,canvas:'webgl'}));
 }finally{await browser.close()}
