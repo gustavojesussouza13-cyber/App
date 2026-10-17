@@ -15,8 +15,8 @@ test('V7 QA catalog contains 30 original object crops, 20 tile candidates and fo
  }
  const gate=JSON.parse(fs.readFileSync(path.join(base,'assets/scenery-v7/availability.json'),'utf8'));
  assert.equal(gate.version,'v7');assert.equal(gate.approved,true);
- assert.deepEqual(gate.files,['arbusto_flores_01','arvore_folhosa_01','rocha_musgo_01','pinheiro_01','barril_01','casa_azul_01','caixa_01']);
- assert.equal(gate.quality_gate,'seven_sprite_architecture_pilot');
+ assert.deepEqual(gate.files,['arbusto_flores_01','arvore_folhosa_01','rocha_musgo_01','pinheiro_01','barril_01','casa_azul_01','caixa_01','casa_vermelha_01','portal_ruinas_01']);
+ assert.equal(gate.quality_gate,'nine_sprite_architecture_pilot');
  const expected={
   arbusto_flores_01:[75,42],
   arvore_folhosa_01:[88,156],
@@ -24,7 +24,9 @@ test('V7 QA catalog contains 30 original object crops, 20 tile candidates and fo
   pinheiro_01:[85,151],
   barril_01:[45,58],
   casa_azul_01:[104,147],
-  caixa_01:[34,45]
+  caixa_01:[34,45],
+  casa_vermelha_01:[100,147],
+  portal_ruinas_01:[102,143]
  };
  for(const [id,[width,height]] of Object.entries(expected)){
   const binary=fs.readFileSync(path.join(base,'assets/scenery-v7/sprites',id+'.png'));
@@ -41,7 +43,9 @@ test('V7 QA catalog contains 30 original object crops, 20 tile candidates and fo
   ['pinheiro_01','85ab4b977f65d0b00a2f3434475677f92c62d62e'],
   ['barril_01','db1dfff5e28ada2bf71ea7004f04da5130e0e38f'],
   ['casa_azul_01','2d80bf6f2cb03a18c071aaa9e71645f45b74f345'],
-  ['caixa_01','fa0aa1bcc3f26fc5af17d016810fdde033493422']
+  ['caixa_01','fa0aa1bcc3f26fc5af17d016810fdde033493422'],
+  ['casa_vermelha_01','64445617c34efdfc08c2a8c029e03cfe7bc8a4b2'],
+  ['portal_ruinas_01','8514996987651bb8d5167f13b75068d7ba924540']
  ]){
   const binary=fs.readFileSync(path.join(base,'assets/scenery-v7/sprites',id+'.png'));
   const sha=crypto.createHash('sha1').update(Buffer.from('blob '+binary.length+String.fromCharCode(0))).update(binary).digest('hex');
@@ -70,7 +74,7 @@ test('V7 maps actual characters and props without using unapproved crops',async(
 });
 test('V7 accepts only an explicitly approved same-origin asset pack and uses nearest-neighbour textures',async()=>{
  const m=await loader();
- const activeFiles=['arvore_folhosa_01','casa_azul_01','casa_azul_02','ponte_madeira_01'];
+ const activeFiles=['arvore_folhosa_01','casa_azul_01','casa_vermelha_01','portal_ruinas_01','casa_azul_02','ponte_madeira_01'];
  const requests=[];
  class ImageMock{
   constructor(){this.handlers={};this.naturalWidth=0;this.naturalHeight=0;}
@@ -82,10 +86,11 @@ test('V7 accepts only an explicitly approved same-origin asset pack and uses nea
   return {ok:true,json:async()=>({version:'v7',approved:true,files:activeFiles})};
  },ImageClass:ImageMock});
  assert.equal(ok,true);
- assert.equal(m.v7Stats().loaded,2,'unapproved PNGs must never auto-load');
- assert.equal(requests.length,2);
+ assert.equal(m.v7Stats().loaded,4,'pending crops must never auto-load');
+ assert.equal(requests.length,4);
  assert.equal(m.v7Image('house',0).naturalWidth,104);
- assert.equal(m.v7Image('house',1),null,'fallback when variant not loaded');
+ assert.equal(m.v7Image('house',1).naturalWidth,100,'real red house variant loaded');
+ assert.equal(m.v7Image('ruin',0).naturalHeight,143,'original ruins portal loaded');
  const THREE={Texture:class {constructor(image){this.image=image}},
   SRGBColorSpace:'s',NearestFilter:11,NearestMipmapNearestFilter:22,ClampToEdgeWrapping:33};
  const texture=m.createV7PropTexture(THREE,'tree',0);
@@ -116,7 +121,7 @@ test('V7 laboratory explicitly warns about unpublished art and distinguishes the
 
  assert.ok(lab.includes('view.v7Status.loaded')&&lab.includes('view.v7Ready'));
  assert.equal(manifest.approved,true,'Only checked pilot is allowed');
- assert.deepEqual(manifest.files,['arbusto_flores_01','arvore_folhosa_01','rocha_musgo_01','pinheiro_01','barril_01','casa_azul_01','caixa_01']);
+ assert.deepEqual(manifest.files,['arbusto_flores_01','arvore_folhosa_01','rocha_musgo_01','pinheiro_01','barril_01','casa_azul_01','caixa_01','casa_vermelha_01','portal_ruinas_01']);
 });
 
 
@@ -143,10 +148,10 @@ test('V7 architecture activates only the hash-verified PNGs; missing binaries st
  const manifest=JSON.parse(js('assets/scenery-v7/availability.json'));
  const qa=JSON.parse(js('assets/scenery-v7/architecture-qa.json'));
  const catalog=(await loader()).V7_ASSETS;
- assert.equal(qa.status,'partial_binary_upload');
+ assert.equal(qa.status,'nine_sprite_architecture_qa_uploaded');
  assert.equal(qa.activated,true);
- assert.deepEqual(qa.activated_ids,['casa_azul_01','caixa_01']);
- assert.deepEqual(qa.staged_pending_ids,['casa_vermelha_01','portal_ruinas_01']);
+ assert.deepEqual(qa.activated_ids,['casa_azul_01','caixa_01','casa_vermelha_01','portal_ruinas_01']);
+ assert.deepEqual(qa.staged_pending_ids,[]);
  const ids=new Set(qa.approved_proposals.map(a=>a.id));
  assert.equal(ids.size,4,'four individually reviewed architecture sprites');
  const crypto=require('node:crypto');
@@ -194,8 +199,8 @@ test('V7 architecture QA shows only real approved PNGs, detects missing red hous
  for(const id of ['casa_azul_01','casa_vermelha_01','portal_ruinas_01','caixa_01']){
   assert.ok(lab.includes("'"+id+"'"),'asset must be considered in QA '+id);
  }
- assert.ok(!manifest.files.includes('casa_vermelha_01'),'do not claim red house published before actual upload');
- assert.ok(!manifest.files.includes('portal_ruinas_01'),'do not claim ruins portal published before actual upload');
+ assert.ok(manifest.files.includes('casa_vermelha_01'),'red house must load once SHA checked');
+ assert.ok(manifest.files.includes('portal_ruinas_01'),'portal must load once SHA checked');
  for(const check of ["manifest.approved!==true","!Array.isArray(manifest.files)","a.loaded?'PNG confirmado pelo navegador'","img.naturalWidth===w&&img.naturalHeight===h","image-rendering:pixelated","value=\"checker\"","value=\"meadow\"","value=\"night\""]){
   assert.ok(lab.includes(check),'QA mechanism missing '+check);
  }
