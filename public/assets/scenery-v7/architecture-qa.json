@@ -1,6 +1,6 @@
 {
   "batch": "scenery-v7-architecture-qa-20261017",
-  "status": "partial_binary_upload",
+  "status": "nine_sprite_architecture_qa_uploaded",
   "activated": true,
   "source": "Cenario_V7_Recortes_Tecnicos.zip",
   "treatment": "Pillow FASTOCTREE palette 56 colors, original unscaled shape, alpha verified; technical compression only",
@@ -39,8 +39,8 @@
     }
   ],
   "warnings": [
-    "Only the two file-hash-verified PNGs casa_azul_01 and caixa_01 are active; red house and ruins portal require binary upload before activation.",
-    "Potential extra pixels around the lower edge of blue and red houses require visual confirmation in the live game.",
+    "All four architecture PNGs are now uploaded with confirmed Git blob hashes, original dimensions, and alpha. Visual acceptance in actual world still pending user inspection.",
+    "Potential extra pixels around lower edge of houses require visual confirmation in real game.",
     "Never use incomplete house, lantern, well or bridge crops."
   ],
   "protected": [
@@ -50,10 +50,9 @@
   ],
   "activated_ids": [
     "casa_azul_01",
-    "caixa_01"
-  ],
-  "staged_pending_ids": [
+    "caixa_01",
     "casa_vermelha_01",
     "portal_ruinas_01"
-  ]
+  ],
+  "staged_pending_ids": []
 }
