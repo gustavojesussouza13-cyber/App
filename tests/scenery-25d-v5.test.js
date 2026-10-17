@@ -74,7 +74,7 @@ test('V5 renderer composes pixelmap without duplicating road plane or rendering 
  const dir=path.resolve(__dirname,'../public'),code=fs.readFileSync(path.join(dir,'world-scenery-v4.mjs'),'utf8');
  const renderer=fs.readFileSync(path.join(dir,'world-25d.mjs'),'utf8');
  const lab=fs.readFileSync(path.join(dir,'laboratorio-cenario-25d-v4.html'),'utf8');
- assert.ok(code.includes('composition?createDesignedTerrainTexture(THREE,zone,biome)'));
+ assert.ok(code.includes('createDesignedTerrainTexture(THREE,zone,biome,{v7Atlas:useV7Terrain?v7TerrainImage():null})'),'composed world uses original V5 canvas and optional verified terrain atlas');
  assert.ok(code.includes('if(!composition){'),'no duplicate overlaid road/water planes in V5');
  assert.ok(code.includes('composition?planSceneryV5(zone,biome)'));
  assert.ok(renderer.includes('setSceneryComposition(value)'));
