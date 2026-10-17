@@ -1,0 +1,15 @@
+{
+  "version": "v7",
+  "approved": false,
+  "files": [],
+  "reason": "Aguardando auditoria e commit de PNGs RGBA gerados em pacote de revisão; tela usa fallback V5 até lá.",
+  "source": "Pranchas autorais Os Peregrinos V5/V7",
+  "technical_crops": 30,
+  "technical_tiles": 20,
+  "qa_pending": [
+    "casa_azul_02",
+    "lampiao_01",
+    "poco_01",
+    "ponte_madeira_01"
+  ]
+}
