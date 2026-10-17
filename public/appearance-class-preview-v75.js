@@ -48,5 +48,5 @@
    ready:loaded(role),custom,source:SOURCES[role]||SOURCES.peregrino
   };
  }
- return Object.freeze({VERSION:'appearance-classes-v77-four-way-walk-20261017',ROLES,SOURCES,loaded,ensureLoaded,draw,status});
+ return Object.freeze({VERSION:'appearance-classes-v78-full-gait-20261017',ROLES,SOURCES,loaded,ensureLoaded,draw,status});
 });

@@ -12,7 +12,7 @@
  if(root)root.OsPeregrinosAppearanceSpriteV76=api;
 })(typeof globalThis!=='undefined'?globalThis:this,function(root){
  const APP=typeof module==='object'&&module.exports?require('./appearance16'):root.PeregrinosAppearance16;
- const VERSION='appearance-png-pixel-compositor-v77-four-directional-walk-20261017';
+ const VERSION='appearance-png-pixel-compositor-v78-real-leg-gait-20261017';
  const WIDTH=128,HEIGHT=160;
  const cloth=Object.freeze({
   vinho:['#813f50','#d18d91'],floresta:['#396b51','#a2c695'],
@@ -152,8 +152,8 @@
  function walkFrame(role,action,frame=0){
   if(action!=='walk')return 0;
   const index=Number.isFinite(Number(frame))?Math.floor(Number(frame)):0;
-  const pose=((index%4)+4)%4;
-  return role==='peregrino'?pose:((pose===1||pose===2)?1:0);
+  const pose=((index%8)+8)%8;
+  return role==='peregrino'?pose:([0,1,1,0,0,1,1,0][pose]);
  }
  function renderSprite(role,dir,action,frame,appearance,doc=root.document){
   const a=APP.normalize(appearance);

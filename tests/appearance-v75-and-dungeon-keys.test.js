@@ -111,7 +111,7 @@ test('V7.6 applies all seven editable settings into the real approved-sprite ren
 test('V7.7 keeps four distinct authored Peregrino walk frames in front, profile and rear directions',()=>{
  const walk=require('../public/appearance-sprite-v76.js');
  const runway=require('../public/peregrino-runway25d.js');
- assert.deepEqual([0,1,2,3,4,5,6,7].map(i=>walk.walkFrame('peregrino','walk',i)),[0,1,2,3,0,1,2,3]);
+ assert.deepEqual([0,1,2,3,4,5,6,7].map(i=>walk.walkFrame('peregrino','walk',i)),[0,1,2,3,4,5,6,7]);
  assert.deepEqual([0,1,2,3].map(i=>walk.walkFrame('arqueiro','walk',i)),[0,1,1,0]);
  for(const direction of [0,1,2,3]){
   const rects=[0,1,2,3].map(i=>runway.frameRect(direction,i));
@@ -141,5 +141,40 @@ test('V7.7 keeps four distinct authored Peregrino walk frames in front, profile 
  assert.ok(preview.includes("frame:walking?frame:0"));
  assert.ok(!preview.includes("Math.abs(Math.floor(frame))%2===1"));
  assert.ok(lab.includes("setInterval(()=>"));
- assert.ok(world.includes("frame:Math.floor(now/145)"));
+ assert.ok(world.includes("frame:Math.floor(now/118)"));
+});
+
+test('V7.8 synthesizes missing opposite-stride legs from exact source RGBA, not a replacement template',()=>{
+ const w=require('../public/peregrino-runway25d.js');
+ assert.equal(w.VERSION,'runway-original-peregrino-v78-real-stride');
+ assert.equal(w.wrapFrame(9),1);
+ const width=128,height=160,source=new Uint8ClampedArray(width*height*4);
+ // Two genuinely separate painted leather boots at the source footprint.
+ for(let yy=120;yy<150;yy++)for(let xx=45;xx<81;xx++){
+  const idx=(yy*width+xx)*4;
+  source.set([xx<63?124:144,xx<63?79:86,xx<63?46:52,255],idx);
+ }
+ // Original sapphire cape is blue and MUST stay in exactly the same place.
+ for(let yy=116;yy<143;yy++)for(let xx=85;xx<101;xx++){
+  const idx=(yy*width+xx)*4;source.set([28,77,176,255],idx);
+ }
+ const at=(bytes,x,y)=>Array.from(bytes.slice((y*width+x)*4,(y*width+x)*4+4));
+ const left=w.synthesizeGaitFrame(source,width,height,2,2);
+ const right=w.synthesizeGaitFrame(source,width,height,6,2);
+ const still=w.synthesizeGaitFrame(source,width,height,0,2);
+ assert.deepEqual(Array.from(still),Array.from(source),'idle frame is byte-for-byte original');
+ assert.notDeepEqual(Array.from(left),Array.from(right),'left/right contacts are genuinely different');
+ assert.notDeepEqual(at(left,48,146),at(right,48,146),'ankles swing in opposite directions');
+ assert.deepEqual(at(left,92,120),at(source,92,120),'blue cape perfectly intact');
+ assert.deepEqual(at(right,92,120),at(source,92,120),'blue cape also intact on reverse stride');
+ assert.ok(w.legMotion(1,1,148,2).dx>0);
+ assert.ok(w.legMotion(1,-1,148,2).dx<0);
+ assert.ok(w.legMotion(-1,1,148,2).dx<0);
+ assert.ok(w.legMotion(-1,-1,148,2).dx>0);
+ assert.ok(w.leatherPixel(130,70,38,58,143,2));
+ assert.equal(w.leatherPixel(28,77,176,95,143,2),false);
+ const src=require('node:fs').readFileSync(require('node:path').resolve(__dirname,'../public/peregrino-runway25d.js'),'utf8');
+ assert.ok(src.includes('const pose=walking?gaitFrame(dir,index):null;'));
+ assert.ok(src.includes('if(pose)ctx.drawImage(pose,0,0,W,H,px,py,dw,dh);'));
+ assert.ok(src.includes("const CYCLE=8"));
 });

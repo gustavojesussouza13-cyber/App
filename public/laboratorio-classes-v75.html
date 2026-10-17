@@ -10,7 +10,7 @@ border:1px solid #b9aa7e;width:min(100%,192px);height:240px;image-rendering:pixe
 .cell h2{color:#f2d297;font:700 20px Georgia}.cell small{color:#9bbba5}
 a{color:#f7db96}.top{margin:22px 0}.tag{background:#2e5940;border:1px solid #86ac75;padding:5px 8px;border-radius:5px}
 </style></head><body><main>
-<h1>Os Peregrinos — caminhada corrigida V7.7</h1>
+<h1>Os Peregrinos — passada animada V7.8</h1>
 <p>Sprites <strong>PNG reais publicados</strong>, incluindo o Peregrino 128×160 e os atlases 64×80 do Guardião, Arqueiro e Curandeiro. Os mesmos arquivos agora alimentam o preview de personalização experimental. Sem bonecos Hero Studio antigos na prévia.</p>
 <div class="controls"><label>Direção <select id="dir"><option value="2">Frente</option><option value="0">Costas</option><option value="1">Lado</option><option value="3">Outro lado</option></select></label>
 <label>Animação <select id="act"><option value="idle">Parado</option><option value="walk">Andando</option></select></label>
@@ -22,8 +22,8 @@ a{color:#f7db96}.top{margin:22px 0}.tag{background:#2e5940;border:1px solid #86a
 </main>
 <script src="/appearance16.js?v=atelier-custom-v1"></script>
 <script src="/approved-classes25d.js?v=approved-classes-v2"></script>
-<script src="/peregrino-runway25d.js?v=runway-original-v1"></script>
-<script src="/appearance-sprite-v76.js?v=personalizacao-walk-4quadros-v77"></script><script src="/appearance-class-preview-v75.js?v=classes-4-caminhada-v77"></script>
+<script src="/peregrino-runway25d.js?v=runway-eight-pose-v78"></script>
+<script src="/appearance-sprite-v76.js?v=personalizacao-gait-v78"></script><script src="/appearance-class-preview-v75.js?v=classes-4-passada-v78"></script>
 <script>
 const preview=window.PeregrinosAppearanceClassPreviewV75;
 const roles=Object.entries(preview.ROLES),root=document.getElementById('gallery');
@@ -64,8 +64,8 @@ document.getElementById('act').addEventListener('change',()=>{frame=0;render()})
 // the rear view. Use the source pixels unmodified and nearest-neighbour.
 setInterval(()=>{
  if(document.hidden||document.getElementById('act').value!=='walk')return;
- frame=(frame+1)%4;render();
-},145);
+ frame=(frame+1)%8;render();
+},118);
 document.getElementById('next').addEventListener('click',()=>{frame++;render()});
 Promise.all(roles.map(([role])=>preview.ensureLoaded(role))).then(render);
 render();

@@ -449,7 +449,7 @@ function create({ctx,W,H}){
   const customizedHero=Boolean(useAurora25d&&!state.hurt&&!attacking&&!state.dead&&
     window.OsPeregrinosAppearanceSpriteV76?.drawWorld(g,{
       role:p.role,x:p.x,y:p.y,dir,appearance:p.appearance,
-      action:moved?'walk':'idle',frame:Math.floor(now/145)
+      action:moved?'walk':'idle',frame:Math.floor(now/118)
     }));
   const runwayHero=!customizedHero&&Boolean(useAurora25d&&p.role==='peregrino'&&
    !state.hurt&&!attacking&&!state.dead&&
