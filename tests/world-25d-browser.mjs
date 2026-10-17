@@ -189,7 +189,7 @@ try{
     hashes.push(cvs.toDataURL('image/png'));
    }
    distinct.push(new Set(hashes).size);
-   let pixels=0;for(let k=3;k<c.getImageData(0,0,192,160).data.length;k+=4)if(c.getImageData(0,0,192,160).data[k]>0)pixels++;
+   const alpha=c.getImageData(0,0,192,160).data;let pixels=0;for(let k=3;k<alpha.length;k+=4)if(alpha[k]>0)pixels++;
    count.push(pixels);
    c.clearRect(0,0,192,160);c.drawImage(img,0,4*160,192,160,0,0,192,160);
    const damage=cvs.toDataURL('image/png');
