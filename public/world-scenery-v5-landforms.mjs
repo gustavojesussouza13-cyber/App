@@ -1,5 +1,5 @@
 'use strict';
-import {paintV7BaseTiles,paintV7BaseTransitions,paintV7Road,paintV7River,paintV7Coast} from './world-scenery-v7-terrain.mjs';
+import {paintV7BaseTiles,paintV7BaseTransitions,paintV7Road,paintV7River,paintV7Coast,paintV72Bridge} from './world-scenery-v7-terrain.mjs';
 /**
  * Os Peregrinos · cenário V5: composição de mapas 2.5D em pixel art.
  * Um único mapa-base 768×512 (2 unidades por pixel) é pintado por região.
@@ -246,6 +246,8 @@ export function drawDesignedTerrainCanvas(zone,biome,{v7Atlas=null,edgeFinish=tr
  paintGardens(g,zone,biome);
  paintRoad(g,zone,biome,r,c);
  if(v7Atlas)paintV7Road(g,v7Atlas,zone,biome,sampleRoad,MAP_W,MAP_H);
+ // V7.2 bridge is stamped once into the static painted river and keeps the roadway free.
+ if(v7Atlas&&biome==='river')paintV72Bridge(g,v7Atlas,zone,biome,sampleRoad,MAP_W,MAP_H);
  if(['city','meadow'].includes(biome)){
   for(const l of reservedSceneryLandmarks(zone,biome))
    if(['house','market','fountain','well'].includes(l.kind))spur(g,r,c,zone,l.x,l.z-(l.kind==='house'?28:16));
