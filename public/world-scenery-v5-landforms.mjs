@@ -235,7 +235,7 @@ export function drawDesignedTerrainCanvas(zone,biome){
  paintRoad(g,zone,biome,r,c);
  if(['city','meadow'].includes(biome)){
   for(const l of reservedSceneryLandmarks(zone,biome))
-   if(['house','market','fountain','well'].includes(l.kind))spur(g,r,c,zone,l.x,l.z-l.kind==='house'?92:47);
+   if(['house','market','fountain','well'].includes(l.kind))spur(g,r,c,zone,l.x,l.z-(l.kind==='house'?28:16));
  }
  return canvas;
 }
