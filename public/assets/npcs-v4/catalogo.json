@@ -1,0 +1,413 @@
+{
+  "status": "VISUAL_REVIEW_NOT_FINAL",
+  "format": "PNG RGBA frontal estático",
+  "frame": [
+    64,
+    80
+  ],
+  "displayPC2D": [
+    80,
+    100
+  ],
+  "displayWorld25D": [
+    93,
+    116
+  ],
+  "total": 56,
+  "source": "story-data.js, story-afterlight.js",
+  "notice": "Recortes técnicos das pranchas aprovadas; algumas silhuetas contêm detalhes de cenário. Não fazer merge oficial antes de limpeza artística e aprovação jogável.",
+  "npcs": [
+    {
+      "id": "historia-0",
+      "name": "Lia, a Acendedora",
+      "title": "A guardiã do sino",
+      "zone": 0,
+      "group": "campanha"
+    },
+    {
+      "id": "historia-1",
+      "name": "Moisés das Raízes",
+      "title": "Jardineiro da floresta",
+      "zone": 1,
+      "group": "campanha"
+    },
+    {
+      "id": "historia-2",
+      "name": "Neri, Voz Sob a Terra",
+      "title": "A menina da raiz",
+      "zone": 12,
+      "group": "campanha"
+    },
+    {
+      "id": "historia-3",
+      "name": "Elia, a Barqueira",
+      "title": "Condutora das águas",
+      "zone": 2,
+      "group": "campanha"
+    },
+    {
+      "id": "historia-4",
+      "name": "Nael, o Cartógrafo",
+      "title": "Exilado das dunas",
+      "zone": 3,
+      "group": "campanha"
+    },
+    {
+      "id": "historia-5",
+      "name": "Ada das Cinzas",
+      "title": "Escriba das lembranças",
+      "zone": 13,
+      "group": "campanha"
+    },
+    {
+      "id": "historia-6",
+      "name": "Rúben dos Penhascos",
+      "title": "Guardião da passagem",
+      "zone": 4,
+      "group": "campanha"
+    },
+    {
+      "id": "historia-7",
+      "name": "Joana, a Vigia",
+      "title": "Última testemunha das ruínas",
+      "zone": 5,
+      "group": "campanha"
+    },
+    {
+      "id": "historia-8",
+      "name": "Eli, o Bibliotecário",
+      "title": "Guardião do hino esquecido",
+      "zone": 14,
+      "group": "campanha"
+    },
+    {
+      "id": "historia-9",
+      "name": "Míria dos Campos",
+      "title": "Padeira e cuidadora",
+      "zone": 6,
+      "group": "campanha"
+    },
+    {
+      "id": "historia-10",
+      "name": "Caio dos Juncos",
+      "title": "Barqueiro do pântano",
+      "zone": 7,
+      "group": "campanha"
+    },
+    {
+      "id": "historia-11",
+      "name": "Áuria, a Faroleira",
+      "title": "Vigia da costa",
+      "zone": 8,
+      "group": "campanha"
+    },
+    {
+      "id": "historia-12",
+      "name": "Zahra, a Curandeira",
+      "title": "Médica do bosque",
+      "zone": 9,
+      "group": "campanha"
+    },
+    {
+      "id": "historia-13",
+      "name": "Éder de Auren",
+      "title": "Conselheiro da cidadela",
+      "zone": 10,
+      "group": "campanha"
+    },
+    {
+      "id": "historia-14",
+      "name": "Tomás, o Último Vigia",
+      "title": "Aprendiz de Cálen",
+      "zone": 11,
+      "group": "campanha"
+    },
+    {
+      "id": "historia-15",
+      "name": "Cálen, o Esquecido",
+      "title": "Antigo guardião da Aurora",
+      "zone": 15,
+      "group": "campanha"
+    },
+    {
+      "id": "historia-16",
+      "name": "Iria das Sementes",
+      "title": "Guardadora do jardim soterrado",
+      "zone": 16,
+      "group": "expansao-1"
+    },
+    {
+      "id": "historia-17",
+      "name": "Tarin, o Pedreiro",
+      "title": "Construtor de pontes vivas",
+      "zone": 17,
+      "group": "expansao-1"
+    },
+    {
+      "id": "historia-18",
+      "name": "Mila do Musgo",
+      "title": "Mensageira das trilhas esquecidas",
+      "zone": 18,
+      "group": "expansao-1"
+    },
+    {
+      "id": "historia-19",
+      "name": "Doral, a Anciã",
+      "title": "Memória dos nomes recusados",
+      "zone": 19,
+      "group": "expansao-1"
+    },
+    {
+      "id": "historia-20",
+      "name": "Eron das Fendas",
+      "title": "Guia dos caminhos instáveis",
+      "zone": 20,
+      "group": "expansao-1"
+    },
+    {
+      "id": "historia-21",
+      "name": "Neri da Nova Semente",
+      "title": "Testemunha das raízes despertas",
+      "zone": 21,
+      "group": "expansao-1"
+    },
+    {
+      "id": "historia-22",
+      "name": "Lúcio, o Porteiro",
+      "title": "Sentinela da correspondência",
+      "zone": 22,
+      "group": "expansao-1"
+    },
+    {
+      "id": "historia-23",
+      "name": "Selma, a Ferreira",
+      "title": "Restauradora das ferramentas queimadas",
+      "zone": 23,
+      "group": "expansao-1"
+    },
+    {
+      "id": "historia-24",
+      "name": "Bren, o Relator",
+      "title": "Registrador das vozes abafadas",
+      "zone": 24,
+      "group": "expansao-1"
+    },
+    {
+      "id": "historia-25",
+      "name": "Yara da Fornalha",
+      "title": "Mestre das cinzas frias",
+      "zone": 25,
+      "group": "expansao-1"
+    },
+    {
+      "id": "historia-26",
+      "name": "Oswin, o Juiz Sem Trono",
+      "title": "Guardião de um tribunal vazio",
+      "zone": 26,
+      "group": "expansao-1"
+    },
+    {
+      "id": "historia-27",
+      "name": "Ada, Guardiã das Cartas",
+      "title": "Escriba da reparação",
+      "zone": 27,
+      "group": "expansao-1"
+    },
+    {
+      "id": "historia-28",
+      "name": "Ivo, o Afinador",
+      "title": "Guardião dos instrumentos mudos",
+      "zone": 28,
+      "group": "expansao-2"
+    },
+    {
+      "id": "historia-29",
+      "name": "Lea, a Regente",
+      "title": "Maestrina das vozes dispersas",
+      "zone": 29,
+      "group": "expansao-2"
+    },
+    {
+      "id": "historia-30",
+      "name": "Simão das Pedras Sonoras",
+      "title": "Escutador da terceira galeria",
+      "zone": 30,
+      "group": "expansao-2"
+    },
+    {
+      "id": "historia-31",
+      "name": "Dalva das Notas",
+      "title": "Copista de partituras proibidas",
+      "zone": 31,
+      "group": "expansao-2"
+    },
+    {
+      "id": "historia-32",
+      "name": "Enoque, o Vigia Surdo",
+      "title": "Leitor das vibrações do chão",
+      "zone": 32,
+      "group": "expansao-2"
+    },
+    {
+      "id": "historia-33",
+      "name": "Eli, Guardião das Vozes",
+      "title": "Bibliotecário do hino reencontrado",
+      "zone": 33,
+      "group": "expansao-2"
+    },
+    {
+      "id": "historia-34",
+      "name": "Aurélia, a Sentinela",
+      "title": "Guardiã das lanternas comuns",
+      "zone": 34,
+      "group": "expansao-2"
+    },
+    {
+      "id": "historia-35",
+      "name": "Téo do Primeiro Dia",
+      "title": "Arquivista das promessas novas",
+      "zone": 35,
+      "group": "expansao-2"
+    },
+    {
+      "id": "historia-36",
+      "name": "Noa das Quatro Portas",
+      "title": "Emissária das aldeias distantes",
+      "zone": 36,
+      "group": "expansao-2"
+    },
+    {
+      "id": "historia-37",
+      "name": "Calisto das Marés",
+      "title": "Relator dos votos discordantes",
+      "zone": 37,
+      "group": "expansao-2"
+    },
+    {
+      "id": "historia-38",
+      "name": "Vesper, o Guardião do Limiar",
+      "title": "Vigia do último abismo",
+      "zone": 38,
+      "group": "expansao-2"
+    },
+    {
+      "id": "historia-39",
+      "name": "Cálen, o Homem que Lembra",
+      "title": "Testemunha da última aurora",
+      "zone": 39,
+      "group": "expansao-2"
+    },
+    {
+      "id": "morador-0",
+      "name": "Bento, o Mensageiro",
+      "title": "Mensageiro das oliveiras",
+      "zone": 0,
+      "group": "moradores"
+    },
+    {
+      "id": "morador-1",
+      "name": "Sara, a Tecelã",
+      "title": "Tecelã do bosque",
+      "zone": 1,
+      "group": "moradores"
+    },
+    {
+      "id": "morador-2",
+      "name": "Oren, o Escavador",
+      "title": "Escavador das raízes",
+      "zone": 12,
+      "group": "moradores"
+    },
+    {
+      "id": "morador-3",
+      "name": "Davi, o Pescador",
+      "title": "Pescador do riacho",
+      "zone": 2,
+      "group": "moradores"
+    },
+    {
+      "id": "morador-4",
+      "name": "Mara das Dunas",
+      "title": "Guia do deserto",
+      "zone": 3,
+      "group": "moradores"
+    },
+    {
+      "id": "morador-5",
+      "name": "Anselmo, o Encadernador",
+      "title": "Guardião das cartas",
+      "zone": 13,
+      "group": "moradores"
+    },
+    {
+      "id": "morador-6",
+      "name": "Isaque, o Escalador",
+      "title": "Vigia dos penhascos",
+      "zone": 4,
+      "group": "moradores"
+    },
+    {
+      "id": "morador-7",
+      "name": "Helena das Ruínas",
+      "title": "Historiadora",
+      "zone": 5,
+      "group": "moradores"
+    },
+    {
+      "id": "morador-8",
+      "name": "Téo, o Copista",
+      "title": "Aprendiz da biblioteca",
+      "zone": 14,
+      "group": "moradores"
+    },
+    {
+      "id": "morador-9",
+      "name": "Rosa, a Colhedora",
+      "title": "Colhedora dos campos",
+      "zone": 6,
+      "group": "moradores"
+    },
+    {
+      "id": "morador-10",
+      "name": "Jonas da Névoa",
+      "title": "Barqueiro perdido",
+      "zone": 7,
+      "group": "moradores"
+    },
+    {
+      "id": "morador-11",
+      "name": "Luna, a Marinheira",
+      "title": "Capitã do farol",
+      "zone": 8,
+      "group": "moradores"
+    },
+    {
+      "id": "morador-12",
+      "name": "Noemi, a Aprendiz",
+      "title": "Aprendiz da curandeira",
+      "zone": 9,
+      "group": "moradores"
+    },
+    {
+      "id": "morador-13",
+      "name": "Samuel, o Sineiro",
+      "title": "Sineiro de Auren",
+      "zone": 10,
+      "group": "moradores"
+    },
+    {
+      "id": "morador-14",
+      "name": "Raquel, a Sentinela",
+      "title": "Sentinela da última luz",
+      "zone": 11,
+      "group": "moradores"
+    },
+    {
+      "id": "morador-15",
+      "name": "Ari, o Peregrino",
+      "title": "Viajante sem lembranças",
+      "zone": 15,
+      "group": "moradores"
+    }
+  ]
+}

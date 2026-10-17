@@ -11,12 +11,13 @@ test('PC retorna ao Atelier detalhado antes dos recortes PNG e dos bonecos V3',(
  const hero=art.indexOf('const studioHero=Boolean(spriteStudio?.drawHero');
  const png=art.indexOf('const pngSprite=!studioHero&&Boolean(desktopSprites?.drawHero');
  const v3=art.indexOf('const illustratedV3=!studioHero&&!pngSprite&&Boolean(desktopCharactersV3?.drawHero');
- const npc=art.indexOf('const studioNpc=Boolean(spriteStudio?.drawNpc');
- const npcPng=art.indexOf('const pngNpc=!studioNpc&&Boolean(desktopSprites?.drawNpc');
+ const npc=art.indexOf('const studioNpc=!npcV4Drawn&&Boolean(spriteStudio?.drawNpc');
+ const npcPng=art.indexOf('const pngNpc=!npcV4Drawn&&!studioNpc&&Boolean(desktopSprites?.drawNpc');
  assert.ok(hero>0&&png>hero&&v3>png,'a camada de blocos não pode substituir sprites detalhados');
- assert.ok(npc>0&&npcPng>npc,'identidade própria dos NPCs restaurada');
+ assert.ok(npc>0&&npcPng>npc,'identidade dos NPCs preservada com V4/fallback');
+ assert.ok(art.indexOf('const npcV4Drawn=Boolean(npcV4Review?.drawNpc')<npc,'V4 deve ter prioridade visual');
  assert.match(art,/const animated=studioHero\|\|detailed/);
- assert.match(art,/const detailed=studioNpc\|\|pngNpc\|\|illustratedNpcV3/);
+ assert.match(art,/const detailed=npcV4Drawn\|\|studioNpc\|\|pngNpc\|\|illustratedNpcV3/);
 });
 test('Morcego, Serpente, Fera, Escorpião, Fantasma, Vespa, Cavaleiro, Dragão e Sentinela V4 antecedem V3 com fallback legado',()=>{
  const art=source('art16.js'),html=source('mundo.html');
@@ -72,13 +73,13 @@ test('classe do servidor, nome e posicionamento obedecem a arte desenhada em PC'
  const art=source('art16.js');
  assert.match(art,/const finalRole=studioHero\?spriteStudio\.normalizeRole\(p\.role\)/);
  assert.match(art,/const labelY=p\.y-\(studioHero\?\(premiumPc\?110:88\):pngSprite\?80/);
- assert.match(art,/const nameY=y-\(studioNpc\?\(premiumPc\?113:96\):pngNpc\?82/);
+ assert.match(art,/const nameY=y-\(npcV4Drawn\?\(useAurora25d\?129:113\):studioNpc\?\(premiumPc\?113:96\):pngNpc\?82/);
  assert.match(art,/#0d20200d/);
 });
 test('versões atualizadas invalidam cache do Chrome sem mudar mobile',()=>{
  const html=source('mundo.html'),studio=source('sprite-studio.js');
  assert.match(html,/sprite-studio\.js\?v=world-art-master64-v4/);
- assert.ok(html.includes('/art16.js?v=world-props-artisan64-v1-salamandra-v4-exp1'));
+ assert.ok(html.includes('/art16.js?v=world-props-artisan64-v1-salamandra-v4-npcs-v4-exp1'));
  assert.match(studio,/state\.desktopPremium===true/);
  assert.ok(html.indexOf('/sprite-studio.js')<html.indexOf('/art16.js'));
  assert.doesNotMatch(source('mmo.css'),/class-skill-fx-v1/);

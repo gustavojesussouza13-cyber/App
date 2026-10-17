@@ -1,0 +1,54 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Os Peregrinos — laboratório NPCs V4 (56)</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,sans-serif}*{box-sizing:border-box}body{margin:0;background:#081821;color:#efe2cd}main{max-width:1300px;margin:auto;padding:22px}
+h1{font:700 36px Georgia,serif;color:#f7ba76;margin:0}h2{font:700 20px Georgia,serif;color:#f2c390}
+p{color:#c8d4d0;max-width:1000px}.warn{border:1px solid #bd835a;background:#2b2a2b;padding:14px 18px;border-radius:8px}
+.toolbar{display:flex;gap:16px;align-items:end;flex-wrap:wrap;position:sticky;top:0;background:#101f27ee;padding:14px 0;z-index:5}
+label{display:grid;gap:4px;color:#efc99c}select,input{font:inherit;background:#30434c;color:white;border:1px solid #7e9d9b;border-radius:7px;padding:8px}
+#grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(215px,1fr));gap:14px;margin-top:18px}
+.card{background:#142a35;border:1px solid #496c74;border-radius:9px;padding:10px;min-width:0}
+.stage{height:175px;background:linear-gradient(#304a50 0 68%,#54604c 68%);display:flex;align-items:end;justify-content:center;position:relative;overflow:hidden;border-radius:6px}
+.stage:before{content:'';position:absolute;bottom:13px;width:100px;height:20px;border-radius:50%;background:#1b2424b0}
+.stage img{display:block;position:relative;image-rendering:pixelated;object-fit:fill}
+.name{font-weight:700;margin-top:9px;color:#f5e7d2}.desc{font-size:12px;color:#aac4c5}.tiny{font-size:11px;color:#e1bfa7;margin-top:4px}
+footer{color:#92aaaa;font-size:12px;margin-top:30px}
+</style></head><body><main><h1>Os Peregrinos · NPCs V4</h1>
+<p>Laboratório experimental dos 56 personagens, um sprite frontal estático por NPC, integrado ao motor visual somente na branch de revisão.</p>
+<p class="warn"><b>Prévia técnica, não arte definitiva:</b> sprites derivados das quatro pranchas aprovadas; alguns recortes ainda precisam de limpeza manual de cenário, contornos ou acessórios. A fortaleza 3D, cinco famílias V3, missões, diálogos e economia não foram alterados. <b>Não publicar no oficial sem revisão.</b></p>
+<div class="toolbar"><label>Grupo<select id="group"><option value="all">Todos (56)</option><option value="campanha">Campanha original (16)</option><option value="expansao-1">Expansão I (12)</option><option value="expansao-2">Expansão II (12)</option><option value="moradores">Moradores e comerciantes (16)</option></select></label>
+<label>Prévia de tamanho<select id="size"><option value="pc2d">PC normal 80 × 100</option><option value="world25d">Mundo 2.5D 93 × 116</option><option value="native">Original 64 × 80</option></select></label>
+<label>Buscar por nome<input id="query" placeholder="NPC ou região"></label></div>
+<p id="count" role="status">Carregando catálogo oficial de NPCs…</p><div id="grid"></div>
+<footer>Somente ambiente de revisão. Os PNGs são independentes: historia-0 a historia-39 e morador-0 a morador-15.</footer></main>
+<script>
+(async function(){
+ const list=document.querySelector('#grid'),count=document.querySelector('#count'),group=document.querySelector('#group'),query=document.querySelector('#query'),size=document.querySelector('#size');
+ let data;
+ try{const res=await fetch('/assets/npcs-v4/catalogo.json?v=npc-v4-review-1',{cache:'no-cache'});if(!res.ok)throw Error('HTTP '+res.status);data=await res.json();
+  if(data.total!==56||!Array.isArray(data.npcs)||data.npcs.length!==56)throw Error('Catálogo incompleto');
+ }catch(err){count.textContent='Não foi possível carregar catálogo: '+err.message;return}
+ const sizes={native:[64,80],pc2d:[80,100],world25d:[93,116]};
+ function redraw(){
+  const q=query.value.trim().toLocaleLowerCase('pt-BR');list.replaceChildren();let n=0;
+  for(const npc of data.npcs){
+   if(group.value!=='all'&&group.value!==npc.group)continue;
+   if(!(npc.name+' '+npc.title+' '+npc.zone).toLocaleLowerCase('pt-BR').includes(q))continue;
+   n++;
+   const card=document.createElement('article');card.className='card';
+   const stage=document.createElement('div');stage.className='stage';
+   const img=document.createElement('img');[img.width,img.height]=sizes[size.value];img.alt=npc.name;
+   img.src='/assets/npcs-v4/'+npc.id+'.png?v=npc-v4-static-review-20261017';
+   img.addEventListener('load',()=>{if(img.naturalWidth!==64||img.naturalHeight!==80)img.alt='Arquivo inválido: '+npc.name});
+   img.addEventListener('error',()=>{img.alt='Falha ao carregar '+npc.name});
+   stage.append(img);
+   const name=document.createElement('div');name.className='name';name.textContent=npc.name;
+   const title=document.createElement('div');title.className='desc';title.textContent=npc.title;
+   const info=document.createElement('div');info.className='tiny';info.textContent=npc.id+' · Região '+npc.zone;
+   card.append(stage,name,title,info);list.append(card);
+  }
+  count.textContent=n+' de 56 NPCs · '+sizes[size.value].join(' × ')+' px exibidos · PNG nativo 64 × 80';
+ }
+ [group,size,query].forEach(el=>el.addEventListener(el===query?'input':'change',redraw));redraw();
+})();
+</script></body></html>
