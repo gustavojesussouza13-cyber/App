@@ -37,7 +37,7 @@ canvas{width:100%;height:auto;aspect-ratio:3/2;image-rendering:pixelated;backgro
 <p class="note">A prévia mostra o chão estático, não a fortaleza 3D nem a simulação de colisões. Elementos V5 (vegetação organizada, barrancos e caminhos conectados) permanecem por cima da nova textura. A V7 é experimental e ainda exige aprovação artística.</p>
 <script type="module">
 import {drawDesignedTerrainCanvas} from '/world-scenery-v5-landforms.mjs';
-import {preloadV7Terrain,v7TerrainImage,v7TerrainTileRect,v7TerrainStatus} from '/world-scenery-v7-terrain.mjs';
+import {preloadV7Terrain,v7TerrainImage,v7TileRect,v7TerrainStatus} from '/world-scenery-v7-terrain.mjs';
 import {V7_TILES} from '/world-scenery-v7-asset-loader.mjs';
 const $=id=>document.getElementById(id),status=$('status'),tiles=$('tiles');
 function draw(){
@@ -52,7 +52,7 @@ function draw(){
 function gallery(){
  tiles.replaceChildren();const atlas=v7TerrainImage();if(!atlas)return;
  for(const id of V7_TILES){
-  const r=v7TerrainTileRect(id),fig=document.createElement('figure');fig.className='tile';
+  const r=v7TileRect(id),fig=document.createElement('figure');fig.className='tile';
   const can=document.createElement('canvas');can.width=128;can.height=128;
   const ctx=can.getContext('2d');ctx.imageSmoothingEnabled=false;
   ctx.drawImage(atlas,r.sx,r.sy,32,32,0,0,128,128);
