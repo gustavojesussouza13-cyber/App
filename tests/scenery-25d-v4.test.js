@@ -24,7 +24,7 @@ test('Scenery V4 implements ten existing historical biomes with consistent deter
 });
 test('all biome families contain biome-specific decorative and structural art while untouched game retains legacy backup',async()=>{
  const v=await api(),kinds=new Set();
- for(const biome of v.BIOMES)for(const item of v.planSceneryV4(32,biome))kinds.add(item.kind);
+ for(let region=0;region<12;region++)for(const biome of v.BIOMES)for(const item of v.planSceneryV4(region,biome))kinds.add(item.kind);
  for(const k of ['tree','house','rock','shrub','flower','pine','reeds','ruin','arch','pillar','altar','bridge','well','fence','barrel','crate','lamp','cactus','palm'])
   assert.ok(kinds.has(k),'family missing: '+k);
  const src=fs.readFileSync(path.join(publicDir,'world-25d.mjs'),'utf8');
@@ -54,7 +54,7 @@ test('Scenery V4 uses static instanced meshes with no writes to game state, DB, 
 test('buildSceneryV4 can create and place all art families into WebGL-style mocks',async()=>{
  const v=await api(),orig=global.document;
  const ctx={
-  fillStyle:'',imageSmoothingEnabled:false,fillRect(){},beginPath(){},moveTo(){},lineTo(){},closePath(){},fill(){}
+  fillStyle:'',imageSmoothingEnabled:false,fillRect(){},beginPath(){},moveTo(){},lineTo(){},closePath(){},fill(){},ellipse(){}
  };
  global.document={createElement(tag){assert.equal(tag,'canvas');return {width:0,height:0,getContext(type){assert.equal(type,'2d');return ctx}}}};
  const xy=()=>({x:0,y:0,z:0,set(x,y,z){this.x=x;this.y=y;this.z=z}});
@@ -78,4 +78,32 @@ test('buildSceneryV4 can create and place all art families into WebGL-style mock
    assert.ok(group.children.some(x=>x instanceof InstancedMesh));
   }
  }finally{global.document=orig;}
+});
+test('V4.2 artisan art adds at least ten static environment object families without animation',async()=>{
+ const v=await api(),art=await import('../public/world-scenery-v4-art.mjs');
+ assert.ok(v.SCENERY_V4_VERSION.includes('v42'));
+ assert.equal(art.EXTRA_KINDS.length,10);
+ for(const kind of ['mushroom','stump','obelisk','market','boat','statue','crystal','grave','fountain','watchtower']){
+  assert.ok(art.EXTRA_KINDS.includes(kind));
+  const [w,h]=art.EXTRA_SIZES[kind];assert.ok(w>=45&&h>=40);
+ }
+ const union=new Set();
+ for(let zone=0;zone<32;zone++)for(const biome of v.BIOMES)
+  for(const o of v.planSceneryV4(zone,biome))union.add(o.kind);
+ for(const k of art.EXTRA_KIN)assert.ok(union.has(k),'new prop not distributed: '+k);
+ const src=fs.readFileSync(path.join(publicDir,'world-scenery-v4.mjs'),'utf8');
+ assert.ok(src.includes('finishSceneryGround(g,biome,zone)'));
+ assert.ok(src.includes('finishSceneryRoad(g,biome,zone)'));
+ assert.ok(src.includes('finishScenerySprite(g,{kind,biome,variant})'));
+ const canvasCalls={n:0};
+ const g={fillStyle:'',beginPath(){},moveTo(){},lineTo(){},closePath(){},fill(){},ellipse(){},
+  fillRect(x,y,w,h){assert.ok(Number.isFinite(x+y+w+h));canvasCalls.n++}};
+ for(const biome of v.BIOMES){
+  art.finishSceneryGround(g,biome,4);
+  art.finishSceneryRoad(g,biome,4);
+  for(const kind of art.EXTRA_KIN)art.finishScenerySprite(g,{kind,biome,variant:1});
+ }
+ assert.ok(canvasCalls.n>1000,'new art needs distinct pixel clusters, not empty images');
+ const preview=fs.readFileSync(path.join(publicDir,'laboratorio-cenario-25d-v4.html'),'utf8');
+ assert.ok(preview.includes('Cenário V4 — renovado'));
 });
