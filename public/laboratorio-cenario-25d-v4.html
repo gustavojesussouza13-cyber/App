@@ -33,7 +33,8 @@ button{cursor:pointer}button[aria-pressed="true"]{background:#725333;border-colo
 </select></label>
 <label>Iluminação<select id="light"><option value="day">Dia</option><option value="night">Noite</option></select></label>
 <label>Personagem à frente<select id="hero"><option value="guardiao">Guardião</option><option value="curandeiro">Curandeiro</option><option value="arqueiro">Arqueiro</option><option value="none">Sem personagem</option></select></label>
-<label>Posição horizontal <input id="pan" type="range" min="0" max="576" step="24" value="288"></label>
+<label>Posição horizontal <input id="pan" type="range" min="0" max="576" step="24" value="0"></label>
+<label>Posição vertical <input id="panY" type="range" min="0" max="448" step="16" value="48"></label>
 </div>
 <h2>Explore os dez biomas</h2>
 <div class="biomes" id="biomes"></div>
@@ -54,7 +55,7 @@ const tags=[
  ['cidade','Cidade de Auren','🏘️',8],['masmorra','Masmorra','🗝️',9]
 ];
 const stage=document.getElementById('stage'),canvas=document.getElementById('game'),g=canvas.getContext('2d');
-const status=document.getElementById('status'),q=document.getElementById('quality'),light=document.getElementById('light'),hero=document.getElementById('hero'),pan=document.getElementById('pan');
+const status=document.getElementById('status'),q=document.getElementById('quality'),light=document.getElementById('light'),hero=document.getElementById('hero'),pan=document.getElementById('pan'),panY=document.getElementById('panY');
 let current=0,view=null,frame=0;
 const atlas={};for(const k of ['guardiao','arqueiro','curandeiro']){const im=new Image();im.src='/assets/approved-classes/'+k+'-sprites-3x2-64x80.png';atlas[k]=im;}
 const buttons=tags.map(([id,title,emoji],i)=>{
@@ -65,7 +66,8 @@ const buttons=tags.map(([id,title,emoji],i)=>{
 function updateButtons(){buttons.forEach((b,i)=>b.setAttribute('aria-pressed',String(i===current)));}
 updateButtons();
 try{
- const module=await import('/world-25d.mjs?v=scenery-v42-review');
+ const module=await import('/world-25d.mjs?v=scenery-v5-reference-1');
+ const {roadY}=await import('/world-scenery-v4.mjs?v=scenery-v5-reference-1');
  view=module.createWorld25D({shell:stage,canvas,width:960,height:576,sceneryV4:true});
  const mode=()=>{view.setSceneryV4(q.value!=='old');view.setSceneryDetail(q.value==='v42'||q.value==='v5');view.setSceneryComposition(q.value==='v5');};
  q.addEventListener('change',mode);mode();
@@ -73,10 +75,10 @@ try{
  status.textContent='Renderizador WebGL conectado. Compare Original × V4 × V4.2 × V5.';
  function render(now){
   const biome=tags[current][0],zone=tags[current][3];
-  view.render({zone,biome,cameraX:Number(pan.value),cameraY:213,now});
+  view.render({zone,biome,cameraX:Number(pan.value),cameraY:Number(panY.value),now});
   g.clearRect(0,0,960,576);
   // Personagem de referência: um quadro real das três classes aprovadas.
-  const role=hero.value,img=atlas[role],x=480,y=345,w=93,h=116;
+  const role=hero.value,img=atlas[role],x=480,y=roadY(Number(pan.value)+480,zone)-Number(panY.value),w=93,h=116;
   if(role!=='none'&&img?.complete&&img.naturalWidth===192&&img.naturalHeight===160){
    g.imageSmoothingEnabled=false;
    g.drawImage(img,0,0,64,80,Math.round(x-w/2),Math.round(y-h+8),w,h);
@@ -87,7 +89,7 @@ try{
   if(frame%24===0){
    const label=q.value==='old'?'Cenário original':q.value==='v4'?'Primeiro Cenário V4':q.value==='v42'?'Cenário V4.2':'Cenário V5';
    const stats=view.sceneryStats;
-   status.textContent=label+' · '+tags[current][1]+' · '+(stats?stats.staticProps+' objetos estáticos · '+stats.drawBatches+' grupos de renderização':'terreno anterior')+' · Sem alterações de colisões';
+   status.textContent=label+' · '+tags[current][1]+' · '+(stats?stats.staticProps+' objetos estáticos · '+stats.drawBatches+' grupos de renderização':'terreno anterior')+' · Câmera vertical '+panY.value+' · Sem alterações de colisões';
   }
   frame++;
   requestAnimationFrame(render);
