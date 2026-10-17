@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Os Peregrinos — Laboratório Cenário 2.5D V4.2 (10 biomas)</title>
+<title>Os Peregrinos — Laboratório Cenário 2.5D V5 (10 biomas)</title>
 <style>
 :root{color-scheme:dark}*{box-sizing:border-box}
 body{margin:0;background:#09151c;color:#f0e8d9;font:15px/1.5 system-ui,Arial}
@@ -22,10 +22,11 @@ button{cursor:pointer}button[aria-pressed="true"]{background:#725333;border-colo
 .warn{color:#dccbab;background:#2e2b27;border:1px solid #9a7b5e;padding:12px;border-radius:8px}
 @media(max-width:680px){main{padding:11px}h1{font-size:25px}.info{grid-template-columns:1fr}.controls{gap:7px}.stage{aspect-ratio:5/3}}
 </style></head><body><main>
-<h1>Os Peregrinos · Mundo 2.5D V4.2</h1>
-<p>Laboratório de comparação em tempo real. Escolha qualquer um dos dez biomas e compare três versões reais: mundo original, Cenário V4 anterior e Cenário V4.2 com acabamento artesanal e dez novas famílias de objetos estáticos. O cenário usa objetos estáticos, iluminação e texturas em pixels; não altera nenhuma colisão, personagem, missão, guilda ou fortaleza 3D.</p>
+<h1>Os Peregrinos · Mundo 2.5D V5</h1>
+<p>Laboratório de comparação em tempo real. Escolha qualquer um dos dez biomas e compare quatro versões reais: original, V4, V4.2 e V5 com terreno pintado como mapa, trilhas conectadas, clareiras, bordas e monumentos posicionados. O cenário usa objetos estáticos, iluminação e texturas em pixels; não altera nenhuma colisão, personagem, missão, guilda ou fortaleza 3D.</p>
 <div class="controls">
 <label>Visual do cenário<select id="quality">
+<option value="v5">Cenário V5 — mapa pixelado composto</option>
 <option value="v42">Cenário V4.2 — acabamento artesanal</option>
 <option value="v4">Cenário V4 — primeira revisão</option>
 <option value="old">Cenário original — antes das melhorias</option>
@@ -38,11 +39,11 @@ button{cursor:pointer}button[aria-pressed="true"]{background:#725333;border-colo
 <div class="biomes" id="biomes"></div>
 <div class="stage" id="stage"><canvas id="game" width="960" height="576" aria-label="Prévia 2.5D interativa"></canvas></div>
 <p id="status" role="status">Iniciando ambiente 2.5D…</p>
-<div class="info"><article><strong>10 biomas + 10 novos tipos de decoração</strong><p>Campos, floresta, rio, deserto, montanha, ruínas, pântano, costa, cidade e masmorra.</p></article>
-<article><strong>Materiais e profundidade</strong><p>Texturas refinadas, folhagens em camadas, telhados, janelas, musgo, ruínas e caminhos detalhados.</p></article>
+<div class="info"><article><strong>10 biomas com layout pixelado coeso</strong><p>Campos, floresta, rio, deserto, montanha, ruínas, pântano, costa, cidade e masmorra.</p></article>
+<article><strong>Materiais e profundidade</strong><p>Novo mapa pintado de 768×512 pixels, trilhas coerentes, clareiras, recortes de penhasco e casas em pontos definidos.</p></article>
 <article><strong>Compatível com o jogo</strong><p>Mesmo mapa e posições simuladas, sem alterações na fortaleza, monstros V3 ou persistência.</p></article></div>
 <p class="warn">**Prévia técnica jogável, não imagem conceitual.** A arte é desenhada ao vivo pelo mesmo renderizador experimental que o MMORPG utiliza. Qualidade, oclusão e FPS ainda precisam de validação em diferentes dispositivos antes da publicação oficial.</p>
-<p><small>Versão técnica isolada · os sprites das classes vêm dos próprios atlas existentes do MMORPG · controle a comparação pelo seletor “Original / V4 / V4.2”.</small></p>
+<p><small>Versão técnica isolada · os sprites das classes vêm dos próprios atlas existentes do MMORPG · controle a comparação pelo seletor “Original / V4 / V4.2 / V5”.</small></p>
 </main>
 <script type="module">
 const tags=[
@@ -66,10 +67,10 @@ updateButtons();
 try{
  const module=await import('/world-25d.mjs?v=scenery-v42-review');
  view=module.createWorld25D({shell:stage,canvas,width:960,height:576,sceneryV4:true});
- const mode=()=>{view.setSceneryV4(q.value!=='old');view.setSceneryDetail(q.value==='v42');};
- q.addEventListener('change',mode);
+ const mode=()=>{view.setSceneryV4(q.value!=='old');view.setSceneryDetail(q.value==='v42'||q.value==='v5');view.setSceneryComposition(q.value==='v5');};
+ q.addEventListener('change',mode);mode();
  light.addEventListener('change',()=>view.setNight(light.value==='night'));
- status.textContent='Renderizador WebGL conectado. Compare cenário original × V4 × V4.2.';
+ status.textContent='Renderizador WebGL conectado. Compare Original × V4 × V4.2 × V5.';
  function render(now){
   const biome=tags[current][0],zone=tags[current][3];
   view.render({zone,biome,cameraX:Number(pan.value),cameraY:213,now});
@@ -84,7 +85,7 @@ try{
    g.strokeText(label,x,y-h-2);g.fillStyle='#f8eac1';g.fillText(label,x,y-h-2);
   }
   if(frame%24===0){
-   const label=q.value==='old'?'Cenário original':q.value==='v4'?'Primeiro Cenário V4':'Cenário V4.2';
+   const label=q.value==='old'?'Cenário original':q.value==='v4'?'Primeiro Cenário V4':q.value==='v42'?'Cenário V4.2':'Cenário V5';
    const stats=view.sceneryStats;
    status.textContent=label+' · '+tags[current][1]+' · '+(stats?stats.staticProps+' objetos estáticos · '+stats.drawBatches+' grupos de renderização':'terreno anterior')+' · Sem alterações de colisões';
   }
