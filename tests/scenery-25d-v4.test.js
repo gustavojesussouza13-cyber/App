@@ -159,3 +159,6 @@ require('./appearance-v75-and-dungeon-keys.test.js');
 require('./region-monster-species.test.js');
 // Actor pixel-quality combat and tree/monster occlusion regression coverage.
 require('./combat-occlusion-v80.test.js');
+
+// Inventário ilustrado V8.1 — dados reais, 35 espaços, atalhos e ações no servidor.
+require('./inventory-v81.test.js');

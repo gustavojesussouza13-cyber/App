@@ -151,6 +151,16 @@ let kingdomState=null,visibleKingdomBases=[];
 let guildDirectory=null,socialSection='guilds';
 let defenseTargets=[],defenseTargetId=null;
 const cityUI=window.PeregrinosCity.create({send:(type,data)=>send(type,data)});
+// Inventário original: GUI pixel art, dados autoritativos do servidor e
+// teclas 1–8. Nenhuma ação de equipamento nova é enviada ao servidor.
+const inventoryUI=window.OsPeregrinosInventoryV81.create({
+ getState:()=>({connected:session.connected}),
+ send:(type,data)=>send(type,data),
+ onMessage:msg=>alert(msg),
+ onOpened:()=>{keys.clear();joystick.release()},
+ onClosed:()=>{if($('welcomeOverlay').hidden)$('game').focus({preventScroll:true})}
+});
+$('openInventoryBtn').onclick=()=>inventoryUI.toggle();
 // Cada abertura do site cria uma nova jornada Visitante. O token existe
 // somente nesta execução da página; queda da conexão reutiliza o token.
 // Dados de contas cadastradas continuam no servidor, sob login/senha.
@@ -259,7 +269,7 @@ function setOnline(state,msg){
  session.connected=state;$('statusDot').classList.toggle('on',state);$('status').textContent=msg;
  $('roomSwitchBtn').disabled=!state||roomSwitchPending;
  touchUI.hidden=!state||!touchDevice;
- if(!state){$('appearanceChangeBtn').hidden=true;if(appearanceDialog.open)appearanceDialog.close();cityUI.onConnectionLost?.();joystick.release();latency.reset();updatePingIndicator();spriteActions.monsters.clear();spriteActions.players.clear();spriteActions.fallen.length=0;classSkillFx.clear()}
+ if(!state){inventoryUI?.close();$('appearanceChangeBtn').hidden=true;if(appearanceDialog.open)appearanceDialog.close();cityUI.onConnectionLost?.();joystick.release();latency.reset();updatePingIndicator();spriteActions.monsters.clear();spriteActions.players.clear();spriteActions.fallen.length=0;classSkillFx.clear()}
 }
 const rpgAttributeNames={vitalidade:'Vitalidade',fortitude:'Fortitude',forca:'Força',agilidade:'Agilidade',
  intelecto:'Intelecto',espirito:'Espírito',sorte:'Sorte'};
@@ -320,6 +330,7 @@ function renderRpgPanel(c){
 }
 function character(c){session.characters=c;session.zone=c.zone;session.role=c.role;session.x=c.x;session.y=c.y;
  session.appearance=appearanceArt.normalize(c.appearance);
+ inventoryUI?.sync(c,session.shop,session.relics);
  $('appearanceChangeBtn').hidden=false;
  $('charName').textContent=(c.administrator?'✦ ':'')+(c.name||session.name);$('playerClass').textContent=({peregrino:'Peregrino',guardiao:'Guardião',arqueiro:'Arqueiro',curandeiro:'Curandeiro'}[c.role]||c.role)+(c.administrator?' · ADMIN':'');
  // Explicar a função da habilidade K sem mudar o layout do controle mobile.
@@ -827,13 +838,29 @@ document.addEventListener('keydown',e=>{
  if(e.key==='Escape'&&expandedFullscreen)setExpandedFullscreen(false);
 });
 updateFullscreenButton();
-const keyAction=e=>{if(!$('npcDialogue').hidden){if(e.code==='Escape'){closeDialogue();e.preventDefault()}else if(e.code==='Enter'||e.code==='Space'){advanceDialogue();e.preventDefault()}return}if(e.target.matches('input,textarea,select,button,a,[contenteditable="true"]'))return;
+const keyAction=e=>{
+ // Never steal hotkeys while composing messages, passwords or character names.
+ const editing=e.target?.matches?.('input,textarea,select,[contenteditable="true"]');
+ if(inventoryUI?.openState){
+  if(e.code==='Escape'||e.code==='KeyI'){if(!e.repeat){inventoryUI.close();}e.preventDefault();return}
+  if(/^Digit[1-8]$/.test(e.code)&&!e.repeat){inventoryUI.quickUse(Number(e.code.slice(-1))-1);e.preventDefault();return}
+  // All game controls are disabled while the bag is being inspected.
+  if(!editing)e.preventDefault();
+  return;
+ }
+ if(!editing&&e.code==='KeyI'&&!e.repeat&&session.connected&&$('welcomeOverlay').hidden&&$('npcDialogue').hidden){
+  inventoryUI.open();e.preventDefault();return;
+ }
+ if(!editing&&/^Digit[1-8]$/.test(e.code)&&!e.repeat&&session.connected&&$('welcomeOverlay').hidden&&$('npcDialogue').hidden){
+  if(inventoryUI.quickUse(Number(e.code.slice(-1))-1)){e.preventDefault();return}
+ }
+ if(!$('npcDialogue').hidden){if(e.code==='Escape'){closeDialogue();e.preventDefault()}else if(e.code==='Enter'||e.code==='Space'){advanceDialogue();e.preventDefault()}return}if(e.target.matches('input,textarea,select,button,a,[contenteditable="true"]'))return;
  if(['ArrowDown','ArrowUp','ArrowLeft','ArrowRight','Space'].includes(e.code))e.preventDefault();keys.add(e.code);
  if(e.repeat)return;
  if(e.code==='KeyJ'||e.code==='Space'){attack(false);e.preventDefault()}
  else if(e.code==='KeyK'){attack(true);e.preventDefault()}
  else if(e.code==='KeyH'){send('use',{item:'pocao'});e.preventDefault()}
- else if(e.code==='KeyI'){selectTab('inventory');e.preventDefault()}
+ else if(e.code==='KeyI'){inventoryUI.toggle();e.preventDefault()}
  else if(e.code==='KeyP'){selectTab('social');e.preventDefault()}
  else if(e.code==='KeyG'){selectTab('social');e.preventDefault()}
  else if(e.code==='KeyM'){showWorldMap();e.preventDefault()}
@@ -1418,7 +1445,7 @@ let lastFrame=0;function tick(t){
   (!$('welcomeOverlay').hidden?83:activeFrameMs);
  if(lastFrame&&t-lastFrame<frameBudget){requestAnimationFrame(tick);return}
  const dt=Math.min(.065,(t-lastFrame)/1000||0);lastFrame=t;
- if(session.connected&&$('welcomeOverlay').hidden&&$('npcDialogue').hidden&&(typeof document==='undefined'||!document.querySelector('.city-dialog')?.open)){let dx=0,dy=0;if(moves.up.some(k=>keys.has(k)))dy--;if(moves.down.some(k=>keys.has(k)))dy++;if(moves.left.some(k=>keys.has(k)))dx--;if(moves.right.some(k=>keys.has(k)))dx++;
+ if(session.connected&&$('welcomeOverlay').hidden&&$('npcDialogue').hidden&&!inventoryUI.openState&&(typeof document==='undefined'||!document.querySelector('.city-dialog')?.open)){let dx=0,dy=0;if(moves.up.some(k=>keys.has(k)))dy--;if(moves.down.some(k=>keys.has(k)))dy++;if(moves.left.some(k=>keys.has(k)))dx--;if(moves.right.some(k=>keys.has(k)))dx++;
   if(touchDevice){const v=joystick.vector;dx+=v.x;dy+=v.y}
   if(dx||dy){const l=Math.hypot(dx,dy),vx=dx/l,vy=dy/l;
    session.x=clamp(session.x+vx*166*dt,24,ZONE_W-24);
