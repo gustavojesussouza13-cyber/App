@@ -2,7 +2,7 @@
 import {finishSceneryGround,finishSceneryRoad,finishScenerySprite,EXTRA_KINDS,EXTRA_SIZES,ART_VERSION} from './world-scenery-v4-art.mjs';
 import {createDesignedTerrainTexture,reservedSceneryLandmarks,drawDesignedHouseCanvas,MAP_ART_VERSION} from './world-scenery-v5-landforms.mjs';
 import {createAtlasGroundTexture,createAtlasPropTexture,atlasLoaded,ASSET_BACKED_VERSION} from './world-scenery-v6-asset-adapter.mjs';
-import {createV7PropTexture,isV7Ready,SCENERY_V7_VERSION} from './world-scenery-v7-asset-loader.mjs';
+import {createV7PropTexture,v7Image,v7FitSize,isV7Ready,SCENERY_V7_VERSION} from './world-scenery-v7-asset-loader.mjs';
 /**
  * OS PEREGRINOS · CENÁRIO V4 2.5D / PRÉVIA EXPERIMENTAL
  * Mundo aberto SOMENTE: solo, estradas, água, construções e decoração estática.
@@ -472,6 +472,7 @@ function placeSpriteInstances(THREE,group,plan,biome,detail=true,composition=fal
  const dummy=new THREE.Object3D();
  for(const [key,arr] of buckets){
   const [kind,variantString]=key.split(':'),variant=+variantString;
+  const pngImage=v7?v7Image(kind,variant):null;
   const texture=(v7&&createV7PropTexture(THREE,kind,variant))
     ||(atlas&&kind!=='house'&&createAtlasPropTexture(THREE,kind,variant))
     ||(composition&&kind==='house'
@@ -484,7 +485,13 @@ function placeSpriteInstances(THREE,group,plan,biome,detail=true,composition=fal
   const mesh=new THREE.InstancedMesh(new THREE.PlaneGeometry(1,1),mat,arr.length);
   mesh.name='scenery-v4-'+key;
   arr.forEach((item,i)=>{
-   const w=item.w,h=item.h;
+   const fitted=pngImage?v7FitSize({
+     nativeWidth:pngImage.naturalWidth,
+     nativeHeight:pngImage.naturalHeight,
+     maxWidth:item.w,
+     maxHeight:item.h
+   }):null;
+   const w=fitted?.width??item.w,h=fitted?.height??item.h;
    // View is an ortho camera pointing from +Y; project image in the XZ plane.
    // Y=0 is scenery ground; pixels at bottom of sprite align to the actor's feet.
    dummy.position.set(item.x,.38+(item.kind==='house'?.12:0),item.z-h/2+9);
