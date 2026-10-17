@@ -392,6 +392,7 @@ try{
  assert.ok(thornCheck.solid.every(x=>x>1200),'all four bodies must contain visible pixels');
  assert.ok(thornCheck.fxCounts.every(x=>x>30),'all directions require thorn attack particles');
  for(let dir=0;dir<4;dir++)await page.locator('#thornDirection').selectOption(String(dir));
+ await page.locator('#thornFocus').check();
  await page.locator('#thornDirection').selectOption('1');
  await page.locator('#thornAction').selectOption('walk');
  await page.waitForTimeout(310);
