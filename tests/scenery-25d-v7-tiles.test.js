@@ -203,7 +203,8 @@ test('V7.2 bridge is drawn once across the road and river in the same pixel canv
    beginPath(){},moveTo(){},lineTo(){},closePath(){},clip(){operations.push(['clip'])},
    fillRect(x,y,w,h){
     assert.ok(x>=anchor.left-3&&x+w<=anchor.right+3,'rails/posts remain within bridge horizontal span');
-    assert.ok(y>anchor.y-36&&y+h<anchor.y+36,'no bridge pixels outside road vicinity');
+    const localRoad=roadAt(x,zone);
+    assert.ok(y>localRoad-40&&y+h<localRoad+40,'rails follow the local road incline without leaving the crossing');
     operations.push(['fillRect']);
    },
    drawImage(img,sx,sy,sw,sh,x,y,w,h){
