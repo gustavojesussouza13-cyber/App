@@ -773,6 +773,8 @@ function create({ctx,W,H}){
   return Object.freeze({
    zone,biome,canvas:region.canvas,
    objects:region.objects,
+   tileKind:(tx,ty)=>kind(tx,ty,zone,biome),
+   roadAt:(x)=>pathY(x,zone),
    paintProp:(dest,item)=>{if(cache!==region){cache=region;objects=region.objects}prop(dest,item);}
   });
  }
