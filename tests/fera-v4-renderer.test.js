@@ -87,12 +87,13 @@ test('left-facing attack mirrors safely and drawing failures restore canvas for 
  assert.equal(broken.renderer.drawMonster(broken.canvas,{type:'fera',x:85,y:120},600),false);
  for(const k of [h,broken])assert.equal(k.operations.filter(c=>c[0]==='save').length,k.operations.filter(c=>c[0]==='restore').length);
 });
-test('both Fera species use the new visual while V3, Morcego, Serpente and guild stay unchanged',()=>{
+test('Fera species 25 keeps its V4 visual while Espinho Vivo species 9 gets its own renderer',()=>{
  const art=fs.readFileSync(path.resolve(__dirname,'../public/art16.js'),'utf8');
  const html=fs.readFileSync(path.resolve(__dirname,'../public/mundo.html'),'utf8');
  const match=art.match(/const types=\[([^\]]+)\]/);
  assert.ok(match);
- assert.equal((match[1].match(/'fera'/g)||[]).length,2);
+ assert.equal((match[1].match(/'fera'/g)||[]).length,1);
+ assert.ok(match[1].includes("'espinho-vivo'"),'species 9 no longer reuses Fera V4');
  assert.ok(art.includes("const beastV4Drawn=ty==='fera'&&Boolean(beastV4?.drawMonster"));
  assert.ok(art.includes('const creatureV3=!batV4Drawn&&!serpentV4Drawn&&!beastV4Drawn'));
  assert.ok(art.includes('beastV4Drawn?beastV4.measure(m.boss)'));
