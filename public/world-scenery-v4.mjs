@@ -1,5 +1,6 @@
 'use strict';
 import {finishSceneryGround,finishSceneryRoad,finishScenerySprite,EXTRA_KINDS,EXTRA_SIZES,ART_VERSION} from './world-scenery-v4-art.mjs';
+import {createDesignedTerrainTexture,reservedSceneryLandmarks,MAP_ART_VERSION} from './world-scenery-v5-landforms.mjs';
 /**
  * OS PEREGRINOS · CENÁRIO V4 2.5D / PRÉVIA EXPERIMENTAL
  * Mundo aberto SOMENTE: solo, estradas, água, construções e decoração estática.
@@ -160,6 +161,65 @@ export function planSceneryV4(zone,biome,{width=1536,height=1024,detail=true}={}
  }
  return Object.freeze(out);
 }
+
+/**
+ * V5 semantic composition: fixed landmarks first, then restrained clusters.
+ * Objects are intentionally arranged around clearings rather than uniformly
+ * scattered. All footprints remain static and outside playable road ribbons.
+ */
+export function planSceneryV5(zone,biome,{width=1536,height=1024}={}){
+ if(!BIOMES.includes(biome))throw Error('Bioma desconhecido: '+biome);
+ const rnd=seeded(zone,735+BIOMES.indexOf(biome));
+ const placed=[];
+ function accept(item){
+  if(visualExclusion(item,zone,biome,width,height))return false;
+  // Cliff edges are decorative, not an impassable gameplay wall.
+  // Keep tall standing props off the pictured cliff face.
+  if(!['city','dungeon','coast','swamp'].includes(biome)&&item.x>990&&item.z>764)return false;
+  if(placed.some(existing=>sceneryOverlaps(item,existing,8)))return false;
+  placed.push(Object.freeze(item));return true;
+ }
+ for(const landmark of reservedSceneryLandmarks(zone,biome)){
+  const wh=SIZES[landmark.kind];
+  if(wh)accept({...landmark,w:wh[0],h:wh[1]});
+ }
+ // A small number of large well-separated anchors gives a coherent
+ // village/forest composition at the game's 93×116 character scale.
+ const centres=[
+  [205,220],[660,205],[1330,220],
+  [280,710],[725,740],[1325,715],
+  [120,500],[1430,510]
+ ];
+ const families={
+  meadow:[['tree',.19],['shrub',.19],['flower',.18],['rock',.09],['fence',.08],['stump',.10],['mushroom',.08],['sign',.05],['lamp',.04]],
+  forest:[['tree',.37],['pine',.16],['shrub',.16],['rock',.08],['mushroom',.11],['stump',.07],['flower',.05]],
+  river:[['tree',.18],['shrub',.18],['reeds',.19],['rock',.12],['flower',.10],['stump',.07],['boat',.09],['sign',.07]],
+  desert:[['cactus',.30],['rock',.27],['shrub',.13],['obelisk',.08],['ruin',.09],['crystal',.07],['sign',.06]],
+  mountain:[['pine',.22],['rock',.29],['shrub',.16],['crystal',.12],['ruin',.08],['stump',.07],['sign',.06]],
+  ruins:[['ruin',.20],['rock',.23],['shrub',.18],['pillar',.13],['flower',.12],['grave',.08],['statue',.06]],
+  swamp:[['tree',.19],['reeds',.22],['mushroom',.19],['shrub',.17],['rock',.13],['stump',.10]],
+  coast:[['palm',.17],['shrub',.17],['flower',.19],['rock',.17],['reeds',.11],['boat',.10],['sign',.09]],
+  city:[['flower',.26],['fence',.15],['shrub',.18],['crate',.09],['barrel',.09],['lamp',.09],['rock',.06],['tree',.08]],
+  dungeon:[['pillar',.21],['ruin',.17],['rock',.25],['altar',.09],['crystal',.08],['grave',.11],['lamp',.09]]
+ };
+ const max=biome==='city'?57:biome==='forest'?94:biome==='desert'?60:biome==='meadow'?78:72;
+ let boatCount=0;
+ for(let tries=0;tries<max*45&&placed.length<max;tries++){
+  const idx=Math.floor(rnd()*centres.length),centre=centres[idx];
+  const kind=select(rnd,families[biome]),size=SIZES[kind];
+  let x=Math.round(centre[0]+(rnd()+rnd()-1)*240),z=Math.round(centre[1]+(rnd()+rnd()-1)*200);
+  if(kind==='boat'){
+   if(boatCount>=2)continue;
+   if(biome==='river')x=Math.round(420+92*Math.sin(z/150+zone));
+   else if(biome==='coast')z=Math.round(785+rnd()*160);
+   else continue;
+  }
+  const item={kind,x,z,w:size[0],h:size[1],variant:Math.floor(rnd()*4)};
+  if(accept(item)&&kind==='boat')boatCount++;
+ }
+ return Object.freeze(placed);
+}
+
 function canvasTexture(THREE,canvas,{repeatX=1,repeatY=1}={}){
  const t=new THREE.CanvasTexture(canvas);
  t.colorSpace=THREE.SRGBColorSpace;
@@ -448,15 +508,17 @@ function addWaterV4(THREE,group,zone,biome){
   }
  }
 }
-export function buildSceneryV4(THREE,group,zone,biome,{detail=true}={}){
+export function buildSceneryV4(THREE,group,zone,biome,{detail=true,composition=false}={}){
  if(!THREE||!group||!BIOMES.includes(biome))return false;
- const ground=new THREE.Mesh(new THREE.PlaneGeometry(1536,1024),new THREE.MeshBasicMaterial({map:groundTextureV4(THREE,zone,biome,detail)}));
+ const ground=new THREE.Mesh(new THREE.PlaneGeometry(1536,1024),new THREE.MeshBasicMaterial({map:composition?createDesignedTerrainTexture(THREE,zone,biome):groundTextureV4(THREE,zone,biome,detail)}));
  ground.rotation.x=-Math.PI/2;ground.position.set(768,0,512);ground.name='scenery-v4-ground';group.add(ground);
- const road=new THREE.Mesh(roadGeometryV4(THREE,zone),new THREE.MeshBasicMaterial({
-   map:roadTextureV4(THREE,zone,biome,detail),side:THREE.DoubleSide
- }));road.name='scenery-v4-road';group.add(road);
- addWaterV4(THREE,group,zone,biome);
- const objects=planSceneryV4(zone,biome,{detail});
+ if(!composition){
+  const road=new THREE.Mesh(roadGeometryV4(THREE,zone),new THREE.MeshBasicMaterial({
+    map:roadTextureV4(THREE,zone,biome,detail),side:THREE.DoubleSide
+  }));road.name='scenery-v4-road';group.add(road);
+  addWaterV4(THREE,group,zone,biome);
+ }
+ const objects=composition?planSceneryV5(zone,biome):planSceneryV4(zone,biome,{detail});
  const batches=placeSpriteInstances(THREE,group,objects,biome,detail);
- return Object.freeze({zone,biome,staticProps:objects.length,drawBatches:batches,ground:detail?'pixel-cluster-v42':'tile-textured',path:detail?'authored-texture-v42':'authored-texture',art:detail?ART_VERSION:'scenery-v4-base',artKinds:detail?EXTRA_KINDS.length:0,water:['river','coast','swamp'].includes(biome)});
+ return Object.freeze({zone,biome,staticProps:objects.length,drawBatches:batches,ground:composition?'composed-authored-pixelmap':detail?'pixel-cluster-v42':'tile-textured',path:composition?'connected-map-path':detail?'authored-texture-v42':'authored-texture',art:composition?MAP_ART_VERSION:detail?ART_VERSION:'scenery-v4-base',artKinds:detail?EXTRA_KINDS.length:0,water:['river','coast','swamp'].includes(biome)});
 }
