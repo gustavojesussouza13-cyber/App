@@ -15,12 +15,14 @@ test('V7 QA catalog contains 30 original object crops, 20 tile candidates and fo
  }
  const gate=JSON.parse(fs.readFileSync(path.join(base,'assets/scenery-v7/availability.json'),'utf8'));
  assert.equal(gate.version,'v7');assert.equal(gate.approved,true);
- assert.deepEqual(gate.files,['arbusto_flores_01','arvore_folhosa_01','rocha_musgo_01']);
- assert.equal(gate.quality_gate,'three_sprite_pilot');
+ assert.deepEqual(gate.files,['arbusto_flores_01','arvore_folhosa_01','rocha_musgo_01','pinheiro_01','barril_01']);
+ assert.equal(gate.quality_gate,'five_sprite_pilot');
  const expected={
   arbusto_flores_01:[75,42],
   arvore_folhosa_01:[88,156],
-  rocha_musgo_01:[56,51]
+  rocha_musgo_01:[56,51],
+  pinheiro_01:[85,151],
+  barril_01:[45,58]
  };
  for(const [id,[width,height]] of Object.entries(expected)){
   const binary=fs.readFileSync(path.join(base,'assets/scenery-v7/sprites',id+'.png'));
@@ -33,7 +35,9 @@ test('V7 QA catalog contains 30 original object crops, 20 tile candidates and fo
  const crypto=require('node:crypto');
  for(const [id,expectedSha] of [
   ['arvore_folhosa_01','87894f51bb8b6d780e17d9ea2e10349f4a99fa77'],
-  ['rocha_musgo_01','39114acf990205074c5a44dd55b3e29308521bdb']
+  ['rocha_musgo_01','39114acf990205074c5a44dd55b3e29308521bdb'],
+  ['pinheiro_01','85ab4b977f65d0b00a2f3434475677f92c62d62e'],
+  ['barril_01','db1dfff5e28ada2bf71ea7004f04da5130e0e38f']
  ]){
   const binary=fs.readFileSync(path.join(base,'assets/scenery-v7/sprites',id+'.png'));
   const sha=crypto.createHash('sha1').update(Buffer.from('blob '+binary.length+String.fromCharCode(0))).update(binary).digest('hex');
@@ -108,7 +112,7 @@ test('V7 laboratory explicitly warns about unpublished art and distinguishes the
 
  assert.ok(lab.includes('view.v7Status.loaded')&&lab.includes('view.v7Ready'));
  assert.equal(manifest.approved,true,'Only checked pilot is allowed');
- assert.deepEqual(manifest.files,['arbusto_flores_01','arvore_folhosa_01','rocha_musgo_01']);
+ assert.deepEqual(manifest.files,['arbusto_flores_01','arvore_folhosa_01','rocha_musgo_01','pinheiro_01','barril_01']);
 });
 
 
