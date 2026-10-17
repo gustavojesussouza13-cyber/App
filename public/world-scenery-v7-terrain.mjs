@@ -209,6 +209,77 @@ export function paintV7Coast(ctx,atlas,zone,width=768,height=512){
  ctx.lineTo(width,height);ctx.lineTo(0,height);ctx.closePath();ctx.clip();
  tileRegion(ctx,atlas,'agua_01',zone,width,height);ctx.restore();return true;
 }
+
+/**
+ * V7.2: bridge is baked into the SAME ground canvas at the actual road/river
+ * crossing. No extra sprite card, no transparent water rectangle, no collider.
+ * The source wood pixels come from the already approved V7 32x32 atlas.
+ */
+export function v72BridgeAnchor(zone,roadAt,width=768,height=512){
+ if(typeof roadAt!=='function'||!Number.isFinite(zone))return null;
+ const riverX=y=>(420+92*Math.sin(y*2/150+zone))/2;
+ let x=210;
+ for(let i=0;i<7;i++){
+  const y=roadAt(x,zone);
+  if(!Number.isFinite(y))return null;
+  x=riverX(y);
+ }
+ const y=roadAt(x,zone);
+ if(!Number.isFinite(y))return null;
+ const left=Math.round(x-50),right=Math.round(x+50);
+ if(left<8||right>width-8||y<38||y>height-38)return null;
+ return Object.freeze({x:Math.round(x),y:Math.round(y),left,right,width:right-left});
+}
+function v72BridgeRail(ctx,anchor,roadAt,zone,side){
+ const pal=side<0?['#32281f','#76502f','#be8c4c','#e4ba72']:['#392c22','#79502e','#ab7a43','#e2b16e'];
+ // Rails follow the exact authored road axis in 8px pixel groups.
+ for(let x=anchor.left+2;x<anchor.right-2;x+=8){
+  const len=Math.min(8,anchor.right-2-x);
+  const y=Math.round(roadAt(x,zone)+side*23);
+  ctx.fillStyle=pal[0];ctx.fillRect(x,y-2,len,6);
+  ctx.fillStyle=pal[1];ctx.fillRect(x,y-1,len,3);
+  ctx.fillStyle=pal[3];ctx.fillRect(x,y-1,len,1);
+  ctx.fillStyle=pal[2];ctx.fillRect(x,y+3,len,1);
+ }
+ // Two pairs of guard posts flank the deck; none are standing 3D props.
+ for(const x of [anchor.left+8,anchor.right-14]){
+  const y=Math.round(roadAt(x,zone)+side*23);
+  ctx.fillStyle='#32281f';ctx.fillRect(x-2,y-9,9,17);
+  ctx.fillStyle='#80532d';ctx.fillRect(x,y-8,6,14);
+  ctx.fillStyle='#d2a46b';ctx.fillRect(x,y-9,6,3);
+  ctx.fillStyle='#f2d096';ctx.fillRect(x+1,y-8,2,2);
+  ctx.fillStyle='#3c3028';ctx.fillRect(x,y+5,6,3);
+ }
+}
+/** Exactly one authored wooden crossing per river region, aligned to the road. */
+export function paintV72Bridge(ctx,atlas,zone,biome,roadAt,width=768,height=512){
+ if(biome!=='river'||!atlas||typeof roadAt!=='function')return false;
+ const anchor=v72BridgeAnchor(zone,roadAt,width,height);
+ if(!anchor)return false;
+ ctx.save();ctx.beginPath();
+ for(let x=anchor.left;x<=anchor.right;x+=4){
+  const y=roadAt(x,zone)-21;
+  if(x===anchor.left)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+ }
+ for(let x=anchor.right;x>=anchor.left;x-=4)ctx.lineTo(x,roadAt(x,zone)+21);
+ ctx.closePath();ctx.clip();
+ // Atlas planks: exactly 32px source squares, never scaled or blurred.
+ tileRegion(ctx,atlas,'tabuas_01',zone,width,height);
+ ctx.restore();
+ // Seam lines reinforce the wood panel without laying art over player sprites.
+ for(let x=anchor.left+6;x<anchor.right-6;x+=10){
+  const y=Math.round(roadAt(x,zone));
+  ctx.fillStyle='#3e3026';ctx.fillRect(x,y-18,2,37);
+  ctx.fillStyle='#c09458';ctx.fillRect(x+2,y-17,1,34);
+  for(const dy of [-14,13]){
+   ctx.fillStyle='#655041';ctx.fillRect(x+4,y+dy,2,2);
+   ctx.fillStyle='#d8a96d';ctx.fillRect(x+4,y+dy,1,1);
+  }
+ }
+ v72BridgeRail(ctx,anchor,roadAt,zone,-1);
+ v72BridgeRail(ctx,anchor,roadAt,zone,1);
+ return true;
+}
 export function v7TerrainTexture(THREE,canvas){
  const tex=new THREE.CanvasTexture(canvas);
  tex.colorSpace=THREE.SRGBColorSpace;tex.magFilter=THREE.NearestFilter;
