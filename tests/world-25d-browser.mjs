@@ -291,5 +291,61 @@ try{
  await page.screenshot({path:'/tmp/os-peregrinos-anjo-caido-v4-morte-25d.png',fullPage:true});
  assert.ok(!pageErrors.some(e=>/angel|anjo-caido|ReferenceError/i.test(e)),'No JS errors from the new creature');
  console.log('ANJO_CAIDO_V4_25D_OK',JSON.stringify(angelCheck));
+
+ // Corvo do Ocaso V4: approved original atlas material in the real 2.5D scene.
+ const ravenPage=await page.goto(url,{waitUntil:'domcontentloaded',timeout:40000});
+ assert.equal(ravenPage?.status(),200);
+ await page.waitForFunction(()=>document.querySelector('#ravenStatus')?.textContent?.includes('golpe pronto'),null,{timeout:18000});
+ const ravenCheck=await page.evaluate(async()=>{
+  const api=window.OsPeregrinosDuskRavenV4;
+  if(!api||api.FRAME.width!==192||api.FRAME.height!==160||api.ASSETS.length!==4)throw Error('Raven V4 API missing');
+  const distinct=[],solid=[],hurtChanged=[],attackFX=[];
+  for(let d=0;d<4;d++){
+   const img=new Image();img.src=api.ASSETS[d];await img.decode();
+   if(img.naturalWidth!==768||img.naturalHeight!==960)throw Error('Raven atlas invalid '+d);
+   const cv=document.createElement('canvas');cv.width=192;cv.height=160;
+   const ctx=cv.getContext('2d',{willReadFrequently:true}),walk=[];
+   for(let col=0;col<4;col++){ctx.clearRect(0,0,192,160);ctx.drawImage(img,col*192,160,192,160,0,0,192,160);walk.push(cv.toDataURL('image/png'));}
+   distinct.push(new Set(walk).size);
+   const data=ctx.getImageData(0,0,192,160).data;let count=0;
+   for(let i=3;i<data.length;i+=4)if(data[i]>32)count++;
+   solid.push(count);
+   ctx.clearRect(0,0,192,160);ctx.drawImage(img,0,4*160,192,160,0,0,192,160);
+   const hurt=cv.toDataURL('image/png');
+   ctx.clearRect(0,0,192,160);ctx.drawImage(img,0,0,192,160,0,0,192,160);
+   hurtChanged.push(hurt!==cv.toDataURL('image/png'));
+  }
+  const fx=new Image();fx.src=api.FX;await fx.decode();
+  if(fx.naturalWidth!==768||fx.naturalHeight!==640)throw Error('Raven FX atlas wrong size');
+  const cv=document.createElement('canvas');cv.width=192;cv.height=160;const ctx=cv.getContext('2d',{willReadFrequently:true});
+  for(let d=0;d<4;d++){
+   ctx.clearRect(0,0,192,160);ctx.drawImage(fx,0,d*160,192,160,0,0,192,160);
+   const a=ctx.getImageData(0,0,192,160).data;let pixels=0;
+   for(let i=3;i<a.length;i+=4)if(a[i]>16)pixels++;
+   attackFX.push(pixels);
+  }
+  return {distinct,solid,hurtChanged,attackFX};
+ });
+ assert.deepEqual(ravenCheck.distinct,[4,4,4,4],'four different walking frames in all directions');
+ assert.ok(ravenCheck.solid.every(n=>n>2000),'raven must have clearly visible opaque silhouettes');
+ assert.ok(ravenCheck.hurtChanged.every(Boolean),'damege state must differ from idle');
+ assert.ok(ravenCheck.attackFX.every(n=>n>50),'effect pixels visible in each direction');
+ for(let d=0;d<4;d++)await page.locator('#ravenDirection').selectOption(String(d));
+ await page.locator('#ravenDirection').selectOption('1');
+ await page.locator('#ravenAction').selectOption('walk');
+ await page.waitForTimeout(300);
+ await page.screenshot({path:'/tmp/os-peregrinos-corvo-v4-walk-25d.png',fullPage:true});
+ await page.locator('#ravenDirection').selectOption('3');
+ await page.locator('#ravenAction').selectOption('attack');
+ await page.waitForTimeout(290);
+ await page.screenshot({path:'/tmp/os-peregrinos-corvo-v4-attack-25d.png',fullPage:true});
+ await page.locator('#ravenAction').selectOption('hurt');
+ await page.waitForTimeout(160);
+ await page.screenshot({path:'/tmp/os-peregrinos-corvo-v4-hurt-25d.png',fullPage:true});
+ await page.locator('#ravenAction').selectOption('death');
+ await page.waitForTimeout(580);
+ await page.screenshot({path:'/tmp/os-peregrinos-corvo-v4-death-25d.png',fullPage:true});
+ assert.ok(!pageErrors.some(e=>/raven|corvo-ocaso|ReferenceError/i.test(e)),'Raven V4 JS errors');
+ console.log('CORVO_OCASO_V4_25D_OK',JSON.stringify(ravenCheck));
  console.log('WORLD_25D_BROWSER_OK',JSON.stringify({url,classes:4,biomes:6,canvas:'webgl'}));
 }finally{await browser.close()}
