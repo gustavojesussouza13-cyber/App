@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="pt-BR">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Salamandra V4 — revisão artística isolada</title>
+<style>
+:root{color-scheme:dark;--gold:#ffbb74;--line:#855037}
+*{box-sizing:border-box}body{margin:0;background:#0c151c;color:#f3e4d4;font:15px/1.5 system-ui,Arial}
+main{max-width:1200px;margin:auto;padding:20px}
+h1{font:700 clamp(24px,4vw,39px) Georgia,serif;margin:0;color:var(--gold)}
+p{color:#d0c7bc;max-width:900px}
+.controls{display:flex;gap:14px;flex-wrap:wrap;margin:22px 0}
+label{display:grid;gap:6px;font-size:13px;color:#ffe0b0}
+select{background:#273239;color:#fff;padding:9px;border:1px solid var(--line);border-radius:7px}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}
+article{padding:13px;background:#18272e;border:1px solid #866345;border-radius:10px;min-width:0}
+h2{font:700 18px Georgia,serif;color:var(--gold);margin:0 0 8px}
+canvas{display:block;width:100%;aspect-ratio:1.65;height:auto;image-rendering:pixelated;border-radius:6px;background:#243939}
+#status{margin-top:13px;color:#e4c18e}
+small{color:#b9c6c0;display:block;margin:18px 0}
+@media(max-width:680px){.grid{grid-template-columns:1fr}main{padding:12px}}
+</style></head>
+<body><main>
+<h1>Salamandra V4 — revisão visual</h1>
+<p>Prévia isolada das quatro vistas da Salamandra V4 extraídas do conceito artístico aprovado. Movimento e efeitos são simulações técnicas; <strong>as spritesheets definitivas de 24 quadros por orientação ainda precisam ser produzidas e validadas</strong>. Esta página não modifica o MMORPG, a fortaleza 3D ou criaturas V3.</p>
+<div class="controls">
+<label>Ação<select id="action"><option value="idle">Repouso</option><option value="walk">Caminhada</option><option value="attack">Ataque</option><option value="hurt">Dano</option><option value="dead">Morte</option></select></label>
+<label>Velocidade<select id="speed"><option value="slow">Lenta</option><option selected value="normal">Normal</option><option value="fast">Rápida</option></select></label>
+<label>Escala<select id="scale"><option value="normal">Criatura normal</option><option value="boss">Escala de chefe (145%)</option></select></label>
+</div>
+<div class="grid" id="grid"></div><div id="status" role="status">Carregando arte...</div>
+<small>Os quatro visuais são independentes, sem espelhamento horizontal. A base da criatura permanece no mesmo ponto durante as ações. Apenas laboratório de revisão, sem publicação em produção.</small>
+</main>
+<script src="/salamandra-v4-preview.js"></script>
+<script>
+(()=>{
+ const src=window.OsPeregrinosSalamanderV4Preview;
+ const directions=['tras','direita','frente','esquerda'], names=['Costas','Direita','Frente','Esquerda'];
+ const items=directions.map((direction,i)=>{
+  const card=document.createElement('article'),name=document.createElement('h2'),canvas=document.createElement('canvas');
+  name.textContent=names[i];canvas.width=480;canvas.height=290;card.append(name,canvas);document.querySelector('#grid').append(card);
+  const sprite=new Image();sprite.src=src.images[direction];return{direction,sprite,canvas,ctx:canvas.getContext('2d')};
+ });
+ const $=id=>document.getElementById(id);
+ const px=()=>({action:$('action').value,speed:$('speed').value,scale:$('scale').value});
+ function fire(g,x,y,now,dir,mult=1){
+  const shift=dir===1?65:dir===3?-65:0,period=now/380;
+  g.save();g.lineCap='round';
+  for(let k=0;k<3;k++){
+   const radius=(65+k*9)*mult,side=dir===1?1:dir===3?-1:1;
+   g.beginPath();
+   for(let j=0;j<32;j++){
+    const a=(.25+j/31*1.5+Math.sin(period)*.07)*side;
+    const xx=x+shift+radius*Math.cos(a),yy=y-38-radius*.75*Math.sin(a);
+    if(j===0)g.moveTo(xx,yy);else g.lineTo(xx,yy);
+   }
+   g.strokeStyle=['#7e1c09','#f76b10','#ffe16e'][k];g.lineWidth=(15-k*5)*mult;g.stroke();
+  }
+  for(let j=0;j<20;j++){const a=j*2.399+period*2,r=(j*13%75)*mult;
+   g.fillStyle=j%3===0?'#ffe476':'#f77313';g.fillRect(x+shift+Math.cos(a)*r,y-45+Math.sin(a)*r,3,3)}
+  g.restore();
+ }
+ function draw(now){
+  const {action,speed,scale}=px(),rate=speed==='slow'?.5:speed==='fast'?1.7:1,boss=scale==='boss',tick=now*rate;
+  let loaded=0;
+  for(const [i,item] of items.entries()){
+   const g=item.ctx,W=item.canvas.width,H=item.canvas.height;
+   g.clearRect(0,0,W,H);
+   const ground=g.createLinearGradient(0,0,0,H);ground.addColorStop(0,'#314b43');ground.addColorStop(.67,'#4a5841');ground.addColorStop(1,'#262d25');
+   g.fillStyle=ground;g.fillRect(0,0,W,H);
+   g.fillStyle='#344137';for(let n=0;n<16;n++)g.fillRect(n*39%W,(n*79)%95+194,20,6);
+   const x=W/2,y=H*.82;
+   g.save();g.globalAlpha=.34;g.fillStyle='#070d0d';g.beginPath();g.ellipse(x,y,75*(boss?1.45:1),14,0,0,2*Math.PI);g.fill();g.restore();
+   if(!item.sprite.complete||item.sprite.naturalWidth!==64||item.sprite.naturalHeight!==80){g.fillStyle='#ffbe90';g.fillText('Aguardando a arte...',35,60);continue}
+   loaded++;
+   const base=2.55*(boss?1.45:1),w=64*base,h=80*base;
+   const bounce=action==='walk'?Math.sin(tick/95+i)*3:action==='idle'?Math.sin(tick/300+i)*1.5:0;
+   const squash=action==='dead'?Math.max(.2,1-(tick%1800)/2200):1;
+   const hurt=action==='hurt'&&Math.floor(tick/105)%2===0;
+   g.save();g.imageSmoothingEnabled=false;
+   if(hurt)g.globalAlpha=.56;
+   g.drawImage(item.sprite,x-w/2,y-h*squash+bounce,w,h*squash);
+   g.restore();
+   if(action==='attack')fire(g,x,y-6,tick,i,boss?1.35:1);
+   if(action==='dead'){g.fillStyle='#ff9a21';for(let p=0;p<22;p++){let sx=x+Math.cos(p*2.4)*((p*19+tick/35)%100),sy=y-45-Math.abs(Math.sin(p+tick/300))*65;g.fillRect(sx,sy,3,3)}}
+   g.font='bold 14px system-ui';g.textAlign='center';g.fillStyle='#ffc582';g.fillText('Salamandra V4',x,40);
+   g.fillStyle='#162623';g.fillRect(x-48,48,96,9);g.fillStyle='#62c64b';g.fillRect(x-46,50,92,5);
+  }
+  $('status').textContent=loaded===4?'✓ Quatro visuais carregados · simulação técnica, não spritesheets finais':'Carregando vistas: '+loaded+'/4';
+  requestAnimationFrame(draw);
+ }
+ requestAnimationFrame(draw);
+})();
+</script></body></html>
