@@ -233,7 +233,7 @@ export function createWorld25D({shell,canvas,width=960,height=576,sceneryV4=true
   sun.position.set(-240,600,190);
   scene.add(ambient,sun);
   let layer=null,activeZone=NaN,activeBiome='',disposed=false,night=false,shrine=null;
-  let useSceneryV4=Boolean(sceneryV4),lastSceneryV4=null;
+  let useSceneryV4=Boolean(sceneryV4),useSceneryDetail=true,lastSceneryV4=null;
   function rebuild(zone,biome) {
     if(layer){
       scene.remove(layer);
@@ -254,7 +254,7 @@ export function createWorld25D({shell,canvas,width=960,height=576,sceneryV4=true
     // In case of a WebGL/texture failure, fall back to the EXACT prior model.
     let success=false;
     if(useSceneryV4)try{
-      lastSceneryV4=buildSceneryV4(THREE,layer,zone,biome);
+      lastSceneryV4=buildSceneryV4(THREE,layer,zone,biome,{detail:useSceneryDetail});
       success=Boolean(lastSceneryV4);
     }catch(error){
       console.warn('[Cenário 2.5D V4] Voltando ao terreno anterior.',error);
@@ -333,6 +333,7 @@ export function createWorld25D({shell,canvas,width=960,height=576,sceneryV4=true
   }
   function setNight(value){night=Boolean(value);}
   function setSceneryV4(value){useSceneryV4=Boolean(value);activeZone=NaN;activeBiome='';}
+  function setSceneryDetail(value){useSceneryDetail=Boolean(value);activeZone=NaN;activeBiome='';}
   function dispose(){
     if(disposed)return;
     disposed=true;
@@ -352,7 +353,7 @@ export function createWorld25D({shell,canvas,width=960,height=576,sceneryV4=true
     canvas.style.background='';
   }
   window.addEventListener('pagehide',dispose,{once:true});
-  return {render,setNight,setSceneryV4,dispose,canvas:renderer.domElement,
-    get sceneryVersion(){return useSceneryV4?SCENERY_V4_VERSION:'legacy';},
+  return {render,setNight,setSceneryV4,setSceneryDetail,dispose,canvas:renderer.domElement,
+    get sceneryVersion(){return useSceneryV4?(useSceneryDetail?SCENERY_V4_VERSION:'scenery-v4-base'):'legacy';},
     get sceneryStats(){return lastSceneryV4;}};
 }
