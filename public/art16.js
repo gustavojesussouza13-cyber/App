@@ -532,11 +532,14 @@ function create({ctx,W,H}){
   const knightV4Drawn=ty==='cavaleiro'&&Boolean(knightV4?.drawMonster(g,{...m,x,y},now,state));
   const dragonV4Drawn=ty==='dragao'&&Boolean(dragonV4?.drawMonster(g,{...m,x,y},now,state));
   const sentinelV4Drawn=ty==='sentinela'&&Boolean(sentinelV4?.drawMonster(g,{...m,x,y},now,state));
+  // Guardião da Aurora (espécie 31) reaproveita o Sentinela V4 aprovado.
+  // O campo boss original determina o aumento de escala; nenhum sistema de combate muda.
+  const auroraSentinelDrawn=ty==='chefe'&&Number(m.species)===31&&Boolean(sentinelV4?.drawMonster(g,{...m,x,y,boss:Boolean(m.boss)},now,{...state,type:'sentinela'}));
   const basiliskV4Drawn=ty==='basilisco'&&Boolean(basiliskV4?.drawMonster(g,{...m,x,y},now,state));
   const angelV4Drawn=ty==='anjo-caido'&&Boolean(fallenAngelV4?.drawMonster(g,{...m,x,y},now,state));
   const ghostAngelFallback=ty==='anjo-caido'&&!angelV4Drawn&&Boolean(ghostV4?.drawMonster(g,{...m,x,y},now,{...state,type:'fantasma'}));
-  const creatureV3=!batV4Drawn&&!serpentV4Drawn&&!beastV4Drawn&&!scorpionV4Drawn&&!ghostV4Drawn&&!waspV4Drawn&&!knightV4Drawn&&!dragonV4Drawn&&!sentinelV4Drawn&&!basiliskV4Drawn&&!angelV4Drawn&&!ghostAngelFallback&&Boolean(creaturesV3?.drawMonster(g,{...m,x,y},now,state));
-  const spriteDim=batV4Drawn?batV4.measure(m.boss):serpentV4Drawn?serpentV4.measure(m.boss):beastV4Drawn?beastV4.measure(m.boss):scorpionV4Drawn?scorpionV4.measure(m.boss):ghostV4Drawn?ghostV4.measure(m.boss):waspV4Drawn?waspV4.measure(m.boss):knightV4Drawn?knightV4.measure(m.boss):dragonV4Drawn?dragonV4.measure(m.boss):sentinelV4Drawn?sentinelV4.measure(m.boss):basiliskV4Drawn?basiliskV4.measure(m.boss):angelV4Drawn?fallenAngelV4.measure(m.boss):ghostAngelFallback?ghostV4.measure(m.boss):creatureV3?creaturesV3.measure(ty,m.boss):null;
+  const creatureV3=!batV4Drawn&&!serpentV4Drawn&&!beastV4Drawn&&!scorpionV4Drawn&&!ghostV4Drawn&&!waspV4Drawn&&!knightV4Drawn&&!dragonV4Drawn&&!sentinelV4Drawn&&!auroraSentinelDrawn&&!basiliskV4Drawn&&!angelV4Drawn&&!ghostAngelFallback&&Boolean(creaturesV3?.drawMonster(g,{...m,x,y},now,state));
+  const spriteDim=batV4Drawn?batV4.measure(m.boss):serpentV4Drawn?serpentV4.measure(m.boss):beastV4Drawn?beastV4.measure(m.boss):scorpionV4Drawn?scorpionV4.measure(m.boss):ghostV4Drawn?ghostV4.measure(m.boss):waspV4Drawn?waspV4.measure(m.boss):knightV4Drawn?knightV4.measure(m.boss):dragonV4Drawn?dragonV4.measure(m.boss):sentinelV4Drawn?sentinelV4.measure(m.boss):auroraSentinelDrawn?sentinelV4.measure(Boolean(m.boss)):basiliskV4Drawn?basiliskV4.measure(m.boss):angelV4Drawn?fallenAngelV4.measure(m.boss):ghostAngelFallback?ghostV4.measure(m.boss):creatureV3?creaturesV3.measure(ty,m.boss):null;
   const studioMonster=!spriteDim&&Boolean(spriteStudio?.drawMonster(g,{...m,x,y},now,{...state,desktopPremium:premiumPc}));
   const detailedBoss=!spriteDim&&!studioMonster&&Boolean(desktopSprites?.drawMonster(g,{...m,x,y},now,state));
   const illustrated=!spriteDim&&!studioMonster&&!detailedBoss&&Boolean(desktopBestiary?.drawMonster(g,{...m,x,y},now,state));
