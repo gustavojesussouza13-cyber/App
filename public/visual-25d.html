@@ -33,7 +33,7 @@ label{display:grid;gap:4px;color:#d5c28c;font-size:12px;font-weight:600}select,b
 button{cursor:pointer}button:hover{background:#365951}button:focus-visible{outline:2px solid #e6dcad}
 #status{font-size:12px;color:#a4e0c4;min-height:2em}
 .sentinel-controls{display:grid;gap:9px;border-top:1px solid #817855;padding-top:12px}.sentinel-controls h3{font:700 17px Georgia,serif;color:#f1dca3;margin:0}.sentinel-controls .checkline{display:flex;flex-direction:row;align-items:center;gap:8px}.sentinel-controls .checkline input{accent-color:#e7ca83}.sentinel-controls #sentinelStatus{color:#a4e0c4;font-size:12px;min-height:2.5em}
-.basilisk-controls{display:grid;gap:9px;border-top:1px solid #817855;padding-top:12px}.basilisk-controls h3{font:700 17px Georgia,serif;color:#f1dca3;margin:0}.basilisk-controls .checkline{display:flex;flex-direction:row;align-items:center;gap:8px}.basilisk-controls .checkline input{accent-color:#e7ca83}.basilisk-controls #basiliskStatus{color:#a4e0c4;font-size:12px;min-height:2.5em}.angel-controls{display:grid;gap:9px;border-top:1px solid #817855;padding-top:12px}.angel-controls h3{font:700 17px Georgia,serif;color:#f1dca3;margin:0}.angel-controls #angelStatus{color:#a4e0c4;font-size:12px;min-height:2.5em}footer{margin-top:12px;font-size:13px;color:#bbcdbd}
+.basilisk-controls{display:grid;gap:9px;border-top:1px solid #817855;padding-top:12px}.basilisk-controls h3{font:700 17px Georgia,serif;color:#f1dca3;margin:0}.basilisk-controls .checkline{display:flex;flex-direction:row;align-items:center;gap:8px}.basilisk-controls .checkline input{accent-color:#e7ca83}.basilisk-controls #basiliskStatus{color:#a4e0c4;font-size:12px;min-height:2.5em}.angel-controls{display:grid;gap:9px;border-top:1px solid #817855;padding-top:12px}.angel-controls h3{font:700 17px Georgia,serif;color:#f1dca3;margin:0}.angel-controls #angelStatus{color:#a4e0c4;font-size:12px;min-height:2.5em}.raven-controls{display:grid;gap:9px;border-top:1px solid #817855;padding-top:12px}.raven-controls h3{font:700 17px Georgia,serif;color:#f1dca3;margin:0}.raven-controls #ravenStatus{color:#a4e0c4;font-size:12px;min-height:2.5em}footer{margin-top:12px;font-size:13px;color:#bbcdbd}
 @media(max-width:860px){.panels{grid-template-columns:1fr}.stage{aspect-ratio:5/3}.chat{display:none}.hero{transform:scale(.75);transform-origin:top left}.minimap{transform:scale(.75);transform-origin:top right}.skills{transform:translateX(-50%) scale(.7);transform-origin:bottom center}}
 </style>
 </head>
@@ -75,6 +75,13 @@ button{cursor:pointer}button:hover{background:#365951}button:focus-visible{outli
   <label class="checkline"><input type="checkbox" id="angelBoss"> Escala de chefe</label>
   <p id="angelStatus" role="status" aria-live="polite">Carregando as spritesheets técnicas reais…</p>
  </section>
+ <section class="raven-controls" aria-labelledby="ravenTitle">
+  <h3 id="ravenTitle">Corvo do Ocaso V4 · sprites corrigidos</h3>
+  <p>Quatro vistas reais e golpe separado; observe patas, asas e orientação sem sobreposição.</p>
+  <label>Ação<select id="ravenAction"><option value="idle">Repouso</option><option value="walk">Caminhada</option><option value="prepare">Preparação</option><option value="attack">Ataque do ocaso</option><option value="hurt">Dano</option><option value="death">Morte</option></select></label>
+  <label>Direção<select id="ravenDirection"><option value="0">Trás</option><option value="1" selected>Direita</option><option value="2">Frente</option><option value="3">Esquerda</option></select></label>
+  <p id="ravenStatus" role="status" aria-live="polite">Carregando os cinco atlas corrigidos…</p>
+ </section>
  <button id="night" type="button">☾ Anoitecer</button>
  <button id="classic" type="button">Ver apenas Canvas 2D</button>
  <div id="status" role="status">Preparando renderizador WebGL…</div>
@@ -99,6 +106,7 @@ button{cursor:pointer}button:hover{background:#365951}button:focus-visible{outli
 <script src="/sentinela-v4.js?v=sentinela-v4-approved-1"></script>
 <script src="/basilisco-v4.js?v=basilisco-v4-gait2"></script>
 <script src="/anjo-caido-v4.js?v=anjo-caido-v4-review-1"></script>
+<script src="/corvo-v4.js?v=corvo-v4-rev2"></script>
 <script type="module">
 const $=id=>document.getElementById(id),canvas=$('game'),ctx=canvas.getContext('2d',{alpha:true}),mini=$('mini'),mctx=mini.getContext('2d');
 const W=canvas.width,H=canvas.height,WIDTH=1536,HEIGHT=1024;
@@ -126,6 +134,33 @@ const actors=[{x:663,y:442,name:'Lia',role:'curandeiro'},{x:910,y:560,name:'Thal
 const sentinelActor={x:935,y:508,type:'sentinela',species:28};
 const basiliskActor={x:990,y:700,type:'basilisco',species:29};
 const angelActor={x:535,y:655,type:'anjo-caido',species:30};
+const ravenActor={x:426,y:475,type:'corvo',species:7};
+const ravenRenderer=window.OsPeregrinosRavenV4?.create({windowRef:window});
+let ravenActionAt=performance.now();
+$('ravenAction').addEventListener('change',()=>{ravenActionAt=performance.now()});
+function drawRaven(camX,camY,now){
+ const sx=Math.round(ravenActor.x-camX),sy=Math.round(ravenActor.y-camY);
+ const dir=Number($('ravenDirection').value),action=$('ravenAction').value;
+ const elapsed=Math.max(0,now-ravenActionAt),state={type:'corvo'};
+ if(action==='walk')state.moving=true;
+ if(action==='prepare')state.preparing=true;
+ if(action==='attack'){state.attacking=true;state.elapsed=elapsed%850}
+ if(action==='hurt'){state.hurt=true;state.elapsed=elapsed%320}
+ if(action==='death'){state.dead=true;state.elapsed=Math.min(580,elapsed)}
+ const x=sx+(action==='walk'?Math.round(Math.sin(now/440)*12):0);
+ ctx.save();ctx.fillStyle='#12152677';ctx.beginPath();ctx.ellipse(x,sy+2,40,10,0,0,Math.PI*2);ctx.fill();
+ const drawn=Boolean(ravenRenderer?.drawMonster(ctx,{type:'corvo',species:7,x,y:sy,dir,boss:false},now,state));
+ if(drawn){
+  const dims=ravenRenderer.measure(false);ctx.textAlign='center';ctx.font='bold 13px system-ui,Arial';ctx.lineWidth=3;
+  ctx.strokeStyle='#101b23';ctx.strokeText('Corvo do Ocaso V4',x,sy-dims.healthTop);
+  ctx.fillStyle='#f6d29c';ctx.fillText('Corvo do Ocaso V4',x,sy-dims.healthTop);
+ }
+ ctx.restore();
+ const status=drawn?'✓ Corvo V4 nativo · '+(ravenRenderer.attackReady?'efeito pronto':'efeito pendente'):
+ '⚠ Ainda carregando Corvo V4; confira a largura da janela (PC > 900 px).';
+ if($('ravenStatus').textContent!==status)$('ravenStatus').textContent=status;
+}
+
 const angelRenderer=window.OsPeregrinosFallenAngelV4?.create({windowRef:window});
 let angelActionAt=performance.now();
 $('angelAction').addEventListener('change',()=>{angelActionAt=performance.now()});
@@ -266,11 +301,12 @@ function frame(t){
  }
  ctx.clearRect(0,0,W,H);
  if(!mode3d)fallbackTerrain(camX,camY);
- const sortedActors=[...actors,player,sentinelActor,basiliskActor,angelActor].sort((a,b)=>a.y-b.y);
+ const sortedActors=[...actors,player,sentinelActor,basiliskActor,angelActor,ravenActor].sort((a,b)=>a.y-b.y);
  for(const actor of sortedActors){
   if(actor===sentinelActor)drawSentinel(camX,camY,t);
   else if(actor===basiliskActor)drawBasilisk(camX,camY,t);
   else if(actor===angelActor)drawAngel(camX,camY,t);
+  else if(actor===ravenActor)drawRaven(camX,camY,t);
   else drawActor(actor,camX,camY,t);
  }
  miniMap();
