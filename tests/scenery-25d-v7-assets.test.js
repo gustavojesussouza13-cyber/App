@@ -58,7 +58,7 @@ test('V7 accepts only an explicitly approved same-origin asset pack and uses nea
 test('V7 renderer code preserves 2.5D maps, classic atlas and original sprites as per-object fallback',()=>{
  const scene=js('world-scenery-v4.mjs'),world=js('world-25d.mjs'),lab=js('laboratorio-cenario-25d-v4.html');
  assert.ok(scene.includes("createV7PropTexture(THREE,kind,variant)"));
- assert.ok(scene.includes("||spriteTexture(THREE,kind,biome,variant,detail)"));
+ assert.ok(scene.includes(":spriteTexture(THREE,kind,biome,variant,detail)"));
  assert.ok(scene.includes("const useV7=Boolean(v7&&composition&&isV7Ready())"));
  assert.ok(scene.includes('planSceneryV5(zone,biome)'));
  assert.ok(world.includes('setSceneryV7(value)'));
