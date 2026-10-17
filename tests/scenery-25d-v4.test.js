@@ -1,0 +1,81 @@
+'use strict';
+const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
+const root=path.resolve(__dirname,'..'),publicDir=path.join(root,'public');
+let mod;
+async function api(){return mod||(mod=await import('../public/world-scenery-v4.mjs'));}
+test('Scenery V4 implements ten existing historical biomes with consistent deterministic plans',async()=>{
+ const v=await api();
+ assert.deepEqual(v.BIOMES,['meadow','forest','river','desert','mountain','ruins','swamp','coast','city','dungeon']);
+ assert.equal(v.SIZE.tile,32);
+ for(let zone=0;zone<40;zone++){
+  const biome=v.BIOMES[zone%10],a=v.planSceneryV4(zone,biome),b=v.planSceneryV4(zone,biome);
+  assert.deepEqual(a,b,'stable props for repeated visits '+zone);
+  assert.ok(a.length>=70&&a.length<=200,'controlled objects for '+biome+' zone '+zone);
+  for(const item of a){
+   assert.ok(item.x>=0&&item.x<=1536&&item.z>=0&&item.z<=1024);
+   assert.ok(item.w>0&&item.h>0);
+   assert.equal(typeof item.kind,'string');
+   assert.ok(Math.abs(item.z-v.roadY(item.x,zone))>=77||biome==='river'&&item.kind==='bridge',
+    'do not obstruct original walkways: '+biome+' '+JSON.stringify(item));
+   if(zone===0)assert.ok(!(item.x>688&&item.x<845&&item.z>265&&item.z<408));
+  }
+ }
+ assert.throws(()=>v.planSceneryV4(0,'fortress'),/Bioma desconhecido/);
+});
+test('all biome families contain biome-specific decorative and structural art while untouched game retains legacy backup',async()=>{
+ const v=await api(),kinds=new Set();
+ for(const biome of v.BIOMES)for(const item of v.planSceneryV4(32,biome))kinds.add(item.kind);
+ for(const k of ['tree','house','rock','shrub','flower','pine','reeds','ruin','arch','pillar','altar','bridge','well','fence','barrel','crate','lamp','cactus','palm'])
+  assert.ok(kinds.has(k),'family missing: '+k);
+ const src=fs.readFileSync(path.join(publicDir,'world-25d.mjs'),'utf8');
+ assert.ok(src.includes("import {buildSceneryV4,SCENERY_V4_VERSION} from '/world-scenery-v4.mjs'"));
+ assert.ok(src.includes('let useSceneryV4=Boolean(sceneryV4)'));
+ assert.ok(src.includes('if(!success){'),'failed V4 preserves original scene');
+ assert.ok(src.includes('setSceneryV4(value)'),'comparison toggle');
+ assert.ok(src.includes('addMeadowDetails(layer,zone,biome,random)'),'legacy model remains');
+ assert.ok(!src.includes('guild-scene-3d'));
+ const original=fs.readFileSync(path.join(publicDir,'guild-scene-3d.mjs'),'utf8');
+ assert.ok(original.length>1000);
+ const lab=fs.readFileSync(path.join(publicDir,'laboratorio-cenario-25d-v4.html'),'utf8');
+ assert.ok(lab.includes('/world-25d.mjs'));assert.ok(lab.includes('Cenário anterior'));
+});
+test('Scenery V4 uses static instanced meshes with no writes to game state, DB, player coordinates or monsters',()=>{
+ const src=fs.readFileSync(path.join(publicDir,'world-scenery-v4.mjs'),'utf8');
+ assert.ok(src.includes('new THREE.InstancedMesh'));
+ assert.ok(src.includes('THREE.NearestFilter'));
+ assert.ok(src.includes('THREE.CanvasTexture'));
+ assert.ok(src.includes('function addWaterV4'));
+ assert.ok(!/fetch\(|WebSocket|localStorage|DATABASE_URL|guild-scene-3d|world-engine\.js/.test(src));
+ const world=fs.readFileSync(path.join(publicDir,'world-25d.mjs'),'utf8');
+ assert.ok(world.includes('camera.position.set(cx,1350,cz)'));
+ assert.ok(world.includes('camera.lookAt(cx,0,cz)'));
+ assert.ok(world.includes('if(zone===0&&(biome===\'meadow\'||biome===\'city\'))shrine=addAuroraShrine(layer)'));
+});
+test('buildSceneryV4 can create and place all art families into WebGL-style mocks',async()=>{
+ const v=await api(),orig=global.document;
+ const ctx={
+  fillStyle:'',imageSmoothingEnabled:false,fillRect(){},beginPath(){},moveTo(){},lineTo(){},closePath(){},fill(){}
+ };
+ global.document={createElement(tag){assert.equal(tag,'canvas');return {width:0,height:0,getContext(type){assert.equal(type,'2d');return ctx}}}};
+ const xy=()=>({x:0,y:0,z:0,set(x,y,z){this.x=x;this.y=y;this.z=z}});
+ class Obj{constructor(){this.rotation=xy();this.position=xy();this.scale=xy();this.geometry=null;this.material=null;}updateMatrix(){this.matrix={}}}
+ class Mesh extends Obj{constructor(geo,mat){super();this.geometry=geo;this.material=mat}}
+ class InstancedMesh extends Mesh{constructor(g,m,n){super(g,m);this.count=n;this.instanceMatrix={needsUpdate:false}}setMatrixAt(i,mat){assert.ok(i>=0&&i<this.count);assert.ok(mat)}}
+ class Texture{constructor(canvas){this.source=canvas;this.repeat={set(){}};this.wrapS=0;this.wrapT=0;}}
+ class BufferGeometry{setAttribute(k,v){assert.ok(v);return this}setIndex(v){assert.ok(v.length)}computeVertexNormals(){}}
+ const THREE={CanvasTexture:Texture,NearestFilter:1,NearestMipmapNearestFilter:2,ClampToEdgeWrapping:3,RepeatWrapping:4,SRGBColorSpace:'srgb',
+  PlaneGeometry:class{constructor(w,h){this.width=w;this.height=h}},
+  MeshBasicMaterial:class{constructor(opt){Object.assign(this,opt)}},DoubleSide:2,
+  Mesh,InstancedMesh,Object3D:Obj,BufferGeometry,Float32BufferAttribute:class{constructor(v,n){assert.ok(v.length&&n)}}
+ };
+ try{
+  for(const biome of v.BIOMES){
+   const group={children:[],add(mesh){this.children.push(mesh)}};
+   const report=v.buildSceneryV4(THREE,group,0,biome);
+   assert.equal(report.biome,biome);assert.ok(report.staticProps>=70);
+   assert.ok(group.children.some(x=>x.name==='scenery-v4-ground'));
+   assert.ok(group.children.some(x=>x.name==='scenery-v4-road'));
+   assert.ok(group.children.some(x=>x instanceof InstancedMesh));
+  }
+ }finally{global.document=orig;}
+});
