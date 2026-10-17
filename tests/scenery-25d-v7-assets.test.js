@@ -69,9 +69,9 @@ test('V7 accepts only an explicitly approved same-origin asset pack and uses nea
  const activeFiles=['arvore_folhosa_01','casa_azul_01','casa_azul_02','ponte_madeira_01'];
  const requests=[];
  class ImageMock{
-  constructor(){this.handlers={};this.naturalWidth=64;this.naturalHeight=80;}
+  constructor(){this.handlers={};this.naturalWidth=0;this.naturalHeight=0;}
   addEventListener(k,fn){this.handlers[k]=fn;}
-  set src(v){requests.push(v);queueMicrotask(()=>this.handlers.load?.());}
+  set src(v){requests.push(v);const id=v.split('/').pop().replace(/\.png$/,'');const spec=m.V7_ASSETS[id];this.naturalWidth=spec.w;this.naturalHeight=spec.h;queueMicrotask(()=>this.handlers.load?.());}
  }
  const ok=await m.preloadV7Assets({fetcher:async url=>{
   assert.equal(url,m.BASE_URL+'availability.json');
@@ -80,7 +80,7 @@ test('V7 accepts only an explicitly approved same-origin asset pack and uses nea
  assert.equal(ok,true);
  assert.equal(m.v7Stats().loaded,2,'unapproved PNGs must never auto-load');
  assert.equal(requests.length,2);
- assert.equal(m.v7Image('house',0).naturalWidth,64);
+ assert.equal(m.v7Image('house',0).naturalWidth,104);
  assert.equal(m.v7Image('house',1),null,'fallback when variant not loaded');
  const THREE={Texture:class {constructor(image){this.image=image}},
   SRGBColorSpace:'s',NearestFilter:11,NearestMipmapNearestFilter:22,ClampToEdgeWrapping:33};
