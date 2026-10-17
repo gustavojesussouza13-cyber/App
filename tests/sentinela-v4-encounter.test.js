@@ -30,11 +30,11 @@ test('Sentinela V4 corresponds to the server creature Sentinela da Noite (specie
 test('Sentinela V4 is encountered in the first region of the published world',()=>{
  const world=detachedWorld();
  const zone=world.ensureMonsters(0);
- assert.equal(zone[8]?.species,28,'Vale das Oliveiras contains a deterministic Sentinela da Noite');
- assert.equal(zone[8]?.name,'Sentinela da Noite');
- assert.equal(zone[8]?.id,'m-0-8');
- assert.equal(zone[8]?.boss,false);
- assert.ok(zone[8].x>=0&&zone[8].y>=0,'spawned on the existing walkable terrain');
+ assert.equal(zone[4]?.species,28,'Vale das Oliveiras contains a deterministic Sentinela da Noite');
+ assert.equal(zone[4]?.name,'Sentinela da Noite');
+ assert.equal(zone[4]?.id,'m-0-4');
+ assert.equal(zone[4]?.boss,false);
+ assert.ok(zone[4].x>=0&&zone[4].y>=0,'spawned on the existing walkable terrain');
  assert.strictEqual(world.ensureMonsters(0),zone,'revisiting a zone preserves its monster roster');
 });
 
