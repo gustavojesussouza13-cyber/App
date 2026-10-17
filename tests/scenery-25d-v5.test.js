@@ -33,6 +33,7 @@ test('V5 has a distinct original village composition with stable houses and conn
  const loc=land.reservedSceneryLandmarks(0,'meadow');
  assert.ok(loc.filter(x=>x.kind==='house').length>=2);
  assert.ok(z0.some(x=>x.kind==='house'),'village has buildings, not random noise');
+ assert.ok(z0.filter(x=>x.kind==='house').some(x=>x.w>=300&&x.h>=210),'buildings must have a believable size relative to 93x116 classes');
  assert.ok(z0.some(x=>x.kind==='tree'),'scenery has established trees');
  assert.ok(!z0.some(x=>x.x>990&&x.z>764),'decorative cliff reserved for clear rock strata');
  const city=api.planSceneryV5(1,'city');
@@ -81,4 +82,27 @@ test('V5 renderer composes pixelmap without duplicating road plane or rendering 
  for(const mode of ['value="old"','value="v4"','value="v42"','value="v5"'])assert.ok(lab.includes(mode));
  assert.ok(lab.includes("view.setSceneryComposition(q.value==='v5')"));
  assert.ok(lab.includes('mode();'),'V5 is initially activated in real WebGL preview');
+});
+
+test('V5 independently paints houses at 192x160 with roof tiles, glazed windows and masonry',async()=>{
+ const {land}=await modules();
+ const original=global.document;
+ let painted=0;
+ const g={fillStyle:'',imageSmoothingEnabled:true,fillRect(x,y,w,h){
+  assert.ok([x,y,w,h].every(Number.isFinite));painted++;
+ }};
+ global.document={createElement(tag){assert.equal(tag,'canvas');return {
+  width:0,height:0,getContext(type){assert.equal(type,'2d');return g;}
+ }}};
+ try{
+  for(const biome of ['meadow','city','forest','desert','mountain','coast']){
+   const canvas=land.drawDesignedHouseCanvas(biome,1);
+   assert.equal(canvas.width,192);assert.equal(canvas.height,160);
+   assert.equal(g.imageSmoothingEnabled,false);
+  }
+  assert.ok(painted>3000,'hand-authored house art needs actual individual roof/window/brick pixels');
+ }finally{global.document=original;}
+ const src=fs.readFileSync(path.resolve(__dirname,'../public/world-scenery-v4.mjs'),'utf8');
+ assert.ok(src.includes("composition&&kind==='house'"));
+ assert.ok(src.includes('drawDesignedHouseCanvas(biome,variant)'));
 });
