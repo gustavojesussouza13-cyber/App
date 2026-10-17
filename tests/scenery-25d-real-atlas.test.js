@@ -56,8 +56,9 @@ test('asset mode is opt-in and exact legacy scenario remains active when image i
  assert.ok(w.includes('useSceneryAtlas=false'));
  assert.ok(w.includes('setSceneryAtlas(value)'));
  assert.ok(w.includes('preloadSceneryAtlas().then'));
- assert.ok(s.includes('const useAtlas=Boolean(atlas&&!useV7&&composition&&atlasLoaded())'));
- assert.ok(s.includes('createDesignedTerrainTexture(THREE,zone,biome)'));
+ assert.ok(s.includes('const useAtlas=Boolean(atlas&&!useV7&&!useV7Terrain&&composition&&atlasLoaded())'),'V6 atlas must never overlay V7 terrain or props');
+ assert.ok(s.includes('const useV7Terrain=Boolean(v7&&composition&&v7TerrainReady())'));
+ assert.ok(s.includes('createDesignedTerrainTexture(THREE,zone,biome,{v7Atlas:useV7Terrain?v7TerrainImage():null})'),'V5 remains the safe fallback for V7 and V6');
  assert.ok(s.includes('createAtlasPropTexture(THREE,kind,variant)'));
  assert.ok(lab.includes('value="atlas"'));
  assert.ok(lab.includes("view.setSceneryAtlas(q.value==='atlas')"));
