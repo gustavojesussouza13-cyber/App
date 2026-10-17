@@ -76,8 +76,12 @@ export function planSceneryV4(zone,biome,{width=1536,height=1024}={}){
  }
  if(biome==='city'){
   // Pequenos detalhes estáticos da praça, mas sem tocar na construção 3D da guilda.
-  for(const [x,z,kind] of [[600,650,'lamp'],[910,650,'lamp'],[690,380,'flower'],[860,380,'flower']])
-   if(Math.abs(z-roadY(x,zone))>70)out.push(Object.freeze({kind,x,z,w:SIZES[kind][0],h:SIZES[kind][1],variant:1}));
+  for(const [x,offset,kind] of [[600,155,'lamp'],[910,155,'lamp'],[690,-145,'flower'],[860,-145,'flower']]){
+   const z=Math.round(roadY(x,zone)+offset);
+   if(z<35||z>height-35)continue;
+   if(zone===0&&x>688&&x<845&&z>265&&z<408)continue;
+   out.push(Object.freeze({kind,x,z,w:SIZES[kind][0],h:SIZES[kind][1],variant:1}));
+  }
  }
  if(biome==='river'){
   let best=null,err=Infinity;
