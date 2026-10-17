@@ -1,62 +1,83 @@
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 const read=p=>fs.readFileSync(path.resolve(__dirname,'../public',p),'utf8');
-test('canonical integration obtains actual existing game map and does not invent positions',async()=>{
- const art=read('art16.js'),mmo=read('mmo.js'),world=read('world-25d.mjs');
- assert.ok(art.includes('function mapSnapshot(zone,biomeCode)'));
- assert.ok(art.includes('canvas:region.canvas'));
- assert.ok(art.includes('objects:region.objects'));
- assert.ok(art.includes('paintProp:(dest,item)'));
+const makeSource=(biome,objects)=>({
+ zone:2,biome,canvas:{width:1536,height:1024},objects,
+ tileKind:(x,y)=>biome==='river'&&x>=10&&x<14?'water':y>14&&y<18?'path':'grass',
+ roadAt:()=>496,paintProp(){throw Error('Legacy art must never be called in V7.3')}
+});
+function atlasMock(){
+ return {width:160,height:128};
+}
+function context(){
+ const ops=[],ctx={imageSmoothingEnabled:true,fillStyle:'',drawImage(...x){ops.push(['image',...x])},
+ fillRect(...x){ops.push(['rect',...x])},
+ beginPath(){},rect(){},clip(){},save(){},restore(){},getImageData(){return {data:[40,90,50,255]}}};
+ return {ctx,ops};
+}
+test('canonical source gives V7.3 original tile classes and original object coordinates',()=>{
+ const art=read('art16.js'),world=read('world-25d.mjs'),mmo=read('mmo.js');
+ for(const token of ['tileKind:(tx,ty)=>kind(tx,ty,zone,biome)','objects:region.objects','roadAt:(x)=>pathY(x,zone)'])
+  assert.ok(art.includes(token));
+ assert.ok(world.includes('buildCanonicalScenery(THREE,layer,sourceMap,{v7:useSceneryV7})'));
  assert.ok(mmo.includes('classicRenderer.mapSnapshot(session.zone'));
  assert.ok(mmo.includes('world25d.setSceneryCanonical(true)'));
- assert.ok(world.includes('buildCanonicalScenery(THREE,layer,sourceMap,{v7:useSceneryV7})'));
- assert.ok(world.includes('sourceMap.canvas!==activeMapSource'));
- for(const token of ['session.portals','session.npcs','visibleKingdomBases','session.monsters'])
-  assert.ok(mmo.includes(token),'unchanged gameplay actors '+token);
+ assert.ok(mmo.includes('preloadV7Terrain()'));
+ assert.ok(!world.includes('guild-scene-3d'));
 });
-test('the canonical painter copies exact 1536x1024 world without extra overlay planes',async()=>{
- const mod=await import('../public/world-scenery-v72-canonical.mjs'),ops=[],props=[];
- const source={zone:2,biome:'river',canvas:{width:1536,height:1024},
-  objects:[{kind:'tree',key:'arvore_1_tema_1',x:100,y:200,w:112,h:131},
-   {kind:'prop',key:'poco',x:220,y:350,w:64,h:51},
-   {kind:'biome-prop',x:470,y:800,w:62,h:72}],
-  paintProp:(ctx,o)=>props.push(o)};
- const ctx={imageSmoothingEnabled:true,drawImage:(...args)=>ops.push(args)};
- const result=mod.copyCanonicalMap(source,{createCanvas:()=>({getContext:()=>ctx}),
-  replacement:item=>item.key==='poco'?{naturalWidth:80,naturalHeight:124}:null});
- assert.equal(result.canvas.width,1536);
- assert.equal(result.canvas.height,1024);
- assert.equal(result.staticProps,3);
- assert.equal(result.improved,1);assert.equal(result.fallback,2);
- assert.equal(props[0],source.objects[0]);assert.equal(props[1],source.objects[2]);
- assert.equal(ops.length,2);
- assert.equal(ops[0][0],source.canvas,'same source terrain including road river and bridge');
- const sprite=ops[1];
- assert.equal(sprite[0].naturalHeight,124);
- assert.ok(Math.abs(sprite[1]+sprite[3]/2-220)<=0.5,'well stays centered at the SAME X');
- assert.equal(sprite[2]+sprite[4],350,'well bottom stays at original Y');
- assert.equal(ctx.imageSmoothingEnabled,false);
+test('V7.3 terrain tiles retexture every original 32px tile, preserving real category and river crossing',async()=>{
+ const m=await import('../public/world-scenery-v72-canonical.mjs');
+ for(const biome of ['meadow','forest','river','desert','mountain','ruins','swamp','coast','city','dungeon']){
+  const {ctx,ops}=context();
+  const src=makeSource(biome,[]);
+  assert.equal(m.paintOfficialV73Terrain(ctx,src,atlasMock()),true);
+  const draws=ops.filter(o=>o[0]==='image');
+  assert.ok(draws.length>=1536,biome+' covers every original tile');
+  assert.deepEqual(draws[0].slice(-4),[0,0,32,32]);
+  assert.equal(m.canonicalTileId('water',biome,0,0,2).startsWith('agua'),true);
+  assert.equal(m.canonicalTileId('path',biome,0,0,2).startsWith('pedra')||m.canonicalTileId('path',biome,0,0,2).startsWith('terra'),true);
+ }
 });
-test('canonical V7.2 uses single ground mesh and original art fallback for unapproved symbols',async()=>{
- const mod=await import('../public/world-scenery-v72-canonical.mjs');
- assert.equal(mod.canonicalReplacement({kind:'prop',key:'portal_fechado',x:1,y:1,w:1,h:1}),null);
- assert.equal(mod.canonicalReplacement({kind:'prop',key:'tenda',x:1,y:1,w:1,h:1}),null);
- const src=read('world-scenery-v72-canonical.mjs');
- assert.ok(!src.includes('new THREE.InstancedMesh'));
- assert.ok(!src.includes('roadGeometry'));
- assert.ok(!src.includes('paintV72Bridge'));
- assert.ok(!src.includes('guild-scene-3d'));
- const ctx={drawImage(){},imageSmoothingEnabled:true};
- const source={zone:0,biome:'meadow',canvas:{width:1536,height:1024},objects:[],paintProp(){}};
- const meshes=[];
- const THREE={CanvasTexture:class{constructor(canvas){this.image=canvas}},SRGBColorSpace:1,NearestFilter:2,NearestMipmapNearestFilter:3,ClampToEdgeWrapping:4,PlaneGeometry:class{},MeshBasicMaterial:class{constructor(a){Object.assign(this,a)}},Mesh:class{constructor(g,m){this.geometry=g;this.material=m;this.rotation={};this.position={set(){}};}}};
- const old=global.document;global.document={createElement:()=>({getContext:()=>ctx})};
+test('V7.3 has no residual old objects in strict mode across every biome',async()=>{
+ const m=await import('../public/world-scenery-v72-canonical.mjs');
+ const artist=await import('../public/world-scenery-v73-artist.mjs');
+ const objects=[
+  {kind:'tree',key:'arvore_1_tema_2',x:150,y:200,w:112,h:131},
+  {kind:'bush',key:'arbusto_2',x:250,y:360,w:49,h:39},
+  {kind:'rock',key:'pedra',x:350,y:600,w:39,h:30},
+  {kind:'biome-prop',x:600,y:900,w:62,h:72},
+  {kind:'prop',key:'poco',x:700,y:380,w:64,h:51},
+  {kind:'prop',key:'tenda',x:780,y:260,w:93,h:74},
+  {kind:'prop',key:'estandarte',x:900,y:300,w:63,h:71},
+  {kind:'prop',key:'fogueira',x:1010,y:450,w:44,h:54},
+  {kind:'dungeon-prop',x:1150,y:500,w:62,h:72}
+ ];
+ const orig=global.document;global.document={createElement:()=>({width:0,height:0,getContext:()=>context().ctx})};
  try{
-  const group={add:m=>meshes.push(m)};
-  const stats=mod.buildCanonicalScenery(THREE,group,source,{v7:false});
-  assert.equal(meshes.length,1);
-  assert.equal(meshes[0].name,'scenery-v72-canonical-ground');
-  assert.equal(stats.staticProps,0);
-  assert.equal(stats.path,'exact-original-map-geography');
- }finally{global.document=old;}
+  for(const biome of ['meadow','forest','river','desert','mountain','ruins','swamp','coast','city','dungeon']){
+   const src=makeSource(biome,objects);
+   const output=m.copyCanonicalMap(src,{atlas:atlasMock(),requireLatest:true,replacement:item=>m.canonicalReplacement(item,{biome})});
+   assert.ok(output,'all 10 biomes have valid nonlegacy sprites');
+   assert.equal(output.fallback,0);
+   assert.equal(output.improved,objects.length);
+   assert.equal(output.tiles,1536);
+  }
+ }finally{global.document=orig;}
+ for(const key of ['tenda','estandarte','fogueira','poco']){
+  assert.ok(artist.modernPropFamily({kind:'prop',key},'city'));
+ }
+});
+test('failure to verify latest assets prevents silent return of old art',async()=>{
+ const m=await import('../public/world-scenery-v72-canonical.mjs');
+ const src=makeSource('meadow',[]);
+ assert.equal(m.copyCanonicalMap(src,{atlas:null,requireLatest:true}),null);
+ const {ctx}=context(),canvas={getContext:()=>ctx};
+ const baseline=m.copyCanonicalMap(src,{createCanvas:()=>canvas,atlas:null,mode:'original',replacement:()=>null});
+ assert.equal(baseline.fallback,0);
+ assert.equal(baseline.modernTerrain,false);
+ const renderer=read('world-scenery-v72-canonical.mjs');
+ assert.ok(renderer.includes('if(requireLatest)return null'));
+ assert.ok(!renderer.includes('source.paintProp(ctx,item);fallback++;}\n if(requireLatest)'));
+ const base=read('world-25d.mjs');
+ assert.ok(base.includes('setSceneryCanonical'));
 });

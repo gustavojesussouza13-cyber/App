@@ -36,6 +36,14 @@ async function enableWorld25d(){
    world25d=createWorld25D({shell:$('canvasShell'),canvas:cvs,width:W,height:H});
    // In the isolated integration preview, 2.5D paints the ORIGINAL official
    // terrain layout; V7.2 supplies only compatible cosmetic replacements.
+   const [{preloadV7Terrain},{preloadV7Assets},{preloadV72Assets}]=await Promise.all([
+    import('/world-scenery-v7-terrain.mjs'),import('/world-scenery-v7-asset-loader.mjs'),
+    import('/world-scenery-v72-asset-loader.mjs')
+   ]);
+   const [tilesReady,propsReady,extraReady]=await Promise.all([
+    preloadV7Terrain(),preloadV7Assets(),preloadV72Assets()
+   ]);
+   if(!tilesReady||!propsReady||!extraReady)throw Error('Assets V7.3 ainda não carregados; não ativar cenário híbrido.');
    world25d.setSceneryCanonical(true);
    world25d.setSceneryV7(true);
   }
