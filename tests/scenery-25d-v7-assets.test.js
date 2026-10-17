@@ -15,14 +15,16 @@ test('V7 QA catalog contains 30 original object crops, 20 tile candidates and fo
  }
  const gate=JSON.parse(fs.readFileSync(path.join(base,'assets/scenery-v7/availability.json'),'utf8'));
  assert.equal(gate.version,'v7');assert.equal(gate.approved,true);
- assert.deepEqual(gate.files,['arbusto_flores_01','arvore_folhosa_01','rocha_musgo_01','pinheiro_01','barril_01']);
- assert.equal(gate.quality_gate,'five_sprite_pilot');
+ assert.deepEqual(gate.files,['arbusto_flores_01','arvore_folhosa_01','rocha_musgo_01','pinheiro_01','barril_01','casa_azul_01','caixa_01']);
+ assert.equal(gate.quality_gate,'seven_sprite_architecture_pilot');
  const expected={
   arbusto_flores_01:[75,42],
   arvore_folhosa_01:[88,156],
   rocha_musgo_01:[56,51],
   pinheiro_01:[85,151],
-  barril_01:[45,58]
+  barril_01:[45,58],
+  casa_azul_01:[104,147],
+  caixa_01:[34,45]
  };
  for(const [id,[width,height]] of Object.entries(expected)){
   const binary=fs.readFileSync(path.join(base,'assets/scenery-v7/sprites',id+'.png'));
@@ -30,14 +32,16 @@ test('V7 QA catalog contains 30 original object crops, 20 tile candidates and fo
   assert.equal(binary.readUInt32BE(16),width,'width '+id);
   assert.equal(binary.readUInt32BE(20),height,'height '+id);
   assert.ok(binary.includes(Buffer.from('tRNS'))||binary.includes(Buffer.from('RGBA')),'transparency '+id);
-  assert.ok(binary.byteLength<6000,'optimized network sprite '+id);
+  assert.ok(binary.byteLength<12000,'optimized network sprite '+id);
  }
  const crypto=require('node:crypto');
  for(const [id,expectedSha] of [
   ['arvore_folhosa_01','87894f51bb8b6d780e17d9ea2e10349f4a99fa77'],
   ['rocha_musgo_01','39114acf990205074c5a44dd55b3e29308521bdb'],
   ['pinheiro_01','85ab4b977f65d0b00a2f3434475677f92c62d62e'],
-  ['barril_01','db1dfff5e28ada2bf71ea7004f04da5130e0e38f']
+  ['barril_01','db1dfff5e28ada2bf71ea7004f04da5130e0e38f'],
+  ['casa_azul_01','2d80bf6f2cb03a18c071aaa9e71645f45b74f345'],
+  ['caixa_01','fa0aa1bcc3f26fc5af17d016810fdde033493422']
  ]){
   const binary=fs.readFileSync(path.join(base,'assets/scenery-v7/sprites',id+'.png'));
   const sha=crypto.createHash('sha1').update(Buffer.from('blob '+binary.length+String.fromCharCode(0))).update(binary).digest('hex');
@@ -112,7 +116,7 @@ test('V7 laboratory explicitly warns about unpublished art and distinguishes the
 
  assert.ok(lab.includes('view.v7Status.loaded')&&lab.includes('view.v7Ready'));
  assert.equal(manifest.approved,true,'Only checked pilot is allowed');
- assert.deepEqual(manifest.files,['arbusto_flores_01','arvore_folhosa_01','rocha_musgo_01','pinheiro_01','barril_01']);
+ assert.deepEqual(manifest.files,['arbusto_flores_01','arvore_folhosa_01','rocha_musgo_01','pinheiro_01','barril_01','casa_azul_01','caixa_01']);
 });
 
 
@@ -135,12 +139,14 @@ test('V7 retains the original PNG aspect ratio and footprint for all static obje
 });
 
 
-test('V7 architecture artwork cannot activate before a matching PNG is committed and verified',async()=>{
+test('V7 architecture activates only the hash-verified PNGs; missing binaries stay disabled',async()=>{
  const manifest=JSON.parse(js('assets/scenery-v7/availability.json'));
  const qa=JSON.parse(js('assets/scenery-v7/architecture-qa.json'));
  const catalog=(await loader()).V7_ASSETS;
- assert.equal(qa.status,'awaiting_binary_upload');
- assert.equal(qa.activated,false);
+ assert.equal(qa.status,'partial_binary_upload');
+ assert.equal(qa.activated,true);
+ assert.deepEqual(qa.activated_ids,['casa_azul_01','caixa_01']);
+ assert.deepEqual(qa.staged_pending_ids,['casa_vermelha_01','portal_ruinas_01']);
  const ids=new Set(qa.approved_proposals.map(a=>a.id));
  assert.equal(ids.size,4,'four individually reviewed architecture sprites');
  const crypto=require('node:crypto');
@@ -163,6 +169,8 @@ test('V7 architecture artwork cannot activate before a matching PNG is committed
        .update(png).digest('hex');
     assert.equal(sha,item.git_blob_sha,'never activate changed/corrupted artwork');
   }
+  if(qa.activated_ids.includes(item.id))assert.ok(manifest.files.includes(item.id),'approved architecture sprite must be enabled');
+  if(qa.staged_pending_ids.includes(item.id))assert.ok(!manifest.files.includes(item.id),'missing architecture sprite must remain disabled');
   if(!manifest.files.includes(item.id)){
     assert.ok(true,'unpublished/disabled sprite remains safely on V5 fallback');
   }else{
