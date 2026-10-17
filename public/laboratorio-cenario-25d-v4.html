@@ -27,6 +27,7 @@ button{cursor:pointer}button[aria-pressed="true"]{background:#725333;border-colo
 <div class="controls">
 <label>Visual do cenário<select id="quality">
 <option value="v5">Cenário V5 — mapa pixelado composto</option>
+<option value="v7">V7 — PNGs detalhados (revisão técnica / fallback V5)</option>
 <option value="atlas">Teste de atlas PNG real — recursos existentes</option>
 <option value="v42">Cenário V4.2 — acabamento artesanal</option>
 <option value="v4">Cenário V4 — primeira revisão</option>
@@ -70,7 +71,13 @@ try{
  const module=await import('/world-25d.mjs?v=scenery-v5-reference-1');
  const {roadY}=await import('/world-scenery-v4.mjs?v=scenery-v5-reference-1');
  view=module.createWorld25D({shell:stage,canvas,width:960,height:576,sceneryV4:true});
- const mode=()=>{view.setSceneryV4(q.value!=='old');view.setSceneryDetail(['v42','v5','atlas'].includes(q.value));view.setSceneryComposition(q.value==='v5'||q.value==='atlas');view.setSceneryAtlas(q.value==='atlas');};
+ const mode=()=>{
+  view.setSceneryV4(q.value!=='old');
+  view.setSceneryDetail(['v42','v5','atlas','v7'].includes(q.value));
+  view.setSceneryComposition(['v5','atlas','v7'].includes(q.value));
+  view.setSceneryAtlas(q.value==='atlas');
+  view.setSceneryV7(q.value==='v7');
+};
  q.addEventListener('change',mode);mode();
  light.addEventListener('change',()=>view.setNight(light.value==='night'));
  status.textContent='Renderizador WebGL conectado. Compare Original × V4 × V4.2 × V5.';
@@ -88,9 +95,11 @@ try{
    g.strokeText(label,x,y-h-2);g.fillStyle='#f8eac1';g.fillText(label,x,y-h-2);
   }
   if(frame%24===0){
-   const label=q.value==='old'?'Cenário original':q.value==='v4'?'Primeiro Cenário V4':q.value==='v42'?'Cenário V4.2':q.value==='v5'?'Cenário V5':'Teste de atlas PNG real';
+   const label=q.value==='old'?'Cenário original':q.value==='v4'?'Primeiro Cenário V4':q.value==='v42'?'Cenário V4.2':q.value==='v5'?'Cenário V5':q.value==='v7'?'Cenário V7 (etapa de PNGs aprovados)':'Teste de atlas PNG real';
    const stats=view.sceneryStats;
-   status.textContent=label+' · '+tags[current][1]+' · '+(stats?stats.staticProps+' objetos estáticos · '+stats.drawBatches+' grupos de renderização':'terreno anterior')+' · Câmera vertical '+panY.value+(q.value==='atlas'?(view.atlasReady?' · PNG carregado':' · carregando PNG / fallback V5'):'')+' · Sem alterações de colisões';
+   status.textContent=label+' · '+tags[current][1]+' · '+(stats?stats.staticProps+' objetos estáticos · '+stats.drawBatches+' grupos de renderização':'terreno anterior')+' · Câmera vertical '+panY.value+(q.value==='atlas'?(view.atlasReady?' · PNG carregado':' · carregando PNG / fallback V5'):'')
+   +(q.value==='v7'?(view.v7Ready?' · PNGs V7 carregados: '+view.v7Status.loaded:' · PNGs V7 ainda não publicados: mostrando cenário V5 sem risco'):'')
+   +' · Sem alterações de colisões';
   }
   frame++;
   requestAnimationFrame(render);
