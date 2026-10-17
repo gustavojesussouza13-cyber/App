@@ -110,3 +110,22 @@ test('V7 laboratory explicitly warns about unpublished art and distinguishes the
  assert.equal(manifest.approved,true,'Only checked pilot is allowed');
  assert.deepEqual(manifest.files,['arbusto_flores_01','arvore_folhosa_01','rocha_musgo_01']);
 });
+
+
+test('V7 retains the original PNG aspect ratio and footprint for all static objects',async()=>{
+ const m=await loader();
+ for(const [id,asset] of Object.entries(m.V7_ASSETS)){
+  if(asset.state!=='ready')continue;
+  for(const bounds of [[350,230],[112,130],[72,60]]){
+   const size=m.v7FitSize({nativeWidth:asset.w,nativeHeight:asset.h,maxWidth:bounds[0],maxHeight:bounds[1]});
+   assert.ok(size,'fit calculation available '+id);
+   assert.ok(size.width<=bounds[0]+1e-9&&size.height<=bounds[1]+1e-9,'stay within safe static footprint '+id);
+   assert.ok(Math.abs(size.width/size.height-asset.w/asset.h)<1e-10,'never stretch '+id);
+  }
+ }
+ assert.equal(m.v7FitSize({nativeWidth:0,nativeHeight:80,maxWidth:100,maxHeight:100}),null);
+ const scene=js('world-scenery-v4.mjs');
+ assert.ok(scene.includes('v7FitSize({'));
+ assert.ok(scene.includes('const w=fitted?.width??item.w,h=fitted?.height??item.h'));
+ assert.ok(scene.includes('pngImage=v7?v7Image(kind,variant):null'));
+});
