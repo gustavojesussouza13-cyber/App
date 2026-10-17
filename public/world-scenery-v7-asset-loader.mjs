@@ -70,12 +70,15 @@ export const V7_KIND_VARIANTS=Object.freeze({
  lamp:['tocha_ruinas_01']
 });
 const images=new Map(),failed=new Set();
+let allowedIds=[];
 let promise=null,lastError=null;
 export const v7Stats=()=>Object.freeze({
  declared:Object.keys(V7_ASSETS).length,
  tileSources:V7_TILES.length,
  approved:Object.values(V7_ASSETS).filter(x=>x.state==='ready').length,
  loaded:images.size,failed:failed.size,
+ loadedIds:Object.freeze([...images.keys()]),failedIds:Object.freeze([...failed]),
+ permittedIds:Object.freeze([...allowedIds]),
  missing:Object.values(V7_ASSETS).filter(x=>x.state==='ready').length-images.size,
  error:lastError
 });
@@ -109,11 +112,14 @@ export async function preloadV7Assets({fetcher=typeof fetch==='function'?fetch:n
    }
    const declared=Object.keys(V7_ASSETS).filter(id=>V7_ASSETS[id].state==='ready');
    const allowed=new Set(declared),listed=[...new Set(pack.files)].filter(id=>allowed.has(id));
+   allowedIds=listed;
    if(!listed.length){lastError='approved-files-empty';return false;}
    await Promise.all(listed.map(id=>new Promise(resolve=>{
     const img=new ImageClass();
     const done=(ok)=>{
-      if(ok&&img.naturalWidth>=8&&img.naturalHeight>=8){images.set(id,img);}
+      const spec=V7_ASSETS[id];
+      if(ok&&img.naturalWidth===spec.w&&img.naturalHeight===spec.h){images.set(id,img);}
+      else if(ok)lastError='sprite-dimension-mismatch:'+id;
       else failed.add(id);
       resolve();
     };
