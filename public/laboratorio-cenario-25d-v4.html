@@ -20,14 +20,19 @@ button{cursor:pointer}button[aria-pressed="true"]{background:#725333;border-colo
 .info{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:14px 0}
 .info article{background:#142935;border:1px solid #456572;padding:13px;border-radius:8px}
 .warn{color:#dccbab;background:#2e2b27;border:1px solid #9a7b5e;padding:12px;border-radius:8px}
+.v7-gallery{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.v7-gallery figure{margin:0;display:grid;place-items:center;gap:4px;padding:8px;background:#11242d;border:1px solid #536b70;border-radius:8px}
+.v7-gallery img{height:174px;max-width:100%;object-fit:contain;image-rendering:pixelated}
+.v7-gallery figcaption{font-size:13px;color:#e1cfa8;text-align:center}
+@media(max-width:620px){.v7-gallery{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}.v7-gallery img{height:108px}.v7-gallery figure{padding:3px}.v7-gallery figcaption{font-size:10px}}
 @media(max-width:680px){main{padding:11px}h1{font-size:25px}.info{grid-template-columns:1fr}.controls{gap:7px}.stage{aspect-ratio:5/3}}
 </style></head><body><main>
 <h1>Os Peregrinos · Mundo 2.5D V5 + atlas PNG</h1>
 <p>Laboratório de comparação em tempo real. Escolha qualquer um dos dez biomas e compare os cenários Original, V4, V4.2 e V5, além de um modo de TESTE do carregamento de sprites PNG reais do atlas clássico já existente. Esse teste de infraestrutura ainda não utiliza o novo atlas artístico da prancha. O cenário usa objetos estáticos, iluminação e texturas em pixels; não altera nenhuma colisão, personagem, missão, guilda ou fortaleza 3D.</p>
 <div class="controls">
 <label>Visual do cenário<select id="quality">
+<option value="v7">Cenário V7 — três PNGs detalhados e fallback V5</option>
 <option value="v5">Cenário V5 — mapa pixelado composto</option>
-<option value="v7">V7 — PNGs detalhados (revisão técnica / fallback V5)</option>
 <option value="atlas">Teste de atlas PNG real — recursos existentes</option>
 <option value="v42">Cenário V4.2 — acabamento artesanal</option>
 <option value="v4">Cenário V4 — primeira revisão</option>
@@ -45,11 +50,18 @@ button{cursor:pointer}button[aria-pressed="true"]{background:#725333;border-colo
 <p id="artgate" role="status" style="padding:12px 15px;background:#283023;border:1px solid #b3a16d;border-radius:8px;color:#f2ddb0;display:none">
 <strong>V7 ainda não está publicada.</strong> O PNG detalhado será usado somente quando o pacote for aprovado e carregado. Até lá, o que você vê é o cenário V5, não a arte definitiva.
 </p>
+<h2>Sprites PNG reais publicados — lote V7</h2>
+<div class="v7-gallery" id="v7-gallery">
+ <figure><img src="/assets/scenery-v7/sprites/arvore_folhosa_01.png" alt="Árvore folhosa V7, pixel art original" loading="eager"><figcaption>Árvore folhosa — 88 × 156</figcaption></figure>
+ <figure><img src="/assets/scenery-v7/sprites/rocha_musgo_01.png" alt="Rocha coberta de musgo V7, pixel art original" loading="eager"><figcaption>Rocha com musgo — 56 × 51</figcaption></figure>
+ <figure><img src="/assets/scenery-v7/sprites/arbusto_flores_01.png" alt="Arbusto florido V7, pixel art original" loading="eager"><figcaption>Arbusto florido — 75 × 42</figcaption></figure>
+</div>
+<p><small>Esses são os três arquivos PNG realmente presentes no GitHub experimental, e não imagens conceituais. Outros objetos continuam sendo desenhados com a arte V5 até sua aprovação.</small></p>
 <div class="info"><article><strong>10 biomas com layout pixelado coeso</strong><p>Campos, floresta, rio, deserto, montanha, ruínas, pântano, costa, cidade e masmorra.</p></article>
 <article><strong>Materiais e profundidade</strong><p>Novo mapa pintado de 768×512 pixels, trilhas coerentes, clareiras, recortes de penhasco e casas em pontos definidos.</p></article>
 <article><strong>Compatível com o jogo</strong><p>Mesmo mapa e posições simuladas, sem alterações na fortaleza, monstros V3 ou persistência.</p></article></div>
 <p class="warn">**Prévia técnica jogável, não imagem conceitual.** A arte é desenhada ao vivo pelo mesmo renderizador experimental que o MMORPG utiliza. Qualidade, oclusão e FPS ainda precisam de validação em diferentes dispositivos antes da publicação oficial.</p>
-<p><small>Versão técnica isolada · os sprites das classes vêm dos próprios atlas existentes do MMORPG · compare versões históricas e o teste separado de atlas PNG real; os recortes das novas pranchas ainda não estão integrados.</small></p>
+<p><small>Versão técnica isolada · os sprites das classes vêm dos próprios atlas existentes do MMORPG · compare versões históricas e o teste separado de atlas PNG real; três recortes reais já estão integrados na V7; os demais continuam no fallback V5.</small></p>
 </main>
 <script type="module">
 const tags=[
