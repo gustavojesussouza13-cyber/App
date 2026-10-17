@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Salamandra V4 — atlas técnico 2.5D</title>
+<style>
+:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#0d151b;color:#f4e4d4;font:15px/1.45 system-ui,Arial}
+main{max-width:1200px;margin:auto;padding:24px}h1{font:700 32px Georgia,serif;color:#ffc184;margin:0}p{color:#d9cab8;max-width:900px}
+.controls{display:flex;flex-wrap:wrap;gap:16px;margin:20px 0}.controls label{display:grid;gap:6px}
+select{border:1px solid #966441;background:#253038;color:white;padding:10px;border-radius:6px}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}
+article{min-width:0;border:1px solid #976041;border-radius:10px;padding:12px;background:#1b292f}
+h2{color:#ffbd80;font:700 18px Georgia,serif;margin:0 0 8px}
+canvas{display:block;width:100%;aspect-ratio:1.5;background:#263c3c;image-rendering:pixelated;border-radius:6px}
+#status{margin:18px 0;color:#ffd59e;min-height:20px}
+small{display:block;color:#bbc8c0;margin-top:20px}
+@media(max-width:670px){.grid{grid-template-columns:1fr}main{padding:12px}}
+</style></head><body><main>
+<h1>Salamandra V4 · laboratório técnico</h1>
+<p>Espécie 32 reservada para a Salamandra. Quatro atlas 768 × 960, com seis sequências de quatro quadros e FX separado. <strong>Os quadros são variações procedurais de quatro imagens-base aprovadas</strong>: ainda não substituem uma animação final desenhada quadro a quadro. Nenhuma criatura existente foi renomeada.</p>
+<div class="controls">
+<label>Ação<select id="action"><option value="idle">Repouso</option><option value="moving">Caminhada</option><option value="preparing">Preparação</option><option value="attacking">Ataque</option><option value="hurt">Dano</option><option value="dead">Morte</option></select></label>
+<label>Velocidade<select id="speed"><option value=".6">Lenta</option><option value="1" selected>Normal</option><option value="1.5">Rápida</option></select></label>
+<label>Escala<select id="size"><option value="normal">Normal</option><option value="boss">Chefe (145%)</option></select></label>
+</div><div class="grid" id="grid"></div>
+<p id="status" role="status">Carregando atlas experimentais…</p>
+<small>Laboratório independente. Os Peregrinos oficial, fortaleza 3D, cinco famílias V3, guildas, servidores e combate permanecem fora desta alteração.</small>
+</main>
+<script src="/creatures-v3.js?v=review-v3"></script>
+<script src="/salamandra-v4.js?v=salamandra-v4-technical-1"></script>
+<script>
+(()=>{
+ const names=['Costas','Direita','Frente','Esquerda'],cards=[];
+ const $=id=>document.getElementById(id);
+ names.forEach((name,dir)=>{
+  const panel=document.createElement('article'),title=document.createElement('h2'),canvas=document.createElement('canvas');
+  title.textContent=name;canvas.width=480;canvas.height=320;panel.append(title,canvas);$('grid').append(panel);
+  cards.push({dir,ctx:canvas.getContext('2d'),canvas});
+ });
+ const renderer=window.OsPeregrinosSalamanderV4.create({
+  windowRef:{matchMedia:()=>({matches:true})},imageCtor:Image,
+  animation:window.OsPeregrinosCreaturesV3});
+ let start=performance.now();
+ for(const control of ['action','speed','size'])$(control).addEventListener('change',()=>{start=performance.now()});
+ function frame(now){
+  let count=0,action=$('action').value,fast=Number($('speed').value),boss=$('size').value==='boss';
+  const elapsed=(now-start)*fast,cycle=Math.floor(elapsed/1550),local=elapsed%1550;
+  const st={type:'salamandra'};
+  if(action==='moving')st.moving=true;
+  if(action==='preparing')st.preparing=true;
+  if(action==='attacking'){st.attacking=true;st.elapsed=140+(local%340)}
+  if(action==='hurt'){st.hurt=true;st.elapsed=local%320}
+  if(action==='dead'){st.dead=true;st.elapsed=local%580}
+  for(const {dir,ctx:g,canvas} of cards){
+   const W=canvas.width,H=canvas.height,x=W/2,y=H*.82;
+   g.clearRect(0,0,W,H);g.fillStyle='#304747';g.fillRect(0,0,W,H*.65);
+   g.fillStyle='#4d513e';g.fillRect(0,H*.65,W,H*.35);
+   g.fillStyle='#111d1c';g.beginPath();g.ellipse(x,y,80*(boss?1.45:1),13,0,0,Math.PI*2);g.fill();
+   if(renderer.drawMonster(g,{type:'salamandra',species:32,dir,x,y,boss},now*fast,st))count++;
+  }
+  $('status').textContent=count===4
+   ?'✓ Quatro direções renderizadas · ataque FX '+(renderer.attackReady?'OK':'carregando')+' · 24 quadros técnicos por orientação'
+   :'Carregando direções '+count+'/4 — confira os arquivos do deploy';
+  requestAnimationFrame(frame);
+ }
+ requestAnimationFrame(frame);
+})();
+</script>
+</body></html>
