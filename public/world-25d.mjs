@@ -9,6 +9,7 @@ import * as THREE from '/vendor/three.module.js';
 import {buildSceneryV4,SCENERY_V4_VERSION} from '/world-scenery-v4.mjs';
 import {preloadSceneryAtlas,atlasLoaded} from '/world-scenery-v6-asset-adapter.mjs';
 import {preloadV7Assets,isV7Ready,v7Stats} from '/world-scenery-v7-asset-loader.mjs';
+import {preloadV7Terrain,v7TerrainReady,v7TerrainStatus} from '/world-scenery-v7-terrain.mjs';
 
 const ZONE_WIDTH = 1536;
 const ZONE_HEIGHT = 1024;
@@ -348,6 +349,11 @@ export function createWorld25D({shell,canvas,width=960,height=576,sceneryV4=true
   }
   function setSceneryV7(value){
     useSceneryV7=Boolean(value);activeZone=NaN;activeBiome='';
+    if(useSceneryV7&&!v7TerrainReady()){
+      void preloadV7Terrain().then(ok=>{
+        if(ok&&useSceneryV7){activeZone=NaN;activeBiome='';}
+      }).catch(err=>console.warn('[Cenário 2.5D V7] Terreno PNG indisponível; utilizando V5.',err));
+    }
     if(useSceneryV7&&!isV7Ready()){
       void preloadV7Assets().then(ok=>{
         if(ok&&useSceneryV7){activeZone=NaN;activeBiome='';}
@@ -377,6 +383,8 @@ export function createWorld25D({shell,canvas,width=960,height=576,sceneryV4=true
     get atlasReady(){return atlasLoaded();},
     get v7Ready(){return isV7Ready();},
     get v7Status(){return v7Stats();},
-    get sceneryVersion(){return useSceneryV4?(useSceneryV7&&isV7Ready()?'scenery-v7-approved-rgba-pngs':useSceneryAtlas&&atlasLoaded()?'scenery-real-png-atlas':useSceneryComposition?'scenery-v5-composed-topdown':useSceneryDetail?SCENERY_V4_VERSION:'scenery-v4-base'):'legacy';},
+    get v7TerrainReady(){return v7TerrainReady();},
+    get v7TerrainStatus(){return v7TerrainStatus();},
+    get sceneryVersion(){return useSceneryV4?(useSceneryV7&&v7TerrainReady()?'scenery-v7-20-tiles-original-png':useSceneryV7&&isV7Ready()?'scenery-v7-approved-rgba-pngs':useSceneryAtlas&&atlasLoaded()?'scenery-real-png-atlas':useSceneryComposition?'scenery-v5-composed-topdown':useSceneryDetail?SCENERY_V4_VERSION:'scenery-v4-base'):'legacy';},
     get sceneryStats(){return lastSceneryV4;}};
 }
