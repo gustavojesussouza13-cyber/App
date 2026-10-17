@@ -68,19 +68,67 @@ function draw(ctx,atlas,id,x,y){
  if(!a)return false;
  ctx.drawImage(atlas,a.sx,a.sy,32,32,x,y,32,32);return true;
 }
+/** Selection is shared by the base and finishing passes, preventing unstable seams. */
+export function v7BaseTileId(zone,biome,tx,ty){
+ const f=families[biome];
+ if(!f||!Number.isInteger(tx)||!Number.isInteger(ty)||tx<0||ty<0)return null;
+ const n=rand(tx,ty,zone+f.length*31);
+ const cluster=Math.sin((tx+zone*.71)*.46)+Math.cos((ty-zone*.41)*.51)+Math.sin((tx+ty)*.22);
+ if(cluster>1.5&&n>.18)return f[1];
+ if(cluster<-.7&&n>.23)return f[2];
+ if(n>.91)return f[3];
+ if(f[4]&&n>.80&&n<.85)return f[4];
+ return f[0];
+}
 /** Deterministic biomes with coherent clusters, no noisy all-random checkerboard. */
 export function paintV7BaseTiles(ctx,atlas,zone,biome,width=768,height=512){
  if(!atlas||!families[biome])return false;
- const f=families[biome];
  for(let y=0;y<height;y+=32)for(let x=0;x<width;x+=32){
-  const tx=x/32,ty=y/32,n=rand(tx,ty,zone+f.length*31);
-  const cluster=Math.sin((tx+zone*.71)*.46)+Math.cos((ty-zone*.41)*.51)+Math.sin((tx+ty)*.22);
-  let id=f[0];
-  if(cluster>1.5&&n>.18)id=f[1];
-  else if(cluster<-.7&&n>.23)id=f[2];
-  else if(n>.91)id=f[3];
-  else if(f[4]&&n>.80&&n<.85)id=f[4];
-  draw(ctx,atlas,id,x,y);
+  draw(ctx,atlas,v7BaseTileId(zone,biome,x/32,y/32),x,y);
+ }
+ return true;
+}
+/**
+ * Pixel-perfect edge interlock for unlike adjacent 32px tiles.
+ * Transfers REAL source pixels (no gradients, blurred pixels or new colors).
+ * Tiny staggered fragments remain strictly inside the neighboring cell;
+ * the V5 road, river and coast are drawn later and retain their footprints.
+ * A single canvas replaces one existing ground texture: NO extra geometry.
+ */
+export function paintV7BaseTransitions(ctx,atlas,zone,biome,width=768,height=512){
+ if(!atlas||!families[biome])return false;
+ const cols=Math.ceil(width/32),rows=Math.ceil(height/32);
+ const ids=Array.from({length:rows},(_,y)=>Array.from({length:cols},(_,x)=>v7BaseTileId(zone,biome,x,y)));
+ function edgeFragment(id,sx,sy,w,h,dx,dy){
+  const rect=v7TileRect(id);
+  if(!rect||w<=0||h<=0||dx<0||dy<0||dx+w>width||dy+h>height)return;
+  ctx.drawImage(atlas,rect.sx+sx,rect.sy+sy,w,h,dx,dy,w,h);
+ }
+ // Each 8-pixel strip offsets the boundary a few pixels, using only valid atlas pixels.
+ for(let ty=0;ty<rows;ty++)for(let tx=0;tx<cols;tx++){
+  const id=ids[ty][tx],left=tx*32,top=ty*32;
+  if(tx+1<cols&&ids[ty][tx+1]!==id){
+   const rightId=ids[ty][tx+1],seam=left+32;
+   for(let py=0;py<32&&top+py<height;py+=8){
+    const n=rand(tx*23+py,ty*17,zone+61);
+    if(n<.24)continue;
+    const w=1+Math.floor(rand(tx,ty*43+py,zone+93)*4);
+    const h=Math.min(8,height-(top+py));
+    if(n>.61)edgeFragment(id,32-w,py,w,h,seam,top+py);
+    else edgeFragment(rightId,0,py,w,h,seam-w,top+py);
+   }
+  }
+  if(ty+1<rows&&ids[ty+1][tx]!==id){
+   const nextId=ids[ty+1][tx],seam=top+32;
+   for(let px=0;px<32&&left+px<width;px+=8){
+    const n=rand(tx*17,ty*29+px,zone+79);
+    if(n<.24)continue;
+    const h=1+Math.floor(rand(tx*37+px,ty,zone+127)*4);
+    const w=Math.min(8,width-(left+px));
+    if(n>.61)edgeFragment(id,px,32-h,w,h,left+px,seam);
+    else edgeFragment(nextId,px,0,w,h,left+px,seam-h);
+   }
+  }
  }
  return true;
 }
@@ -93,45 +141,70 @@ function tileRegion(ctx,atlas,id,zone,width,height){
   draw(ctx,atlas,selected,x,y);
  }
 }
-/** Keeps the exact authored V5 corridor; only its interior gets PNG texture. */
+/** Pixel-staggered V7 road edge stays INSIDE the original V5 corridor. */
+export function v7RoadEdgeAt(x,zone,biome,roadAt,side){
+ if(typeof roadAt!=='function'||(side!==-1&&side!==1))return null;
+ const stone=['city','ruins','mountain','dungeon'].includes(biome);
+ const half=stone?16:19;
+ const step=Math.floor(x/8);
+ const fringe=Math.floor(rand(step,side===-1?5:11,zone+41)*5)-2;
+ const center=roadAt(x,zone)+Math.sin(x*.082+zone)*2;
+ return Math.round(center+side*(half+fringe));
+}
+/** Re-textures only the existing walkable V5 road pixels, with irregular 4px edges. */
 export function paintV7Road(ctx,atlas,zone,biome,roadAt,width=768,height=512){
  if(!atlas||typeof roadAt!=='function')return false;
- const stone=['city','ruins','mountain','dungeon'].includes(biome),half=stone?16:19;
+ const stone=['city','ruins','mountain','dungeon'].includes(biome);
  ctx.save();ctx.beginPath();
  for(let x=0;x<=width;x+=4){
-  const y=roadAt(x,zone)+Math.sin(x*.082+zone)*2;
-  if(x===0)ctx.moveTo(x,y-half);else ctx.lineTo(x,y-half);
+  const y=v7RoadEdgeAt(x,zone,biome,roadAt,-1);
+  if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
  }
  for(let x=width;x>=0;x-=4){
-  const y=roadAt(x,zone)+Math.sin(x*.082+zone)*2;
-  ctx.lineTo(x,y+half);
+  ctx.lineTo(x,v7RoadEdgeAt(x,zone,biome,roadAt,1));
  }
  ctx.closePath();ctx.clip();
  tileRegion(ctx,atlas,stone?'pedra_01':biome==='desert'?'areia_01':'terra_01',zone,width,height);
  ctx.restore();return true;
 }
-/** Water tiles clipped inside the original banks, without any extra 3D plane. */
+/** Bank-aligned pixel contour. Four+ pixels of original V5 river edge remain visible. */
+export function v7RiverBankAt(y,zone,side){
+ if(side!==-1&&side!==1)return null;
+ const center=(420+92*Math.sin(y*2/150+zone))/2;
+ const oldHalf=39+Math.sin(y*.09)*4; // identical to paintRiver in V5
+ const inset=4+Math.floor(rand(Math.floor(y/4),side===-1?17:23,zone+113)*3);
+ return Math.round(center+side*(oldHalf-inset));
+}
+/** Water tiles stay in the existing water, without covering the bank or adding 3D planes. */
 export function paintV7River(ctx,atlas,zone,width=768,height=512){
  if(!atlas)return false;
  ctx.save();ctx.beginPath();
  for(let y=0;y<=height;y+=2){
-  const x=(420+92*Math.sin(y*2/150+zone))/2-36-Math.sin(y*.09)*4;
+  const x=v7RiverBankAt(y,zone,-1);
   if(y===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
  }
  for(let y=height;y>=0;y-=2){
-  const x=(420+92*Math.sin(y*2/150+zone))/2+36+Math.sin(y*.09)*4;
-  ctx.lineTo(x,y);
+  ctx.lineTo(v7RiverBankAt(y,zone,1),y);
  }
  ctx.closePath();ctx.clip();tileRegion(ctx,atlas,'agua_01',zone,width,height);ctx.restore();return true;
 }
+/** Match the actual V5 coastal waterline (old coast varies with Y, not X). */
+export function v7CoastWaterline(zone){
+ for(let y=345;y<512;y+=2){
+  const wave=6*Math.sin(y*.10+zone)+3*Math.sin(y*.23);
+  if(y>=365+wave)return y;
+ }
+ return 384;
+}
 export function paintV7Coast(ctx,atlas,zone,width=768,height=512){
  if(!atlas)return false;
+ const original=v7CoastWaterline(zone);
  ctx.save();ctx.beginPath();
- ctx.moveTo(0,365+6*Math.sin(365*.10+zone)+3*Math.sin(365*.23)+6);
  for(let x=0;x<=width;x+=4){
-  // Old shoreline is a horizontal wavering band.
-  const y=372+Math.sin(x*.05+zone)*3;
-  ctx.lineTo(x,y);
+  // Discrete 8px groups create a naturally stepped shore but never paint V5 sand.
+  const depth=3+Math.floor(rand(Math.floor(x/8),7,zone+171)*3);
+  const y=original+depth;
+  if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
  }
  ctx.lineTo(width,height);ctx.lineTo(0,height);ctx.closePath();ctx.clip();
  tileRegion(ctx,atlas,'agua_01',zone,width,height);ctx.restore();return true;
