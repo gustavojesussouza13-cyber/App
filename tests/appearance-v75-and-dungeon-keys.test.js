@@ -38,7 +38,7 @@ test('V7.6 customization loads four approved class image sources, without the ob
  assert.ok(editor.includes("title.textContent='PERSONALIZAÇÃO DA CLASSE V7.6'"));
  assert.ok(editor.includes('preview.draw(ctx,{role:kind'));
  assert.ok(!editor.includes("previewStudio?.obtain('hero'"));
- assert.ok(page.includes('/appearance-class-preview-v75.js?v=classes-4-personalizaveis-v76'));
+ assert.ok(page.includes('/appearance-class-preview-v75.js?v=classes-4-caminhada-v77'));
  assert.ok(page.indexOf('/appearance-class-preview-v75.js')<page.indexOf('/appearance-editor.js'));
  assert.ok(mmo.includes('onRoleChange:value=>'));
  assert.ok(page.includes('cabelo · olhos · pele · cores · V7.6'));
@@ -106,4 +106,40 @@ test('V7.6 applies all seven editable settings into the real approved-sprite ren
  assert.ok(!renderer.includes('scale:.92,appearance:null'));
  assert.ok(!read('appearance-editor.js').includes('ainda não estão pintadas neste PNG'));
  assert.ok(read('laboratorio-classes-v75.html').includes('appearance:changed'));
+});
+
+test('V7.7 keeps four distinct authored Peregrino walk frames in front, profile and rear directions',()=>{
+ const walk=require('../public/appearance-sprite-v76.js');
+ const runway=require('../public/peregrino-runway25d.js');
+ assert.deepEqual([0,1,2,3,4,5,6,7].map(i=>walk.walkFrame('peregrino','walk',i)),[0,1,2,3,0,1,2,3]);
+ assert.deepEqual([0,1,2,3].map(i=>walk.walkFrame('arqueiro','walk',i)),[0,1,1,0]);
+ for(const direction of [0,1,2,3]){
+  const rects=[0,1,2,3].map(i=>runway.frameRect(direction,i));
+  assert.deepEqual(rects.map(x=>x.sx),[0,128,256,384],'all four 128px columns');
+  assert.ok(rects.every(x=>x.sy==={0:160,1:320,2:0,3:480}[direction]));
+  assert.ok(rects.every(x=>x.sw===128&&x.sh===160),'source pixels never resampled for frame selection');
+ }
+ const samples=[],orig=global.OsPeregrinosRunway25D;
+ global.OsPeregrinosRunway25D={draw(ctx,p){samples.push(p);return true}};
+ const context={imageSmoothingEnabled:false,drawImage(){}};
+ const documentRef={createElement:()=>({width:128,height:160,getContext:()=>context})};
+ try{
+  walk.clearCache();
+  for(const direction of [0,2,1,3])for(let i=0;i<4;i++){
+   const canvas=walk.renderSprite('peregrino',direction,'walk',i,require('../public/appearance16.js').DEFAULT,documentRef);
+   assert.ok(canvas);
+  }
+  assert.equal(samples.length,16,'one original source cell for each frame and direction');
+  assert.deepEqual(samples.map(x=>x.frame),[0,1,2,3,0,1,2,3,0,1,2,3,0,1,2,3]);
+  assert.ok(samples.every(x=>x.appearance===null),'source artwork never rasterized with obsolete class art');
+ }finally{
+  if(orig===undefined)delete global.OsPeregrinosRunway25D;
+  else global.OsPeregrinosRunway25D=orig;
+  walk.clearCache();
+ }
+ const preview=read('appearance-class-preview-v75.js'),lab=read('laboratorio-classes-v75.html'),world=read('art16.js');
+ assert.ok(preview.includes("frame:walking?frame:0"));
+ assert.ok(!preview.includes("Math.abs(Math.floor(frame))%2===1"));
+ assert.ok(lab.includes("setInterval(()=>"));
+ assert.ok(world.includes("frame:Math.floor(now/145)"));
 });

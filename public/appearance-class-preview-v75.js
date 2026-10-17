@@ -31,10 +31,10 @@
   if(!Object.hasOwn(ROLES,role)||!ctx?.drawImage)return false;
   ctx.imageSmoothingEnabled=false;
   if(!loaded(role))return false;
-  const walking=action==='walk'&&Math.abs(Math.floor(frame))%2===1;
-  const mode=walking?'walk':'idle',now=walking?175:0;
+  // Don't collapse the four source walk frames into odd/even idle switching.
+  const walking=action==='walk';
   return !!root.OsPeregrinosAppearanceSpriteV76?.draw(ctx,{
-   role,x:64,y:160,dir,action:mode,frame:walking?1:0,
+   role,x:64,y:160,dir,action:walking?'walk':'idle',frame:walking?frame:0,
    appearance,scale:1,preview:true
   });
  }
@@ -48,5 +48,5 @@
    ready:loaded(role),custom,source:SOURCES[role]||SOURCES.peregrino
   };
  }
- return Object.freeze({VERSION:'appearance-classes-v76-customizable-20261017',ROLES,SOURCES,loaded,ensureLoaded,draw,status});
+ return Object.freeze({VERSION:'appearance-classes-v77-four-way-walk-20261017',ROLES,SOURCES,loaded,ensureLoaded,draw,status});
 });

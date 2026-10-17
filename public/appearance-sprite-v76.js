@@ -12,7 +12,7 @@
  if(root)root.OsPeregrinosAppearanceSpriteV76=api;
 })(typeof globalThis!=='undefined'?globalThis:this,function(root){
  const APP=typeof module==='object'&&module.exports?require('./appearance16'):root.PeregrinosAppearance16;
- const VERSION='appearance-png-pixel-compositor-v76-20261017';
+ const VERSION='appearance-png-pixel-compositor-v77-four-directional-walk-20261017';
  const WIDTH=128,HEIGHT=160;
  const cloth=Object.freeze({
   vinho:['#813f50','#d18d91'],floresta:['#396b51','#a2c695'],
@@ -146,9 +146,20 @@
   }
  }
  function needsCustomization(value){const a=APP.normalize(value);return APP.key(a)!==APP.key(APP.DEFAULT);}
+ // Every peregrino frame is a complete authored 128x160 PNG cell. Four distinct
+ // frames per direction, including the rear-facing row (north movement).
+ // Two-frame classes retain their validated 3x2 source without interpolation.
+ function walkFrame(role,action,frame=0){
+  if(action!=='walk')return 0;
+  const index=Number.isFinite(Number(frame))?Math.floor(Number(frame)):0;
+  const pose=((index%4)+4)%4;
+  return role==='peregrino'?pose:((pose===1||pose===2)?1:0);
+ }
  function renderSprite(role,dir,action,frame,appearance,doc=root.document){
-  const a=APP.normalize(appearance),mode=action==='walk'&&Math.abs(Math.floor(frame||0))%2===1?'walk':'idle';
-  const id=[role,dir,mode,APP.key(a)].join(':');
+  const a=APP.normalize(appearance);
+  const walking=action==='walk',step=walkFrame(role,action,frame);
+  const mode=walking?'walk':'idle';
+  const id=[role,dir,mode,step,APP.key(a)].join(':');
   if(cache.has(id)){const el=cache.get(id);cache.delete(id);cache.set(id,el);return el;}
   if(!doc?.createElement)return null;
   const canvas=doc.createElement('canvas');canvas.width=WIDTH;canvas.height=HEIGHT;
@@ -157,12 +168,12 @@
   let drawn=false;
   if(role==='peregrino'){
    drawn=root.OsPeregrinosRunway25D?.draw?.(ctx,{
-    x:64,y:156,dir,action:mode,moving:mode==='walk',frame:mode==='walk'?1:0,
+    x:64,y:156,dir,action:mode,moving:walking,frame:step,
     scale:.975,appearance:null,glow:false
    })===true;
   }else{
    drawn=root.OsPeregrinosApprovedClasses25D?.draw?.(ctx,{
-    role,x:64,y:153,dir,action:mode,now:mode==='walk'?175:0,
+    role,x:64,y:153,dir,action:step?'walk':'idle',now:step?175:0,
     scale:1.74,appearance:null,glow:false
    })===true;
   }
@@ -194,5 +205,5 @@
   if(!needsCustomization(appearance)||!Number.isFinite(x)||!Number.isFinite(y))return false;
   return draw(ctx,{role,dir,action,frame,appearance,x,y:y+2,scale:.73});
  }
- return Object.freeze({VERSION,WIDTH,HEIGHT,draw,drawWorld,applyColors,details,needsCustomization,renderSprite,clearCache:()=>cache.clear()});
+ return Object.freeze({VERSION,WIDTH,HEIGHT,draw,drawWorld,walkFrame,applyColors,details,needsCustomization,renderSprite,clearCache:()=>cache.clear()});
 });
