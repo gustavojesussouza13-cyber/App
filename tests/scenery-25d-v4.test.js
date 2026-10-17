@@ -105,5 +105,25 @@ test('V4.2 artisan art adds at least ten static environment object families with
  }
  assert.ok(canvasCalls.n>1000,'new art needs distinct pixel clusters, not empty images');
  const preview=fs.readFileSync(path.join(publicDir,'laboratorio-cenario-25d-v4.html'),'utf8');
- assert.ok(preview.includes('Cenário V4 — renovado'));
+ assert.ok(preview.includes('Cenário V4.2 — acabamento artesanal'));
+});
+
+test('three-way comparison leaves original V4 intact and toggles detailed art in renderer',async()=>{
+ const v=await api(),art=await import('../public/world-scenery-v4-art.mjs');
+ const extras=new Set(art.EXTRA_KINDS);
+ for(let zone=0;zone<10;zone++)for(const biome of v.BIOMES){
+   const old=v.planSceneryV4(zone,biome,{detail:false});
+   const now=v.planSceneryV4(zone,biome,{detail:true});
+   assert.ok(old.length>60&&now.length>60);
+   assert.ok(old.every(x=>!extras.has(x.kind)),'V4 original should not include V4.2 landmarks');
+   assert.deepEqual(old,v.planSceneryV4(zone,biome,{detail:false}));
+   assert.deepEqual(now,v.planSceneryV4(zone,biome,{detail:true}));
+ }
+ const renderer=fs.readFileSync(path.join(publicDir,'world-25d.mjs'),'utf8');
+ assert.ok(renderer.includes('setSceneryDetail(value)'));
+ assert.ok(renderer.includes('buildSceneryV4(THREE,layer,zone,biome,{detail:useSceneryDetail})'));
+ const lab=fs.readFileSync(path.join(publicDir,'laboratorio-cenario-25d-v4.html'),'utf8');
+ for(const mode of ['value="old"','value="v4"','value="v42"'])assert.ok(lab.includes(mode));
+ assert.ok(lab.includes("view.setSceneryDetail(q.value==='v42')"));
+ assert.ok(lab.includes("view.setSceneryV4(q.value!=='old')"));
 });
