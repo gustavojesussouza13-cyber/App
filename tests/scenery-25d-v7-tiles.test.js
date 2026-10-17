@@ -96,3 +96,18 @@ test('V7 terrain painter preserves V5 roads, cliffs, shore and fallback',async()
  assert.ok(world.includes('get v7TerrainReady()'));
  assert.ok(!src.includes('guild-scene-3d')&&!world.includes('guild-scene-3d'));
 });
+
+
+test('V7 20-tile visual laboratory imports only actual exported browser symbols',async()=>{
+ const [v7]=await modules();
+ const page=jpg('laboratorio-terreno-v7.html').toString();
+ const imported=page.match(/import\\s*\\{([^}]+)\\}\\s*from\\s*['"]\\/world-scenery-v7-terrain\\.mjs['"]/);
+ assert.ok(imported,'visual laboratory must import real atlas module');
+ for(const raw of imported[1].split(',')){
+  const symbol=raw.trim();
+  assert.ok(Object.hasOwn(v7,symbol),'nonexistent ES module export: '+symbol);
+ }
+ assert.ok(page.includes('v7TileRect(id)'),'20 tiles must have a working rectangle lookup');
+ assert.ok(page.includes('drawDesignedTerrainCanvas(zone,biome,{v7Atlas:useAtlas?atlas:null})'),'compare exactly same zone and biome before and after');
+ assert.ok(page.includes('ctx.drawImage(atlas,r.sx,r.sy,32,32,0,0,128,128)'),'gallery uses actual 32px tiles, no stock image');
+});
