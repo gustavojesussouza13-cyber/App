@@ -1,5 +1,5 @@
 'use strict';
-/* Salamandra V4 experimental only. Reserved species 32, not spawned by server.
+/* Salamandra V4 experimental only. Existing Salamandra species 24, gameplay stays server-authoritative.
  * Four atlas directions 4x6 x 192x160; FX is separate. This renderer does not
  * touch combat, persistence, V3/previous V4 art or fortress 3D.
  */
@@ -10,7 +10,7 @@
 })(typeof globalThis!=='undefined'?globalThis:this,function(){
  const FRAME=Object.freeze({width:192,height:160,cols:4,rows:6});
  const DIRECTIONS=Object.freeze(['tras','direita','frente','esquerda']);
- const SPECIES=32,TYPE='salamandra';
+ const SPECIES=24,TYPE='salamandra';
  const ASSETS=Object.freeze(DIRECTIONS.map(d=>'/assets/creatures-v4/salamandra_v4_'+d+'.png?v=salamandra-v4-technical-1'));
  const FX='/assets/creatures-v4/salamandra_v4_ataque_fx.png?v=salamandra-v4-technical-1';
  function measure(boss=false){
