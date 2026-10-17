@@ -15,7 +15,7 @@ small{display:block;color:#bbc8c0;margin-top:20px}
 @media(max-width:670px){.grid{grid-template-columns:1fr}main{padding:12px}}
 </style></head><body><main>
 <h1>Salamandra V4 · laboratório técnico</h1>
-<p>Espécie 32 reservada para a Salamandra. Quatro atlas 768 × 960, com seis sequências de quatro quadros e FX separado. <strong>Os quadros são variações procedurais de quatro imagens-base aprovadas</strong>: ainda não substituem uma animação final desenhada quadro a quadro. Nenhuma criatura existente foi renomeada.</p>
+<p>Espécie 24 — Salamandra existente no bestiário, sem criar uma nova espécie. Quatro atlas 768 × 960, com seis sequências de quatro quadros e FX separado. <strong>Os quadros são variações procedurais de quatro imagens-base aprovadas</strong>: ainda não substituem uma animação final desenhada quadro a quadro. Nenhuma criatura existente foi renomeada.</p>
 <div class="controls">
 <label>Ação<select id="action"><option value="idle">Repouso</option><option value="moving">Caminhada</option><option value="preparing">Preparação</option><option value="attacking">Ataque</option><option value="hurt">Dano</option><option value="dead">Morte</option></select></label>
 <label>Velocidade<select id="speed"><option value=".6">Lenta</option><option value="1" selected>Normal</option><option value="1.5">Rápida</option></select></label>
@@ -54,7 +54,7 @@ small{display:block;color:#bbc8c0;margin-top:20px}
    g.clearRect(0,0,W,H);g.fillStyle='#304747';g.fillRect(0,0,W,H*.65);
    g.fillStyle='#4d513e';g.fillRect(0,H*.65,W,H*.35);
    g.fillStyle='#111d1c';g.beginPath();g.ellipse(x,y,80*(boss?1.45:1),13,0,0,Math.PI*2);g.fill();
-   if(renderer.drawMonster(g,{type:'salamandra',species:32,dir,x,y,boss},now*fast,st))count++;
+   if(renderer.drawMonster(g,{type:'salamandra',species:24,dir,x,y,boss},now*fast,st))count++;
   }
   $('status').textContent=count===4
    ?'✓ Quatro direções renderizadas · ataque FX '+(renderer.attackReady?'OK':'carregando')+' · 24 quadros técnicos por orientação'
