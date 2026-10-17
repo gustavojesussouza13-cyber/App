@@ -68,3 +68,12 @@ test('V7 renderer code preserves 2.5D maps, classic atlas and original sprites a
  assert.ok(lab.includes("view.setSceneryV7(q.value==='v7')"));
  for(const content of [scene,world,lab])assert.ok(!content.includes('guild-scene-3d'),'3D fortress code is protected');
 });
+
+test('V7 laboratory explicitly warns about unpublished art and distinguishes the actual V5 fallback',()=>{
+ const lab=js('laboratorio-cenario-25d-v4.html');
+ const manifest=JSON.parse(js('assets/scenery-v7/availability.json'));
+ assert.ok(lab.includes('id="artgate"')&&lab.includes('V7 NÃO PUBLICADA'));
+ assert.ok(lab.includes('view.v7Status.loaded')&&lab.includes('view.v7Ready'));
+ assert.equal(manifest.approved,false,'Do not enable unverified files');
+ assert.deepEqual(manifest.files,[]);
+});
