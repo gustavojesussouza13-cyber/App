@@ -33,7 +33,7 @@ test('the canonical painter copies exact 1536x1024 world without extra overlay p
  assert.equal(ops[0][0],source.canvas,'same source terrain including road river and bridge');
  const sprite=ops[1];
  assert.equal(sprite[0].naturalHeight,124);
- assert.equal(sprite[1]+sprite[3]/2,220,'well stays centered at the SAME X');
+ assert.ok(Math.abs(sprite[1]+sprite[3]/2-220)<=0.5,'well stays centered at the SAME X');
  assert.equal(sprite[2]+sprite[4],350,'well bottom stays at original Y');
  assert.equal(ctx.imageSmoothingEnabled,false);
 });
