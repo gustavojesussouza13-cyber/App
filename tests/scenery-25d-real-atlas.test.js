@@ -56,7 +56,7 @@ test('asset mode is opt-in and exact legacy scenario remains active when image i
  assert.ok(w.includes('useSceneryAtlas=false'));
  assert.ok(w.includes('setSceneryAtlas(value)'));
  assert.ok(w.includes('preloadSceneryAtlas().then'));
- assert.ok(s.includes('const useAtlas=Boolean(atlas&&composition&&atlasLoaded())'));
+ assert.ok(s.includes('const useAtlas=Boolean(atlas&&!useV7&&composition&&atlasLoaded())'));
  assert.ok(s.includes('createDesignedTerrainTexture(THREE,zone,biome)'));
  assert.ok(s.includes('createAtlasPropTexture(THREE,kind,variant)'));
  assert.ok(lab.includes('value="atlas"'));
