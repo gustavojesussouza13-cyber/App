@@ -114,7 +114,7 @@ test('V7 renderer code preserves 2.5D maps, classic atlas and original sprites a
 test('V7 laboratory explicitly warns about unpublished art and distinguishes the actual V5 fallback',()=>{
  const lab=js('laboratorio-cenario-25d-v4.html');
  const manifest=JSON.parse(js('assets/scenery-v7/availability.json'));
- assert.ok(lab.includes('id="artgate"')&&lab.includes('V7 NÃO PUBLICADA'));
+ assert.ok(lab.includes('id="artgate"')&&lab.includes('V7 experimental:')&&lab.includes('fallback V5'),'live preview reports how many genuine V7 sprites loaded and preserves V5 fallback');
  assert.ok(lab.indexOf('value="v7"')<lab.indexOf('value="v5"'),'V7 must be easy to review first');
  for(const id of ['arvore_folhosa_01','rocha_musgo_01','arbusto_flores_01'])
   assert.ok(lab.includes('/assets/scenery-v7/sprites/'+id+'.png'),'actual sprite pictured in gallery '+id);
