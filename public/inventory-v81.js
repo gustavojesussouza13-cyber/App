@@ -296,8 +296,9 @@
   function toggle(){return state.open?close():open()}
   function quickUse(index){
    if(!Number.isInteger(index)||index<0||index>=QUICK_COUNT)return false;
-   const item=find(state.quick[index]);if(!item)return false;
+   // A free slot is a valid keyboard destination when assigning an item.
    if(state.open&&state.assign&&state.selected){state.quick[index]=state.selected;state.assign=false;render();return true}
+   const item=find(state.quick[index]);if(!item)return false;
    if(item.canUse)return use(item.id);
    if(!state.open)open();
    state.selected=item.id;render();return true;

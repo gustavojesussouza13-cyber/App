@@ -105,3 +105,12 @@
  #opInventoryDetails{min-height:30px}
 }
 @media(prefers-reduced-motion:reduce){.op-slot{transition:none}}
+
+/* The MMO canvas selector must NOT stretch inventory's 32px icon canvases. */
+.canvas-shell canvas.op-item-icon{
+ width:min(100%,45px);height:min(100%,45px);display:block;
+ aspect-ratio:1;cursor:inherit;touch-action:auto;flex:none;
+}
+.canvas-shell #opInventoryPortrait{width:128px;height:160px;max-height:157px;image-rendering:pixelated;cursor:default;touch-action:auto}
+@media(max-width:650px){.canvas-shell #opInventoryPortrait{width:88px;height:110px}}
+@media(max-height:490px){.canvas-shell #opInventoryPortrait{width:80px;height:100px}}

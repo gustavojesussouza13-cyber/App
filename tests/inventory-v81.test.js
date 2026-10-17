@@ -51,3 +51,12 @@ test('V8.1 real overlay opens via I and Escape, blocks movement, syncs inventory
  assert.ok(html.includes('inventory-v81.js?v=handpainted-icons-v81'));
  assert.ok(html.includes('mmo.js?v=interactive-inventory-v81'));
 });
+
+test('V8.1 keyboard can bind an item to an EMPTY slot, and menu canvas icons override MMO stretch rules',()=>{
+ const src=read('inventory-v81.js'),css=read('inventory-v81.css');
+ assert.ok(src.indexOf('if(state.open&&state.assign&&state.selected)')<
+   src.indexOf('const item=find(state.quick[index]);if(!item)return false;'));
+ assert.ok(css.includes('.canvas-shell canvas.op-item-icon'));
+ assert.ok(css.includes('.canvas-shell #opInventoryPortrait'));
+ assert.ok(!src.includes('.cloneNode(true)'), 'canvas clones discard hand-painted pixels');
+});
