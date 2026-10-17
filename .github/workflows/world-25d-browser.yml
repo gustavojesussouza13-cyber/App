@@ -63,4 +63,8 @@ jobs:
             /tmp/os-peregrinos-peregrino-atlas.png
             /tmp/peregrino-runway-16-quadros-reais.png
             /tmp/os-peregrinos-classes-aprovadas-25d.png
+            /tmp/os-peregrinos-basilisco-v4-caminhada-25d.png
+            /tmp/os-peregrinos-basilisco-v4-dano-25d.png
+            /tmp/os-peregrinos-basilisco-v4-acido-25d.png
+            /tmp/os-peregrinos-basilisco-v4-chefe-25d.png
           if-no-files-found: ignore
