@@ -24,17 +24,21 @@ canvas{width:100%;height:auto;aspect-ratio:3/2;image-rendering:pixelated;backgro
  <option value="swamp">Pântano</option><option value="coast">Costa</option><option value="city">Cidade</option><option value="dungeon">Masmorra</option>
  </select></label>
  <label>Região <select id="zone"><option value="0">Região 1</option><option value="1">Região 2</option><option value="4">Região 5</option><option value="9">Região 10</option></select></label>
+ <label>Comparar com<select id="baseline">
+ <option value="v5">V5 — terreno anterior</option>
+ <option value="v7raw">V7 — sem encaixe dos tiles</option>
+ </select></label>
  <button id="refresh">Recarregar prévia</button>
  <a href="/laboratorio-cenario-25d-v4.html">Abrir mundo 2.5D</a>
 </div>
 <p id="status" role="status">Verificando PNG e manifesto V7...</p>
 <div class="maps">
- <section><h3>Antes — mapa V5</h3><canvas id="previous" width="768" height="512"></canvas></section>
- <section><h3>Depois — tiles reais V7</h3><canvas id="next" width="768" height="512"></canvas></section>
+ <section><h3 id="baseline-title">Antes — mapa V5</h3><canvas id="previous" width="768" height="512"></canvas></section>
+ <section><h3>Depois — V7 com bordas pixeladas</h3><canvas id="next" width="768" height="512"></canvas></section>
 </div>
 <h2>Os 20 tiles originais</h2>
 <div id="tiles" aria-label="Galeria de tiles V7"></div>
-<p class="note">A prévia mostra o chão estático, não a fortaleza 3D nem a simulação de colisões. Elementos V5 (vegetação organizada, barrancos e caminhos conectados) permanecem por cima da nova textura. A V7 é experimental e ainda exige aprovação artística.</p>
+<p class="note">O acabamento intercala pequenas faixas de pixels dos próprios tiles de 32×32 nas emendas e usa margens com degraus pixelados. Não cria texturas externas, objetos tridimensionais adicionais nem novos colliders. A prévia mostra o chão estático, não a fortaleza 3D nem a simulação de colisões. Elementos V5 (vegetação organizada, barrancos e caminhos conectados) permanecem por cima da nova textura. A V7 é experimental e ainda exige aprovação artística.</p>
 <script type="module">
 import {drawDesignedTerrainCanvas} from '/world-scenery-v5-landforms.mjs';
 import {preloadV7Terrain,v7TerrainImage,v7TileRect,v7TerrainStatus} from '/world-scenery-v7-terrain.mjs';
@@ -42,12 +46,16 @@ import {V7_TILES} from '/world-scenery-v7-asset-loader.mjs';
 const $=id=>document.getElementById(id),status=$('status'),tiles=$('tiles');
 function draw(){
  const zone=Number($('zone').value),biome=$('biome').value,atlas=v7TerrainImage();
+ const previousV7=$('baseline').value==='v7raw';
+ $('baseline-title').textContent=previousV7?'Antes — V7 sem encaixe dos tiles':'Antes — mapa V5';
  for(const [id,useAtlas] of [['previous',false],['next',true]]){
   const cv=$(id),ctx=cv.getContext('2d');ctx.imageSmoothingEnabled=false;
-  const ground=drawDesignedTerrainCanvas(zone,biome,{v7Atlas:useAtlas?atlas:null});
+  const ground=id==='previous'&&previousV7
+   ?drawDesignedTerrainCanvas(zone,biome,{v7Atlas:atlas,edgeFinish:false})
+   :drawDesignedTerrainCanvas(zone,biome,{v7Atlas:useAtlas?atlas:null});
   ctx.clearRect(0,0,cv.width,cv.height);ctx.drawImage(ground,0,0);
  }
- status.textContent=atlas?'V7: 20 tiles originais carregados e aplicados. Rio, litoral e caminhos recortados sem deslocar a simulação.':'Atlas V7 não carregado: a coluna “Depois” está mostrando a V5 como fallback. Não confunda isso com a nova arte.';
+ status.textContent=atlas?'V7: 20 tiles originais carregados, emendas intercaladas com pixels reais e margens ajustadas ao mapa anterior. A comparação da esquerda mostra '+(previousV7?'V7 sem encaixe entre tiles.':'V5 original.')+' Nenhum objeto ou colisão foi reposicionado.':'Atlas V7 não carregado: a coluna “Depois” está mostrando a V5 como fallback. Não confunda isso com a nova arte.';
 }
 function gallery(){
  tiles.replaceChildren();const atlas=v7TerrainImage();if(!atlas)return;
@@ -59,7 +67,7 @@ function gallery(){
   const cap=document.createElement('figcaption');cap.textContent=id;fig.append(can,cap);tiles.append(fig);
  }
 }
-for(const key of ['biome','zone'])$(key).addEventListener('change',draw);
+for(const key of ['biome','zone','baseline'])$(key).addEventListener('change',draw);
 $('refresh').addEventListener('click',async()=>{await preloadV7Terrain();gallery();draw();});
 (async()=>{try{await preloadV7Terrain();gallery();draw();}catch(error){console.warn(error);draw();}})();
 </script></main></body></html>
