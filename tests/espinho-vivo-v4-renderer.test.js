@@ -47,7 +47,7 @@ test('Espinho Vivo V4 uses four independent 192x160 directional sheets',()=>{
   assert.equal(h.renderer.drawMonster(h.g,{...monster,dir},0),true);
   const body=h.calls.find(x=>x[0]==='drawImage');
   assert.ok(body[1].url.includes('espinho_vivo_v4_'+api.DIRECTIONS[dir]+'.png'));
-  assert.deepEqual(body.slice(2,6),[0,0,192,160]);
+  assert.deepEqual(body.slice(2,6),[poses.pose(0,{},(monster.species%13)*31).frame*192,0,192,160]);
   assert.equal(h.calls.some(x=>['translate','scale'].includes(x[0])),false);
  }
 });
