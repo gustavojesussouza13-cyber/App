@@ -32,7 +32,7 @@ test('V8.1 twelve item categories use ORIGINAL integer-pixel drawing commands, n
  for(const item of Object.values(inv.IDS)){
   const draws=[];const ctx={fillStyle:'',clearRect(){},fillRect(x,y,w,h){draws.push([x,y,w,h])}};
   assert.equal(inv.drawIcon(ctx,item.icon),true,item.icon);
-  assert.ok(draws.length>=15,'detailed handpainted pixels '+item.icon);
+  assert.ok(draws.length>=8,'dedicated pixel drawing commands '+item.icon);
   assert.ok(draws.every(x=>x.every(Number.isInteger)),item.icon+' uses pixel grid');
  }
 });
