@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Os Peregrinos — Laboratório Cenário 2.5D V4 (10 biomas)</title>
+<style>
+:root{color-scheme:dark}*{box-sizing:border-box}
+body{margin:0;background:#09151c;color:#f0e8d9;font:15px/1.5 system-ui,Arial}
+main{max-width:1200px;margin:auto;padding:18px}
+h1{font:700 34px Georgia,serif;color:#f6c37e;margin:0 0 4px}
+h2{font:700 19px Georgia,serif;color:#e7c391}
+p{color:#ccd5cf}small{color:#9fb2b5}
+.controls{display:flex;flex-wrap:wrap;gap:13px;align-items:end;padding:12px;background:#142732;border:1px solid #62716d;border-radius:9px;margin:18px 0}
+label{display:grid;gap:5px;color:#e5caab}
+select,button,input{font:inherit;padding:9px 11px;border-radius:6px;color:#f8e7cb;background:#28414e;border:1px solid #728e8f}
+button{cursor:pointer}button[aria-pressed="true"]{background:#725333;border-color:#e1be85;color:white}
+.stage{width:100%;max-width:960px;margin:15px auto 10px;aspect-ratio:5/3;position:relative;overflow:hidden;border:2px solid #b7905b;border-radius:10px;background:#244443}
+#game{width:100%;height:100%;display:block;position:relative;z-index:1;background:transparent;image-rendering:pixelated}
+#status{background:#172a33;padding:10px 14px;border-radius:6px;border:1px solid #647679}
+.biomes{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:9px}
+.biomes button{height:52px}
+.info{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:14px 0}
+.info article{background:#142935;border:1px solid #456572;padding:13px;border-radius:8px}
+.warn{color:#dccbab;background:#2e2b27;border:1px solid #9a7b5e;padding:12px;border-radius:8px}
+@media(max-width:680px){main{padding:11px}h1{font-size:25px}.info{grid-template-columns:1fr}.controls{gap:7px}.stage{aspect-ratio:5/3}}
+</style></head><body><main>
+<h1>Os Peregrinos · Mundo 2.5D V4</h1>
+<p>Laboratório de comparação em tempo real. Escolha qualquer um dos dez biomas e alterne entre o terreno anterior e o novo conjunto V4. O cenário usa objetos estáticos, iluminação e texturas em pixels; não altera nenhuma colisão, personagem, missão, guilda ou fortaleza 3D.</p>
+<div class="controls">
+<label>Visual do cenário<select id="quality">
+<option value="v4">Cenário V4 — renovado</option>
+<option value="old">Cenário anterior</option>
+</select></label>
+<label>Iluminação<select id="light"><option value="day">Dia</option><option value="night">Noite</option></select></label>
+<label>Personagem à frente<select id="hero"><option value="guardiao">Guardião</option><option value="curandeiro">Curandeiro</option><option value="arqueiro">Arqueiro</option><option value="none">Sem personagem</option></select></label>
+<label>Posição horizontal <input id="pan" type="range" min="0" max="576" step="24" value="288"></label>
+</div>
+<h2>Explore os dez biomas</h2>
+<div class="biomes" id="biomes"></div>
+<div class="stage" id="stage"><canvas id="game" width="960" height="576" aria-label="Prévia 2.5D interativa"></canvas></div>
+<p id="status" role="status">Iniciando ambiente 2.5D…</p>
+<div class="info"><article><strong>10 biomas completos</strong><p>Campos, floresta, rio, deserto, montanha, ruínas, pântano, costa, cidade e masmorra.</p></article>
+<article><strong>Materiais e profundidade</strong><p>Pisos V4, estradas texturizadas, água estática, formas pixeladas e decoração específica.</p></article>
+<article><strong>Compatível com o jogo</strong><p>Mesmo mapa e posições simuladas, sem alterações na fortaleza, monstros V3 ou persistência.</p></article></div>
+<p class="warn">**Prévia técnica jogável, não imagem conceitual.** A arte é desenhada ao vivo pelo mesmo renderizador experimental que o MMORPG utiliza. Qualidade, oclusão e FPS ainda precisam de validação em diferentes dispositivos antes da publicação oficial.</p>
+<p><small>Versão técnica isolada · os sprites das classes vêm dos próprios atlas existentes do MMORPG · controle o visual pelo seletor “Cenário anterior / V4”.</small></p>
+</main>
+<script type="module">
+const tags=[
+ ['pradaria','Pradaria','🌾',0],['floresta','Floresta','🌳',1],
+ ['rio','Rio','🌊',2],['deserto','Deserto','🏜️',3],
+ ['montanha','Montanha','⛰️',4],['ruinas','Ruínas','🏛️',5],
+ ['pantano','Pântano','🍄',6],['costa','Costa','⚓',7],
+ ['cidade','Cidade de Auren','🏘️',8],['masmorra','Masmorra','🗝️',9]
+];
+const stage=document.getElementById('stage'),canvas=document.getElementById('game'),g=canvas.getContext('2d');
+const status=document.getElementById('status'),q=document.getElementById('quality'),light=document.getElementById('light'),hero=document.getElementById('hero'),pan=document.getElementById('pan');
+let current=0,view=null,frame=0;
+const atlas={};for(const k of ['guardiao','arqueiro','curandeiro']){const im=new Image();im.src='/assets/approved-classes/'+k+'-sprites-3x2-64x80.png';atlas[k]=im;}
+const buttons=tags.map(([id,title,emoji],i)=>{
+ const b=document.createElement('button');b.type='button';b.textContent=emoji+' '+title;
+ b.addEventListener('click',()=>{current=i;updateButtons();});
+ document.getElementById('biomes').append(b);return b;
+});
+function updateButtons(){buttons.forEach((b,i)=>b.setAttribute('aria-pressed',String(i===current)));}
+updateButtons();
+try{
+ const module=await import('/world-25d.mjs');
+ view=module.createWorld25D({shell:stage,canvas,width:960,height:576,sceneryV4:true});
+ const mode=()=>{view.setSceneryV4(q.value==='v4');};
+ q.addEventListener('change',mode);
+ light.addEventListener('change',()=>view.setNight(light.value==='night'));
+ status.textContent='Renderizador WebGL conectado. Compare Cenário V4 × cenário anterior em qualquer bioma.';
+ function render(now){
+  const biome=tags[current][0],zone=tags[current][3];
+  view.render({zone,biome,cameraX:Number(pan.value),cameraY:213,now});
+  g.clearRect(0,0,960,576);
+  // Personagem de referência: um quadro real das três classes aprovadas.
+  const role=hero.value,img=atlas[role],x=480,y=345,w=93,h=116;
+  if(role!=='none'&&img?.complete&&img.naturalWidth===192&&img.naturalHeight===160){
+   g.imageSmoothingEnabled=false;
+   g.drawImage(img,0,0,64,80,Math.round(x-w/2),Math.round(y-h+8),w,h);
+   g.textAlign='center';g.font='bold 14px monospace';g.lineWidth=3;g.strokeStyle='#0b2430';
+   const label={guardiao:'Guardião',arqueiro:'Arqueiro',curandeiro:'Curandeiro'}[role];
+   g.strokeText(label,x,y-h-2);g.fillStyle='#f8eac1';g.fillText(label,x,y-h-2);
+  }
+  frame++;
+  requestAnimationFrame(render);
+ }
+ requestAnimationFrame(render);
+}catch(error){
+ console.warn(error);status.textContent='WebGL indisponível nesta sessão: '+String(error.message||error);
+ q.disabled=true;light.disabled=true;
+}
+</script></body></html>
