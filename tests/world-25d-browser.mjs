@@ -16,6 +16,19 @@ try{
  const layer=page.locator('#world25dBackdrop');
  await layer.waitFor({timeout:20000});
  assert.ok((await layer.evaluate(c=>c.width))>100,'Canvas 3D deve ter resolução real');
+ // Verify the *real* Sentinela V4 PNG is visible beside the Peregrino on the same
+ // 2.5D backdrop, not merely present in the GitHub repository.
+ await page.waitForFunction(()=>document.querySelector('#sentinelStatus')?.textContent?.includes('✓ Atlas real carregado'),null,{timeout:15000});
+ assert.equal(await page.locator('#sentinelAction').inputValue(),'idle');
+ await page.locator('#sentinelAction').selectOption('attack');
+ await page.locator('#sentinelDirection').selectOption('3');
+ await page.locator('#sentinelBoss').check();
+ await page.waitForTimeout(300);
+ assert.match(await page.locator('#sentinelStatus').innerText(),/Atlas real carregado/);
+ await page.screenshot({path:'/tmp/os-peregrinos-sentinela-v4-25d.png',fullPage:true});
+ await page.locator('#sentinelBoss').uncheck();
+ await page.locator('#sentinelAction').selectOption('idle');
+ await page.locator('#sentinelDirection').selectOption('1');
  assert.equal(await page.locator('#role').inputValue(),'peregrino');
  await page.locator('#role').selectOption('curandeiro');
  assert.match(await page.locator('#heroName').innerText(),/Curandeiro/);
