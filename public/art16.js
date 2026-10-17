@@ -19,6 +19,7 @@ function create({ctx,W,H}){
  const spriteStudio=window.OsPeregrinosSpriteStudio?.create({documentRef:document});
  const desktopSprites=window.OsPeregrinosDesktopSprites16?.create({windowRef:window});
  const desktopCharactersV3=window.OsPeregrinosDesktopCharactersV3?.create({windowRef:window,documentRef:document});
+ const npcV4Review=window.OsPeregrinosNPCsV4?.create({windowRef:window});
  const desktopBestiary=window.OsPeregrinosDesktopBestiary16?.create({windowRef:window});
  const creaturesV3=window.OsPeregrinosCreaturesV3?.create({windowRef:window});
  const batV4=window.OsPeregrinosBatV4?.create({windowRef:window});
@@ -500,16 +501,19 @@ function create({ctx,W,H}){
  function npcActor(g,n,active,finished,now){
   const x=n.x,y=n.y;drawShadow(g,x,y,42);
   const premiumPc=Boolean(desktopCharactersV3?.enabled);
-  const studioNpc=Boolean(spriteStudio?.drawNpc(g,n,now,{desktopPremium:premiumPc}));
-  const pngNpc=!studioNpc&&Boolean(desktopSprites?.drawNpc(g,n,now));
-  const illustratedNpcV3=!studioNpc&&!pngNpc&&Boolean(desktopCharactersV3?.drawNpc(g,n,now));
-  const detailed=studioNpc||pngNpc||illustratedNpcV3;
+  // V4 visual-only: one frontal static image per existing server NPC.
+  // During loading or errors retain the existing atelier / V3 renderers.
+  const npcV4Drawn=Boolean(npcV4Review?.drawNpc(g,n,now,{world25d:useAurora25d}));
+  const studioNpc=!npcV4Drawn&&Boolean(spriteStudio?.drawNpc(g,n,now,{desktopPremium:premiumPc}));
+  const pngNpc=!npcV4Drawn&&!studioNpc&&Boolean(desktopSprites?.drawNpc(g,n,now));
+  const illustratedNpcV3=!npcV4Drawn&&!studioNpc&&!pngNpc&&Boolean(desktopCharactersV3?.drawNpc(g,n,now));
+  const detailed=npcV4Drawn||studioNpc||pngNpc||illustratedNpcV3;
   if(!detailed&&!spriteStudio?.drawNpc(g,n,now))
    frameSprite(g,heroSheets[n.role]||'viajante_andar',2,Math.floor(now/500+(n.index||0))%2,x,y,47,59);
   g.save();g.textAlign='center';g.shadowColor='#000e';g.shadowBlur=0;
   const primary=n.kind==='chapter';
   g.font='bold 12px monospace';g.lineWidth=3;g.strokeStyle='#0c2118';
-  const nameY=y-(studioNpc?(premiumPc?113:96):pngNpc?82:illustratedNpcV3?97:65);
+  const nameY=y-(npcV4Drawn?(useAurora25d?129:113):studioNpc?(premiumPc?113:96):pngNpc?82:illustratedNpcV3?97:65);
   g.strokeText(n.name,x,nameY);g.fillStyle=primary?'#ffe6a7':'#ccebd7';g.fillText(n.name,x,nameY);
   const indicator=primary?(finished?'✓':active?'!':'◆'):'✦';
   g.fillStyle=active?'#fff3ae':finished?'#a3d8a0':'#aee3ce';
