@@ -113,6 +113,8 @@ export function copyCanonicalMap(source,{
 }={}){
  if(!source?.canvas||source.canvas.width!==1536||source.canvas.height!==1024||
     !Array.isArray(source.objects)||typeof source.paintProp!=='function'||!Number.isInteger(source.zone))return null;
+ // Refuse the new layer before allocating canvas when the verified tiles are missing.
+ if(requireLatest&&(mode==='original'||!atlas||typeof source.tileKind!=='function'))return null;
  const canvas=createCanvas();canvas.width=1536;canvas.height=1024;
  const ctx=canvas.getContext('2d',{alpha:false});if(!ctx)return null;
  ctx.imageSmoothingEnabled=false;
