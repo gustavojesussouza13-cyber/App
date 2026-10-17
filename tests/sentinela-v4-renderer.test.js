@@ -94,7 +94,7 @@ test('the Sentinela species uses the new visual while V3, Morcego, Serpente and 
  assert.ok(match);
  assert.equal((match[1].match(/'sentinela'/g)||[]).length,1);
  assert.ok(art.includes("const sentinelV4Drawn=ty==='sentinela'&&Boolean(sentinelV4?.drawMonster"));
- assert.ok(art.includes('const creatureV3=!batV4Drawn&&!serpentV4Drawn&&!beastV4Drawn&&!scorpionV4Drawn&&!ghostV4Drawn&&!waspV4Drawn&&!knightV4Drawn&&!dragonV4Drawn&&!sentinelV4Drawn&&!basiliskV4Drawn'));
+ assert.ok(art.includes('const creatureV3=!batV4Drawn&&!serpentV4Drawn&&!beastV4Drawn&&!scorpionV4Drawn&&!ghostV4Drawn&&!waspV4Drawn&&!knightV4Drawn&&!dragonV4Drawn&&!sentinelV4Drawn&&!auroraSentinelDrawn&&!basiliskV4Drawn'));
  assert.ok(art.includes('sentinelV4Drawn?sentinelV4.measure(m.boss)'));
  assert.ok(art.includes("'cavaleiro','sentinela','basilisco','anjo-caido'].includes(types[Math.max(0,m.species|0)])"));
  assert.equal((match[1].match(/'sentinela'/g)||[]).length,1);
