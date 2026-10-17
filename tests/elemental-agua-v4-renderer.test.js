@@ -85,7 +85,7 @@ test('only species 23 has exclusive elemental art with Serpente V4 fallback',()=
  assert.equal(types[11],'fantasma');assert.equal(types[14],'fantasma');assert.equal(types[19],'fantasma');
  assert.ok(art.includes("const waterV4Drawn=ty==='elemental-agua'&&Number(m.species)===23&&Boolean(waterElementalV4?.drawMonster"));
  assert.ok(art.includes("const waterSerpentFallback=ty==='elemental-agua'&&!waterV4Drawn&&Boolean(serpentV4?.drawMonster"));
- assert.ok(art.includes('!waterV4Drawn&&!waterSerpentFallback&&Boolean(creaturesV3?.drawMonster'));
+ assert.ok(art.includes('!waterV4Drawn&&!waterSerpentFallback&&!salamanderV4Drawn&&!salamanderDragonFallback&&Boolean(creaturesV3?.drawMonster'));
  assert.ok(html.indexOf('/serpente-v4.js')<html.indexOf('/elemental-agua-v4.js'));
  assert.ok(html.indexOf('/elemental-agua-v4.js')<html.indexOf('/art16.js'));
 });
