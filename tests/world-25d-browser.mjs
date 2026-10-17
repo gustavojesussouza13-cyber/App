@@ -408,5 +408,67 @@ try{
  await page.screenshot({path:'/tmp/os-peregrinos-espinho-v4-death-25d.png',fullPage:true});
  assert.ok(!pageErrors.some(e=>/thorn|espinho-vivo|ReferenceError/i.test(e)),'Espinho V4 renderer errors');
  console.log('ESPINHO_VIVO_V4_25D_OK',JSON.stringify(thornCheck));
+
+ // Chromium integration: water species 23 with original transparent 192x160 atlases.
+ const waterResponse=await page.goto(url,{waitUntil:'domcontentloaded',timeout:40000});
+ assert.equal(waterResponse?.status(),200);
+ await page.waitForFunction(()=>document.querySelector('#waterStatus')?.textContent?.includes('onda pronta'),null,{timeout:20000});
+ const waterCheck=await page.evaluate(async()=>{
+  const api=window.OsPeregrinosWaterElementalV4;
+  if(!api||api.FRAME.width!==192||api.FRAME.height!==160)throw Error('Elemental da Água renderer unavailable');
+  const walkDistinct=[],hurtDiff=[],occupied=[],fxCounts=[];
+  for(let d=0;d<4;d++){
+   const im=new Image();im.src=api.ASSETS[d];await im.decode();
+   if(im.naturalWidth!==768||im.naturalHeight!==960)throw Error('Wrong water atlas dimensions '+d);
+   const c=document.createElement('canvas');c.width=192;c.height=160;const g=c.getContext('2d',{willReadFrequently:true});
+   const walks=[];
+   for(let frame=0;frame<4;frame++){
+    g.clearRect(0,0,192,160);g.drawImage(im,frame*192,160,192,160,0,0,192,160);
+    walks.push(c.toDataURL('image/png'));
+   }
+   walkDistinct.push(new Set(walks).size);
+   const pixels=g.getImageData(0,0,192,160).data;let count=0;
+   for(let k=3;k<pixels.length;k+=4)if(pixels[k]>16)count++;
+   occupied.push(count);
+   g.clearRect(0,0,192,160);g.drawImage(im,0,4*160,192,160,0,0,192,160);
+   const hurt=c.toDataURL('image/png');
+   g.clearRect(0,0,192,160);g.drawImage(im,0,0,192,160,0,0,192,160);
+   hurtDiff.push(hurt!==c.toDataURL('image/png'));
+  }
+  const attack=new Image();attack.src=api.FXSHEET;await attack.decode();
+  if(attack.naturalWidth!==768||attack.naturalHeight!==640)throw Error('Water FX dimensions invalid');
+  const fc=document.createElement('canvas');fc.width=192;fc.height=160;const ctx=fc.getContext('2d',{willReadFrequently:true});
+  for(let d=0;d<4;d++){
+   ctx.clearRect(0,0,192,160);ctx.drawImage(attack,0,d*160,192,160,0,0,192,160);
+   const a=ctx.getImageData(0,0,192,160).data;let count=0;
+   for(let k=3;k<a.length;k+=4)if(a[k]>16)count++;
+   fxCounts.push(count);
+  }
+  return {walkDistinct,hurtDiff,occupied,fxCounts};
+ });
+ assert.deepEqual(waterCheck.walkDistinct,[4,4,4,4]);
+ assert.ok(waterCheck.hurtDiff.every(Boolean));
+ assert.ok(waterCheck.occupied.every(n=>n>2000));
+ assert.ok(waterCheck.fxCounts.every(n=>n>100));
+ for(let dir=0;dir<4;dir++){
+  await page.locator('#waterDirection').selectOption(String(dir));
+  assert.match(await page.locator('#waterStatus').innerText(),/Elemental da Água V4/);
+ }
+ await page.locator('#waterFocus').check();
+ await page.locator('#waterDirection').selectOption('1');
+ await page.locator('#waterAction').selectOption('walk');
+ await page.waitForTimeout(300);
+ await page.screenshot({path:'/tmp/os-peregrinos-elemental-agua-v4-walk-25d.png',fullPage:true});
+ await page.locator('#waterAction').selectOption('attack');
+ await page.waitForTimeout(320);
+ await page.screenshot({path:'/tmp/os-peregrinos-elemental-agua-v4-attack-25d.png',fullPage:true});
+ await page.locator('#waterAction').selectOption('hurt');
+ await page.waitForTimeout(145);
+ await page.screenshot({path:'/tmp/os-peregrinos-elemental-agua-v4-hurt-25d.png',fullPage:true});
+ await page.locator('#waterAction').selectOption('death');
+ await page.waitForTimeout(580);
+ await page.screenshot({path:'/tmp/os-peregrinos-elemental-agua-v4-death-25d.png',fullPage:true});
+ assert.ok(!pageErrors.some(e=>/elemental-agua|WaterElemental|ReferenceError/i.test(e)),'No elemental renderer errors');
+ console.log('ELEMENTAL_AGUA_V4_25D_OK',JSON.stringify(waterCheck));
  console.log('WORLD_25D_BROWSER_OK',JSON.stringify({url,classes:4,biomes:6,canvas:'webgl'}));
 }finally{await browser.close()}
