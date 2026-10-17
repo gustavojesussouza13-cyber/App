@@ -67,4 +67,8 @@ jobs:
             /tmp/os-peregrinos-basilisco-v4-dano-25d.png
             /tmp/os-peregrinos-basilisco-v4-acido-25d.png
             /tmp/os-peregrinos-basilisco-v4-chefe-25d.png
+            /tmp/os-peregrinos-anjo-caido-v4-caminhada-25d.png
+            /tmp/os-peregrinos-anjo-caido-v4-magia-25d.png
+            /tmp/os-peregrinos-anjo-caido-v4-dano-25d.png
+            /tmp/os-peregrinos-anjo-caido-v4-morte-25d.png
           if-no-files-found: ignore
