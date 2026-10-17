@@ -124,7 +124,7 @@ test('three-way comparison leaves original V4 intact and toggles detailed art in
  assert.ok(renderer.includes('buildSceneryV4(THREE,layer,zone,biome,{detail:useSceneryDetail,composition:useSceneryComposition})'));
  const lab=fs.readFileSync(path.join(publicDir,'laboratorio-cenario-25d-v4.html'),'utf8');
  for(const mode of ['value="old"','value="v4"','value="v42"'])assert.ok(lab.includes(mode));
- assert.ok(lab.includes("view.setSceneryDetail(q.value==='v42'||q.value==='v5')"));
+ assert.ok(lab.includes("view.setSceneryDetail(['v42','v5','atlas'].includes(q.value))"));
  assert.ok(lab.includes("view.setSceneryV4(q.value!=='old')"));
 });
 
