@@ -121,7 +121,7 @@ test('three-way comparison leaves original V4 intact and toggles detailed art in
  }
  const renderer=fs.readFileSync(path.join(publicDir,'world-25d.mjs'),'utf8');
  assert.ok(renderer.includes('setSceneryDetail(value)'));
- assert.ok(renderer.includes('buildSceneryV4(THREE,layer,zone,biome,{detail:useSceneryDetail,composition:useSceneryComposition})'));
+ assert.ok(renderer.includes('buildSceneryV4(THREE,layer,zone,biome,{detail:useSceneryDetail,composition:useSceneryComposition,atlas:useSceneryAtlas})'));
  const lab=fs.readFileSync(path.join(publicDir,'laboratorio-cenario-25d-v4.html'),'utf8');
  for(const mode of ['value="old"','value="v4"','value="v42"'])assert.ok(lab.includes(mode));
  assert.ok(lab.includes("view.setSceneryDetail(['v42','v5','atlas'].includes(q.value))"));
@@ -133,3 +133,6 @@ require('./scenery-25d-v4-overlap.test.js');
 
 // Cohesive V5 authored-map and path checks run in the existing Render build stage.
 require('./scenery-25d-v5.test.js');
+
+// Test actual PNG atlas and fallback in the same Render build gate.
+require('./scenery-25d-real-atlas.test.js');
