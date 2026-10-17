@@ -38,7 +38,7 @@ test('V7.6 customization loads four approved class image sources, without the ob
  assert.ok(editor.includes("title.textContent='PERSONALIZAÇÃO DA CLASSE V7.6'"));
  assert.ok(editor.includes('preview.draw(ctx,{role:kind'));
  assert.ok(!editor.includes("previewStudio?.obtain('hero'"));
- assert.ok(page.includes('/appearance-class-preview-v75.js?v=classes-4-caminhada-v77'));
+ assert.ok(page.includes('/appearance-class-preview-v75.js?v=classes-4-passada-v78'));
  assert.ok(page.indexOf('/appearance-class-preview-v75.js')<page.indexOf('/appearance-editor.js'));
  assert.ok(mmo.includes('onRoleChange:value=>'));
  assert.ok(page.includes('cabelo · olhos · pele · cores · V7.6'));
