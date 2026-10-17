@@ -142,3 +142,6 @@ require('./scenery-25d-v7-assets.test.js');
 
 // Original 20-tile V7 texture atlas, geographic clipping and exact binary validation.
 require('./scenery-25d-v7-tiles.test.js');
+
+// Verified original V7.2 PNGs and safe visual placement run in Render build gate.
+require('./scenery-25d-v72-art.test.js');

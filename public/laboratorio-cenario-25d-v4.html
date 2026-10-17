@@ -27,11 +27,11 @@ button{cursor:pointer}button[aria-pressed="true"]{background:#725333;border-colo
 @media(max-width:620px){.v7-gallery{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}.v7-gallery img{height:108px}.v7-gallery figure{padding:3px}.v7-gallery figcaption{font-size:10px}}
 @media(max-width:680px){main{padding:11px}h1{font-size:25px}.info{grid-template-columns:1fr}.controls{gap:7px}.stage{aspect-ratio:5/3}}
 </style></head><body><main>
-<h1>Os Peregrinos · Mundo 2.5D V5 + atlas PNG</h1>
+<h1>Os Peregrinos · Mundo 2.5D V7.2 experimental</h1>
 <p>Laboratório de comparação em tempo real. Escolha qualquer um dos dez biomas e compare os cenários Original, V4, V4.2 e V5, além de um modo de TESTE do carregamento de sprites PNG reais do atlas clássico já existente. Esse teste de infraestrutura ainda não utiliza o novo atlas artístico da prancha. O cenário usa objetos estáticos, iluminação e texturas em pixels; não altera nenhuma colisão, personagem, missão, guilda ou fortaleza 3D.</p>
 <div class="controls">
 <label>Visual do cenário<select id="quality">
-<option value="v7">Cenário V7 — 9 objetos e 20 tiles de terreno PNG</option>
+<option value="v7">Cenário V7.2 — 13 objetos originais e 20 tiles PNG</option>
 <option value="v5">Cenário V5 — mapa pixelado composto</option>
 <option value="atlas">Teste de atlas PNG real — recursos existentes</option>
 <option value="v42">Cenário V4.2 — acabamento artesanal</option>
@@ -50,6 +50,14 @@ button{cursor:pointer}button[aria-pressed="true"]{background:#725333;border-colo
 <p id="artgate" role="status" style="padding:12px 15px;background:#283023;border:1px solid #b3a16d;border-radius:8px;color:#f2ddb0;display:none">
 <strong>V7 ainda não está publicada.</strong> O PNG detalhado será usado somente quando o pacote for aprovado e carregado. Até lá, o que você vê é o cenário V5, não a arte definitiva.
 </p>
+<h2>Novos sprites originais — lote V7.2</h2>
+<p>Poço, lampião, fonte de pedra e arbusto florido são novas artes em pixel art, com transparência, escala nativa e controle individual de carregamento. Os quatro recortes defeituosos da prancha antiga continuam bloqueados.</p>
+<div class="v7-gallery">
+ <figure><img src="/assets/scenery-v72/sprites/poco_v72.png" alt="Poço V7.2 redesenhado pixel por pixel"><figcaption>Poço — 80 × 124</figcaption></figure>
+ <figure><img src="/assets/scenery-v72/sprites/lampiao_v72.png" alt="Lampião V7.2 redesenhado pixel por pixel"><figcaption>Lampião — 57 × 114</figcaption></figure>
+ <figure><img src="/assets/scenery-v72/sprites/fonte_v72.png" alt="Fonte V7.2 original em pixel art"><figcaption>Fonte — 104 × 105</figcaption></figure>
+ <figure><img src="/assets/scenery-v72/sprites/arbusto_v72.png" alt="Arbusto original V7.2 detalhado"><figcaption>Arbusto — 85 × 66</figcaption></figure>
+</div>
 <h2>Sprites PNG reais publicados — lote V7</h2>
 <p><a href="/laboratorio-terreno-v7.html" style="display:inline-block;background:#274956;border:1px solid #9a9f82;padding:10px 14px;border-radius:7px;color:#f9e5b8">Ver antes e depois V5 × V7 dos 20 tiles reais, em todos os biomas</a></p>
 <p><a href="/laboratorio-arquitetura-v7.html" style="display:inline-block;background:#274956;border:1px solid #9a9f82;padding:10px 14px;border-radius:7px;color:#f9e5b8">Abrir revisão detalhada de arquitetura V7: escala, transparência e arquivos pendentes</a></p>
@@ -91,8 +99,8 @@ const buttons=tags.map(([id,title,emoji],i)=>{
 function updateButtons(){buttons.forEach((b,i)=>b.setAttribute('aria-pressed',String(i===current)));}
 updateButtons();
 try{
- const module=await import('/world-25d.mjs?v=scenery-v5-reference-1');
- const {roadY}=await import('/world-scenery-v4.mjs?v=scenery-v5-reference-1');
+ const module=await import('/world-25d.mjs?v=scenery-v72-original-1');
+ const {roadY}=await import('/world-scenery-v4.mjs?v=scenery-v72-original-1');
  view=module.createWorld25D({shell:stage,canvas,width:960,height:576,sceneryV4:true});
  const mode=()=>{
   view.setSceneryV4(q.value!=='old');
@@ -122,15 +130,16 @@ try{
   if(frame%24===0){
    if(q.value==='v7'){
     const count=view.v7Status.loaded;
+    const extra=view.v72Status.loaded;
     const ready=view.v7Ready;
     artgate.textContent=ready||view.v7TerrainReady
-      ?'V7 experimental: '+count+' objetos PNG carregados e '+(view.v7TerrainReady?'20 tiles de terreno reais carregados.':'terreno V5 de fallback.')+' Elementos sem PNG válido continuam na V5.'
+      ?'V7 experimental: '+count+' objetos V7 PNG carregados, '+extra+' novos sprites V7.2 e '+(view.v7TerrainReady?'20 tiles de terreno reais carregados.':'terreno V5 de fallback.')+' Elementos sem PNG válido continuam na V5.'
       :'V7 ainda não carregada: vendo apenas a V5 como fallback.';
    }
    const label=q.value==='old'?'Cenário original':q.value==='v4'?'Primeiro Cenário V4':q.value==='v42'?'Cenário V4.2':q.value==='v5'?'Cenário V5':q.value==='v7'?'Cenário V7 (etapa de PNGs aprovados)':'Teste de atlas PNG real';
    const stats=view.sceneryStats;
    status.textContent=label+' · '+tags[current][1]+' · '+(stats?stats.staticProps+' objetos estáticos · '+stats.drawBatches+' grupos de renderização':'terreno anterior')+' · Câmera vertical '+panY.value+(q.value==='atlas'?(view.atlasReady?' · PNG carregado':' · carregando PNG / fallback V5'):'')
-   +(q.value==='v7'?((view.v7Ready||view.v7TerrainReady)?' · PNGs de objetos: '+view.v7Status.loaded+' · Tiles de terreno: '+view.v7TerrainStatus.tiles:' · aguardando V7; fallback V5'):'')
+   +(q.value==='v7'?((view.v7Ready||view.v7TerrainReady)?' · PNGs de objetos: '+(view.v7Status.loaded+view.v72Status.loaded)+' · Tiles de terreno: '+view.v7TerrainStatus.tiles:' · aguardando V7; fallback V5'):'')
    +' · Sem alterações de colisões';
   }
   frame++;

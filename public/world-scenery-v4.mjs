@@ -4,6 +4,7 @@ import {createDesignedTerrainTexture,reservedSceneryLandmarks,drawDesignedHouseC
 import {createAtlasGroundTexture,createAtlasPropTexture,atlasLoaded,ASSET_BACKED_VERSION} from './world-scenery-v6-asset-adapter.mjs';
 import {createV7PropTexture,v7Image,v7FitSize,isV7Ready,SCENERY_V7_VERSION} from './world-scenery-v7-asset-loader.mjs';
 import {v7TerrainImage,v7TerrainReady,V7_TERRAIN_VERSION} from './world-scenery-v7-terrain.mjs';
+import {v72Image,createV72PropTexture,SCENERY_V72_VERSION} from './world-scenery-v72-asset-loader.mjs';
 /**
  * OS PEREGRINOS · CENÁRIO V4 2.5D / PRÉVIA EXPERIMENTAL
  * Mundo aberto SOMENTE: solo, estradas, água, construções e decoração estática.
@@ -229,6 +230,26 @@ export function planSceneryV5(zone,biome,{width=1536,height=1024}={}){
  return Object.freeze(placed);
 }
 
+
+/** V7.2 anchor cleanup applies ONLY when the experimental V7 is selected. */
+export function planSceneryV72(zone,biome,initial){
+ const candidates={
+  meadow:[{kind:'well',x:785,z:228,w:96,h:117,variant:0}],
+  city:[{kind:'lamp',x:710,z:230,w:57,h:114,variant:0},
+        {kind:'fountain',x:830,z:225,w:130,h:104,variant:0}],
+  ruins:[{kind:'ruin',x:785,z:228,w:158,h:137,variant:0}]
+ }[biome]||[];
+ if(!candidates.length)return initial;
+ const drop=new Set(['tree','pine','palm','shrub','flower','rock','stump','reeds','mushroom','barrel','crate','lamp','well','fountain']);
+ const result=initial.filter(item=>!candidates.some(candidate=>
+  drop.has(item.kind)&&sceneryOverlaps(item,candidate,8)));
+ for(const candidate of candidates){
+  if(visualExclusion(candidate,zone,biome,1536,1024))continue;
+  if(result.some(other=>sceneryOverlaps(other,candidate,8)))continue;
+  result.push(Object.freeze(candidate));
+ }
+ return Object.freeze(result);
+}
 function canvasTexture(THREE,canvas,{repeatX=1,repeatY=1}={}){
  const t=new THREE.CanvasTexture(canvas);
  t.colorSpace=THREE.SRGBColorSpace;
@@ -474,7 +495,10 @@ function placeSpriteInstances(THREE,group,plan,biome,detail=true,composition=fal
  for(const [key,arr] of buckets){
   const [kind,variantString]=key.split(':'),variant=+variantString;
   const pngImage=v7?v7Image(kind,variant):null;
+  const v72Png=v7?v72Image(kind):null;
+  const finalImage=pngImage||v72Png;
   const texture=(v7&&createV7PropTexture(THREE,kind,variant))
+    ||(v7&&createV72PropTexture(THREE,kind))
     ||(atlas&&kind!=='house'&&createAtlasPropTexture(THREE,kind,variant))
     ||(composition&&kind==='house'
        ?canvasTexture(THREE,drawDesignedHouseCanvas(biome,variant))
@@ -486,9 +510,9 @@ function placeSpriteInstances(THREE,group,plan,biome,detail=true,composition=fal
   const mesh=new THREE.InstancedMesh(new THREE.PlaneGeometry(1,1),mat,arr.length);
   mesh.name='scenery-v4-'+key;
   arr.forEach((item,i)=>{
-   const fitted=pngImage?v7FitSize({
-     nativeWidth:pngImage.naturalWidth,
-     nativeHeight:pngImage.naturalHeight,
+   const fitted=finalImage?v7FitSize({
+     nativeWidth:finalImage.naturalWidth,
+     nativeHeight:finalImage.naturalHeight,
      maxWidth:item.w,
      maxHeight:item.h
    }):null;
@@ -545,6 +569,7 @@ export function buildSceneryV4(THREE,group,zone,biome,{detail=true,composition=f
   addWaterV4(THREE,group,zone,biome);
  }
  const objects=composition?planSceneryV5(zone,biome):planSceneryV4(zone,biome,{detail});
- const batches=placeSpriteInstances(THREE,group,objects,biome,detail,composition,useAtlas,useV7);
- return Object.freeze({zone,biome,staticProps:objects.length,drawBatches:batches,ground:composition?'composed-authored-pixelmap':detail?'pixel-cluster-v42':'tile-textured',path:composition?'connected-map-path':detail?'authored-texture-v42':'authored-texture',art:useV7Terrain?V7_TERRAIN_VERSION:useV7?SCENERY_V7_VERSION:useAtlas?ASSET_BACKED_VERSION:composition?MAP_ART_VERSION:detail?ART_VERSION:'scenery-v4-base',terrainTiles:useV7Terrain?20:0,artKinds:detail?EXTRA_KINDS.length:0,water:['river','coast','swamp'].includes(biome)});
+ const visibleObjects=useV7?planSceneryV72(zone,biome,objects):objects;
+ const batches=placeSpriteInstances(THREE,group,visibleObjects,biome,detail,composition,useAtlas,useV7);
+ return Object.freeze({zone,biome,staticProps:visibleObjects.length,drawBatches:batches,ground:composition?'composed-authored-pixelmap':detail?'pixel-cluster-v42':'tile-textured',path:composition?'connected-map-path':detail?'authored-texture-v42':'authored-texture',art:useV7&&v72Image('well')?SCENERY_V72_VERSION:useV7Terrain?V7_TERRAIN_VERSION:useV7?SCENERY_V7_VERSION:useAtlas?ASSET_BACKED_VERSION:composition?MAP_ART_VERSION:detail?ART_VERSION:'scenery-v4-base',terrainTiles:useV7Terrain?20:0,artKinds:detail?EXTRA_KINDS.length:0,water:['river','coast','swamp'].includes(biome)});
 }
