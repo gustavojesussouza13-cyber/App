@@ -79,4 +79,8 @@ jobs:
             /tmp/os-peregrinos-espinho-v4-attack-25d.png
             /tmp/os-peregrinos-espinho-v4-hurt-25d.png
             /tmp/os-peregrinos-espinho-v4-death-25d.png
+            /tmp/os-peregrinos-elemental-agua-v4-walk-25d.png
+            /tmp/os-peregrinos-elemental-agua-v4-attack-25d.png
+            /tmp/os-peregrinos-elemental-agua-v4-hurt-25d.png
+            /tmp/os-peregrinos-elemental-agua-v4-death-25d.png
           if-no-files-found: ignore
