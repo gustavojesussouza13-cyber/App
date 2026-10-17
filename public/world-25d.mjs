@@ -6,6 +6,7 @@
  * Este arquivo nunca importa nem altera os módulos das fortalezas de guilda.
  */
 import * as THREE from '/vendor/three.module.js';
+import {buildSceneryV4,SCENERY_V4_VERSION} from '/world-scenery-v4.mjs';
 
 const ZONE_WIDTH = 1536;
 const ZONE_HEIGHT = 1024;
@@ -181,7 +182,7 @@ function addAuroraShrine(group) {
  return {crystal,halo,light};
 }
 
-export function createWorld25D({shell,canvas,width=960,height=576}) {
+export function createWorld25D({shell,canvas,width=960,height=576,sceneryV4=true}) {
   if (!shell || !canvas) throw Error('O Canvas 2D e seu contêiner são obrigatórios.');
   const renderer = new THREE.WebGLRenderer({
     alpha:false,antialias:true,powerPreference:'default',
@@ -232,6 +233,7 @@ export function createWorld25D({shell,canvas,width=960,height=576}) {
   sun.position.set(-240,600,190);
   scene.add(ambient,sun);
   let layer=null,activeZone=NaN,activeBiome='',disposed=false,night=false,shrine=null;
+  let useSceneryV4=Boolean(sceneryV4),lastSceneryV4=null;
   function rebuild(zone,biome) {
     if(layer){
       scene.remove(layer);
@@ -248,6 +250,28 @@ export function createWorld25D({shell,canvas,width=960,height=576}) {
     layer=new THREE.Group();
     scene.add(layer);
     shrine=null;
+    // One V4 static scenery pack covers all historical regions and 10 biomes.
+    // In case of a WebGL/texture failure, fall back to the EXACT prior model.
+    let success=false;
+    if(useSceneryV4)try{
+      lastSceneryV4=buildSceneryV4(THREE,layer,zone,biome);
+      success=Boolean(lastSceneryV4);
+    }catch(error){
+      console.warn('[Cenário 2.5D V4] Voltando ao terreno anterior.',error);
+      for(const child of [...layer.children]){
+        child.traverse(obj=>{
+          obj.geometry?.dispose?.();
+          if(obj.material)for(const mat of [obj.material].flat()){
+            mat.map?.dispose?.();
+            mat.dispose?.();
+          }
+        });
+        layer.remove(child);
+      }
+      lastSceneryV4=null;
+    }
+    if(!success){
+      // Original biomes remain available when the new overlay is disabled.
     const colors=palette[biome]||palette.meadow;
     scene.background=new THREE.Color(biome==='dungeon'?'#333941':'#71918c');
     const ground=new THREE.Mesh(
@@ -277,6 +301,8 @@ export function createWorld25D({shell,canvas,width=960,height=576}) {
       } else addTree(layer,x,z,random,colors);
     }
     addMeadowDetails(layer,zone,biome,random);
+    }
+
     if(zone===0&&(biome==='meadow'||biome==='city'))shrine=addAuroraShrine(layer);
     activeZone=zone;
     activeBiome=biome;
@@ -306,6 +332,7 @@ export function createWorld25D({shell,canvas,width=960,height=576}) {
     return true;
   }
   function setNight(value){night=Boolean(value);}
+  function setSceneryV4(value){useSceneryV4=Boolean(value);activeZone=NaN;activeBiome='';}
   function dispose(){
     if(disposed)return;
     disposed=true;
@@ -325,5 +352,7 @@ export function createWorld25D({shell,canvas,width=960,height=576}) {
     canvas.style.background='';
   }
   window.addEventListener('pagehide',dispose,{once:true});
-  return {render,setNight,dispose,canvas:renderer.domElement};
+  return {render,setNight,setSceneryV4,dispose,canvas:renderer.domElement,
+    get sceneryVersion(){return useSceneryV4?SCENERY_V4_VERSION:'legacy';},
+    get sceneryStats(){return lastSceneryV4;}};
 }
