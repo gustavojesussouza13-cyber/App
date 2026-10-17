@@ -251,12 +251,12 @@
   }else ctx.drawImage(canvas,Math.round(x-w/2),Math.round(y-h),w,h);
   return true;
  }
- function drawWorld(ctx,{role,dir=2,action='idle',frame=0,appearance=null,x,y,elapsed=0}={}){
+ function drawWorld(ctx,{role,dir=2,action='idle',frame=0,appearance=null,x,y,elapsed=0,documentRef=root.document}={}){
   if(!Number.isFinite(x)||!Number.isFinite(y))return false;
   // All four classes preserve their approved image in attack/skill/hurt.
   // The normal uncustomized walk/idle remains on the existing fast path.
   if(!needsCustomization(appearance)&&!ACTIONS.includes(action))return false;
-  return draw(ctx,{role,dir,action,frame,appearance,x,y:y+2,elapsed,scale:.73});
+  return draw(ctx,{role,dir,action,frame,appearance,x,y:y+2,elapsed,scale:.73,documentRef});
  }
  return Object.freeze({VERSION,WIDTH,HEIGHT,draw,drawWorld,walkFrame,combatPose,applyColors,details,needsCustomization,renderSprite,clearCache:()=>cache.clear()});
 });

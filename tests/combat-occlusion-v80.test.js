@@ -53,3 +53,35 @@ test('canonical foreground uses exactly the static approved original tree art an
  assert.ok(mmo.includes('world25d?.foregroundProps||[]'));
  assert.ok(!world.includes('guild-city-3d'));
 });
+
+test('V8.0 draws full original approved hero body for all combat actions instead of switching to another sprite',()=>{
+ const sprite=require('../public/appearance-sprite-v76.js');
+ const app=require('../public/appearance16.js');
+ const saved={runway:global.OsPeregrinosRunway25D,classes:global.OsPeregrinosApprovedClasses25D};
+ const bodies=[];
+ global.OsPeregrinosRunway25D={draw:(_ctx,o)=>{bodies.push(['peregrino',o]);return true;}};
+ global.OsPeregrinosApprovedClasses25D={draw:(_ctx,o)=>{bodies.push([o.role,o]);return true;}};
+ const output=[];
+ const g={imageSmoothingEnabled:true,globalAlpha:1,
+  save(){},restore(){},translate(){},rotate(){},
+  drawImage(...args){output.push(args);},fillRect(){},
+ };
+ const doc={createElement:()=>({width:0,height:0,getContext:()=>g})};
+ try{
+  sprite.clearCache();
+  for(const role of ['peregrino','guardiao','arqueiro','curandeiro'])
+   for(const action of ['attack','skill','hurt']){
+    const prior=output.length;
+    assert.equal(sprite.drawWorld(g,{role,dir:2,action,appearance:app.DEFAULT,x:200,y:220,elapsed:180,documentRef:doc}),true);
+    assert.equal(output.length,prior+1,role+'/'+action+' draws one full approved sprite');
+   }
+  assert.equal(bodies.length,4,'each class reuses one cached native idle PNG through three actions');
+  assert.ok(bodies.every(x=>x[1].appearance===null),'original full-quality PNG not replaced');
+ }finally{
+  if(saved.runway===undefined)delete global.OsPeregrinosRunway25D;else global.OsPeregrinosRunway25D=saved.runway;
+  if(saved.classes===undefined)delete global.OsPeregrinosApprovedClasses25D;else global.OsPeregrinosApprovedClasses25D=saved.classes;
+  sprite.clearCache();
+ }
+ const world=read('world-25d.mjs');
+ assert.ok(world.includes("canonical.mjs?v=tree-occlusion-depth-v80"),'browser cache cannot load obsolete module exports');
+});

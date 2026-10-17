@@ -11,7 +11,7 @@ import {preloadSceneryAtlas,atlasLoaded} from '/world-scenery-v6-asset-adapter.m
 import {preloadV7Assets,isV7Ready,v7Stats} from '/world-scenery-v7-asset-loader.mjs';
 import {preloadV7Terrain,v7TerrainReady,v7TerrainStatus} from '/world-scenery-v7-terrain.mjs';
 import {preloadV72Assets,v72Ready,v72Status} from '/world-scenery-v72-asset-loader.mjs';
-import {buildCanonicalScenery,canonicalForegroundObjects} from '/world-scenery-v72-canonical.mjs';
+import {buildCanonicalScenery,canonicalForegroundObjects} from '/world-scenery-v72-canonical.mjs?v=tree-occlusion-depth-v80';
 
 const ZONE_WIDTH = 1536;
 const ZONE_HEIGHT = 1024;
