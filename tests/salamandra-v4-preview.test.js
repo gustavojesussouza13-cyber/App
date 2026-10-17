@@ -36,7 +36,8 @@ test('Salamandra art preview stays separate from live game and fortress',()=>{
  const official=read('mundo.html');
  assert.ok(!official.includes('salamandra-v4-preview.js'));
  assert.ok(!official.includes('laboratorio-salamandra-v4.html'));
- assert.ok(!official.includes('/salamandra-v4.js'));
+ assert.ok(official.includes('/salamandra-v4.js?v=salamandra-v4-game-experimental-1'));
+ assert.ok(!official.includes('/salamandra-v4-preview.js'));
  const v3=read('creatures-v3.js');
  assert.ok(v3.includes("['limo','lobo','aranha','esqueleto','golem']"));
  assert.ok(!v3.toLowerCase().includes('salamandra'));
