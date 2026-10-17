@@ -119,8 +119,7 @@ export async function preloadV7Assets({fetcher=typeof fetch==='function'?fetch:n
     const done=(ok)=>{
       const spec=V7_ASSETS[id];
       if(ok&&img.naturalWidth===spec.w&&img.naturalHeight===spec.h){images.set(id,img);}
-      else if(ok)lastError='sprite-dimension-mismatch:'+id;
-      else failed.add(id);
+      else {failed.add(id);if(ok)lastError='sprite-dimension-mismatch:'+id;}
       resolve();
     };
     img.addEventListener('load',()=>done(true),{once:true});
