@@ -1,4 +1,5 @@
 'use strict';
+import {paintV7BaseTiles,paintV7Road,paintV7River,paintV7Coast} from './world-scenery-v7-terrain.mjs';
 /**
  * Os Peregrinos · cenário V5: composição de mapas 2.5D em pixel art.
  * Um único mapa-base 768×512 (2 unidades por pixel) é pintado por região.
@@ -219,28 +220,39 @@ function paintSwamp(g,zone){
   pix(g,'#659e87',x+1,y,12,2);
  }
 }
-export function drawDesignedTerrainCanvas(zone,biome){
+export function drawDesignedTerrainCanvas(zone,biome,{v7Atlas=null}={}){
  if(!PAL[biome])throw Error('Bioma inválido: '+biome);
  const canvas=document.createElement('canvas');canvas.width=MAP_W;canvas.height=MAP_H;
  const g=canvas.getContext('2d',{alpha:false});
  g.imageSmoothingEnabled=false;
  const r=randGen(9113+Math.imul(zone+1,7229)+Object.keys(PAL).indexOf(biome)*997),c=PAL[biome];
- for(let y=0;y<MAP_H;y+=TILE)for(let x=0;x<MAP_W;x+=TILE)
-  grassTile(g,x,y,r,c,biome);
- if(biome==='river')paintRiver(g,zone);
- if(biome==='coast')paintCoast(g,zone);
+ if(v7Atlas){
+  paintV7BaseTiles(g,v7Atlas,zone,biome,MAP_W,MAP_H);
+ }else{
+  for(let y=0;y<MAP_H;y+=TILE)for(let x=0;x<MAP_W;x+=TILE)
+   grassTile(g,x,y,r,c,biome);
+ }
+ if(biome==='river'){
+  paintRiver(g,zone);
+  if(v7Atlas)paintV7River(g,v7Atlas,zone,MAP_W,MAP_H);
+ }
+ if(biome==='coast'){
+  paintCoast(g,zone);
+  if(v7Atlas)paintV7Coast(g,v7Atlas,zone,MAP_W,MAP_H);
+ }
  if(biome==='swamp')paintSwamp(g,zone);
  paintCliff(g,zone,biome);
  paintGardens(g,zone,biome);
  paintRoad(g,zone,biome,r,c);
+ if(v7Atlas)paintV7Road(g,v7Atlas,zone,biome,sampleRoad,MAP_W,MAP_H);
  if(['city','meadow'].includes(biome)){
   for(const l of reservedSceneryLandmarks(zone,biome))
    if(['house','market','fountain','well'].includes(l.kind))spur(g,r,c,zone,l.x,l.z-(l.kind==='house'?28:16));
  }
  return canvas;
 }
-export function createDesignedTerrainTexture(THREE,zone,biome){
- const tex=new THREE.CanvasTexture(drawDesignedTerrainCanvas(zone,biome));
+export function createDesignedTerrainTexture(THREE,zone,biome,{v7Atlas=null}={}){
+ const tex=new THREE.CanvasTexture(drawDesignedTerrainCanvas(zone,biome,{v7Atlas}));
  tex.colorSpace=THREE.SRGBColorSpace;
  tex.magFilter=THREE.NearestFilter;
  tex.minFilter=THREE.NearestMipmapNearestFilter;
