@@ -178,3 +178,5 @@ require('./peregrino-v85.test.js');
 
 // V8.7: complete server-validated appearance and no-cape artwork.
 require('./peregrino-personalizacao-v87.test.js');
+// Engine-only approved PNG V8.6, replacing outdated gray-slide border artifacts.
+require('./peregrino-png-v86.test.js');

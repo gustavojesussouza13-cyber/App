@@ -10,7 +10,7 @@
  if(root)root.OsPeregrinosPeregrinoV85=api;
 })(typeof globalThis!=='undefined'?globalThis:this,function(root){
  const VERSION='peregrino-v87-personalizacao-sete-opcoes';
- const SRC='/assets/peregrino/peregrino-nova-estetica-v85-64x80.png?v=approved-preview-v85-01';
+ const SRC='/assets/peregrino/peregrino-motor-v86-64x80-rgba.png?v=png-recortado-44-frames-v86';
  const WIDTH=64,HEIGHT=80,COLS=4,ROWS=11;
  const DIRECTION=Object.freeze({0:0,1:1,2:2,3:3});
  const STATES=Object.freeze({idle:0,walk1:1,walk2:2,walk3:3,hurt:4,death1:5,death2:6,death3:7,prepare:8,attack:9,recover:10});
