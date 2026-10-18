@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Os Peregrinos — laboratório de fidelidade V8.2</title>
+<style>
+:root{font-family:ui-sans-serif,system-ui,sans-serif;color:#eee3c6;background:#0a1818;color-scheme:dark}
+*{box-sizing:border-box}body{max-width:1220px;margin:auto;padding:18px}
+h1{font-family:Georgia,serif;color:#efd19c;margin:0 0 6px;font-size:clamp(23px,3vw,35px)}
+h2{color:#e8cb8c;font-size:17px;margin:0 0 8px}
+p{line-height:1.6;color:#c0caba}b{color:#ffdda3}
+section{background:#142623;border:1px solid #6a6f4b;border-radius:8px;padding:16px;margin:14px 0}
+.controls{display:flex;gap:12px;flex-wrap:wrap;align-items:end}
+label{display:flex;flex-direction:column;gap:6px;font-size:13px;color:#f0d5a8}
+select,button{background:#233b34;color:#fff0ce;border:1px solid #ad9366;padding:9px 12px;border-radius:4px;min-height:40px}
+button{cursor:pointer}button:hover{background:#466052}input{accent-color:#ebce85}
+.preview{display:grid;grid-template-columns:250px minmax(0,1fr);gap:22px;align-items:start}
+.canvas-box{background:repeating-conic-gradient(#263632 0 25%,#182a26 0 50%) 0/22px 22px;
+border:2px solid #a18a58;min-height:240px;padding:18px;display:grid;place-items:center}
+.canvas-box canvas{image-rendering:pixelated;object-fit:contain}
+#baseline{width:192px;height:240px}
+#triptych{max-width:100%;height:240px;image-rendering:pixelated}
+#atlas{display:block;max-width:100%;image-rendering:pixelated;background:repeating-conic-gradient(#273c35 0 25%,#132a25 0 50%) 0/18px 18px;border:2px solid #928262;margin:12px auto}
+.small{font-size:12px;color:#a9bcb2}.notice{border-left:4px solid #dab169;padding:12px;background:#192a25}
+.status{color:#afd2a8;min-height:22px}
+@media(max-width:700px){.preview{grid-template-columns:1fr}.canvas-box{min-height:175px}#baseline{width:128px;height:160px}#triptych{height:auto}}
+</style></head><body>
+<h1>Os Peregrinos — Laboratório V8.2</h1>
+<p><b>Não é uma nova interpretação do personagem.</b> Cada quadro usa o PNG original que já está no jogo. Os efeitos podem ser desligados para conferir os pixels da roupa, rosto e equipamentos, sem alteração.</p>
+<section><div class="controls">
+<label>Classe<select id="role"><option value="peregrino">Peregrino</option><option value="guardiao">Guardião</option><option value="arqueiro">Arqueiro</option><option value="curandeiro">Curandeiro</option></select></label>
+<label>Direção<select id="dir"><option value="2">Frente</option><option value="0">Costas</option><option value="1">Direita</option><option value="3">Esquerda</option></select></label>
+<label>Ação<select id="action"><option value="attack">Ataque</option><option value="skill">Habilidade</option></select></label>
+<label><span>Camadas</span><span><input id="effects" type="checkbox" checked> Mostrar efeitos em pixel art</span></label>
+<button id="download">Salvar spritesheet PNG</button>
+</div><p class="status" id="status" role="status">Carregando os arquivos oficiais…</p></section>
+<div class="preview">
+<section><h2>Sprite original</h2><div class="canvas-box"><canvas id="baseline" width="128" height="160"></canvas></div>
+<p class="small">Cópia pixel a pixel do atlas aprovado, sem qualquer mudança.</p></section>
+<section><h2>Três fases derivadas da arte real</h2><div class="canvas-box"><canvas id="triptych"></canvas></div>
+<p class="small">Esta é uma <b>prova de fidelidade</b> e dos efeitos isolados, não a animação corporal definitiva. Faltam poses manuais de braços, espada, arco e cajado.</p></section>
+</div>
+<section><h2>Spritesheet técnico de referência — 6 × 4 quadros</h2>
+<p class="small">Linhas: ataque costas/direita, ataque frente/esquerda, habilidade costas/direita, habilidade frente/esquerda. Tudo construído dos PNGs reais; nenhuma imagem gerada substitui a classe. O arquivo exportado ainda é <b>protótipo, não pronto para integrar ao combate</b>.</p>
+<canvas id="atlas" aria-label="Spritesheet criado a partir dos personagens originais"></canvas>
+</section>
+<p class="notice"><b>Preservado:</b> rosto, formato do capuz, insígnias, roupas, capa, armadura, arma e paleta. Os efeitos visuais são uma camada separada. O MMORPG oficial e o renderizador experimental não foram alterados por este laboratório.</p>
+<script>
+'use strict';
+(()=>{
+const ASSETS=Object.freeze({
+ peregrino:{url:'/assets/peregrino/peregrino-runway-walk.png',w:128,h:160,cols:4},
+ guardiao:{url:'/assets/approved-classes/guardiao-sprites-3x2-64x80.png',w:64,h:80,cols:3},
+ arqueiro:{url:'/assets/approved-classes/arqueiro-sprites-3x2-64x80.png',w:64,h:80,cols:3},
+ curandeiro:{url:'/assets/approved-classes/curandeiro-sprites-3x2-64x80.png',w:64,h:80,cols:3}
+});
+const $=id=>document.getElementById(id);
+const images=new Map();
+const sourceRect=(role,dir,phase=0)=>{
+ const meta=ASSETS[role];
+ if(role==='peregrino')return {sx:(phase%4)*meta.w,sy:({0:1,1:2,2:0,3:2}[dir])*meta.h,flip:dir===3};
+ return {sx:({0:1,1:2,2:0,3:2}[dir])*meta.w,sy:(phase===1?1:0)*meta.h,flip:dir===3};
+};
+function sourceCanvas(role,dir,phase){
+ const {w,h}=ASSETS[role],c=document.createElement('canvas');c.width=w;c.height=h;
+ const x=c.getContext('2d');x.imageSmoothingEnabled=false;
+ const r=sourceRect(role,dir,phase);x.save();
+ if(r.flip){x.translate(w,0);x.scale(-1,1);}
+ x.drawImage(images.get(role),r.sx,r.sy,w,h,0,0,w,h);x.restore();
+ return c;
+}
+function pix(ctx,x,y,color,w=1,h=1){ctx.fillStyle=color;ctx.fillRect(Math.round(x),Math.round(y),Math.max(1,Math.round(w)),Math.max(1,Math.round(h)));}
+function stroke(ctx,x0,y0,x1,y1,color,w=1){
+ const steps=Math.max(Math.abs(x1-x0),Math.abs(y1-y0),1);
+ for(let i=0;i<=steps;i++)pix(ctx,x0+(x1-x0)*i/steps,y0+(y1-y0)*i/steps,color,w,w);
+}
+function effects(ctx,role,dir,action,phase,w,h){
+ const unit=w/64,x=Math.round(w/2),centerY=Math.round(h*.56);
+ // Paint only separate magical/weapon flashes. The underlying real PNG
+ // remains intact and pixel-perfect.
+ const strength=[.20,.86,.45][phase],sign=dir===3?-1:1;
+ const color=role==='arqueiro'?'#b9ed64':role==='curandeiro'?'#ffdc83':
+   role==='guardiao'?'#a9e5ff':'#b4e5ff';
+ const secondary=role==='arqueiro'?'#57bb77':role==='curandeiro'?'#83cee9':'#7cb6fb';
+ const radius=Math.round(20*unit);
+ if(action==='attack'){
+  if(role==='arqueiro'){
+   const tipX=dir===3?Math.round(w*.13):dir===1?Math.round(w*.86):x;
+   const tipY=dir===0?Math.round(h*.12):dir===2?Math.round(h*.84):centerY;
+   if(phase===2){stroke(ctx,x,centerY,tipX,tipY,secondary,Math.ceil(unit));stroke(ctx,x+sign*2*unit,centerY-2*unit,tipX,tipY,color,Math.ceil(unit));}
+   else for(let j=0;j<3;j++)pix(ctx,x+j*sign*unit,centerY-j*unit,color,Math.ceil(unit));
+  }else{
+   const rootX=x+Math.round(sign*12*unit);
+   for(let t=0;t<8;t++){
+    const angle=(phase===0?-.95:phase===1?-.32:.25)+t*.13;
+    const px=rootX+Math.round(Math.cos(angle)*radius),py=centerY-Math.round(Math.sin(angle)*radius);
+    pix(ctx,px,py,t%3===0?'#f9f7ce':color,Math.max(1,Math.round(1.3*unit)));
+   }
+  }
+ }else{
+  const cY=centerY+Math.round(2*unit);
+  for(let t=0;t<12;t++){
+   const angle=t*Math.PI/6+phase*.23;
+   const r=radius*strength;
+   const px=x+Math.round(Math.cos(angle)*r),py=cY+Math.round(Math.sin(angle)*r*.7);
+   pix(ctx,px,py,t%3===0?color:secondary,Math.max(1,Math.round(unit)));
+  }
+  if(phase===1){
+   stroke(ctx,x-4*unit,cY,x+4*unit,cY,color,Math.max(1,Math.round(unit)));
+   stroke(ctx,x,cY-4*unit,x,cY+4*unit,color,Math.max(1,Math.round(unit)));
+  }
+ }
+}
+function frame(role,dir,action,phase,showEffects=true){
+ const body=sourceCanvas(role,dir,phase),ctx=body.getContext('2d');
+ if(showEffects)effects(ctx,role,dir,action,phase,body.width,body.height);
+ return body;
+}
+function paint(target,source,x,y,w,h){
+ const ctx=target.getContext('2d');ctx.imageSmoothingEnabled=false;
+ ctx.drawImage(source,x,y,w,h);
+}
+function sheet(role,showFx){
+ const {w,h}=ASSETS[role],c=document.createElement('canvas');c.width=w*6;c.height=h*4;
+ const dirPairs=[[0,1],[2,3]];
+ for(let row=0;row<4;row++){
+  const action=row<2?'attack':'skill',dirs=dirPairs[row%2];
+  for(let section=0;section<2;section++)for(let phase=0;phase<3;phase++){
+   const dir=dirs[section],f=frame(role,dir,action,phase,showFx);
+   paint(c,f,(section*3+phase)*w,row*h,w,h);
+  }
+ }
+ return c;
+}
+let token=0;
+async function render(){
+ const current=++token,role=$('role').value,dir=Number($('dir').value),action=$('action').value,showFx=$('effects').checked;
+ const meta=ASSETS[role],status=$('status');
+ status.textContent='Lendo PNG original '+role+' diretamente dos arquivos do jogo…';
+ if(!images.has(role)){
+  const im=await new Promise((resolve,reject)=>{
+   const image=new Image();image.onload=()=>resolve(image);image.onerror=()=>reject(new Error('Não foi possível carregar o PNG original.'));
+   image.src=meta.url+'?source-only-v82';
+  }).catch(e=>{status.textContent=e.message;return null});
+  if(!im)return;
+  if(im.naturalWidth!==meta.cols*meta.w||im.naturalHeight!==(role==='peregrino'?4:2)*meta.h){
+   status.textContent='ERRO: atlas não corresponde às dimensões originais esperadas.';return;
+  }
+  images.set(role,im);
+ }
+ if(current!==token)return;
+ const baseline=$('baseline'),b=baseline.getContext('2d');
+ baseline.width=meta.w;baseline.height=meta.h;b.imageSmoothingEnabled=false;b.clearRect(0,0,meta.w,meta.h);
+ paint(baseline,sourceCanvas(role,dir,0),0,0,meta.w,meta.h);
+ const tri=$('triptych');tri.width=meta.w*3;tri.height=meta.h;
+ const t=tri.getContext('2d');t.clearRect(0,0,tri.width,tri.height);t.imageSmoothingEnabled=false;
+ for(let i=0;i<3;i++)paint(tri,frame(role,dir,action,i,showFx),i*meta.w,0,meta.w,meta.h);
+ const atlas=sheet(role,showFx),target=$('atlas');
+ target.width=atlas.width;target.height=atlas.height;paint(target,atlas,0,0,atlas.width,atlas.height);
+ status.textContent='PNG original verificado: '+images.get(role).naturalWidth+' × '+images.get(role).naturalHeight+' pixels. Corpo preservado de fonte oficial.';
+}
+for(const id of ['role','dir','action','effects'])$(id).addEventListener('change',()=>{void render()});
+$('download').addEventListener('click',()=>{
+ if(!images.has($('role').value))return;
+ const role=$('role').value,canvas=sheet(role,$('effects').checked),a=document.createElement('a');
+ a.download='os-peregrinos-'+role+'-referencia-nao-final-v82.png';
+ a.href=canvas.toDataURL('image/png');a.click();
+});
+void render();
+})();
+</script></body></html>

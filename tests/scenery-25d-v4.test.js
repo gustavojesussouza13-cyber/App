@@ -162,3 +162,6 @@ require('./combat-occlusion-v80.test.js');
 
 // Inventário ilustrado V8.1 — dados reais, 35 espaços, atalhos e ações no servidor.
 require('./inventory-v81.test.js');
+
+// Prototipo de referencia V8.2: somente as fontes oficiais, sem trocar herois.
+require('./sprite-fidelity-v82.test.js');
