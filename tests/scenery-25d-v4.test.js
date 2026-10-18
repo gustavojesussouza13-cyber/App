@@ -170,3 +170,6 @@ require('./combat-poses-v83.test.js');
 
 // V8.4 full-figure pixel-reposition artwork (isolated lab; game untouched).
 require('./full-body-poses-v84.test.js');
+
+// Final 6x4 PNG sprite sheets: decode indexed/rgba originals, verify PNG exports.
+require('./png-combat-v84.test.js');
