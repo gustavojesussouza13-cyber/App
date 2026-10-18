@@ -1,0 +1,8 @@
+Os Peregrinos MMORPG — edição itch.io (cliente online incorporado)
+Este pacote HTML5 possui um index.html na raiz.
+O index.html incorpora a tela real do Mundo Aberto, hospedada em www.cronicasdaaurora.com.br.
+Não é uma exportação offline dos sprites ou do motor e precisa de internet.
+O Node.js, o WebSocket e o PostgreSQL permanecem no Render.
+O servidor oficial deve permitir o frame SOMENTE para mundo.html?itch_embed=1.
+Dependendo do bloqueio de cookies de terceiros, login em contas pode exigir abrir o site oficial em outra aba.
+Use a opção Click to launch in fullscreen no itch.io e teste como Draft antes de publicar.
