@@ -12,7 +12,7 @@
  if(root)root.OsPeregrinosAppearanceSpriteV76=api;
 })(typeof globalThis!=='undefined'?globalThis:this,function(root){
  const APP=typeof module==='object'&&module.exports?require('./appearance16'):root.PeregrinosAppearance16;
- const VERSION='appearance-png-v80-combat-identity-preserved-20261017';
+ const VERSION='appearance-png-v83-articulated-attack-20261018';
  const WIDTH=128,HEIGHT=160;
  const cloth=Object.freeze({
   vinho:['#813f50','#d18d91'],floresta:['#396b51','#a2c695'],
@@ -239,6 +239,12 @@
   if(!canvas)return false;
   ctx.imageSmoothingEnabled=false;
   const w=Math.max(1,Math.round(WIDTH*scale)),h=Math.max(1,Math.round(HEIGHT*scale));
+  // V8.3: use THREE genuinely different original-pixel action poses,
+  // including articulated arms and class weapons. Only damage flashes
+  // keep the V8.0 original-frame effect. No legacy character replacement.
+  if(combat&&action!=='hurt'&&root.OsPeregrinosCombatPosesV83?.draw?.(ctx,{
+   base:canvas,role,dir,action,elapsed,x,y,scale,documentRef
+  }))return true;
   if(combat){
    const pose=combatPose(action,elapsed,dir);
    ctx.save();

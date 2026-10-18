@@ -165,3 +165,5 @@ require('./inventory-v81.test.js');
 
 // Prototipo de referencia V8.2: somente as fontes oficiais, sem trocar herois.
 require('./sprite-fidelity-v82.test.js');
+// V8.3 actual three-phase arm and weapon movement drawn from approved PNGs.
+require('./combat-poses-v83.test.js');
