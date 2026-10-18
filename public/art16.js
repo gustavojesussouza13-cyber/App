@@ -517,12 +517,12 @@ function create({ctx,W,H}){
   const labelY=p.y-(studioHero?(premiumPc?110:88):pngSprite?80:illustratedV3?94:h)-5;
   g.strokeText(label,p.x,labelY);g.fillStyle=local?'#ffe4a3':'#f1edd4';g.fillText(label,p.x,labelY);g.restore();
  }
- function npcActor(g,n,active,finished,now){
+ function npcActor(g,n,active,finished,now,playerX,playerY){
   const x=n.x,y=n.y;drawShadow(g,x,y,42);
   const premiumPc=Boolean(desktopCharactersV3?.enabled);
   // V4 visual-only: one frontal static image per existing server NPC.
   // During loading or errors retain the existing atelier / V3 renderers.
-  const npcV4Drawn=Boolean(npcV4Review?.drawNpc(g,n,now,{world25d:useAurora25d}));
+  const npcV4Drawn=Boolean(npcV4Review?.drawNpc(g,n,now,{world25d:useAurora25d,playerX,playerY}));
   const studioNpc=!npcV4Drawn&&Boolean(spriteStudio?.drawNpc(g,n,now,{desktopPremium:premiumPc}));
   const pngNpc=!npcV4Drawn&&!studioNpc&&Boolean(desktopSprites?.drawNpc(g,n,now));
   const illustratedNpcV3=!npcV4Drawn&&!studioNpc&&!pngNpc&&Boolean(desktopCharactersV3?.drawNpc(g,n,now));
@@ -781,7 +781,7 @@ function create({ctx,W,H}){
    actors.push({depth:b.y-2,paint:()=>kingdomBase(ctx,b,now)});
   }
   for(const n of npcs){if(n.x<cameraX-100||n.x>cameraX+W+100||n.y<cameraY-105||n.y>cameraY+H+105)continue;
-   actors.push({depth:n.y,paint:()=>npcActor(ctx,n,n.index===storyStage,n.index!==null&&n.index<storyStage,now)});
+   actors.push({depth:n.y,paint:()=>npcActor(ctx,n,n.index===storyStage,n.index!==null&&n.index<storyStage,now,x,y)});
   }
   for(const m of monsters){const margin=types[Math.max(0,m.species|0)]==='dragao'?(m.boss?310:200):['morcego','serpente','fera','escorpiao','fantasma','vespa','cavaleiro','sentinela','basilisco','anjo-caido'].includes(types[Math.max(0,m.species|0)])?(m.boss?220:155):90;
    if(m.x<cameraX-margin||m.x>cameraX+W+margin||m.y<cameraY-margin||m.y>cameraY+H+margin)continue;actors.push({depth:m.y,paint:()=>monster(ctx,m,target===m.id,now,monsterActions.get(m.id))})}

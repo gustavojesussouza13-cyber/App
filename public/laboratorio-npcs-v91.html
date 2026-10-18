@@ -1,0 +1,62 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Os Peregrinos — NPCs V9.1: parecerem vivos</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,sans-serif}*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(ellipse at top,#163f39,#081c1d 60%);color:#e9d8bb}
+main{max-width:1030px;margin:auto;padding:20px 16px 40px}
+h1{font:600 clamp(25px,5vw,36px) Georgia,serif;color:#e8c489}
+p{line-height:1.6;max-width:850px;color:#c7d8cf}
+button{padding:10px 15px;border:2px solid #c8a36f;background:#263c36;color:#f5deb4;font:700 14px system-ui;cursor:pointer}
+button[aria-pressed="true"]{background:#836235;color:white}
+.controls{display:flex;flex-wrap:wrap;gap:10px;margin:16px 0}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(205px,1fr));gap:15px}
+.card{background:#102725;border:2px solid #8d7952;padding:8px;text-align:center}
+canvas{display:block;width:192px;height:176px;max-width:100%;image-rendering:pixelated;margin:auto}
+.card b{display:block;color:#f5dca5;margin-top:7px}.card small{color:#a5c3b4}
+footer{margin-top:20px;color:#a3bcb3;font-size:12px}
+</style></head><body><main>
+<h1>✦ NPCs vivos — laboratório V9.1</h1>
+<p>Os personagens permanecem exatamente nos seus lugares: usamos os 56 PNGs originais aprovados, sem desenhar outro corpo por cima. Compare a respiração de até dois pixels e as reações discretas quando o jogador está perto. A movimentação de caminhada, piscadas e gestos próprios ainda requer quadros de animação originais.</p>
+<div class="controls">
+<button id="life" type="button" aria-pressed="true">Vida sutil: ligada</button>
+<button id="near" type="button" aria-pressed="true">Jogador próximo: sim</button>
+</div>
+<div id="status" role="status">Carregando sprites originais…</div>
+<div id="grid" class="grid"></div>
+<footer>Prévia experimental. A edição V9.1 é somente visual: nenhuma posição, rota, missão, guilda ou persistência de NPC foi alterada.</footer>
+</main>
+<script src="/npcs-v4.js?v=npc-v91-living-idles-20261018"></script><script>
+(()=>{
+ const ids=['historia-0','historia-3','historia-12','historia-21','historia-29','morador-1','morador-5','morador-11'];
+ const grid=document.getElementById('grid'),status=document.getElementById('status'),life=document.getElementById('life'),near=document.getElementById('near');
+ let living=true,playerNear=true;
+ const renderer=window.OsPeregrinosNPCsV4.create({windowRef:window,allowMobile:true});
+ const cards=ids.map(id=>{
+  const card=document.createElement('div');card.className='card';
+  const canvas=document.createElement('canvas');canvas.width=192;canvas.height=176;
+  const title=document.createElement('b');title.textContent=id.replace('historia-','Personagem ').replace('morador-','Morador ');
+  const sub=document.createElement('small');sub.textContent='PNG 64×80 — corpo inteiro';
+  card.append(canvas,title,sub);grid.append(card);
+  return {id,ctx:canvas.getContext('2d',{alpha:true})};
+ });
+ renderer.preload(ids);
+ function tick(now){
+  let drawn=0;
+  for(const {id,ctx} of cards){
+   ctx.clearRect(0,0,192,176);ctx.imageSmoothingEnabled=false;
+   ctx.fillStyle='#304a3d';ctx.fillRect(0,129,192,47);
+   ctx.fillStyle='#536847';for(let x=0;x<192;x+=16)ctx.fillRect(x,133+(x%3),9,2);
+   ctx.fillStyle='#182924';ctx.fillRect(74,150,47,5);
+   const drawnNpc=renderer.drawNpc(ctx,{id,x:96,y:153},now,{world25d:true,alive:living,
+    playerX:playerNear?100:-400,playerY:playerNear?150:-400});
+   if(drawnNpc)drawn++;
+  }
+  status.textContent=drawn+' de '+ids.length+' PNGs visíveis · 1 sprite original por personagem · sem deslocamento da posição.';
+  requestAnimationFrame(tick);
+ }
+ function toggle(btn,on,text){btn.setAttribute('aria-pressed',String(on));btn.textContent=text}
+ life.onclick=()=>{living=!living;toggle(life,living,'Vida sutil: '+(living?'ligada':'desligada'))};
+ near.onclick=()=>{playerNear=!playerNear;toggle(near,playerNear,'Jogador próximo: '+(playerNear?'sim':'não'))};
+ requestAnimationFrame(tick);
+})();
+</script></body></html>

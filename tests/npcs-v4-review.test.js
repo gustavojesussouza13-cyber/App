@@ -94,7 +94,7 @@ test('V4 NPC art precedes unchanged previous renderers and preserves 3D fortress
  const prev=art.indexOf('const illustratedNpcV3=!npcV4Drawn&&!studioNpc&&!pngNpc&&Boolean');
  assert.ok(first>0&&studio>first&&prev>studio);
  assert.ok(art.includes('const nameY=y-(npcV4Drawn?(useAurora25d?129:113)'));
- assert.ok(html.includes('/npcs-v4.js?v=npc-v4-static-review-20261017'));
+ assert.ok(html.includes('/npcs-v4.js?v=npc-v91-living-idles-20261018'));
  assert.ok(html.indexOf('/npcs-v4.js')<html.indexOf('/art16.js'));
  assert.equal(npcV4.TOTAL,56);
  assert.equal(npcV4.WIDTH,64);assert.equal(npcV4.HEIGHT,80);

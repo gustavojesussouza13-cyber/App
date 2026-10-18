@@ -180,3 +180,6 @@ require('./peregrino-v85.test.js');
 require('./peregrino-personalizacao-v87.test.js');
 // Engine-only approved PNG V8.6, replacing outdated gray-slide border artifacts.
 require('./peregrino-png-v86.test.js');
+
+// V9.1: living NPCs retain entire original 64x80 artwork and world anchors.
+require('./npcs-living-v91.test.js');
