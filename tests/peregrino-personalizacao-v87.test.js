@@ -18,6 +18,10 @@ test('V8.7 removes real cloak pixels, paints back tunic; cape and tunic are inde
  const same=new Uint8ClampedArray(original);a.repaintRGBA(same,app.DEFAULT,0,0);assert.deepEqual(same,original);
  const remove=new Uint8ClampedArray(original);a.repaintRGBA(remove,{...app.DEFAULT,cape:'sem_capa'},0,0);
  assert.equal(remove[at(15,60)+3],0,'fabric silhouette removed');
+ const hem=new Uint8ClampedArray(original);
+ hem.set([221,181,112,255],at(15,65));
+ a.repaintRGBA(hem,{...app.DEFAULT,cape:'sem_capa'},0,0);
+ assert.equal(hem[at(15,65)+3],0,'gold cape hem disappears, rather than floating after removal');
  assert.equal(remove[at(31,60)+3],255,'stitched tunic painted below old cloak');
  assert.notDeepEqual(remove.slice(at(31,60),at(31,60)+3),original.slice(at(31,60),at(31,60)+3));
  const cloak=new Uint8ClampedArray(original);a.repaintRGBA(cloak,{...app.DEFAULT,cape:'rosa'},0,0);
