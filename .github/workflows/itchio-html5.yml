@@ -1,0 +1,37 @@
+name: Gerar ZIP HTML5 itch.io
+on:
+  push:
+    branches: [os-peregrinos-online]
+    paths:
+      - 'itchio/**'
+      - '.github/workflows/itchio-html5.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  preparar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Empacotar index.html
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build
+          cp itchio/index.html build/index.html
+          cp itchio/LEIA-ME.txt build/LEIA-ME.txt
+          (
+            cd build
+            zip -9 ../Os_Peregrinos_Itchio_HTML5.zip index.html LEIA-ME.txt
+          )
+          unzip -t Os_Peregrinos_Itchio_HTML5.zip
+          test -s Os_Peregrinos_Itchio_HTML5.zip
+          if unzip -Z1 Os_Peregrinos_Itchio_HTML5.zip | grep -q 'server.js'; then exit 1; fi
+      - name: Disponibilizar o ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: Os_Peregrinos_Itchio_HTML5
+          path: Os_Peregrinos_Itchio_HTML5.zip
+          if-no-files-found: error
