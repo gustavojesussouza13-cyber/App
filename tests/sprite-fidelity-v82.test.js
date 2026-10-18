@@ -7,10 +7,10 @@ test('V8.2 fidelity lab loads EXACT in-game source assets, never generative repl
   assert.ok(html.includes(p));
  }
  assert.ok(html.includes('const body=sourceCanvas(role,dir,phase)'));
- assert.ok(html.includes('if(showEffects)effects('));
+ assert.ok(html.includes('if(!showEffects)return body')); assert.ok(html.includes('OsPeregrinosCombatPosesV83?.render'));
  assert.ok(html.includes('canvas.toDataURL'));
  assert.ok(html.includes('Não é uma nova interpretação do personagem'));
- assert.ok(html.includes('protótipo, não pronto para integrar ao combate'));
+ assert.ok(html.includes('protótipo artístico para revisão'));
 });
 test('V8.2 source pixels are drawn with no interpolation, fixed technical frame dimensions',()=>{
  assert.ok(html.includes('w:128,h:160,cols:4'));

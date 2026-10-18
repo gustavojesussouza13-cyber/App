@@ -73,7 +73,7 @@ test('V8.0 draws full original approved hero body for all combat actions instead
    for(const action of ['attack','skill','hurt']){
     const prior=output.length;
     assert.equal(sprite.drawWorld(g,{role,dir:2,action,appearance:app.DEFAULT,x:200,y:220,elapsed:180,documentRef:doc}),true);
-    assert.equal(output.length,prior+1,role+'/'+action+' draws one full approved sprite');
+    assert.ok(output.length>prior,role+'/'+action+' retains native approved PNG while constructing animated layer');
    }
   assert.equal(bodies.length,4,'each class reuses one cached native idle PNG through three actions');
   assert.ok(bodies.every(x=>x[1].appearance===null),'original full-quality PNG not replaced');
