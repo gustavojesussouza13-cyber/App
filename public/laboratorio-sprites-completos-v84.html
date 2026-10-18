@@ -30,7 +30,7 @@ border:2px solid #a18a58;min-height:240px;padding:18px;display:grid;place-items:
 <label>Direção<select id="dir"><option value="2">Frente</option><option value="0">Costas</option><option value="1">Direita</option><option value="3">Esquerda</option></select></label>
 <label>Ação<select id="action"><option value="attack">Ataque</option><option value="skill">Habilidade</option></select></label>
 <label><span>Animação</span><span><input id="effects" type="checkbox" checked> Mostrar armas e efeitos além do corpo</span></label>
-<button id="download">Salvar spritesheet PNG</button>
+<button id="download">Salvar spritesheet PNG</button> <a id="originalAtlas" download href="/assets/combat-v84/peregrino-corpo-inteiro-v84.png" style="display:inline-flex;align-items:center;padding:9px;border:1px solid #ad9366;border-radius:4px;color:#fff0ce;text-decoration:none">Baixar PNG técnico do corpo (sem efeitos)</a>
 </div><p class="status" id="status" role="status">Carregando os arquivos oficiais…</p></section>
 <div class="preview">
 <section><h2>Sprite original</h2><div class="canvas-box"><canvas id="baseline" width="128" height="160"></canvas></div>
@@ -154,6 +154,7 @@ setInterval(()=>{
 async function render(){
  const current=++token,role=$('role').value,dir=Number($('dir').value),action=$('action').value,showFx=$('effects').checked;
  const meta=ASSETS[role],status=$('status');
+ $('originalAtlas').href='/assets/combat-v84/'+role+'-corpo-inteiro-v84.png';
  status.textContent='Lendo PNG original '+role+' diretamente dos arquivos do jogo…';
  if(!images.has(role)){
   const im=await new Promise((resolve,reject)=>{
