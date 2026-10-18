@@ -75,7 +75,16 @@
    const i=(y*WIDTH+x)*4;if(data[i+3]<12)continue;
    const r=data[i],g=data[i+1],b=data[i+2],blue=bluePixel(r,g,b);
    const outer=clothArea(x,y,dir,row),shade=(r*.24+g*.35+b*.41);
-   if(remove&&outer&&blue){
+   // Also clear the old embroidered hem, not just the blue fabric.
+   // Otherwise the player retains a floating gold silhouette after taking
+   // off the cape. Restricted to low cloak hems: no lantern, backpack or boots.
+   const goldenTrim=r>135&&r>g+12&&g>b+8&&g>98;
+   const ivoryTrim=r>167&&g>145&&b>113&&Math.abs(r-g)<65&&g>b+8;
+   const rearHem=dir===0&&y>=55&&y<=70&&
+    (x<21||x>43||y>=66)&&(goldenTrim||ivoryTrim);
+   const sideHem=(dir===1||dir===3)&&y>=53&&y<=70&&
+    (goldenTrim||ivoryTrim)&&(dir===1?x<23:x>41);
+   if(remove&&outer&&(blue||rearHem||sideHem)){
     underlyingPixel(data,i,x,y,dir);continue;
    }
    if(blue&&outer&&cape){tint(data,i,cape,shade);continue}
