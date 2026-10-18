@@ -33,5 +33,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Os_Peregrinos_Itchio_HTML5
-          path: Os_Peregrinos_Itchio_HTML5.zip
+          path: build/
           if-no-files-found: error
