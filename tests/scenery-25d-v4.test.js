@@ -167,3 +167,6 @@ require('./inventory-v81.test.js');
 require('./sprite-fidelity-v82.test.js');
 // V8.3 actual three-phase arm and weapon movement drawn from approved PNGs.
 require('./combat-poses-v83.test.js');
+
+// V8.4 full-figure pixel-reposition artwork (isolated lab; game untouched).
+require('./full-body-poses-v84.test.js');
