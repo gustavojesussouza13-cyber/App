@@ -309,6 +309,20 @@ const httpServer = http.createServer((req,res)=>{
     if(ext==='.html'&&decoded!=='/jogo.html'){
       return fs.readFile(filename,'utf8',(readErr,source)=>{
         if(readErr)return reply(res,500,'Erro ao carregar página');
+        // Somente o Mundo Aberto com este parâmetro permite ser incorporado pelo itch.io.
+        // As demais páginas continuam com X-Frame-Options: SAMEORIGIN.
+        if(decoded==='/mundo.html'&&u.searchParams.get('itch_embed')==='1'){
+          // Na visualização incorporada não carregamos publicidade do AdSense.
+          const html=renderPublicText(source,req).replace(
+            /<script\s+async\s+src="https:\/\/pagead2\.googlesyndication\.com\/pagead\/js\/adsbygoogle\.js\?client=[^"]+"\s+crossorigin="anonymous"><\/script>/i,'');
+          return res.writeHead(200,{
+            'Content-Type':MIME[ext],
+            'Cache-Control':'no-store',
+            'X-Content-Type-Options':'nosniff',
+            'Referrer-Policy':'strict-origin-when-cross-origin',
+            'Content-Security-Policy':"frame-ancestors 'self' https://itch.io https://*.itch.io https://itch.zone https://*.itch.zone https://v6p9d9t4.ssl.hwcdn.net"
+          }).end(html);
+        }
         reply(res,200,renderPublicText(source,req),MIME[ext]);
       });
     }
