@@ -1401,6 +1401,7 @@ function canvasDraw(now,dt){
   }
   classicRenderer.render({world25dActive,foregroundProps:world25dActive?world25d?.foregroundProps||[]:[],zone:session.zone,zones:session.zones,zoneBiome:session.region?.id===session.zone?session.region.biome:null,x:session.x,y:session.y,kingdomBases:visibleKingdomBases,
     name:session.name||'PEREGRINO',role:session.role,appearance:session.appearance,dir:session.dir,
+    dead:Boolean(session.characters&&Number(session.characters.hp)<=0),
     monsters:monsterMotion.draw([...session.monsters.values()],dt),players:drawPlayers,projectiles,
     monsterActions:spriteActions.monsters,playerActions:spriteActions.players,fallen:spriteActions.fallen,
     heroPose:now-spriteActions.localHurtAt<310?{action:'hurt',at:spriteActions.localHurtAt}:{action:'attack',at:lastAction},

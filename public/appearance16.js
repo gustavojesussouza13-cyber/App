@@ -10,10 +10,10 @@
  const OPTIONS=Object.freeze({
   skin:{claro:'Pele clara',dourado:'Pele dourada',oliva:'Pele oliva',bronze:'Pele bronzeada',escuro:'Pele escura',profundo:'Pele retinta'},
   hairStyle:{curto:'Curto',medio:'Médio',longo:'Longo',tranca:'Trança',rabo:'Rabo de cavalo',raspado:'Raspado'},
-  hairColor:{castanho:'Castanho',preto:'Preto',loiro:'Loiro',ruivo:'Ruivo',branco:'Branco',azul:'Azul profundo'},
+  hairColor:{castanho:'Castanho',preto:'Preto',loiro:'Loiro',ruivo:'Ruivo',branco:'Branco',azul:'Azul profundo',rosa:'Rosa'},
   eyes:{castanho:'Castanhos',azul:'Azuis',verde:'Verdes',mel:'Âmbar',cinza:'Cinzentos'},
-  outfit:{original:'Traje da classe',vinho:'Vinho e couro',floresta:'Verde musgo',safira:'Azul safira',ocre:'Ocre dourado',violeta:'Violeta'},
-  cape:{nenhuma:'Sem capa',vinho:'Capa vinho',marinho:'Capa azul',musgo:'Capa verde',marfim:'Capa marfim'},
+  outfit:{original:'Traje da classe',vinho:'Vinho e couro',floresta:'Verde musgo',safira:'Azul safira',ocre:'Ocre dourado',violeta:'Violeta',rosa:'Rosa peregrino',marfim:'Marfim'},
+  cape:{nenhuma:'Sem capa',vinho:'Capa vinho',marinho:'Capa azul',musgo:'Capa verde',marfim:'Capa marfim',rosa:'Capa rosa'},
   accessory:{nenhum:'Nenhum',tiara:'Tiara',brinco:'Brinco',amuleto:'Amuleto'}
  });
  const DEFAULT=Object.freeze({skin:'dourado',hairStyle:'curto',hairColor:'castanho',eyes:'castanho',outfit:'original',cape:'nenhuma',accessory:'nenhum'});
@@ -25,12 +25,12 @@
  const HAIR=Object.freeze({
   castanho:['#50382b','#8c5940'],preto:['#222830','#50515a'],
   loiro:['#a17a3b','#ecc879'],ruivo:['#863e30','#cd7950'],
-  branco:['#acb4b5','#f0e5d4'],azul:['#303e63','#647fbc']
+  branco:['#acb4b5','#f0e5d4'],azul:['#303e63','#647fbc'],rosa:['#9f527c','#e2a1c0']
  });
  const EYES=Object.freeze({castanho:'#50352a',azul:'#487fba',verde:'#3b8f67',mel:'#bc8741',cinza:'#6e8291'});
- const COATS=Object.freeze({vinho:['#813f50','#cc7881'],floresta:['#396b51','#84b18a'],
+ const COATS=Object.freeze({rosa:['#b95785','#f2a8c5'],marfim:['#b8b1a5','#eee2ca'],vinho:['#813f50','#cc7881'],floresta:['#396b51','#84b18a'],
   safira:['#405e8d','#8bafd8'],ocre:['#a17b3f','#e0bc7a'],violeta:['#67507d','#bba2ce']});
- const CAPES=Object.freeze({vinho:'#75354c',marinho:'#354c73',musgo:'#456547',marfim:'#ddd2b2'});
+ const CAPES=Object.freeze({vinho:'#75354c',marinho:'#354c73',musgo:'#456547',marfim:'#ddd2b2',rosa:'#d777a5'});
  const HEX=/^#[0-9a-f]{6}$/i;
  function normalize(input){
   const out={};

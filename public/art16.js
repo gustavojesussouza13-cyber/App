@@ -433,7 +433,7 @@ function create({ctx,W,H}){
   const key=heroSheets[p.role]||'gustavo_andar',w=53,h=65;
   drawShadow(g,p.x,p.y,w);
   const dir=Number.isInteger(p.dir)?p.dir:2;
-  const state={moving:moved,attacking,hurt:pose?.action==='hurt',
+  const state={moving:moved,attacking,dead:Boolean(p.dead),hurt:pose?.action==='hurt',
    elapsed:pose?Math.max(0,now-pose.at):0,
    seed:local?0:(p.name?.length||0)*107};
   // Qualidade PC V5: o Atelier tem rostos, classe e animações completas.
@@ -450,7 +450,15 @@ function create({ctx,W,H}){
   // for a tiny legacy hero. Keep class, appearance, scale and foot anchor.
   const combatAction=state.hurt?'hurt':attacking?(skill?'skill':'attack'):
    moved?'walk':'idle';
-  const customizedHero=Boolean(useAurora25d&&!state.dead&&
+  // V8.5 preview: the new Peregrino always keeps the SAME 64x80 art across
+  // idle/walk/hurt/death/attack/skill. Other approved classes are unchanged.
+  const newPeregrinoHero=Boolean(useAurora25d&&p.role==='peregrino'&&
+    window.OsPeregrinosPeregrinoV85?.draw(g,{
+      x:p.x,y:p.y,dir,appearance:p.appearance,now,
+      action:state.dead?'death':combatAction,elapsed:state.elapsed,
+      scale:1.45,glow:local
+    }));
+  const customizedHero=!newPeregrinoHero&&Boolean(useAurora25d&&!state.dead&&
     window.OsPeregrinosAppearanceSpriteV76?.drawWorld(g,{
       role:p.role,x:p.x,y:p.y,dir,appearance:p.appearance,
       action:combatAction,frame:Math.floor(now/118),elapsed:state.elapsed
@@ -469,7 +477,7 @@ function create({ctx,W,H}){
       role:p.role,x:p.x,y:p.y,dir,appearance:p.appearance,now,
       action:moved?'walk':'idle',glow:local,scale:1.45
     }));
-  if(customizedHero||runwayHero||approvedHero||(useAurora25d&&
+  if(newPeregrinoHero||customizedHero||runwayHero||approvedHero||(useAurora25d&&
    window.OsPeregrinosHeroesAurora25D?.draw(g,{
     role:p.role,x:p.x,y:p.y,dir,appearance:p.appearance,
     action:state.hurt?'hurt':attacking?'attack':moved?'walk':'idle',
@@ -778,7 +786,7 @@ function create({ctx,W,H}){
   for(const m of fallen){const margin=types[Math.max(0,m.species|0)]==='dragao'?(m.boss?310:200):['morcego','serpente','fera','escorpiao','fantasma','vespa','cavaleiro','sentinela','basilisco','anjo-caido'].includes(types[Math.max(0,m.species|0)])?(m.boss?220:155):90;
    if(m.x<cameraX-margin||m.x>cameraX+W+margin||m.y<cameraY-margin||m.y>cameraY+H+margin)continue;actors.push({depth:m.y-1,paint:()=>monster(ctx,m,false,now,{action:'death',at:m.defeatedAt})})}
   for(const p of players){if(p.x<cameraX-75||p.x>cameraX+W+75||p.y<cameraY-95||p.y>cameraY+H+75)continue;actors.push({depth:p.y,paint:()=>character(ctx,p,false,now,p.moving!==false,playerActions.has(p.name)&&now-playerActions.get(p.name).at<390&&playerActions.get(p.name).action==='attack',playerActions.get(p.name))})}
-  actors.push({depth:y,paint:()=>character(ctx,{name,role,appearance,x,y,dir},true,now,moving,now-lastAction<370,heroPose||{action:'attack',at:lastAction},Boolean(lastActionWasSkill))});
+  actors.push({depth:y,paint:()=>character(ctx,{name,role,appearance,x,y,dir,dead:Boolean(opt.dead)},true,now,moving,now-lastAction<370,heroPose||{action:'attack',at:lastAction},Boolean(lastActionWasSkill))});
   actors.sort((a,b)=>a.depth-b.depth);
   for(const a of actors)a.paint();
   for(const shot of projectiles)drawProjectile(ctx,shot);

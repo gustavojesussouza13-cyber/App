@@ -173,3 +173,5 @@ require('./full-body-poses-v84.test.js');
 
 // Final 6x4 PNG sprite sheets: decode indexed/rgba originals, verify PNG exports.
 require('./png-combat-v84.test.js');
+// New Guardião-size Peregrino aesthetic: 44 transparent frames and live preview.
+require('./peregrino-v85.test.js');

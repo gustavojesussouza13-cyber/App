@@ -18,12 +18,12 @@
   curandeiro:'/assets/approved-classes/curandeiro-sprites-3x2-64x80.png'
  });
  function loaded(role){
-  if(role==='peregrino')return !!root.OsPeregrinosRunway25D?.isReady?.();
+  if(role==='peregrino')return !!root.OsPeregrinosPeregrinoV85?.isReady?.()||!!root.OsPeregrinosRunway25D?.isReady?.();
   return !!root.OsPeregrinosApprovedClasses25D?.isReady?.(role);
  }
  function ensureLoaded(role){
   if(!Object.hasOwn(ROLES,role))return Promise.resolve(false);
-  const p=role==='peregrino'?root.OsPeregrinosRunway25D?.load?.():
+  const p=role==='peregrino'?(root.OsPeregrinosPeregrinoV85?.load?.()||root.OsPeregrinosRunway25D?.load?.()):
     root.OsPeregrinosApprovedClasses25D?.load?.(role);
   return p&&typeof p.then==='function'?p:Promise.resolve(false);
  }
@@ -31,6 +31,11 @@
   if(!Object.hasOwn(ROLES,role)||!ctx?.drawImage)return false;
   ctx.imageSmoothingEnabled=false;
   if(!loaded(role))return false;
+  // Preview uses the real NEW Peregrino sheet; older PNG remains safe fallback.
+  if(role==='peregrino'&&root.OsPeregrinosPeregrinoV85?.isReady?.())
+   return !!root.OsPeregrinosPeregrinoV85.draw(ctx,{
+    x:64,y:158,dir,appearance,action,frame,scale:1.75,now:frame*135,glow:false
+   });
   // Don't collapse the four source walk frames into odd/even idle switching.
   const walking=action==='walk';
   return !!root.OsPeregrinosAppearanceSpriteV76?.draw(ctx,{
