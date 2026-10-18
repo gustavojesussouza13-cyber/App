@@ -60,3 +60,28 @@ test('V8.1 keyboard can bind an item to an EMPTY slot, and menu canvas icons ove
  assert.ok(css.includes('.canvas-shell #opInventoryPortrait'));
  assert.ok(!src.includes('.cloneNode(true)'), 'canvas clones discard hand-painted pixels');
 });
+
+
+test('V8.9 eight-slot quickbar is positioned INSIDE the game frame at its lower-right corner',()=>{
+ const html=read('mundo.html'),style=read('inventory-v81.css'),script=read('inventory-v81.js');
+ const start=html.indexOf('<div class="canvas-shell" id="canvasShell">');
+ const end=html.indexOf('<div class="hotbar">',start);
+ const current=html.slice(start,end);
+ assert.ok(start>=0&&end>start,'game frame exists');
+ assert.equal((html.match(/id="opQuickbar"/g)||[]).length,1,'only one HUD quickbar; avoid duplicates');
+ assert.ok(current.includes('id="opQuickbar" class="op-quickbar-hud"'));
+ assert.ok(current.indexOf('id="game"')<current.indexOf('id="opQuickbar"'));
+ assert.ok(current.indexOf('id="opQuickbar"')<current.indexOf('id="touchControls"'));
+ assert.ok(html.includes('role="toolbar" aria-label="Barra rápida de itens, teclas 1 a 8"'));
+ assert.ok(html.includes('/inventory-v81.css?v=quickbar-in-game-corner-v89'),'Chrome reloads moved HUD CSS');
+ assert.ok(style.includes('#canvasShell #opQuickbar{')&&style.includes('position:absolute;right:'));
+ assert.ok(style.includes('bottom:max(9px,env(safe-area-inset-bottom))'));
+ assert.ok(style.includes('grid-template-columns:repeat(8,minmax(0,1fr))'));
+ assert.ok(style.includes('#canvasShell:has(.touch-controls:not([hidden])) #opQuickbar'));
+ assert.ok(style.includes('+ 119px'),'touch quickbar must not overlay the four combat buttons');
+ assert.ok(style.includes('#canvasShell:has(#opInventory:not([hidden])) #opQuickbar'));
+ assert.ok(style.includes('#canvasShell:has(#welcomeOverlay:not([hidden])) #opQuickbar'));
+ assert.ok(script.includes('for(let i=0;i<QUICK_COUNT;i++)'));
+ assert.ok(script.includes('slot(quickbar,item,i,{quick:true})'));
+ assert.equal(inv.QUICK_COUNT,8);
+});

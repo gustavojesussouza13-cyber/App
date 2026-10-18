@@ -114,3 +114,69 @@
 .canvas-shell #opInventoryPortrait{width:128px;height:160px;max-height:157px;image-rendering:pixelated;cursor:default;touch-action:auto}
 @media(max-width:650px){.canvas-shell #opInventoryPortrait{width:88px;height:110px}}
 @media(max-height:490px){.canvas-shell #opInventoryPortrait{width:80px;height:100px}}
+
+
+/*
+ * V8.9 — eight real quick slots ON the game canvas, bottom-right.
+ * Inventory dialog remains separate, only shown with I/the backpack button.
+ * These rules deliberately apply in windowed and fullscreen game modes.
+ */
+#canvasShell #opQuickbar{
+ position:absolute;right:max(9px,env(safe-area-inset-right));
+ bottom:max(9px,env(safe-area-inset-bottom));left:auto;top:auto;
+ z-index:10;display:grid;grid-template-columns:repeat(8,minmax(0,1fr));
+ gap:3px;align-items:center;justify-content:end;
+ width:max-content;max-width:calc(100% - 18px);
+ padding:4px;background:#10221ecc;border:2px solid #9b8251;
+ box-shadow:0 2px 0 #121713,0 4px 13px #000a,inset 0 0 0 1px #dfbe7950;
+ border-radius:2px;margin:0;pointer-events:auto;
+}
+#canvasShell #opQuickbar[hidden],
+#canvasShell:has(#opInventory:not([hidden])) #opQuickbar,
+#canvasShell:has(#welcomeOverlay:not([hidden])) #opQuickbar,
+#canvasShell:has(#npcDialogue:not([hidden])) #opQuickbar{display:none!important}
+#canvasShell #opQuickbar .op-quick-slot{
+ box-sizing:border-box;position:relative;
+ width:clamp(24px,3.7vw,46px);min-width:0;
+ height:clamp(24px,3.7vw,46px);flex:none;
+ border:2px solid #a99163;border-top-color:#d1b680;
+ border-left-color:#d1b680;border-bottom-color:#80613f;
+ border-right-color:#80613f;background:#0b1717;
+ border-radius:1px;box-shadow:inset 2px 2px 0 #0009;
+ cursor:pointer;touch-action:manipulation;padding:1px;
+}
+#canvasShell #opQuickbar .op-quick-slot:hover,
+#canvasShell #opQuickbar .op-quick-slot:focus-visible{
+ border-color:#ffdd9b;background:#26382c;outline:2px solid #ffe6ae;
+ outline-offset:1px;
+}
+#canvasShell #opQuickbar .op-quick-slot .op-hotkey{
+ color:#f1dab0;font:800 10px/1 monospace;top:2px;left:2px;
+}
+#canvasShell #opQuickbar .op-quick-slot .op-item-count{
+ right:2px;bottom:1px;font:bold 11px/1 monospace;color:#fff4d5;
+ text-shadow:1px 1px #000,-1px -1px #000;
+}
+.canvas-shell #opQuickbar canvas.op-item-icon{
+ width:100%;height:100%;max-width:39px;max-height:39px;
+ aspect-ratio:1;image-rendering:pixelated;image-rendering:crisp-edges;
+ touch-action:manipulation;pointer-events:none;object-fit:contain;
+}
+@media(pointer:coarse){
+ /* The 2x2 battle controls occupy the actual bottom-right corner.
+    Keep all eight slots immediately ABOVE them, still inside the map. */
+ #canvasShell:has(.touch-controls:not([hidden])) #opQuickbar{
+  bottom:calc(max(9px,env(safe-area-inset-bottom)) + 119px);
+  right:max(8px,env(safe-area-inset-right));
+  gap:2px;padding:3px;
+ }
+ #canvasShell #opQuickbar .op-quick-slot{
+  width:clamp(24px,3.1vw,40px);height:clamp(24px,3.1vw,40px);
+ }
+}
+@media(max-width:600px){
+ #canvasShell #opQuickbar{gap:2px;padding:3px;border-width:1px}
+ #canvasShell #opQuickbar .op-quick-slot{width:clamp(24px,6.7vw,34px);height:clamp(24px,6.7vw,34px);border-width:1px}
+ #canvasShell #opQuickbar .op-quick-slot .op-hotkey{font-size:9px}
+ #canvasShell #opQuickbar .op-quick-slot .op-item-count{font-size:10px}
+}
