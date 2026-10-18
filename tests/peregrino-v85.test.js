@@ -56,3 +56,18 @@ test('V8.5 is experimental-only, retains all previous classes and avoids old att
  for(const role of ['guardiao','arqueiro','curandeiro'])assert.ok(preview.includes(role));
  assert.ok(fs.existsSync(path.join(root,'public/laboratorio-peregrino-v85.html')));
 });
+
+test('V8.8 new Peregrino never draws the obsolete Runway sprite over its own body',()=>{
+ const game=read('art16.js'),page=read('mundo.html');
+ const modern=game.indexOf('const newPeregrinoHero=Boolean(');
+ const customized=game.indexOf('const customizedHero=!newPeregrinoHero&&Boolean(');
+ const old=game.indexOf('const runwayHero=!newPeregrinoHero&&!customizedHero&&Boolean(');
+ const select=game.indexOf('if(newPeregrinoHero||customizedHero||runwayHero||approvedHero');
+ assert.ok(modern>=0&&modern<customized&&customized<old&&old<select,
+  'only one Peregrino full-body renderer may draw in the current frame');
+ assert.ok(game.includes('newPeregrinoHero||customizedHero||runwayHero||approvedHero'));
+ assert.ok(!game.includes('const runwayHero=!customizedHero&&Boolean('),
+  'old painter unconditionally overlaid the approved V8.6 sprite');
+ assert.ok(page.includes('peregrino-v88-single-painter-no-double-sprite-20261018'),
+  'force fresh JS on Android Chrome instead of cached double-painter implementation');
+});

@@ -463,7 +463,9 @@ function create({ctx,W,H}){
       role:p.role,x:p.x,y:p.y,dir,appearance:p.appearance,
       action:combatAction,frame:Math.floor(now/118),elapsed:state.elapsed
     }));
-  const runwayHero=!customizedHero&&Boolean(useAurora25d&&p.role==='peregrino'&&
+  // Crucial: V8.6 already painted this Peregrino at full native scale.
+  // Never draw the obsolete Runway sheet *over* the modern one.
+  const runwayHero=!newPeregrinoHero&&!customizedHero&&Boolean(useAurora25d&&p.role==='peregrino'&&
    !state.hurt&&!attacking&&!state.dead&&
    window.OsPeregrinosRunway25D?.draw(g,{
     x:p.x,y:p.y,dir,appearance:p.appearance,now,moving:moved,
