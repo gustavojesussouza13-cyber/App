@@ -47,7 +47,7 @@ test('V8.1 real overlay opens via I and Escape, blocks movement, syncs inventory
  assert.ok(!module.includes("send('equip'"));
  assert.ok(!module.includes("item.buy"));
  assert.ok(style.includes('#opInventory[hidden]'));
- assert.ok(html.includes('inventory-v81.css?v=pixel-inventory-v81'));
+ assert.ok(html.includes('inventory-v81.css?v=quickbar-in-game-corner-v89'));
  assert.ok(html.includes('inventory-v81.js?v=handpainted-icons-v81'));
  assert.ok(html.includes('mmo.js?v=interactive-inventory-v81'));
 });
