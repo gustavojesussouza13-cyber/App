@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="pt-BR"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#10151e">
+<title>Os Peregrinos MMORPG — itch.io</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#0b151c;color:#fff;font-family:system-ui,Segoe UI,sans-serif}
+#game{position:fixed;inset:0;width:100%;height:100%;border:0;background:#071721;display:block}
+#waiting{position:fixed;inset:0;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:12px;background:radial-gradient(circle at 50% 40%,#2b4e66,#132630 58%,#070e15);text-align:center;padding:24px;z-index:10;transition:opacity .3s,visibility .3s}
+#waiting.hidden{opacity:0;visibility:hidden;pointer-events:none}
+h1{font-family:Georgia,serif;letter-spacing:.08em;color:#ffe0a0;font-size:clamp(22px,5vw,44px);margin:0}p{margin:4px auto;max-width:540px;line-height:1.5;color:#e3ebef}
+a{color:#ffe0a0}.spin{height:36px;width:36px;border:3px solid #fff6;border-top-color:#ffd17d;border-radius:50%;animation:rotate 1s linear infinite}@keyframes rotate{to{transform:rotate(360deg)}}
+#fallback{display:none;background:#152734b8;padding:14px;border-radius:9px}#fallback.visible{display:block}
+@media(prefers-reduced-motion:reduce){.spin{animation:none}#waiting{transition:none}}
+</style></head><body>
+<!-- O jogo original roda no servidor oficial com WebSocket e banco existentes. -->
+<iframe id="game" title="Os Peregrinos — Mundo Aberto" 
+ src="https://www.cronicasdaaurora.com.br/mundo.html?itch_embed=1"
+ allow="fullscreen; autoplay; clipboard-write" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
+<div id="waiting" role="status" aria-live="polite">
+ <div class="spin" aria-hidden="true"></div>
+ <h1>OS PEREGRINOS</h1><p>Conectando ao MMORPG online...</p>
+ <p id="fallback">O servidor pode estar iniciando ou seu navegador pode bloquear páginas incorporadas. <a href="https://www.cronicasdaaurora.com.br/mundo.html" target="_blank" rel="noopener noreferrer">Jogar diretamente no site oficial</a>.</p>
+</div>
+<script>
+(()=>{const f=document.getElementById('game'),w=document.getElementById('waiting'),h=document.getElementById('fallback');
+let navigated=false;
+f.addEventListener('load',()=>{navigated=true;w.classList.add('hidden')});
+f.addEventListener('error',()=>h.classList.add('visible'));
+setTimeout(()=>{if(!navigated)h.classList.add('visible')},15000);
+})();
+</script></body></html>
