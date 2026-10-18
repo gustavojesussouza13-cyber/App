@@ -157,3 +157,26 @@ require('./appearance-v75-and-dungeon-keys.test.js');
 
 // Ecologia: uma espécie por mapa, com um chefe da mesma espécie.
 require('./region-monster-species.test.js');
+// Actor pixel-quality combat and tree/monster occlusion regression coverage.
+require('./combat-occlusion-v80.test.js');
+
+// Inventário ilustrado V8.1 — dados reais, 35 espaços, atalhos e ações no servidor.
+require('./inventory-v81.test.js');
+
+// Prototipo de referencia V8.2: somente as fontes oficiais, sem trocar herois.
+require('./sprite-fidelity-v82.test.js');
+// V8.3 actual three-phase arm and weapon movement drawn from approved PNGs.
+require('./combat-poses-v83.test.js');
+
+// V8.4 full-figure pixel-reposition artwork (isolated lab; game untouched).
+require('./full-body-poses-v84.test.js');
+
+// Final 6x4 PNG sprite sheets: decode indexed/rgba originals, verify PNG exports.
+require('./png-combat-v84.test.js');
+// New Guardião-size Peregrino aesthetic: 44 transparent frames and live preview.
+require('./peregrino-v85.test.js');
+
+// V8.7: complete server-validated appearance and no-cape artwork.
+require('./peregrino-personalizacao-v87.test.js');
+// Engine-only approved PNG V8.6, replacing outdated gray-slide border artifacts.
+require('./peregrino-png-v86.test.js');

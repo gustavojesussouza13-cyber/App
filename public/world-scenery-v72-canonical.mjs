@@ -139,6 +139,22 @@ export function copyCanonicalMap(source,{
  return Object.freeze({canvas,zone:source.zone,biome:source.biome,
   staticProps:source.objects.length,improved,fallback,modernTerrain:latest,tiles:latest?1536:0});
 }
+// Foreground sprite references must use the EXACT image and position from
+// the canonical pixel-art map. They are not alternate/approximate trees.
+export function canonicalForegroundObjects(source,{replacement=canonicalReplacement}={}){
+ if(!Array.isArray(source?.objects))return [];
+ const result=[];
+ for(const item of source.objects){
+  if(item.kind!=='tree')continue;
+  const image=replacement(item,{biome:source.biome});
+  const nw=image?.naturalWidth??image?.width,nh=image?.naturalHeight??image?.height;
+  const fit=image&&v7FitSize({nativeWidth:nw,nativeHeight:nh,maxWidth:item.w,maxHeight:item.h});
+  if(!fit)continue;
+  result.push(Object.freeze({kind:'tree',x:item.x,y:item.y,
+   w:Math.max(1,Math.round(fit.width)),h:Math.max(1,Math.round(fit.height)),image}));
+ }
+ return result;
+}
 export function buildCanonicalScenery(THREE,group,source,{v7=true}={}){
  const paint=copyCanonicalMap(source,{requireLatest:v7,mode:v7?'latest':'original',replacement:item=>v7?canonicalReplacement(item,{biome:source.biome}):null});
  if(!paint||!THREE||!group)throw Error('Mapa V7.3 indisponível ou incompleto — manter 2D até carregar toda a arte');

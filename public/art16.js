@@ -429,11 +429,11 @@ function create({ctx,W,H}){
   return role;
  }
  let useAurora25d=false;
- function character(g,p,local,now,moved,attacking=false,pose=null){
+ function character(g,p,local,now,moved,attacking=false,pose=null,skill=false){
   const key=heroSheets[p.role]||'gustavo_andar',w=53,h=65;
   drawShadow(g,p.x,p.y,w);
   const dir=Number.isInteger(p.dir)?p.dir:2;
-  const state={moving:moved,attacking,hurt:pose?.action==='hurt',
+  const state={moving:moved,attacking,dead:Boolean(p.dead),hurt:pose?.action==='hurt',
    elapsed:pose?Math.max(0,now-pose.at):0,
    seed:local?0:(p.name?.length||0)*107};
   // Qualidade PC V5: o Atelier tem rostos, classe e animações completas.
@@ -446,12 +446,26 @@ function create({ctx,W,H}){
   // O Peregrino usa PRIMEIRO os 16 quadros reais processados do Runway.
   // Para trajes personalizados e ações sem quadros (ataque/dano/morte),
   // o herói autoral de 64x80 permanece disponível como fallback.
-  const customizedHero=Boolean(useAurora25d&&!state.hurt&&!attacking&&!state.dead&&
+  // V8.0: attack, skills and hurt must NEVER swap an approved current PNG
+  // for a tiny legacy hero. Keep class, appearance, scale and foot anchor.
+  const combatAction=state.hurt?'hurt':attacking?(skill?'skill':'attack'):
+   moved?'walk':'idle';
+  // V8.5 preview: the new Peregrino always keeps the SAME 64x80 art across
+  // idle/walk/hurt/death/attack/skill. Other approved classes are unchanged.
+  const newPeregrinoHero=Boolean(useAurora25d&&p.role==='peregrino'&&
+    window.OsPeregrinosPeregrinoV85?.draw(g,{
+      x:p.x,y:p.y,dir,appearance:p.appearance,now,
+      action:state.dead?'death':combatAction,elapsed:state.elapsed,
+      scale:1.45,glow:local
+    }));
+  const customizedHero=!newPeregrinoHero&&Boolean(useAurora25d&&!state.dead&&
     window.OsPeregrinosAppearanceSpriteV76?.drawWorld(g,{
       role:p.role,x:p.x,y:p.y,dir,appearance:p.appearance,
-      action:moved?'walk':'idle',frame:Math.floor(now/118)
+      action:combatAction,frame:Math.floor(now/118),elapsed:state.elapsed
     }));
-  const runwayHero=!customizedHero&&Boolean(useAurora25d&&p.role==='peregrino'&&
+  // Crucial: V8.6 already painted this Peregrino at full native scale.
+  // Never draw the obsolete Runway sheet *over* the modern one.
+  const runwayHero=!newPeregrinoHero&&!customizedHero&&Boolean(useAurora25d&&p.role==='peregrino'&&
    !state.hurt&&!attacking&&!state.dead&&
    window.OsPeregrinosRunway25D?.draw(g,{
     x:p.x,y:p.y,dir,appearance:p.appearance,now,moving:moved,
@@ -465,7 +479,7 @@ function create({ctx,W,H}){
       role:p.role,x:p.x,y:p.y,dir,appearance:p.appearance,now,
       action:moved?'walk':'idle',glow:local,scale:1.45
     }));
-  if(customizedHero||runwayHero||approvedHero||(useAurora25d&&
+  if(newPeregrinoHero||customizedHero||runwayHero||approvedHero||(useAurora25d&&
    window.OsPeregrinosHeroesAurora25D?.draw(g,{
     role:p.role,x:p.x,y:p.y,dir,appearance:p.appearance,
     action:state.hurt?'hurt':attacking?'attack':moved?'walk':'idle',
@@ -728,7 +742,7 @@ function create({ctx,W,H}){
   }
  }
  function render(opt){
-  const {zone,zones,x,y,dir,appearance,monsters,players,projectiles=[],npcs=[],portals=[],kingdomBases=[],storyStage=0,cameraX,cameraY,name,role,target,now,fx,lastAction,lastActionWasSkill=false,skillEffects=[],drawSkillEffects=null,moving,monsterActions=new Map(),playerActions=new Map(),fallen=[],heroPose=null}=opt;
+  const {zone,zones,x,y,dir,appearance,monsters,players,foregroundProps=[],projectiles=[],npcs=[],portals=[],kingdomBases=[],storyStage=0,cameraX,cameraY,name,role,target,now,fx,lastAction,lastActionWasSkill=false,skillEffects=[],drawSkillEffects=null,moving,monsterActions=new Map(),playerActions=new Map(),fallen=[],heroPose=null}=opt;
   ctx.imageSmoothingEnabled=false;
   const biome=biomeThemes[opt.zoneBiome||zones[zone]?.biome]||'meadow';
   const useWorld25d=Boolean(opt.world25dActive);
@@ -743,6 +757,22 @@ function create({ctx,W,H}){
   if(!useWorld25d&&pixelDetail)pixelDetail.drawAtmosphere(ctx,{z:zone,biome,cameraX,cameraY,W,H,now});
   ctx.save();ctx.translate(-cameraX,-cameraY);
   const actors=[];
+  // V8.0 canonical trees reside in the WebGL BACKDROP. Repaint their exact
+  // alpha PNG only when an actor walks BEHIND the tree, in foot-depth order.
+  // This stops wolves from appearing over foliage while trees stay 1:1
+  // with the original landscape. No fake colliders or shifted trees.
+  if(useWorld25d&&window.OsPeregrinosSceneryOcclusionV80){
+   const occlusion=window.OsPeregrinosSceneryOcclusionV80;
+   const candidates=[...(monsters||[]),...(fallen||[]),...(players||[]),{x,y}];
+   for(const o of foregroundProps){
+    if(!occlusion.needed(o,candidates))continue;
+    if(o.x+o.w<cameraX||o.x-o.w>cameraX+W||o.y<cameraY-100||o.y-o.h>cameraY+H)continue;
+    actors.push({depth:o.y,paint:()=>{
+     ctx.imageSmoothingEnabled=false;
+     ctx.drawImage(o.image,Math.round(o.x-o.w/2),Math.round(o.y-o.h),o.w,o.h);
+    }});
+   }
+  }
   if(!useWorld25d)for(const o of objects){if(o.x<cameraX-115||o.x>cameraX+W+115||o.y<cameraY-132||o.y>cameraY+H+135)continue;actors.push({depth:o.y,paint:()=>prop(ctx,o)})}
   for(const p of portals){if(p.x<cameraX-140||p.x>cameraX+W+140||p.y<cameraY-125||p.y>cameraY+H+125)continue;
    actors.push({depth:p.y-1,paint:()=>portal(ctx,p,now,{x,y})});
@@ -758,7 +788,7 @@ function create({ctx,W,H}){
   for(const m of fallen){const margin=types[Math.max(0,m.species|0)]==='dragao'?(m.boss?310:200):['morcego','serpente','fera','escorpiao','fantasma','vespa','cavaleiro','sentinela','basilisco','anjo-caido'].includes(types[Math.max(0,m.species|0)])?(m.boss?220:155):90;
    if(m.x<cameraX-margin||m.x>cameraX+W+margin||m.y<cameraY-margin||m.y>cameraY+H+margin)continue;actors.push({depth:m.y-1,paint:()=>monster(ctx,m,false,now,{action:'death',at:m.defeatedAt})})}
   for(const p of players){if(p.x<cameraX-75||p.x>cameraX+W+75||p.y<cameraY-95||p.y>cameraY+H+75)continue;actors.push({depth:p.y,paint:()=>character(ctx,p,false,now,p.moving!==false,playerActions.has(p.name)&&now-playerActions.get(p.name).at<390&&playerActions.get(p.name).action==='attack',playerActions.get(p.name))})}
-  actors.push({depth:y,paint:()=>character(ctx,{name,role,appearance,x,y,dir},true,now,moving,now-lastAction<370,heroPose||{action:'attack',at:lastAction})});
+  actors.push({depth:y,paint:()=>character(ctx,{name,role,appearance,x,y,dir,dead:Boolean(opt.dead)},true,now,moving,now-lastAction<370,heroPose||{action:'attack',at:lastAction},Boolean(lastActionWasSkill))});
   actors.sort((a,b)=>a.depth-b.depth);
   for(const a of actors)a.paint();
   for(const shot of projectiles)drawProjectile(ctx,shot);
