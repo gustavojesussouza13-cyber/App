@@ -12,7 +12,7 @@
  if(root)root.OsPeregrinosAppearanceSpriteV76=api;
 })(typeof globalThis!=='undefined'?globalThis:this,function(root){
  const APP=typeof module==='object'&&module.exports?require('./appearance16'):root.PeregrinosAppearance16;
- const VERSION='appearance-png-pixel-compositor-v78-real-leg-gait-20261017';
+ const VERSION='appearance-png-v83-articulated-attack-20261018';
  const WIDTH=128,HEIGHT=160;
  const cloth=Object.freeze({
   vinho:['#813f50','#d18d91'],floresta:['#396b51','#a2c695'],
@@ -192,18 +192,77 @@
   cache.set(id,canvas);if(cache.size>limit)cache.delete(cache.keys().next().value);
   return canvas;
  }
- function draw(ctx,{role='peregrino',dir=2,action='idle',frame=0,appearance=null,x=64,y=160,scale=1,preview=false,documentRef=root.document}={}){
+ // Reuse the EXACT approved 128x160 PNG body for combat and skill poses.
+ // The original sprite stays the same size; motion is a short anchored
+ // foot-pivot instead of switching to legacy low-resolution class artwork.
+ const ACTIONS=Object.freeze(['attack','skill','hurt']);
+ function combatPose(action,elapsed=0,dir=2){
+  const time=Math.max(0,Number(elapsed)||0);
+  const pulse=Math.sin(Math.min(1,time/350)*Math.PI);
+  const side=dir===3?-1:dir===1?1:1;
+  if(action==='attack')return {angle:side*.105*pulse,dy:-Math.round(2*pulse),alpha:1};
+  if(action==='skill')return {angle:side*.04*pulse,dy:-Math.round(4*pulse),alpha:1};
+  if(action==='hurt')return {angle:-side*.085*pulse,dy:Math.round(2*pulse),alpha:time<110?.82:1};
+  return {angle:0,dy:0,alpha:1};
+ }
+ function combatParticles(ctx,role,action,dir,x,y,scale,elapsed){
+  if(action==='hurt')return;
+  const a=Math.max(0,Math.min(1,(Number(elapsed)||0)/370));
+  const side=dir===3?-1:dir===1?1:dir===0?-1:1;
+  const r=Math.round(22*scale+12*a),ty=Math.round(y-59*scale),cx=Math.round(x+side*r);
+  const pal=role==='curandeiro'?'#a8eee0':role==='arqueiro'?'#c9e497':
+   role==='guardiao'?'#f3d0a0':'#fff0b9';
+  ctx.save();ctx.imageSmoothingEnabled=false;ctx.fillStyle=pal;
+  if(action==='skill'){
+   for(let i=0;i<5;i++){
+    const theta=i*Math.PI*2/5+a*5;
+    const xx=Math.round(x+Math.cos(theta)*(23+10*a)*scale);
+    const yy=Math.round(ty+Math.sin(theta)*(20+11*a)*scale);
+    ctx.fillRect(xx,yy,Math.max(2,Math.round(3*scale)),Math.max(2,Math.round(3*scale)));
+   }
+  }else{
+   // Arc made of crisp original-size light pixels; weapon stays attached to
+   // the original body PNG, and the combat projectile logic is untouched.
+   for(let i=0;i<5;i++){
+    const xx=Math.round(cx+side*Math.cos(a*Math.PI+i*.18)*9*scale);
+    const yy=Math.round(ty-17*scale+i*5*scale);
+    ctx.fillRect(xx,yy,Math.max(2,Math.round(3*scale)),Math.max(2,Math.round(3*scale)));
+   }
+  }
+  ctx.restore();
+ }
+ function draw(ctx,{role='peregrino',dir=2,action='idle',frame=0,appearance=null,x=64,y=160,scale=1,preview=false,elapsed=0,documentRef=root.document}={}){
   if(!roles.includes(role)||!ctx?.drawImage)return false;
-  const canvas=renderSprite(role,dir,action,frame,appearance,documentRef);
+  const combat=ACTIONS.includes(action);
+  const visualAction=combat?'idle':action;
+  const canvas=renderSprite(role,dir,visualAction,frame,appearance,documentRef);
   if(!canvas)return false;
   ctx.imageSmoothingEnabled=false;
   const w=Math.max(1,Math.round(WIDTH*scale)),h=Math.max(1,Math.round(HEIGHT*scale));
-  ctx.drawImage(canvas,Math.round(x-w/2),Math.round(y-h),w,h);
+  // V8.3: use THREE genuinely different original-pixel action poses,
+  // including articulated arms and class weapons. Only damage flashes
+  // keep the V8.0 original-frame effect. No legacy character replacement.
+  if(combat&&action!=='hurt'&&root.OsPeregrinosCombatPosesV83?.draw?.(ctx,{
+   base:canvas,role,dir,action,elapsed,x,y,scale,documentRef
+  }))return true;
+  if(combat){
+   const pose=combatPose(action,elapsed,dir);
+   ctx.save();
+   ctx.translate(Math.round(x),Math.round(y));
+   ctx.rotate(pose.angle);
+   ctx.globalAlpha*=pose.alpha;
+   ctx.drawImage(canvas,-Math.round(w/2),-h+pose.dy,w,h);
+   ctx.restore();
+   combatParticles(ctx,role,action,dir,x,y,scale,elapsed);
+  }else ctx.drawImage(canvas,Math.round(x-w/2),Math.round(y-h),w,h);
   return true;
  }
- function drawWorld(ctx,{role,dir=2,action='idle',frame=0,appearance=null,x,y}={}){
-  if(!needsCustomization(appearance)||!Number.isFinite(x)||!Number.isFinite(y))return false;
-  return draw(ctx,{role,dir,action,frame,appearance,x,y:y+2,scale:.73});
+ function drawWorld(ctx,{role,dir=2,action='idle',frame=0,appearance=null,x,y,elapsed=0,documentRef=root.document}={}){
+  if(!Number.isFinite(x)||!Number.isFinite(y))return false;
+  // All four classes preserve their approved image in attack/skill/hurt.
+  // The normal uncustomized walk/idle remains on the existing fast path.
+  if(!needsCustomization(appearance)&&!ACTIONS.includes(action))return false;
+  return draw(ctx,{role,dir,action,frame,appearance,x,y:y+2,elapsed,scale:.73,documentRef});
  }
- return Object.freeze({VERSION,WIDTH,HEIGHT,draw,drawWorld,walkFrame,applyColors,details,needsCustomization,renderSprite,clearCache:()=>cache.clear()});
+ return Object.freeze({VERSION,WIDTH,HEIGHT,draw,drawWorld,walkFrame,combatPose,applyColors,details,needsCustomization,renderSprite,clearCache:()=>cache.clear()});
 });

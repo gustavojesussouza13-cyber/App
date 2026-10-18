@@ -157,3 +157,13 @@ require('./appearance-v75-and-dungeon-keys.test.js');
 
 // Ecologia: uma espécie por mapa, com um chefe da mesma espécie.
 require('./region-monster-species.test.js');
+// Actor pixel-quality combat and tree/monster occlusion regression coverage.
+require('./combat-occlusion-v80.test.js');
+
+// Inventário ilustrado V8.1 — dados reais, 35 espaços, atalhos e ações no servidor.
+require('./inventory-v81.test.js');
+
+// Prototipo de referencia V8.2: somente as fontes oficiais, sem trocar herois.
+require('./sprite-fidelity-v82.test.js');
+// V8.3 actual three-phase arm and weapon movement drawn from approved PNGs.
+require('./combat-poses-v83.test.js');

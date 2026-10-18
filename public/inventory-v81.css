@@ -1,0 +1,116 @@
+/* Os Peregrinos — inventário V8.1. Pixel art, teclado, drag-and-drop. */
+/* Only the open overlay captures the map. The MMORPG server is never paused. */
+#opInventory[hidden],#opQuickbar[hidden]{display:none!important}
+#opInventory{
+ position:absolute;inset:0;z-index:24;display:flex;align-items:center;justify-content:center;
+ padding:clamp(5px,1.2%,15px);font-family:Georgia,serif;isolation:isolate;
+ color:#f5e3c2;line-height:1.25;contain:layout;
+}
+#opInventoryBackdrop{
+ position:absolute;inset:0;background:#040b0be3;border:0;padding:0;margin:0;cursor:default;
+}
+.op-inventory-panel{
+ position:relative;z-index:1;display:flex;flex-direction:column;gap:7px;
+ width:min(900px,100%);max-height:100%;padding:clamp(8px,1.8%,16px);
+ border:4px solid #c09852;border-radius:5px;
+ background:linear-gradient(150deg,#3c2c23 0%,#171d19 18%,#141e1a 83%,#493024 100%);
+ box-shadow:inset 0 0 0 2px #392719,inset 0 0 0 5px #76532e,0 18px 55px #000c;
+ overflow:auto;scrollbar-color:#b38b48 #172119;
+}
+.op-inventory-head{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:28px}
+.op-inventory-brand{text-align:center;flex:1;min-width:0}
+.op-inventory-brand small{display:block;font:800 9px/1.2 ui-monospace,monospace;letter-spacing:.15em;color:#b4cdb0}
+.op-inventory-brand h2{font:700 clamp(19px,2.6vw,29px)/1.1 Georgia,serif;letter-spacing:.03em;color:#f9d89e;text-shadow:2px 2px #241917;margin:0}
+#opInventoryClose{border:2px solid #c58d64;color:#fff0bb;background:#6c2925;font:bold 17px ui-monospace,monospace;min-width:36px;min-height:33px}
+#opInventoryClose:hover{background:#a03b2d}
+.op-inventory-tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}
+.op-inventory-tabs button{
+ font:700 clamp(10px,1.4vw,13px)/1.2 Georgia,serif;padding:7px 3px;min-height:34px;
+ background:linear-gradient(#39322b,#241f1b);border:2px solid #766043;color:#e0cfb4
+}
+.op-inventory-tabs button.active,.op-inventory-tabs button:hover{
+ background:linear-gradient(#e9cb90,#ae8c55);border-color:#ffdfac;color:#231b14
+}
+.op-inventory-content{display:grid;grid-template-columns:minmax(0,1.38fr) minmax(190px,.90fr);gap:11px;min-height:0;overflow:visible}
+.op-inventory-left{min-width:0;display:flex;flex-direction:column;gap:6px}
+#opInventoryFilter{text-align:left;color:#efcd90;font:700 11px ui-monospace,monospace}
+#opInventoryGrid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;min-width:0;align-content:start}
+.op-slot{
+ position:relative;display:flex;align-items:center;justify-content:center;min-width:0;
+ aspect-ratio:1/1;padding:1px;color:#e6d5ab;background:linear-gradient(#090e12,#201b18);
+ border:2px solid #6e604c;border-right-color:#bfa06a;border-bottom-color:#bfa06a;
+ border-radius:1px;box-shadow:inset 2px 2px 0 #0008;cursor:pointer;
+ transition:border-color .12s,background .12s;
+}
+.op-slot.occupied:hover,.op-slot.selected,.op-slot:focus-visible{
+ background:#3c3430;border-color:#f6d38b;outline:1px solid #d4b67e;outline-offset:0
+}
+.op-item-icon{width:min(100%,45px);height:min(100%,45px);aspect-ratio:1;object-fit:contain;image-rendering:pixelated;flex:none}
+.op-item-count{position:absolute;bottom:1px;right:2px;pointer-events:none;text-shadow:1px 2px #000,1px -1px #000,-1px 1px #000;color:#fff6dc;font:800 11px monospace}
+#opInventoryDetails{border:1px solid #9b855f;min-height:49px;background:#151713;padding:6px;display:flex;align-items:center;gap:7px;flex-wrap:wrap;font:11px/1.35 system-ui;color:#cbd7c4}
+#opInventoryDetails .op-item-icon{width:33px;height:33px}
+#opInventoryDetails strong{color:#ffe0a4}#opInventoryDetails span{flex:1 1 100px}
+#opInventoryDetails button{font:700 10px system-ui;background:#5a482a;border:1px solid #d7b578;color:#ffe7ac;padding:6px 8px;cursor:pointer}
+#opInventoryDetails button:hover{background:#826335}
+.op-inventory-right{border:2px solid #ac8a55;box-shadow:inset 0 0 0 2px #f2d19a6a;background:
+ radial-gradient(ellipse at 50% 38%,#dfc9a1a0,transparent 52%),
+ repeating-linear-gradient(30deg,#e0c99e,#e0c99e 24px,#dac092 24px,#dac092 26px);
+ color:#3d291d;min-width:0;display:flex;flex-direction:column;align-items:center;padding:7px 5px;gap:5px}
+.op-inventory-right h3{font:700 15px Georgia,serif;color:#553820;margin:0}
+.op-character-presentation{display:flex;justify-content:center;align-items:center;width:100%;min-height:155px;max-height:170px}
+#opInventoryPortrait{width:128px;height:160px;max-height:157px;image-rendering:pixelated;object-fit:contain}
+#opInventoryEquipment{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;width:100%}
+.op-equip-entry{min-width:0;display:flex;flex-direction:column;align-items:center;gap:2px;overflow:hidden;text-align:center}
+.op-equip-entry>span:first-child{font:bold 9px Georgia,serif;color:#563a24}
+.op-equip-art{width:38px;height:37px;display:grid;place-items:center;border:2px solid #654b2e;background:#242724;color:#817254}
+.op-equip-art canvas{width:33px;height:33px;image-rendering:pixelated}
+.op-equip-entry small{font:8px/1.2 system-ui;color:#523b27;min-height:19px;overflow-wrap:anywhere}
+.op-inventory-footer{border-top:2px solid #96754a;padding-top:5px;display:flex;align-items:center;justify-content:space-between;gap:10px;font:700 11px ui-monospace,monospace;color:#dfc69d}
+#opInventoryCoins{color:#ffdd83;text-align:right}
+#opInventorySlots{color:#b4bbaa;font:10px/1.3 system-ui}
+.op-inventory-hotbar{display:flex;flex-direction:column;gap:3px}
+.op-inventory-hotbar>div:first-child{display:flex;gap:8px;align-items:center;justify-content:space-between}
+.op-inventory-hotbar b{color:#edce8b;font:700 11px Georgia,serif}
+#opInventoryClearQuick{background:none;border:none;color:#ddc6a1;font-size:10px;text-decoration:underline;cursor:pointer}
+#opInventoryHotbar{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:4px}
+.op-quick-slot .op-hotkey{position:absolute;z-index:2;left:2px;top:1px;font:700 10px monospace;color:#e3c48c;text-shadow:1px 1px 1px #000}
+#opQuickbar{display:flex;gap:4px;align-items:center;justify-content:center;max-width:550px;margin:6px auto 12px}
+#opQuickbar .op-quick-slot{width:clamp(37px,6vw,51px);flex:0 0 clamp(37px,6vw,51px);aspect-ratio:1;background:#101b1b;border-color:#8e7146}
+#opQuickbar .op-item-icon{width:clamp(31px,4vw,43px);height:clamp(31px,4vw,43px)}
+#opInventory:focus{outline:none}
+@media(max-width:650px){
+ #opInventory{padding:3px}
+ .op-inventory-panel{padding:6px;gap:4px;width:100%;height:auto;max-height:100%}
+ .op-inventory-head{min-height:25px}.op-inventory-brand h2{font-size:17px}
+ .op-inventory-content{grid-template-columns:minmax(0,1fr) 136px;gap:4px}
+ #opInventoryGrid{gap:2px}.op-slot{border-width:1px}
+ .op-item-icon{width:100%;height:100%}
+ .op-inventory-right{padding:3px;gap:1px}.op-inventory-right h3{font-size:11px}
+ .op-character-presentation{min-height:107px;max-height:112px}
+ #opInventoryPortrait{height:110px;width:88px}
+ #opInventoryEquipment{grid-template-columns:repeat(3,minmax(0,1fr))}
+ .op-equip-art{width:30px;height:30px}.op-equip-art canvas{width:27px;height:27px}
+ .op-equip-entry small{font-size:7px}
+ .op-inventory-tabs button{min-height:26px;padding:4px 2px;font-size:10px}
+ .op-inventory-hotbar b,#opInventorySlots{font-size:9px}
+ #opInventoryDetails{font-size:10px;min-height:37px;padding:3px;gap:3px}
+ #opInventoryDetails button{padding:3px}
+ .op-inventory-footer{font-size:9px}
+}
+@media(max-height:490px){
+ #opInventory{padding:2px}
+ .op-inventory-panel{max-height:100%;overflow:auto}
+ .op-character-presentation{min-height:100px;max-height:100px}
+ #opInventoryPortrait{height:100px;width:80px}
+ #opInventoryDetails{min-height:30px}
+}
+@media(prefers-reduced-motion:reduce){.op-slot{transition:none}}
+
+/* The MMO canvas selector must NOT stretch inventory's 32px icon canvases. */
+.canvas-shell canvas.op-item-icon{
+ width:min(100%,45px);height:min(100%,45px);display:block;
+ aspect-ratio:1;cursor:inherit;touch-action:auto;flex:none;
+}
+.canvas-shell #opInventoryPortrait{width:128px;height:160px;max-height:157px;image-rendering:pixelated;cursor:default;touch-action:auto}
+@media(max-width:650px){.canvas-shell #opInventoryPortrait{width:88px;height:110px}}
+@media(max-height:490px){.canvas-shell #opInventoryPortrait{width:80px;height:100px}}
