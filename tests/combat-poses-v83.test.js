@@ -79,3 +79,21 @@ test('V8.3 live game and lab both use real articulated poses instead of only fad
  assert.ok(lab.includes('preparação, ação e recuperação'));
  assert.ok(!lab.includes('Faltam poses manuais de braços'));
 });
+
+test('V8.3 sword tips remain INSIDE all four approved game-cell directions',()=>{
+ for(const role of ['peregrino','guardiao']){
+  for(const dir of [0,1,2,3])for(const phase of [0,1,2]){
+   const p=comb.stance(role,dir,phase,'attack');
+   const tipX=p.handX+p.sign*([3,14,17][phase]);
+   const tipY=p.handY+([-38,-18,4][phase]);
+   assert.ok(tipX>=0&&tipX<128,'weapon fully visible X '+role+'/'+dir+'/'+phase+': '+tipX);
+   assert.ok(tipY>=0&&tipY<160,'weapon fully visible Y '+role+'/'+dir+'/'+phase+': '+tipY);
+  }
+ }
+});
+test('V8.3 arrows are aimed forward/back/left/right, no sideways arrows in front view',()=>{
+ const src=read('combat-poses-v83.js');
+ assert.ok(src.includes('dir===0?[0,-1]:dir===2?[0,1]:dir===3?[-1,0]:[1,0]'));
+ assert.ok(src.includes('const tipX=x+aim[0]*27,tipY=y+aim[1]*27'));
+ assert.ok(src.includes('const farX=x+aim[0]*39,farY=y+aim[1]*39'));
+});

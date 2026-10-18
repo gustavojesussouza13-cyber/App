@@ -59,7 +59,8 @@
   const s=d.sign,shift=d.dir===3?-13:0;
   const shoulderX=d.side?(s===1?a.shoulder[0]:W-a.shoulder[0]):a.shoulder[0]-4;
   const shoulderY=a.shoulder[1]+(d.back?3:0);
-  const spread=[-17,21,7][phase],raiseY=skill?[-12,-28,-11][phase]:[-14,5,10][phase];
+  // Keep sword tips inside the approved 128px cell: visible blade throughout.
+  const spread=[-9,4,-3][phase],raiseY=skill?[-17,-24,-9][phase]:[-25,-4,15][phase];
   const handX=shoulderX+s*(17+spread),handY=shoulderY+18+raiseY;
   // Genuine 3-pose hand movement (not a rotating static silhouette).
   return Object.freeze({handX,handY,shoulderX,shoulderY,dir:d.dir,sign:s,
@@ -78,9 +79,11 @@
  }
  function bow(ctx,handX,handY,dir,phase,cl,skill){
   const orientSign=dir===3?-1:1;
+  const aim=dir===0?[0,-1]:dir===2?[0,1]:dir===3?[-1,0]:[1,0];
   // Bow is genuinely brought from lowered to drawn to released positions.
+  // Its grip stays within the atlas even during right/left aiming.
   const radius=phase===0?21:phase===1?28:22;
-  const x=handX+orientSign*(phase===2?8:2),y=handY-7;
+  const x=handX-aim[0]*12,y=handY-aim[1]*10-7;
   for(let i=-12;i<=12;i++){
    const yy=y+i*1.55;
    const xx=x+orientSign*Math.round(Math.cos(i/12*Math.PI/2)*radius*.35);
@@ -88,13 +91,17 @@
    pixel(ctx,xx+orientSign,yy,cl.handle,2,3);
   }
   drawLine(ctx,x,y-20,x,y+20,cl.bright,1);
-  const drawnX=phase===1?handX-orientSign*14:handX-orientSign*3;
-  const drawnY=y;
-  drawLine(ctx,drawnX,drawnY,x+orientSign*27,drawnY,skill?cl.aura:cl.metal,2);
-  diamond(ctx,x+orientSign*26,drawnY,2,cl.gold);
+  const drawnX=x-aim[0]*(phase===1?14:3);
+  const drawnY=y-aim[1]*(phase===1?14:3);
+  const tipX=x+aim[0]*27,tipY=y+aim[1]*27;
+  drawLine(ctx,drawnX,drawnY,tipX,tipY,skill?cl.aura:cl.metal,2);
+  diamond(ctx,tipX,tipY,2,cl.gold);
   if(phase===2){
-   drawLine(ctx,x+orientSign*31,drawnY,x+orientSign*(skill?52:44),drawnY,skill?cl.aura:cl.bright,3);
-   for(let k=0;k<4;k++)pixel(ctx,x+orientSign*(29+k*6),drawnY+(k%2?3:-3),skill?cl.aura:cl.metal,2);
+   const farX=x+aim[0]*39,farY=y+aim[1]*39;
+   drawLine(ctx,tipX,tipY,farX,farY,skill?cl.aura:cl.bright,3);
+   for(let k=0;k<4;k++)
+    pixel(ctx,x+aim[0]*(27+k*4)+(aim[1]?k%2?3:-3:0),
+     y+aim[1]*(27+k*4)+(aim[0]?k%2?3:-3:0),skill?cl.aura:cl.metal,2);
   }
  }
  function staff(ctx,hx,hy,phase,dir,cl,skill){
@@ -193,8 +200,8 @@
   if(role==='arqueiro')bow(ctx,x,y,dir,p.phase,cl,action==='skill');
   else if(role==='curandeiro')staff(ctx,x,y,p.phase,dir,cl,action==='skill');
   else{
-   const tipX=x+s*([3,30,42][p.phase]);
-   const tipY=y+([-38,-21,1][p.phase]);
+   const tipX=x+s*([3,14,17][p.phase]);
+   const tipY=y+([-38,-18,4][p.phase]);
    blade(ctx,x,y,tipX,tipY,cl);
    if(role==='guardiao')shield(ctx,p.shoulderX-10,p.shoulderY+5,p.phase,cl);
   }
