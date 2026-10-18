@@ -35,7 +35,7 @@ test('V7.6 customization loads four approved class image sources, without the ob
   assert.ok(src.includes(k));
   assert.ok(src.includes(k==='peregrino'?'peregrino-runway-walk.png':k+'-sprites-3x2-64x80.png'));
  }
- assert.ok(editor.includes("title.textContent='PERSONALIZAÇÃO DA CLASSE V7.6'"));
+ assert.ok(editor.includes("title.textContent='PERSONALIZAÇÃO DA CLASSE V8.7'"));
  assert.ok(editor.includes('preview.draw(ctx,{role:kind'));
  assert.ok(!editor.includes("previewStudio?.obtain('hero'"));
  assert.ok(page.includes('/appearance-class-preview-v75.js?v=classes-4-passada-v78'));
