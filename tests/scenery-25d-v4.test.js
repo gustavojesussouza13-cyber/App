@@ -175,3 +175,6 @@ require('./full-body-poses-v84.test.js');
 require('./png-combat-v84.test.js');
 // New Guardião-size Peregrino aesthetic: 44 transparent frames and live preview.
 require('./peregrino-v85.test.js');
+
+// V8.7: complete server-validated appearance and no-cape artwork.
+require('./peregrino-personalizacao-v87.test.js');

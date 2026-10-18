@@ -12,7 +12,7 @@
   const current=art.normalize(initial);
   const wrap=document.createElement('div');wrap.className='atelier-custom';
   const left=document.createElement('div');left.className='atelier-custom-preview';
-  const title=document.createElement('strong');title.textContent='PERSONALIZAÇÃO DA CLASSE V7.6';
+  const title=document.createElement('strong');title.textContent='PERSONALIZAÇÃO DA CLASSE V8.7';
   const chosenRole=document.createElement('label');chosenRole.className='atelier-class-title';
   chosenRole.textContent='Classe';
   const picker=document.createElement('select');picker.className='atelier-class-select';

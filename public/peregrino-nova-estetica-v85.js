@@ -9,7 +9,7 @@
  if(typeof module==='object'&&module.exports)module.exports=api;
  if(root)root.OsPeregrinosPeregrinoV85=api;
 })(typeof globalThis!=='undefined'?globalThis:this,function(root){
- const VERSION='peregrino-v85-64x80-full-figure-experimental';
+ const VERSION='peregrino-v87-personalizacao-sete-opcoes';
  const SRC='/assets/peregrino/peregrino-nova-estetica-v85-64x80.png?v=approved-preview-v85-01';
  const WIDTH=64,HEIGHT=80,COLS=4,ROWS=11;
  const DIRECTION=Object.freeze({0:0,1:1,2:2,3:3});
@@ -76,6 +76,8 @@
   if(a.accessory==='amuleto'){ctx.fillStyle='#f8d280';ctx.fillRect(33,50,2,2)}
  }
  function recolor(bytes,a,dir,row){
+  const atelier=root.OsPeregrinosPeregrinoAtelierV87||(typeof module==='object'&&module.exports?require('./peregrino-atelier-v87'):null);
+  if(atelier?.repaintRGBA?.(bytes,a,dir,row))return bytes;
   const color=CLOTH[a.outfit]||CAPE[a.cape]||null;
   const skin=SKIN[a.skin]||null;
   for(let y=0;y<HEIGHT;y++)for(let x=0;x<WIDTH;x++){
@@ -115,7 +117,9 @@
    const frame=ctx.getImageData(0,0,WIDTH,HEIGHT);
    recolor(frame.data,a,dir,row);ctx.putImageData(frame,0,0);
   }
-  paintHairAndEyes(ctx,a,dir,row);
+  const atelier=root.OsPeregrinosPeregrinoAtelierV87||(typeof module==='object'&&module.exports?require('./peregrino-atelier-v87'):null);
+  if(atelier?.drawDetails)atelier.drawDetails(ctx,a,dir,row);
+  else paintHairAndEyes(ctx,a,dir,row);
   cache.set(key,canvas);if(cache.size>240)cache.delete(cache.keys().next().value);
   return canvas;
  }
