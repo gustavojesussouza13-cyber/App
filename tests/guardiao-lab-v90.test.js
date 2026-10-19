@@ -22,7 +22,7 @@ test('Guardiao stage reads real PNG 3 by 2 frames without changing scale',()=>{
 });
 test('isolated technical lab keeps unsupported animations explicitly pending',()=>{
  assert.match(page,/Guardião · laboratório técnico/);
- for(const src of ['approved-classes25d.js','combat-poses-v83.js','appearance-sprite-v76.js'])
+ for(const src of ['approved-classes25d.js','combat-poses-v83.js','guardiao-v90.js'])
   assert.ok(page.includes('/'+src),src);
  for(const text of ['Preparação · pendente','Recuperação · pendente'])
   assert.ok(page.includes(text));
