@@ -143,7 +143,7 @@ function updatePingIndicator(){
 const touchDevice=Boolean(window.matchMedia?.('(pointer: coarse)').matches||navigator.maxTouchPoints>0);
 const touchUI=$('touchControls');
 const joystick=window.OsPeregrinosTouchControls.create({pad:$('touchPad'),knob:$('touchKnob')});
-let socket=null,reconnectMs=1000,reconnectTimer=null,movingAt=0,lastDraw=0,fx=[],toastTimer=0,lastAction=0,lastActionWasSkill=false,tab='inventory',authed=false;
+let socket=null,reconnectMs=1000,reconnectTimer=null,movingAt=0,lastDraw=0,fx=[],toastTimer=0,lastAction=0,lastActionWasSkill=false,tab='quests',authed=false;
 let progressToken=null,accountMode=false,accountReady=false,emailRecoveryAvailable=false;
 let selectedRoomId='auren-publica',roomCatalog=[],roomName='Praça Pública',pendingRoom=null,pendingRoomUntil=0;
 let roomSwitchPending=false,roomSwitchTarget=null;
@@ -959,22 +959,8 @@ function drawTab(force=false){const parent=$('tabContent');
  const editing=parent.contains(document.activeElement)&&
   document.activeElement?.matches?.('input,textarea,select,[contenteditable="true"]');
  if(editing&&!force){parent.dataset.redrawPending='1';return}
- parent.dataset.redrawPending='0';parent.replaceChildren();const s=session.characters;if(!s){appendText(parent,'p','Entre no mundo para ver seu inventário.');return}
- if(tab==='inventory'){
-  appendText(parent,'h3','Sua bolsa de equipamentos');
-  if(s.role==='arqueiro'&&!(s.inventory?.arco>0)){
-   const starter=group(parent);appendText(starter,'b','Arco simples · Equipado');
-   appendText(starter,'small','Arma inicial da classe: flechas ilimitadas. O Arco dos ventos do mercado aumenta o dano.');
-  }
-  for(const [id,count] of Object.entries(s.inventory||{}).filter(([,n])=>n>0)){
-   const item=id==='chave_coroa_aurora'?{name:'♛ Chave da Câmara da Aurora',storyOnly:true}:id==='chave'?{name:'Chave da masmorra · presente da história',storyOnly:true}:session.shop[id]||session.relics[id];if(!item)continue;
-   const d=group(parent);appendText(d,'b',item.name+' · '+count+(id==='arco'&&s.role==='arqueiro'?' · Equipado':''));appendText(d,'small',
-    item.storyOnly?'Chave pessoal conquistada no enredo ou pela soberania continental · não vendida nem negociável':
-    item.rarity?'✦ '+item.rarity.toUpperCase()+' · Relíquia de chefe · '+(item.role&&item.role!==s.role?'Exclusiva de '+item.role+' (não equipada)':'Bônus passivo equipado ao possuir'):
-    id==='pocao'||id==='superpocao'?'Restaura vida':id==='chave_coroa_aurora'?'Chave pessoal e não negociável. Abre apenas a quarta masmorra; obtida pelo soberano da Coroa Continental.':'Equipamento / recurso');
-   if(item.heal)d.append(button('Usar', 'use',{item:id}));
-  }appendText(parent,'p','Itens, moedas e nível são calculados pelo servidor. A persistência depende de armazenamento confiável no servidor.').className='muted';
- }else if(tab==='quests'){
+ parent.dataset.redrawPending='0';parent.replaceChildren();const s=session.characters;if(!s){appendText(parent,'p','Entre no mundo para acessar suas missões e os sistemas do reino.');return}
+ if(tab==='quests'){
   appendText(parent,'h3','Crônicas da jornada');for(const q of session.quests){
    const done=s.quests.includes(q.id);
    const progress=q.type==='regions'?new Set(s.visited||[]).size:
