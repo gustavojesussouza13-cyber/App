@@ -180,3 +180,49 @@
  #canvasShell #opQuickbar .op-quick-slot .op-hotkey{font-size:9px}
  #canvasShell #opQuickbar .op-quick-slot .op-item-count{font-size:10px}
 }
+
+
+/* V9.8 — Inventário só mostra ícones dos itens possuídos e quantidade.
+   Atalhos rápidos permanecem funcionais fora desta janela. */
+#opInventory{padding:clamp(6px,2vw,16px)}
+#opInventory .op-inventory-panel{
+ position:relative;display:block;width:fit-content;min-width:102px;
+ max-width:calc(100% - 8px);padding:12px 10px 10px;overflow:auto;
+}
+#opInventory #opInventoryClose{
+ position:absolute;right:3px;top:3px;z-index:2;
+ min-width:25px;min-height:25px;padding:1px 5px;
+ border:1px solid #b99c74;font:700 13px/19px system-ui,sans-serif;
+}
+#opInventory #opInventoryGrid{
+ display:grid;grid-template-columns:repeat(var(--owned-columns,7),minmax(0,54px));
+ grid-auto-rows:54px;gap:6px;justify-content:start;
+ width:max-content;max-width:100%;padding:25px 2px 2px;
+}
+#opInventory #opInventoryGrid .op-slot{
+ width:54px;height:54px;min-width:0;aspect-ratio:1;
+}
+#opInventory #opInventoryGrid .op-item-icon{
+ width:46px!important;height:46px!important;max-width:100%;
+ max-height:100%;image-rendering:pixelated;
+}
+#opInventory .op-inventory-empty{
+ display:block;padding:10px 9px;color:#d9c8a6;
+ font:12px system-ui,sans-serif;white-space:nowrap;
+}
+@media(max-width:460px){
+ #opInventory .op-inventory-panel{max-width:calc(100% - 4px);padding-inline:7px}
+ #opInventory #opInventoryGrid{
+  grid-template-columns:repeat(min(var(--owned-columns,5),5),minmax(0,45px));
+  grid-auto-rows:45px;gap:3px;
+ }
+ #opInventory #opInventoryGrid .op-slot{width:45px;height:45px}
+ #opInventory #opInventoryGrid .op-item-icon{width:39px!important;height:39px!important}
+}
+@media(max-width:295px){
+ #opInventory #opInventoryGrid{
+  grid-template-columns:repeat(min(var(--owned-columns,4),4),minmax(0,42px));
+  grid-auto-rows:42px;
+ }
+ #opInventory #opInventoryGrid .op-slot{width:42px;height:42px}
+}
