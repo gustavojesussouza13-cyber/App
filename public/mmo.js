@@ -1375,6 +1375,36 @@ $('chatPresetSend').addEventListener('click',()=>{
 
 // A renderização do mundo aberto reutiliza o atlas 16-bit da campanha original.
 const classicRenderer=window.PeregrinoArt16.create({ctx,W,H});
+// V9.3: o mapa mede 1536×1024; câmera além do limite mostraria vazio.
+// Somente apresentação dos atores é ajustável, mantendo o cenário 2.5D.
+const actorScalePanel=document.createElement('div');
+actorScalePanel.id='actorScaleControl';
+actorScalePanel.setAttribute('aria-label','Tamanho dos personagens no mundo');
+actorScalePanel.innerHTML='<label for="actorScaleRange">Personagens <output id="actorScaleLabel" for="actorScaleRange">65%</output></label><input id="actorScaleRange" type="range" min="50" max="100" step="5" value="65" aria-label="Tamanho de personagens, NPCs e criaturas">';
+Object.assign(actorScalePanel.style,{
+ position:'absolute',left:'12px',top:'12px',zIndex:'11',
+ width:'154px',padding:'6px 9px',borderRadius:'5px',
+ border:'1px solid #bda56e',background:'#0b2926e8',
+ color:'#ffe7b1',font:'700 11px system-ui,sans-serif',
+ boxShadow:'0 3px 13px #0009'
+});
+const actorScaleRange=actorScalePanel.querySelector('input');
+Object.assign(actorScaleRange.style,{display:'block',width:'100%',margin:'5px 0 0',height:'12px',accentColor:'#e5cb88',cursor:'pointer'});
+const actorScaleLabel=actorScalePanel.querySelector('output');
+const storedActorScale=(()=>{try{return Number(localStorage.getItem('os-peregrinos-actor-scale-v93'))}catch{return NaN}})();
+const initialActorScale=Number.isFinite(storedActorScale)&&storedActorScale>=50&&storedActorScale<=100
+ ?Math.round(storedActorScale/5)*5:65;
+function updateActorScale(value,persist=false){
+ const pct=Math.max(50,Math.min(100,Number(value)||65));
+ actorScaleRange.value=String(pct);
+ actorScaleLabel.value=pct+'%';
+ actorScaleLabel.textContent=pct+'%';
+ classicRenderer.setActorScale(pct/100);
+ if(persist)try{localStorage.setItem('os-peregrinos-actor-scale-v93',String(pct))}catch{}
+}
+actorScaleRange.addEventListener('input',()=>updateActorScale(actorScaleRange.value,true));
+$('canvasShell').append(actorScalePanel);
+updateActorScale(initialActorScale);
 // O fullscreen anterior apenas esticava 960×576 em 5:3: o mapa ficava
 // ampliado e sobravam bordas nos monitores 16:9/21:9.
 // Agora a resolução lógica segue a área VISÍVEL, mantendo a proporção e
