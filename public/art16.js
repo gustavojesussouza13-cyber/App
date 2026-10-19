@@ -822,7 +822,7 @@ function create({ctx,W,H}){
    paintProp:(dest,item)=>{if(cache!==region){cache=region;objects=region.objects}prop(dest,item);}
   });
  }
- return {render,mapSnapshot,ready:()=>artReady,tiles:Object.keys(SPRITES).length};
+ return {render,mapSnapshot,resize:(width,height)=>{W=width;H=height;},ready:()=>artReady,tiles:Object.keys(SPRITES).length};
 }
 window.PeregrinoArt16={create};
 })();
