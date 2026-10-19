@@ -231,15 +231,39 @@ export function createWorld25D({shell,canvas,width=960,height=576,sceneryV4=true
 
   const scene=new THREE.Scene();
   scene.background=new THREE.Color('#506c63');
-  // Solo periférico sob o cenário original quando o zoom exibe além da região.
-  // Não modifica geometria, colisões nem os objetos originais do mundo.
+  // V9.5: preencher a periferia da região com terreno real repetido.
+  // A malha 3x inclui TODA a câmera a 70% (inclusive 21:9/retrato).
+  // Os objetos, portas e limites jogáveis continuam dentro da região.
+  let outerTerrainTexture=null,outerTerrainSource=null;
   const outerGround=new THREE.Mesh(
-    new THREE.PlaneGeometry(ZONE_WIDTH*4,ZONE_HEIGHT*4),
+    new THREE.PlaneGeometry(ZONE_WIDTH*3,ZONE_HEIGHT*3),
     new THREE.MeshBasicMaterial({color:'#506b5d',depthWrite:true})
   );
   outerGround.rotation.x=-Math.PI/2;
   outerGround.position.set(ZONE_WIDTH/2,-10,ZONE_HEIGHT/2);
   scene.add(outerGround);
+  function updateOuterTerrain(biome,sourceMap){
+    const colors=palette[biome]||palette.meadow;
+    outerGround.material.color.set(sourceMap?.canvas?'#ffffff':colors[0]);
+    if(sourceMap?.canvas===outerTerrainSource)return;
+    if(outerTerrainTexture){
+      outerGround.material.map=null;
+      outerTerrainTexture.dispose();
+      outerTerrainTexture=null;
+    }
+    outerTerrainSource=sourceMap?.canvas||null;
+    if(outerTerrainSource){
+      const tex=new THREE.CanvasTexture(outerTerrainSource);
+      tex.colorSpace=THREE.SRGBColorSpace;
+      tex.wrapS=tex.wrapT=THREE.RepeatWrapping;
+      tex.repeat.set(3,3);
+      tex.magFilter=THREE.NearestFilter;
+      tex.minFilter=THREE.LinearMipmapLinearFilter;
+      outerTerrainTexture=tex;
+      outerGround.material.map=tex;
+    }
+    outerGround.material.needsUpdate=true;
+  }
   const camera=new THREE.OrthographicCamera(-width/2,width/2,height/2,-height/2,.1,2200);
   camera.up.set(0,0,-1);
   const ambient=new THREE.HemisphereLight('#e8f2df','#465447',2.1);
@@ -338,6 +362,7 @@ export function createWorld25D({shell,canvas,width=960,height=576,sceneryV4=true
   function render({zone=0,biome='pradaria',cameraX=0,cameraY=0,zoom=1,now=0,sourceMap=null}={}) {
     if(disposed)return false;
     const selected=biomeNames[biome]||biome;
+    updateOuterTerrain(selected,sourceMap);
     if(zone!==activeZone||selected!==activeBiome||(useCanonical&&sourceMap?.canvas&&sourceMap.canvas!==activeMapSource))rebuild(zone,selected,sourceMap);
     const stageZoom=Math.max(.7,Math.min(1.75,Number(zoom)||1));
     if(camera.zoom!==stageZoom){camera.zoom=stageZoom;camera.updateProjectionMatrix();}
@@ -417,7 +442,9 @@ export function createWorld25D({shell,canvas,width=960,height=576,sceneryV4=true
     observer?.disconnect();
     window.removeEventListener('resize',alignBackdrop);
     document.removeEventListener('fullscreenchange',alignBackdrop);
-    outerGround.geometry.dispose();outerGround.material.dispose();
+    outerGround.geometry.dispose();
+    outerTerrainTexture?.dispose();
+    outerGround.material.dispose();
     renderer.dispose();
     renderer.domElement.remove();
     canvas.style.zIndex='';
