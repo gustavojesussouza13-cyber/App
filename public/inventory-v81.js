@@ -10,7 +10,7 @@
  if(typeof module==='object'&&module.exports)module.exports=api;
  if(root)root.OsPeregrinosInventoryV81=api;
 })(typeof globalThis!=='undefined'?globalThis:this,function(root){
- const VERSION='inventario-v97-independente-somente-itens-20261019';
+ const VERSION='inventario-v98-somente-itens-20261019';
  const LIMIT=35,QUICK_COUNT=8;
  const RELIC_WEAPON={guardiao:'lamina_aurora',arqueiro:'arco_alvorada',curandeiro:'cajado_misericordia',peregrino:'sabre_peregrino'};
  const IDS={
@@ -147,7 +147,6 @@
   const $$=id=>doc.getElementById(id);
   const state={open:false,selected:null,assign:false,items:[],quick:Array(QUICK_COUNT).fill(null),quickInitialized:false,role:'peregrino',coins:0,level:1,name:'',appearance:null};
   // Canvas cloneNode does NOT clone painted pixels: draw each original icon.
-  const descriptions={elmo:'Elmo',arma:'Arma',escudo:'Escudo',armadura:'Armadura',amuleto:'Amuleto',anel:'Anel',botas:'Botas'};
   const canvasIcon=(kind)=>iconCanvas(kind,doc);
   function find(id){return state.items.find(i=>i.id===id)||null}
   function use(id){
@@ -193,77 +192,32 @@
    }
    parent.append(el);return el;
   }
-  function renderPortrait(){
-   const canvas=$$('opInventoryPortrait');if(!canvas)return;
-   const ctx=canvas.getContext('2d');if(!ctx)return;
-   ctx.clearRect(0,0,canvas.width,canvas.height);ctx.imageSmoothingEnabled=false;
-   const preview=root.PeregrinosAppearanceClassPreviewV75;
-   if(!preview?.draw(ctx,{role:state.role,dir:2,appearance:state.appearance})){
-    // No legacy fallback: the PNG's loader paints the approved portrait.
-    ctx.font='9px monospace';ctx.textAlign='center';ctx.fillStyle='#ded3ae';
-    ctx.fillText('Carregando arte…',64,90);
-    preview?.ensureLoaded?.(state.role)?.then(ok=>{
-     if(ok&&state.open)renderPortrait();
-    });
-   }
-  }
-  function renderEquipment(){
-   const eq=equipped(state.role,Object.fromEntries(state.items.map(it=>[it.id,it.count])));
-   const panel=$$('opInventoryEquipment');if(!panel)return;
-   panel.replaceChildren();
-   for(const key of ['elmo','arma','escudo','armadura','amuleto','anel','botas']){
-    const area=doc.createElement('div');area.className='op-equip-entry';
-    const label=doc.createElement('span');label.textContent=descriptions[key];
-    const item=find(eq[key]);const active=eq[key]==='arco_simples';
-    const cell=doc.createElement('span');cell.className='op-equip-art';
-    if(item)cell.append(canvasIcon(item.icon));
-    else if(active)cell.append(canvasIcon('arco_simples'));
-    else cell.textContent='◇';
-    const name=doc.createElement('small');name.textContent=item?item.name:active?'Arco simples (classe)':'—';
-    if(item)area.title=item.tip;
-    area.append(label,cell,name);panel.append(area);
-   }
-  }
+  // V9.8: a janela apresenta exclusivamente itens que o jogador possui.
+  // Atalhos de teclado e a barra rápida DO JOGO permanecem independentes.
   function renderItems(){
-   // Tudo que o servidor reconhece como item pertence a uma só bolsa.
-   // Chaves da história são itens físicos; missões e Crônicas têm painel próprio.
-   const items=state.items;
-   const grid=$('opInventoryGrid');grid.replaceChildren();
-   for(let i=0;i<Math.max(LIMIT,items.length);i++)slot(grid,items[i]||null,i);
-   $('opInventoryFilter').textContent='Seus itens · '+items.length+' tipo(s)';
-   const detail=$('opInventoryDetails');detail.replaceChildren();
-   const selected=find(state.selected);
-   if(selected){
-    const icon=canvasIcon(selected.icon),name=doc.createElement('strong'),info=doc.createElement('span');
-    name.textContent=selected.name+' ×'+selected.count;info.textContent=selected.tip;
-    detail.append(icon,name,info);
-    if(selected.canUse){
-     const useButton=doc.createElement('button');useButton.type='button';useButton.textContent='Usar item';
-     useButton.onclick=()=>use(selected.id);detail.append(useButton);
-    }
-    const setButton=doc.createElement('button');setButton.type='button';
-    setButton.textContent=state.assign?'Clique na posição 1–8 abaixo':'Colocar na barra rápida';
-    setButton.onclick=()=>{state.assign=!state.assign;renderItems()};
-    detail.append(setButton);
-   }else detail.textContent='Selecione um item para ver os detalhes. Arraste-o para a barra rápida.';
+   const grid=$$('opInventoryGrid');
+   grid.replaceChildren();
+   grid.setAttribute('aria-label','Itens que você possui');
+   grid.style.setProperty('--owned-columns',String(Math.max(1,Math.min(7,state.items.length))));
+   if(!state.items.length){
+    const empty=doc.createElement('span');
+    empty.className='op-inventory-empty';
+    empty.textContent='Nenhum item';
+    grid.append(empty);
+    return;
+   }
+   for(let i=0;i<state.items.length;i++)slot(grid,state.items[i],i);
   }
   function renderBar(){
-   const bar=$$('opInventoryHotbar');bar.replaceChildren();quickbar.replaceChildren();
-   for(let i=0;i<QUICK_COUNT;i++){
-    const item=find(state.quick[i]);
-    slot(bar,item,i,{quick:true});
-    slot(quickbar,item,i,{quick:true});
-   }
+   // Mantém somente a barra rápida EXTERNA, fora da janela da bolsa.
+   quickbar.replaceChildren();
+   for(let i=0;i<QUICK_COUNT;i++)slot(quickbar,find(state.quick[i]),i,{quick:true});
    quickbar.hidden=!getState()?.connected;
   }
   function render(){
    if(state.open){
     host.hidden=false;
-    $$('opInventoryName').textContent=state.name||'Peregrino';
-    $$('opInventoryLevel').textContent='Nível '+state.level;
-    $$('opInventoryCoins').textContent=Number(state.coins||0).toLocaleString('pt-BR')+' moedas';
-    $$('opInventorySlots').textContent=state.items.length+' tipos de itens · 35 espaços iniciais de visualização (sem limite de peso)';
-    renderItems();renderEquipment();renderPortrait();
+    renderItems();
    }
    renderBar();
   }
@@ -301,9 +255,6 @@
   }
   $$('opInventoryClose').addEventListener('click',close);
   $$('opInventoryBackdrop').addEventListener('click',close);
-  $$('opInventoryClearQuick').addEventListener('click',()=>{
-   state.quick.fill(null);state.assign=false;render();
-  });
   host.hidden=true;quickbar.hidden=true;
   return Object.freeze({VERSION,get openState(){return state.open},get selected(){return state.selected},
    get quick(){return [...state.quick]},sync,render,open,close,toggle,quickUse});
