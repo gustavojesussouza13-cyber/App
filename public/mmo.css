@@ -843,3 +843,19 @@ body>.bar .brand,body>.bar .brand strong{
   width:100%;min-width:0;max-width:100%;font-size:11px;box-sizing:border-box
  }
 }
+
+/* V9.2 — tela cheia sem barras vazias e sem ampliar artificialmente os sprites.
+   O canvas 2D usa a mesma proporção CSS/interna; a câmera mostra mais mundo. */
+#canvasShell:fullscreen > #game,
+#canvasShell.is-expanded > #game{
+ position:relative;z-index:1;display:block;
+ flex:0 0 100%;width:100%!important;height:100%!important;
+ max-width:none!important;max-height:none!important;
+ aspect-ratio:auto!important;object-fit:fill!important;
+ image-rendering:pixelated;
+}
+#canvasShell:fullscreen #world25dBackdrop,
+#canvasShell.is-expanded #world25dBackdrop{
+ position:absolute!important;flex:none!important;
+ max-width:none!important;max-height:none!important;
+}
