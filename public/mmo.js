@@ -3,7 +3,7 @@
 (()=>{
 const $=id=>document.getElementById(id);
 const cvs=$('game'),ctx=cvs.getContext('2d',{alpha:true});ctx.imageSmoothingEnabled=false;
-const W=cvs.width,H=cvs.height,ZONE_W=1536,ZONE_H=1024;
+let W=cvs.width,H=cvs.height;const ZONE_W=1536,ZONE_H=1024;
 
 // Renderizador 2.5D opcional. Não importa módulos da fortaleza ou altera o servidor.
 let world25d=null,world25dActive=false,world25dLoading=false;
@@ -32,7 +32,7 @@ async function enableWorld25d(){
  world25dLoading=true;updateWorld25dMode();
  try{
   if(!world25d){
-   const {createWorld25D}=await import('/world-25d.mjs?v=foreground-depth-v80');
+   const {createWorld25D}=await import('/world-25d.mjs?v=fullscreen-fit-v92-20261018');
    world25d=createWorld25D({shell:$('canvasShell'),canvas:cvs,width:W,height:H});
    // In the isolated integration preview, 2.5D paints the ORIGINAL official
    // terrain layout; V7.2 supplies only compatible cosmetic replacements.
@@ -806,6 +806,7 @@ function setExpandedFullscreen(active){
  fullScreenContainer.classList.toggle('is-expanded',expandedFullscreen);
  document.body.classList.toggle('world-fullscreen',expandedFullscreen);
  updateFullscreenButton();
+ requestAnimationFrame(syncGameViewport);
 }
 function updateFullscreenButton(){
  const active=isWorldFullscreen();
@@ -832,6 +833,7 @@ fullScreenBtn.addEventListener('click',async()=>{
 document.addEventListener('fullscreenchange',()=>{
  if(document.fullscreenElement===fullScreenContainer&&expandedFullscreen)setExpandedFullscreen(false);
  updateFullscreenButton();
+ requestAnimationFrame(syncGameViewport);
  if(isWorldFullscreen()&&$('welcomeOverlay').hidden)cvs.focus({preventScroll:true});
 });
 document.addEventListener('keydown',e=>{
@@ -1373,6 +1375,29 @@ $('chatPresetSend').addEventListener('click',()=>{
 
 // A renderização do mundo aberto reutiliza o atlas 16-bit da campanha original.
 const classicRenderer=window.PeregrinoArt16.create({ctx,W,H});
+// O fullscreen anterior apenas esticava 960×576 em 5:3: o mapa ficava
+// ampliado e sobravam bordas nos monitores 16:9/21:9.
+// Agora a resolução lógica segue a área VISÍVEL, mantendo a proporção e
+// revelando mais mundo. O limite é o tamanho real da região (1536×1024).
+function syncGameViewport(){
+ const rect=cvs.getBoundingClientRect();
+ if(rect.width<1||rect.height<1)return;
+ const minScale=Math.max(1,960/rect.width,576/rect.height);
+ const scale=Math.min(minScale,ZONE_W/rect.width,ZONE_H/rect.height);
+ const nextW=Math.max(1,Math.min(ZONE_W,Math.round(rect.width*scale)));
+ const nextH=Math.max(1,Math.min(ZONE_H,Math.round(rect.height*scale)));
+ if(nextW===W&&nextH===H)return;
+ W=nextW;H=nextH;cvs.width=W;cvs.height=H;
+ ctx.imageSmoothingEnabled=false;
+ classicRenderer.resize(W,H);
+ world25d?.resize?.(W,H);
+}
+if(typeof ResizeObserver!=='undefined'){
+ const viewportObserver=new ResizeObserver(syncGameViewport);
+ viewportObserver.observe($('canvasShell'));
+}
+window.addEventListener('resize',syncGameViewport);
+syncGameViewport();
 function canvasDraw(now,dt){
   ctx.imageSmoothingEnabled=false;
   session.cameraX=clamp(Math.floor(session.x-W/2),0,ZONE_W-W);
