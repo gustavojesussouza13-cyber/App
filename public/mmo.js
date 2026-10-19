@@ -32,7 +32,7 @@ async function enableWorld25d(){
  world25dLoading=true;updateWorld25dMode();
  try{
   if(!world25d){
-   const {createWorld25D}=await import('/world-25d.mjs?v=fullscreen-fit-v92-20261018');
+   const {createWorld25D}=await import('/world-25d.mjs?v=scene-zoom-v94-20261018');
    world25d=createWorld25D({shell:$('canvasShell'),canvas:cvs,width:W,height:H});
    // In the isolated integration preview, 2.5D paints the ORIGINAL official
    // terrain layout; V7.2 supplies only compatible cosmetic replacements.
@@ -918,19 +918,19 @@ function attack(skill){
  send(skill?'skill':'attack',{target:session.target});lastActionWasSkill=Boolean(skill);lastAction=performance.now();
 }
 $('talkBtn').onclick=talkToNearest;$('attackBtn').onclick=()=>attack(false);$('skillBtn').onclick=()=>attack(true);$('potionBtn').onclick=()=>send('use',{item:'pocao'});$('questBtn').onclick=()=>selectTab('quests');$('mapBtn').onclick=showWorldMap;$('chatFocusBtn').onclick=()=>setChatDrawerOpen(true,{focusInput:true});
-cvs.addEventListener('click',e=>{if(!session.connected)return;const rect=cvs.getBoundingClientRect(),wx=(e.clientX-rect.left)*W/rect.width+session.cameraX,wy=(e.clientY-rect.top)*H/rect.height+session.cameraY;
+cvs.addEventListener('click',e=>{if(!session.connected)return;const rect=cvs.getBoundingClientRect(),wx=(e.clientX-rect.left)*W/(sceneZoom*rect.width)+session.cameraX,wy=(e.clientY-rect.top)*H/(sceneZoom*rect.height)+session.cameraY;
  // O sprite real tem 92px de altura, portanto toda a porta é clicável,
  // não apenas a posição dos pés; o servidor ainda valida proximidade do jogador.
  const stronghold=visibleKingdomBases.find(b=>Math.abs(b.x-wx)<65&&wy>=b.y-110&&wy<=b.y+32);
  if(stronghold){cityUI.open(stronghold,kingdomState);return}
  const gate=session.portals.find(p=>Math.abs(p.x-wx)<=58&&wy>=p.y-140&&wy<=p.y+34);
  if(gate){send('portal',{zone:gate.zone});return}
- const touchRadius=touchDevice?Math.max(50,34*W/Math.max(1,rect.width)):50;
+ const touchRadius=touchDevice?Math.max(50,34*W/Math.max(1,rect.width*sceneZoom)):50;
  let candidate=null,best=touchRadius;for(const mon of session.monsters.values()){
   const p=monsterMotion.position(mon.id)||mon;
   const d=Math.hypot(p.x-wx,p.y-wy);if(d<best){candidate=mon;best=d}
  }
- const npcRadius=touchDevice?Math.max(38,32*W/Math.max(1,rect.width)):38;
+ const npcRadius=touchDevice?Math.max(38,32*W/Math.max(1,rect.width*sceneZoom)):38;
  const npc=session.npcs.filter(n=>n.zone===session.zone).find(n=>Math.hypot(n.x-wx,n.y-wy)<npcRadius);
  if(npc){tryTalk(npc);return}
  const hostile=defenseTargets.filter(t=>t.id&&t.expiresAt>Date.now());
@@ -1405,6 +1405,38 @@ function updateActorScale(value,persist=false){
 actorScaleRange.addEventListener('input',()=>updateActorScale(actorScaleRange.value,true));
 $('canvasShell').append(actorScalePanel);
 updateActorScale(initialActorScale);
+
+// V9.4 — zoom independente para o cenário 2D/2.5D.
+let sceneZoom=1;
+const sceneZoomPanel=document.createElement('div');
+sceneZoomPanel.id='sceneZoomControl';
+sceneZoomPanel.setAttribute('aria-label','Zoom do cenário do mundo aberto');
+sceneZoomPanel.innerHTML='<label for="sceneZoomRange">Cenário <output id="sceneZoomLabel" for="sceneZoomRange">100%</output></label><input id="sceneZoomRange" type="range" min="70" max="175" step="5" value="100" aria-label="Afastar ou aproximar o cenário">';
+Object.assign(sceneZoomPanel.style,{
+ position:'absolute',left:'12px',top:'77px',zIndex:'11',
+ width:'154px',padding:'6px 9px',borderRadius:'5px',
+ border:'1px solid #bda56e',background:'#0b2926e8',
+ color:'#ffe7b1',font:'700 11px system-ui,sans-serif',
+ boxShadow:'0 3px 13px #0009'
+});
+const sceneZoomRange=sceneZoomPanel.querySelector('input');
+Object.assign(sceneZoomRange.style,{display:'block',width:'100%',margin:'5px 0 0',height:'12px',accentColor:'#e5cb88',cursor:'pointer'});
+const sceneZoomLabel=sceneZoomPanel.querySelector('output');
+const storedSceneZoom=(()=>{try{return Number(localStorage.getItem('os-peregrinos-scene-zoom-v94'))}catch{return NaN}})();
+const initialSceneZoom=Number.isFinite(storedSceneZoom)&&storedSceneZoom>=70&&storedSceneZoom<=175
+ ?Math.round(storedSceneZoom/5)*5:100;
+function updateSceneZoom(value,persist=false){
+ const pct=Math.max(70,Math.min(175,Number(value)||100));
+ sceneZoom=pct/100;
+ sceneZoomRange.value=String(pct);
+ sceneZoomLabel.value=pct+'%';
+ sceneZoomLabel.textContent=pct+'%';
+ classicRenderer.setSceneZoom(sceneZoom);
+ if(persist)try{localStorage.setItem('os-peregrinos-scene-zoom-v94',String(pct))}catch{}
+}
+sceneZoomRange.addEventListener('input',()=>updateSceneZoom(sceneZoomRange.value,true));
+$('canvasShell').append(sceneZoomPanel);
+updateSceneZoom(initialSceneZoom);
 // O fullscreen anterior apenas esticava 960×576 em 5:3: o mapa ficava
 // ampliado e sobravam bordas nos monitores 16:9/21:9.
 // Agora a resolução lógica segue a área VISÍVEL, mantendo a proporção e
@@ -1430,8 +1462,13 @@ window.addEventListener('resize',syncGameViewport);
 syncGameViewport();
 function canvasDraw(now,dt){
   ctx.imageSmoothingEnabled=false;
-  session.cameraX=clamp(Math.floor(session.x-W/2),0,ZONE_W-W);
-  session.cameraY=clamp(Math.floor(session.y-H/2),0,ZONE_H-H);
+  const viewW=W/sceneZoom,viewH=H/sceneZoom;
+  // Em zoom afastado a região pode ser menor que o campo de visão:
+  // centraliza-se o mapa sobre terreno repetido, sem esconder o avatar.
+  session.cameraX=viewW>=ZONE_W?(ZONE_W-viewW)/2:
+   clamp(session.x-viewW/2,0,ZONE_W-viewW);
+  session.cameraY=viewH>=ZONE_H?(ZONE_H-viewH)/2:
+   clamp(session.y-viewH/2,0,ZONE_H-viewH);
   const projectiles=combatFx.frame(now);
  const drawPlayers=playerMotion.draw([...session.players.values()],now);
   for(const shot of projectiles)if(shot.justHit){
@@ -1446,7 +1483,7 @@ function canvasDraw(now,dt){
    try{
     world25d.render({zone:session.zone,
      biome:session.region?.id===session.zone?session.region.biome:(session.zones[session.zone]?.biome||'pradaria'),
-     cameraX:session.cameraX,cameraY:session.cameraY,now,
+     cameraX:session.cameraX,cameraY:session.cameraY,zoom:sceneZoom,now,
      sourceMap:classicRenderer.mapSnapshot(session.zone,
        session.region?.id===session.zone?session.region.biome:(session.zones[session.zone]?.biome||'pradaria'))});
    }catch(err){
@@ -1466,6 +1503,7 @@ function canvasDraw(now,dt){
       self:{id:session.id,x:session.x,y:session.y}}),
     drawSkillEffects:(drawCtx,events)=>classSkillFx.paint(drawCtx,events),
     moving:Math.hypot(session.x-lastFrameX,session.y-lastFrameY)>0.06});
+  ctx.save();ctx.scale(sceneZoom,sceneZoom);
   cityUI.drawMarches(ctx,{zone:session.zone,cameraX:session.cameraX,cameraY:session.cameraY,now});
   // Escoltas persistidas seguem seus comandantes em todas as salas e regiões.
   if(armyArt){
@@ -1488,7 +1526,8 @@ function canvasDraw(now,dt){
   // Camada de falas: renderizada após os atores para não esconder o rosto
   // e sem filtros que borrariam os pixels do jogo.
   chatBubbles.draw(ctx,{players:drawPlayers,self:{id:session.id,x:session.x,y:session.y},
-   cameraX:session.cameraX,cameraY:session.cameraY,now:Date.now(),width:W,height:H});
+   cameraX:session.cameraX,cameraY:session.cameraY,now:Date.now(),width:W/sceneZoom,height:H/sceneZoom});
+  ctx.restore();
    lastFrameX=session.x;lastFrameY=session.y;
 }
 let lastFrameX=768,lastFrameY=512;
