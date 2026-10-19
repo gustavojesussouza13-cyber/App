@@ -1,7 +1,7 @@
 name: Gerar ZIP HTML5 itch.io
 on:
   push:
-    branches: [os-peregrinos-online]
+    branches: [os-peregrinos-online, fix/itchio-login-launcher-20261019]
     paths:
       - 'itchio/**'
       - '.github/workflows/itchio-html5.yml'
@@ -33,5 +33,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Os_Peregrinos_Itchio_HTML5
-          path: build/
+          path: Os_Peregrinos_Itchio_HTML5.zip
           if-no-files-found: error
