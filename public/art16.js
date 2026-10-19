@@ -764,7 +764,13 @@ function create({ctx,W,H}){
   // Zoom do cenário: somente o mundo é escalado; HUD e minimapa ficam fixos.
   // Quando a câmera revela o exterior da região, repetir o terreno impede
   // bordas pretas ou transparência sem alterar limites da simulação.
+  // V9.5: preencher PRIMEIRO todos os pixels do canvas na resolução real,
+  // antes do zoom. Evita frestas de arredondamento em displays retina/Android.
   if(useWorld25d)ctx.clearRect(0,0,W,H);
+  else{
+   ctx.fillStyle='#406648';
+   ctx.fillRect(0,0,W,H);
+  }
   ctx.save();
   ctx.scale(sceneZoom,sceneZoom);
   const visibleW=W/sceneZoom,visibleH=H/sceneZoom;
@@ -773,10 +779,18 @@ function create({ctx,W,H}){
    const groundPattern=ctx.createPattern(cache.canvas,'repeat');
    if(groundPattern){
     ctx.fillStyle=groundPattern;
-    ctx.fillRect(cameraX,cameraY,visibleW,visibleH);
+    // Overscan de 4px no mundo: não cria barras em frações de CSS pixel.
+    ctx.fillRect(cameraX-4,cameraY-4,visibleW+8,visibleH+8);
    }else{
-    ctx.fillStyle='#406648';ctx.fillRect(cameraX,cameraY,visibleW,visibleH);
-    ctx.drawImage(cache.canvas,-cameraX,-cameraY);
+    // Alguns navegadores de baixa memória recusam padrões grandes.
+    // Preservar o terreno real no quadro mesmo nesse caso.
+    const left=Math.max(0,Math.floor(cameraX));
+    const top=Math.max(0,Math.floor(cameraY));
+    const right=Math.min(ZW,Math.ceil(cameraX+visibleW));
+    const bottom=Math.min(ZH,Math.ceil(cameraY+visibleH));
+    if(right>left&&bottom>top){
+     ctx.drawImage(cache.canvas,left,top,right-left,bottom-top,left,top,right-left,bottom-top);
+    }
    }
    ctx.restore();
   }
