@@ -10,7 +10,7 @@
  if(typeof module==='object'&&module.exports)module.exports=api;
  if(root)root.OsPeregrinosInventoryV81=api;
 })(typeof globalThis!=='undefined'?globalThis:this,function(root){
- const VERSION='inventario-v81-handdrawn-pixel-items-20261017';
+ const VERSION='inventario-v97-independente-somente-itens-20261019';
  const LIMIT=35,QUICK_COUNT=8;
  const RELIC_WEAPON={guardiao:'lamina_aurora',arqueiro:'arco_alvorada',curandeiro:'cajado_misericordia',peregrino:'sabre_peregrino'};
  const IDS={
@@ -145,9 +145,8 @@
   if(!host||!quickbar)return null;
   const getState=options.getState||(()=>null),send=options.send||(()=>false),onMessage=options.onMessage||(()=>{});
   const $$=id=>doc.getElementById(id);
-  const state={open:false,tab:'all',selected:null,assign:false,items:[],quick:Array(QUICK_COUNT).fill(null),quickInitialized:false,role:'peregrino',coins:0,level:1,name:'',appearance:null};
+  const state={open:false,selected:null,assign:false,items:[],quick:Array(QUICK_COUNT).fill(null),quickInitialized:false,role:'peregrino',coins:0,level:1,name:'',appearance:null};
   // Canvas cloneNode does NOT clone painted pixels: draw each original icon.
-  const labels={all:'Inventário',equipment:'Equipamento',consumables:'Consumíveis',quests:'Missões'};
   const descriptions={elmo:'Elmo',arma:'Arma',escudo:'Escudo',armadura:'Armadura',amuleto:'Amuleto',anel:'Anel',botas:'Botas'};
   const canvasIcon=(kind)=>iconCanvas(kind,doc);
   function find(id){return state.items.find(i=>i.id===id)||null}
@@ -226,13 +225,13 @@
    }
   }
   function renderItems(){
-   const filtered=state.tab==='all'?state.items:state.items.filter(x=>x.category===state.tab);
-   const grid=$$('opInventoryGrid');grid.replaceChildren();
-   for(let i=0;i<Math.max(LIMIT,filtered.length);i++)slot(grid,filtered[i]||null,i);
-   $$('opInventoryFilter').textContent=labels[state.tab]+' · '+filtered.length+' tipo(s)';
-   const detail=$$('opInventoryDetails');detail.replaceChildren();
-   const item=find(state.selected);
-   if(item&&state.tab!=='all'&&item.category!==state.tab)state.selected=null;
+   // Tudo que o servidor reconhece como item pertence a uma só bolsa.
+   // Chaves da história são itens físicos; missões e Crônicas têm painel próprio.
+   const items=state.items;
+   const grid=$('opInventoryGrid');grid.replaceChildren();
+   for(let i=0;i<Math.max(LIMIT,items.length);i++)slot(grid,items[i]||null,i);
+   $('opInventoryFilter').textContent='Seus itens · '+items.length+' tipo(s)';
+   const detail=$('opInventoryDetails');detail.replaceChildren();
    const selected=find(state.selected);
    if(selected){
     const icon=canvasIcon(selected.icon),name=doc.createElement('strong'),info=doc.createElement('span');
@@ -264,9 +263,6 @@
     $$('opInventoryLevel').textContent='Nível '+state.level;
     $$('opInventoryCoins').textContent=Number(state.coins||0).toLocaleString('pt-BR')+' moedas';
     $$('opInventorySlots').textContent=state.items.length+' tipos de itens · 35 espaços iniciais de visualização (sem limite de peso)';
-    for(const btn of host.querySelectorAll('[data-inventory-tab]')){
-     const on=btn.dataset.inventoryTab===state.tab;btn.classList.toggle('active',on);btn.setAttribute('aria-selected',String(on));
-    }
     renderItems();renderEquipment();renderPortrait();
    }
    renderBar();
@@ -302,11 +298,6 @@
    if(item.canUse)return use(item.id);
    if(!state.open)open();
    state.selected=item.id;render();return true;
-  }
-  for(const btn of host.querySelectorAll('[data-inventory-tab]')){
-   btn.addEventListener('click',()=>{
-    state.tab=btn.dataset.inventoryTab;state.assign=false;state.selected=null;render();
-   });
   }
   $$('opInventoryClose').addEventListener('click',close);
   $$('opInventoryBackdrop').addEventListener('click',close);
