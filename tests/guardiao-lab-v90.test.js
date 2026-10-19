@@ -37,3 +37,5 @@ test('isolated technical lab keeps unsupported animations explicitly pending',()
 });
 
 require('./guardiao-v90-integration.test.js');
+
+require('./guardiao-v91.test.js');
