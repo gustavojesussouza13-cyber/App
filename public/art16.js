@@ -43,6 +43,7 @@ function create({ctx,W,H}){
  // arquivos PNG, tamanho do mundo nem renderização da fortaleza 3D.
  // (x,y) dos pés permanece fixo ao redimensionar o personagem.
  let actorScale=.65;
+ let sceneZoom=1;
  function drawActorAtScale(g,x,y,paint,multiplier=1){
   const scale=actorScale*multiplier;
   if(Math.abs(scale-1)<.001){paint();return;}
@@ -760,12 +761,29 @@ function create({ctx,W,H}){
   useAurora25d=useWorld25d;
   if(!artReady){ctx.fillStyle='#193629';ctx.fillRect(0,0,W,H);ctx.textAlign='center';ctx.fillStyle='#efd39d';ctx.font='bold 20px Georgia,serif';ctx.fillText('✦ Preparando o mundo 16-bit…',W/2,H/2);return}
   if(!cache||cache.z!==zone||cache.biome!==biome)terrain(zone,biome);
+  // Zoom do cenário: somente o mundo é escalado; HUD e minimapa ficam fixos.
+  // Quando a câmera revela o exterior da região, repetir o terreno impede
+  // bordas pretas ou transparência sem alterar limites da simulação.
   if(useWorld25d)ctx.clearRect(0,0,W,H);
-  else ctx.drawImage(cache.canvas,cameraX,cameraY,W,H,0,0,W,H);
+  ctx.save();
+  ctx.scale(sceneZoom,sceneZoom);
+  const visibleW=W/sceneZoom,visibleH=H/sceneZoom;
+  if(!useWorld25d){
+   ctx.save();ctx.translate(-cameraX,-cameraY);
+   const groundPattern=ctx.createPattern(cache.canvas,'repeat');
+   if(groundPattern){
+    ctx.fillStyle=groundPattern;
+    ctx.fillRect(cameraX,cameraY,visibleW,visibleH);
+   }else{
+    ctx.fillStyle='#406648';ctx.fillRect(cameraX,cameraY,visibleW,visibleH);
+    ctx.drawImage(cache.canvas,-cameraX,-cameraY);
+   }
+   ctx.restore();
+  }
   // Só no PC: reduzir concorrência visual do terreno sem apagar textura.
   // O tratamento é ANTERIOR aos atores; sprites, HUD e minimapa ficam vivos.
-  if(!useWorld25d&&desktopSprites?.enabled){ctx.fillStyle='#0d20200d';ctx.fillRect(0,0,W,H)}
-  if(!useWorld25d&&pixelDetail)pixelDetail.drawAtmosphere(ctx,{z:zone,biome,cameraX,cameraY,W,H,now});
+  if(!useWorld25d&&desktopSprites?.enabled){ctx.fillStyle='#0d20200d';ctx.fillRect(0,0,visibleW,visibleH)}
+  if(!useWorld25d&&pixelDetail)pixelDetail.drawAtmosphere(ctx,{z:zone,biome,cameraX,cameraY,W:visibleW,H:visibleH,now});
   ctx.save();ctx.translate(-cameraX,-cameraY);
   const actors=[];
   // V8.0 canonical trees reside in the WebGL BACKDROP. Repaint their exact
@@ -810,7 +828,9 @@ function create({ctx,W,H}){
     ctx.save();ctx.strokeStyle='#fff2bd';ctx.lineWidth=5;ctx.shadowColor='#e9d28c';ctx.shadowBlur=9;
     ctx.beginPath();ctx.arc(x+dx*19,y-30+dy*14,31,-Math.PI*.7,Math.PI*.18);ctx.stroke();ctx.restore();}
   for(const f of fx){const t=(now-f.t)/1100;ctx.save();ctx.font='bold 18px monospace';ctx.fillStyle=f.color;ctx.textAlign='center';ctx.shadowColor='#000';ctx.shadowBlur=5;ctx.fillText(f.text,f.x,f.y-45-30*t);ctx.restore()}
-  ctx.restore();displayMap(ctx,opt);
+  ctx.restore();
+  ctx.restore(); // stage zoom — restaurar antes de desenhar a interface
+  displayMap(ctx,opt);
   // Última camada visível, sem depender da profundidade do portal no mapa.
   portalInteractionHud(ctx,portals,{x,y});
  }
@@ -836,6 +856,8 @@ function create({ctx,W,H}){
  return {render,mapSnapshot,resize:(width,height)=>{W=width;H=height;},
   setActorScale:value=>{const v=Number(value);if(Number.isFinite(v))actorScale=Math.max(.5,Math.min(1,v));},
   getActorScale:()=>actorScale,
+  setSceneZoom:value=>{const v=Number(value);if(Number.isFinite(v))sceneZoom=Math.max(.7,Math.min(1.75,v));},
+  getSceneZoom:()=>sceneZoom,
   ready:()=>artReady,tiles:Object.keys(SPRITES).length};
 }
 window.PeregrinoArt16={create};
