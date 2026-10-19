@@ -233,6 +233,17 @@ export function createWorld25D({shell,canvas,width=960,height=576,sceneryV4=true
   scene.background=new THREE.Color('#506c63');
   const camera=new THREE.OrthographicCamera(-width/2,width/2,height/2,-height/2,.1,2200);
   camera.up.set(0,0,-1);
+  function setViewport(nextWidth,nextHeight){
+    if(!Number.isFinite(nextWidth)||!Number.isFinite(nextHeight)||nextWidth<=0||nextHeight<=0)return false;
+    if(nextWidth===width&&nextHeight===height)return false;
+    width=Math.round(nextWidth);height=Math.round(nextHeight);
+    camera.left=-width/2;camera.right=width/2;
+    camera.top=height/2;camera.bottom=-height/2;
+    camera.updateProjectionMatrix();
+    renderer.setSize(width,height,false);
+    alignBackdrop();
+    return true;
+  }
   const ambient=new THREE.HemisphereLight('#e8f2df','#465447',2.1);
   const sun=new THREE.DirectionalLight('#ffe9bd',1.8);
   sun.position.set(-240,600,190);
@@ -400,7 +411,7 @@ export function createWorld25D({shell,canvas,width=960,height=576,sceneryV4=true
     canvas.style.background='';
   }
   window.addEventListener('pagehide',dispose,{once:true});
-  return {render,setNight,setSceneryCanonical,setSceneryV4,setSceneryDetail,setSceneryComposition,setSceneryAtlas,setSceneryV7,dispose,canvas:renderer.domElement,
+  return {render,setViewport,setNight,setSceneryCanonical,setSceneryV4,setSceneryDetail,setSceneryComposition,setSceneryAtlas,setSceneryV7,dispose,canvas:renderer.domElement,
     get foregroundProps(){return foregroundProps;},
     get atlasReady(){return atlasLoaded();},
     get v7Ready(){return isV7Ready();},

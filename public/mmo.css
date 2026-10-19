@@ -843,3 +843,29 @@ body>.bar .brand,body>.bar .brand strong{
   width:100%;min-width:0;max-width:100%;font-size:11px;box-sizing:border-box
  }
 }
+
+
+/* V9.2: fullscreen fills the screen, no 5:3 bars, no CSS-only zoom.
+   The 2D/2.5D cameras now use an actual matching backing resolution. */
+#canvasShell:fullscreen,
+#canvasShell.is-expanded{
+ box-sizing:border-box!important;
+ width:100vw!important;height:100vh!important;height:100dvh!important;
+ max-width:none!important;max-height:none!important;
+ aspect-ratio:auto!important;overflow:hidden!important;
+ border:0!important;outline:0!important;box-shadow:none!important;
+ padding:0!important;margin:0!important;
+}
+#canvasShell:fullscreen #game,
+#canvasShell.is-expanded #game{
+ position:relative;display:block;flex:0 0 100%;
+ width:100%!important;height:100%!important;
+ max-width:none!important;max-height:none!important;
+ aspect-ratio:auto!important;object-fit:fill!important;
+ image-rendering:pixelated;image-rendering:crisp-edges;
+}
+#canvasShell:fullscreen #world25dBackdrop,
+#canvasShell.is-expanded #world25dBackdrop{
+ max-width:none!important;max-height:none!important;
+ aspect-ratio:auto!important;object-fit:fill!important;
+}

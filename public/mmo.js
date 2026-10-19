@@ -3,7 +3,7 @@
 (()=>{
 const $=id=>document.getElementById(id);
 const cvs=$('game'),ctx=cvs.getContext('2d',{alpha:true});ctx.imageSmoothingEnabled=false;
-const W=cvs.width,H=cvs.height,ZONE_W=1536,ZONE_H=1024;
+let W=cvs.width,H=cvs.height;const ZONE_W=1536,ZONE_H=1024;
 
 // Renderizador 2.5D opcional. Não importa módulos da fortaleza ou altera o servidor.
 let world25d=null,world25dActive=false,world25dLoading=false;
@@ -32,7 +32,7 @@ async function enableWorld25d(){
  world25dLoading=true;updateWorld25dMode();
  try{
   if(!world25d){
-   const {createWorld25D}=await import('/world-25d.mjs?v=foreground-depth-v80');
+   const {createWorld25D}=await import('/world-25d.mjs?v=foreground-depth-v80-real-fullscreen-v92');
    world25d=createWorld25D({shell:$('canvasShell'),canvas:cvs,width:W,height:H});
    // In the isolated integration preview, 2.5D paints the ORIGINAL official
    // terrain layout; V7.2 supplies only compatible cosmetic replacements.
@@ -806,7 +806,21 @@ function setExpandedFullscreen(active){
  fullScreenContainer.classList.toggle('is-expanded',expandedFullscreen);
  document.body.classList.toggle('world-fullscreen',expandedFullscreen);
  updateFullscreenButton();
+ requestAnimationFrame(applyWorldViewport);
 }
+// V9.2: real fullscreen viewport (more map), not enlarged 960x576 video.
+function applyWorldViewport(){
+ const full=isWorldFullscreen(),rect=fullScreenContainer.getBoundingClientRect();
+ const size=window.OsPeregrinosViewportV92?.resolutionFor(rect.width,rect.height,full)
+  ||{width:960,height:576};
+ if(size.width===W&&size.height===H)return false;
+ W=size.width;H=size.height;
+ cvs.width=W;cvs.height=H;ctx.imageSmoothingEnabled=false;
+ classicRenderer=window.PeregrinoArt16.create({ctx,W,H});
+ world25d?.setViewport?.(W,H);
+ return true;
+}
+window.addEventListener('resize',()=>requestAnimationFrame(applyWorldViewport));
 function updateFullscreenButton(){
  const active=isWorldFullscreen();
  fullScreenBtn.textContent=active?'⤢ Sair da tela cheia':'⛶ Tela cheia';
@@ -831,6 +845,7 @@ fullScreenBtn.addEventListener('click',async()=>{
 });
 document.addEventListener('fullscreenchange',()=>{
  if(document.fullscreenElement===fullScreenContainer&&expandedFullscreen)setExpandedFullscreen(false);
+ requestAnimationFrame(applyWorldViewport);
  updateFullscreenButton();
  if(isWorldFullscreen()&&$('welcomeOverlay').hidden)cvs.focus({preventScroll:true});
 });
@@ -1372,7 +1387,7 @@ $('chatPresetSend').addEventListener('click',()=>{
 });
 
 // A renderização do mundo aberto reutiliza o atlas 16-bit da campanha original.
-const classicRenderer=window.PeregrinoArt16.create({ctx,W,H});
+let classicRenderer=window.PeregrinoArt16.create({ctx,W,H});
 function canvasDraw(now,dt){
   ctx.imageSmoothingEnabled=false;
   session.cameraX=clamp(Math.floor(session.x-W/2),0,ZONE_W-W);

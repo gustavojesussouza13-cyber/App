@@ -183,3 +183,6 @@ require('./peregrino-png-v86.test.js');
 
 // V9.1: living NPCs retain entire original 64x80 artwork and world anchors.
 require('./npcs-living-v91.test.js');
+
+// V9.2 fullscreen uses real larger camera viewport, never CSS-only stretching.
+require('./world-fullscreen-v92.test.js');

@@ -43,6 +43,8 @@ function create({ctx,W,H}){
  const terrainCache=new Map();
  atlas.addEventListener('load',()=>{artReady=true;cache=null;terrainCache.clear()});
  atlas.addEventListener('error',()=>{artReady=false});
+ // Recreated fullscreen renderer must notice the already-loaded shared atlas.
+ if(atlas.complete&&atlas.naturalWidth>0)artReady=true;
  function cut(g,key,x,y,w,h){const p=SPRITES[key];if(!artReady||!p)return false;g.drawImage(atlas,p[0],p[1],p[2],p[3],Math.round(x),Math.round(y),Math.round(w??p[2]),Math.round(h??p[3]));return true}
  function piece(g,key,sx,sy,sw,sh,x,y,w,h){const p=SPRITES[key];if(!artReady||!p)return false;g.drawImage(atlas,p[0]+sx,p[1]+sy,sw,sh,Math.round(x),Math.round(y),Math.round(w),Math.round(h));return true}
  function pathY(x,z){return ROAD(z)(x)}
