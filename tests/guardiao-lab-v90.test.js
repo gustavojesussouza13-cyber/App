@@ -26,12 +26,12 @@ test('isolated technical lab keeps unsupported animations explicitly pending',()
   assert.ok(page.includes('/'+src),src);
  for(const text of ['Preparação · pendente','Recuperação · pendente'])
   assert.ok(page.includes(text));
- assert.match(page,/31 quadros distintos e transparentes/);
+ assert.match(page,/32 quadros de caminhada/);
  assert.match(page,/width="512" height="320"/);
  assert.match(page,/Morte · cinco quadros/);
  assert.match(page,/OsPeregrinosGuardiaoV90/);
  assert.match(page,/requestAnimationFrame/);
- assert.match(page,/Não foi possível carregar PNG/);
+ assert.match(page,/Não foi possível carregar os atlases/);
  assert.equal(combat.W,128);
  assert.equal(combat.H,160);
 });
