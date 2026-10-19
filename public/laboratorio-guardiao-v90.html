@@ -47,19 +47,39 @@ dl{display:grid;grid-template-columns:auto 1fr;gap:8px 16px;font-size:13px}dt{co
 <button disabled title="Não há quadros definitivos aprovados nesta versão">Preparação · pendente</button>
 <button disabled title="Não há quadros definitivos aprovados nesta versão">Recuperação · pendente</button>
 </div></fieldset>
+<fieldset><legend>Personalização / cores</legend>
+<label>Cor do traje e escudo <select id="guardiaoOutfit">
+<option value="original">Azul · original</option><option value="vermelho">Vermelho</option>
+<option value="floresta">Verde</option><option value="violeta">Roxo</option>
+<option value="ocre">Dourado</option><option value="branco">Branco</option></select></label>
+<label>Cor da capa <select id="guardiaoCape"><option value="nenhuma">Acompanhar traje</option>
+<option value="vinho">Vermelha</option><option value="musgo">Verde</option>
+<option value="marinho">Azul</option><option value="marfim">Marfim</option>
+<option value="rosa">Rosa</option></select></label>
+<label>Cor do cabelo <select id="guardiaoHair"><option value="castanho">Castanho</option>
+<option value="preto">Preto</option><option value="loiro">Loiro</option><option value="ruivo">Ruivo</option>
+<option value="branco">Branco</option></select></label>
+<label>Tom de pele <select id="guardiaoSkin"><option value="dourado">Dourado</option>
+<option value="claro">Claro</option><option value="oliva">Oliva</option>
+<option value="escuro">Escuro</option><option value="profundo">Retinto</option></select></label>
+</fieldset>
 <button id="toggle" type="button">Pausar animação</button>
-<p class="note">Esta versão usa <strong>31 quadros distintos e transparentes extraídos da prévia artística aprovada</strong>, inclusive ataque, habilidade, dano e morte. É a primeira integração técnica experimental. Ainda é necessário revisar manualmente recortes, direções, movimentação frontal e personalização antes de publicar na versão oficial.</p>
+<p class="note">V9.1 acrescenta <strong>32 quadros de caminhada (8 por direção)</strong> e cores dinâmicas no mesmo PNG, mantendo os 31 quadros anteriores de combate, habilidade, dano e morte. É a primeira integração técnica experimental. Ainda é necessário revisar manualmente recortes, direções, movimentação frontal e personalização antes de publicar na versão oficial.</p>
 <dl><dt>Fonte</dt><dd>guardiao-v90-31frames.png</dd><dt>Tamanho da célula</dt><dd>256 × 160</dd><dt>Exibição estável</dt><dd>256 × 160</dd><dt>Regras</dt><dd>Sem interferir nas fortalezas 3D, contas ou MMORPG oficial</dd></dl>
 </section></div>
 </main>
 <script src="/appearance16.js"></script>
 <script src="/approved-classes25d.js"></script>
 <script src="/combat-poses-v83.js"></script>
-<script src="/guardiao-v90.js"></script>
+<script src="/guardiao-v90.js"></script><script src="/guardiao-v91.js"></script>
 <script>
 'use strict';
 const canvas=document.getElementById('sprite'),ctx=canvas.getContext('2d');
-const api=window.OsPeregrinosGuardiaoV90,atlas=api;
+const api=window.OsPeregrinosGuardiaoV91||window.OsPeregrinosGuardiaoV90,atlas=api;
+const appearanceValues={...window.PeregrinosAppearance16.DEFAULT};
+for(const [id,key] of [['guardiaoOutfit','outfit'],['guardiaoCape','cape'],['guardiaoHair','hairColor'],['guardiaoSkin','skin']]){
+ const element=document.getElementById(id);element.addEventListener('change',()=>{appearanceValues[key]=element.value;render(performance.now())});
+}
 const status=document.getElementById('assetStatus'),toggle=document.getElementById('toggle');
 let dir=2,action='idle',active=true,started=performance.now(),frame=0,lastFrame=0;
 for(const button of document.querySelectorAll('[data-dir]')){
@@ -76,7 +96,7 @@ function render(now){
  const elapsed=(now-started)%(cycle[action]||600);
  const drawAction=action==='idle'?'idle':action;
  const ok=api?.draw(ctx,{role:'guardiao',dir,action:drawAction,frame,now,elapsed,
-   appearance:window.PeregrinosAppearance16?.DEFAULT,x:256,y:304,scale:1.55,documentRef:document});
+   appearance:appearanceValues,x:256,y:304,scale:1.55,documentRef:document});
  if(!ok)status.textContent='Falha na renderização da classe: não substituir por fallback.';
 }
 function tick(now){
@@ -85,7 +105,7 @@ function tick(now){
  render(now);requestAnimationFrame(tick);
 }
 atlas.load().then(ok=>{
- status.textContent=ok?'31 quadros do novo Guardião carregados · prévia experimental pronta':'Não foi possível carregar PNG 1280 × 1120 do Guardião.';
+ status.textContent=ok?'32 quadros de caminhada e personalização de cores disponíveis':'Não foi possível carregar os atlases V9.0 e V9.1 do Guardião.';
  if(ok)requestAnimationFrame(tick);
 });
 </script>

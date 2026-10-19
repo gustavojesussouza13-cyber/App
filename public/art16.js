@@ -466,12 +466,16 @@ function create({ctx,W,H}){
   // idle/walk/hurt/death/attack/skill. Other approved classes are unchanged.
   // V9.0: prefer the newly approved Guardiao frames for EVERY action.
   // The previous 3x2 PNG and 16-bit studio are fallback only while loading.
-  const detailedGuardiao=Boolean(useAurora25d&&p.role==='guardiao'&&
-    window.OsPeregrinosGuardiaoV90?.draw(g,{
-      role:'guardiao',x:p.x,y:p.y,dir,appearance:p.appearance,now,
-      action:state.dead?'death':combatAction,
-      elapsed:state.dead?999:state.elapsed,scale:.86,glow:local
-    }));
+  // V9.1: the complete walking atlas and live outfit palette take priority.
+  // The V9.0 renderer remains a safety fallback while new PNGs load.
+  const guardiaoArtOptions={role:'guardiao',x:p.x,y:p.y,dir,
+    appearance:p.appearance,now,action:state.dead?'death':combatAction,
+    elapsed:state.dead?999:state.elapsed,frame:Math.floor(now/118),
+    scale:.86,glow:local};
+  const detailedGuardiao=Boolean(useAurora25d&&p.role==='guardiao'&&(
+    window.OsPeregrinosGuardiaoV91?.draw(g,guardiaoArtOptions)||
+    window.OsPeregrinosGuardiaoV90?.draw(g,guardiaoArtOptions)
+  ));
   const newPeregrinoHero=!detailedGuardiao&&Boolean(useAurora25d&&p.role==='peregrino'&&
     window.OsPeregrinosPeregrinoV85?.draw(g,{
       x:p.x,y:p.y,dir,appearance:p.appearance,now,

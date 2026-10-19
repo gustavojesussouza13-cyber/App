@@ -13,17 +13,19 @@
  });
  const SOURCES=Object.freeze({
   peregrino:'/assets/peregrino/peregrino-runway-walk.png',
-  guardiao:'/assets/approved-classes/guardiao-sprites-3x2-64x80.png',
+  guardiao:'/assets/guardiao-v91/guardiao-walk-4x8-v91.png',
   arqueiro:'/assets/approved-classes/arqueiro-sprites-3x2-64x80.png',
   curandeiro:'/assets/approved-classes/curandeiro-sprites-3x2-64x80.png'
  });
  function loaded(role){
   if(role==='peregrino')return !!root.OsPeregrinosPeregrinoV85?.isReady?.()||!!root.OsPeregrinosRunway25D?.isReady?.();
+  if(role==='guardiao'&&root.OsPeregrinosGuardiaoV91)return !!root.OsPeregrinosGuardiaoV91.isReady();
   return !!root.OsPeregrinosApprovedClasses25D?.isReady?.(role);
  }
  function ensureLoaded(role){
   if(!Object.hasOwn(ROLES,role))return Promise.resolve(false);
   const p=role==='peregrino'?(root.OsPeregrinosPeregrinoV85?.load?.()||root.OsPeregrinosRunway25D?.load?.()):
+    role==='guardiao'&&root.OsPeregrinosGuardiaoV91?root.OsPeregrinosGuardiaoV91.load():
     root.OsPeregrinosApprovedClasses25D?.load?.(role);
   return p&&typeof p.then==='function'?p:Promise.resolve(false);
  }
@@ -31,6 +33,11 @@
   if(!Object.hasOwn(ROLES,role)||!ctx?.drawImage)return false;
   ctx.imageSmoothingEnabled=false;
   if(!loaded(role))return false;
+  // Both the world renderer and character creator share EXACTLY the same Guardiao V9.1 RGBA palette.
+  if(role==='guardiao'&&root.OsPeregrinosGuardiaoV91?.isReady?.())
+   return !!root.OsPeregrinosGuardiaoV91.draw(ctx,{
+    role,dir,appearance,action,frame,now:frame*118,x:64,y:151,scale:1,glow:false
+   });
   // Preview uses the real NEW Peregrino sheet; older PNG remains safe fallback.
   if(role==='peregrino'&&root.OsPeregrinosPeregrinoV85?.isReady?.())
    return !!root.OsPeregrinosPeregrinoV85.draw(ctx,{
