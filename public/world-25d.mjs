@@ -349,6 +349,17 @@ export function createWorld25D({shell,canvas,width=960,height=576,sceneryV4=true
     renderer.render(scene,camera);
     return true;
   }
+  // O enquadramento ortográfico e o fundo WebGL acompanham o canvas 2D.
+  function resize(nextWidth,nextHeight){
+    const nextW=Math.max(1,Math.round(nextWidth)),nextH=Math.max(1,Math.round(nextHeight));
+    if(nextW===width&&nextH===height)return;
+    width=nextW;height=nextH;
+    renderer.setSize(width,height,false);
+    camera.left=-width/2;camera.right=width/2;
+    camera.top=height/2;camera.bottom=-height/2;
+    camera.updateProjectionMatrix();
+    alignBackdrop();
+  }
   function setNight(value){night=Boolean(value);}
   function setSceneryCanonical(value){useCanonical=Boolean(value);activeZone=NaN;activeBiome='';}
   function setSceneryV4(value){useSceneryV4=Boolean(value);activeZone=NaN;activeBiome='';}
@@ -400,7 +411,7 @@ export function createWorld25D({shell,canvas,width=960,height=576,sceneryV4=true
     canvas.style.background='';
   }
   window.addEventListener('pagehide',dispose,{once:true});
-  return {render,setNight,setSceneryCanonical,setSceneryV4,setSceneryDetail,setSceneryComposition,setSceneryAtlas,setSceneryV7,dispose,canvas:renderer.domElement,
+  return {render,resize,setNight,setSceneryCanonical,setSceneryV4,setSceneryDetail,setSceneryComposition,setSceneryAtlas,setSceneryV7,dispose,canvas:renderer.domElement,
     get foregroundProps(){return foregroundProps;},
     get atlasReady(){return atlasLoaded();},
     get v7Ready(){return isV7Ready();},
