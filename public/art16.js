@@ -39,6 +39,17 @@ function create({ctx,W,H}){
  const fallenAngelV4=window.OsPeregrinosFallenAngelV4?.create({windowRef:window});
  const worldProps=window.OsPeregrinosWorldPropsArtisan64?.create({documentRef:document});
  let cache=null,objects=[],artReady=false;
+ // V9.3: apresentação dos atores, nunca posições, hitboxes, física,
+ // arquivos PNG, tamanho do mundo nem renderização da fortaleza 3D.
+ // (x,y) dos pés permanece fixo ao redimensionar o personagem.
+ let actorScale=.65;
+ function drawActorAtScale(g,x,y,paint,multiplier=1){
+  const scale=actorScale*multiplier;
+  if(Math.abs(scale-1)<.001){paint();return;}
+  g.save();
+  g.translate(x,y);g.scale(scale,scale);g.translate(-x,-y);
+  try{paint()}finally{g.restore()}
+ }
  // Três últimas regiões: o retorno pelo atlas não reconstrói milhares de tiles.
  const terrainCache=new Map();
  atlas.addEventListener('load',()=>{artReady=true;cache=null;terrainCache.clear()});
@@ -781,14 +792,14 @@ function create({ctx,W,H}){
    actors.push({depth:b.y-2,paint:()=>kingdomBase(ctx,b,now)});
   }
   for(const n of npcs){if(n.x<cameraX-100||n.x>cameraX+W+100||n.y<cameraY-105||n.y>cameraY+H+105)continue;
-   actors.push({depth:n.y,paint:()=>npcActor(ctx,n,n.index===storyStage,n.index!==null&&n.index<storyStage,now,x,y)});
+   actors.push({depth:n.y,paint:()=>drawActorAtScale(ctx,n.x,n.y,()=>npcActor(ctx,n,n.index===storyStage,n.index!==null&&n.index<storyStage,now,x,y))});
   }
   for(const m of monsters){const margin=types[Math.max(0,m.species|0)]==='dragao'?(m.boss?310:200):['morcego','serpente','fera','escorpiao','fantasma','vespa','cavaleiro','sentinela','basilisco','anjo-caido'].includes(types[Math.max(0,m.species|0)])?(m.boss?220:155):90;
-   if(m.x<cameraX-margin||m.x>cameraX+W+margin||m.y<cameraY-margin||m.y>cameraY+H+margin)continue;actors.push({depth:m.y,paint:()=>monster(ctx,m,target===m.id,now,monsterActions.get(m.id))})}
+   if(m.x<cameraX-margin||m.x>cameraX+W+margin||m.y<cameraY-margin||m.y>cameraY+H+margin)continue;actors.push({depth:m.y,paint:()=>drawActorAtScale(ctx,m.x,m.y,()=>monster(ctx,m,target===m.id,now,monsterActions.get(m.id)),m.boss?1.18:1)})}
   for(const m of fallen){const margin=types[Math.max(0,m.species|0)]==='dragao'?(m.boss?310:200):['morcego','serpente','fera','escorpiao','fantasma','vespa','cavaleiro','sentinela','basilisco','anjo-caido'].includes(types[Math.max(0,m.species|0)])?(m.boss?220:155):90;
-   if(m.x<cameraX-margin||m.x>cameraX+W+margin||m.y<cameraY-margin||m.y>cameraY+H+margin)continue;actors.push({depth:m.y-1,paint:()=>monster(ctx,m,false,now,{action:'death',at:m.defeatedAt})})}
-  for(const p of players){if(p.x<cameraX-75||p.x>cameraX+W+75||p.y<cameraY-95||p.y>cameraY+H+75)continue;actors.push({depth:p.y,paint:()=>character(ctx,p,false,now,p.moving!==false,playerActions.has(p.name)&&now-playerActions.get(p.name).at<390&&playerActions.get(p.name).action==='attack',playerActions.get(p.name))})}
-  actors.push({depth:y,paint:()=>character(ctx,{name,role,appearance,x,y,dir,dead:Boolean(opt.dead)},true,now,moving,now-lastAction<370,heroPose||{action:'attack',at:lastAction},Boolean(lastActionWasSkill))});
+   if(m.x<cameraX-margin||m.x>cameraX+W+margin||m.y<cameraY-margin||m.y>cameraY+H+margin)continue;actors.push({depth:m.y-1,paint:()=>drawActorAtScale(ctx,m.x,m.y,()=>monster(ctx,m,false,now,{action:'death',at:m.defeatedAt}),m.boss?1.18:1)})}
+  for(const p of players){if(p.x<cameraX-75||p.x>cameraX+W+75||p.y<cameraY-95||p.y>cameraY+H+75)continue;actors.push({depth:p.y,paint:()=>drawActorAtScale(ctx,p.x,p.y,()=>character(ctx,p,false,now,p.moving!==false,playerActions.has(p.name)&&now-playerActions.get(p.name).at<390&&playerActions.get(p.name).action==='attack',playerActions.get(p.name)))})}
+  actors.push({depth:y,paint:()=>drawActorAtScale(ctx,x,y,()=>character(ctx,{name,role,appearance,x,y,dir,dead:Boolean(opt.dead)},true,now,moving,now-lastAction<370,heroPose||{action:'attack',at:lastAction},Boolean(lastActionWasSkill)))});
   actors.sort((a,b)=>a.depth-b.depth);
   for(const a of actors)a.paint();
   for(const shot of projectiles)drawProjectile(ctx,shot);
@@ -822,7 +833,10 @@ function create({ctx,W,H}){
    paintProp:(dest,item)=>{if(cache!==region){cache=region;objects=region.objects}prop(dest,item);}
   });
  }
- return {render,mapSnapshot,resize:(width,height)=>{W=width;H=height;},ready:()=>artReady,tiles:Object.keys(SPRITES).length};
+ return {render,mapSnapshot,resize:(width,height)=>{W=width;H=height;},
+  setActorScale:value=>{const v=Number(value);if(Number.isFinite(v))actorScale=Math.max(.5,Math.min(1,v));},
+  getActorScale:()=>actorScale,
+  ready:()=>artReady,tiles:Object.keys(SPRITES).length};
 }
 window.PeregrinoArt16={create};
 })();
