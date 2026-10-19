@@ -464,13 +464,21 @@ function create({ctx,W,H}){
    moved?'walk':'idle';
   // V8.5 preview: the new Peregrino always keeps the SAME 64x80 art across
   // idle/walk/hurt/death/attack/skill. Other approved classes are unchanged.
-  const newPeregrinoHero=Boolean(useAurora25d&&p.role==='peregrino'&&
+  // V9.0: prefer the newly approved Guardiao frames for EVERY action.
+  // The previous 3x2 PNG and 16-bit studio are fallback only while loading.
+  const detailedGuardiao=Boolean(useAurora25d&&p.role==='guardiao'&&
+    window.OsPeregrinosGuardiaoV90?.draw(g,{
+      role:'guardiao',x:p.x,y:p.y,dir,appearance:p.appearance,now,
+      action:state.dead?'death':combatAction,
+      elapsed:state.dead?999:state.elapsed,scale:.86,glow:local
+    }));
+  const newPeregrinoHero=!detailedGuardiao&&Boolean(useAurora25d&&p.role==='peregrino'&&
     window.OsPeregrinosPeregrinoV85?.draw(g,{
       x:p.x,y:p.y,dir,appearance:p.appearance,now,
       action:state.dead?'death':combatAction,elapsed:state.elapsed,
       scale:1.45,glow:local
     }));
-  const customizedHero=!newPeregrinoHero&&Boolean(useAurora25d&&!state.dead&&
+  const customizedHero=!detailedGuardiao&&!newPeregrinoHero&&Boolean(useAurora25d&&!state.dead&&
     window.OsPeregrinosAppearanceSpriteV76?.drawWorld(g,{
       role:p.role,x:p.x,y:p.y,dir,appearance:p.appearance,
       action:combatAction,frame:Math.floor(now/118),elapsed:state.elapsed
@@ -491,7 +499,7 @@ function create({ctx,W,H}){
       role:p.role,x:p.x,y:p.y,dir,appearance:p.appearance,now,
       action:moved?'walk':'idle',glow:local,scale:1.45
     }));
-  if(newPeregrinoHero||customizedHero||runwayHero||approvedHero||(useAurora25d&&
+  if(detailedGuardiao||newPeregrinoHero||customizedHero||runwayHero||approvedHero||(useAurora25d&&
    window.OsPeregrinosHeroesAurora25D?.draw(g,{
     role:p.role,x:p.x,y:p.y,dir,appearance:p.appearance,
     action:state.hurt?'hurt':attacking?'attack':moved?'walk':'idle',

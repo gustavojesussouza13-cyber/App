@@ -24,12 +24,16 @@ test('isolated technical lab keeps unsupported animations explicitly pending',()
  assert.match(page,/Guardião · laboratório técnico/);
  for(const src of ['approved-classes25d.js','combat-poses-v83.js','appearance-sprite-v76.js'])
   assert.ok(page.includes('/'+src),src);
- for(const text of ['Morte · pendente','Preparação · pendente','Recuperação · pendente'])
+ for(const text of ['Preparação · pendente','Recuperação · pendente'])
   assert.ok(page.includes(text));
- assert.match(page,/não.*spritesheet final redesenhada/);
- assert.match(page,/width="128" height="160"/);
+ assert.match(page,/31 quadros distintos e transparentes/);
+ assert.match(page,/width="512" height="320"/);
+ assert.match(page,/Morte · cinco quadros/);
+ assert.match(page,/OsPeregrinosGuardiaoV90/);
  assert.match(page,/requestAnimationFrame/);
  assert.match(page,/Não foi possível carregar PNG/);
  assert.equal(combat.W,128);
  assert.equal(combat.H,160);
 });
+
+require('./guardiao-v90-integration.test.js');
