@@ -32,7 +32,7 @@ async function enableWorld25d(){
  world25dLoading=true;updateWorld25dMode();
  try{
   if(!world25d){
-   const {createWorld25D}=await import('/world-25d.mjs?v=scene-zoom-v94-20261018');
+   const {createWorld25D}=await import('/world-25d.mjs?v=zoom-cover-v95-20261018');
    world25d=createWorld25D({shell:$('canvasShell'),canvas:cvs,width:W,height:H});
    // In the isolated integration preview, 2.5D paints the ORIGINAL official
    // terrain layout; V7.2 supplies only compatible cosmetic replacements.
@@ -1442,12 +1442,18 @@ updateSceneZoom(initialSceneZoom);
 // Agora a resolução lógica segue a área VISÍVEL, mantendo a proporção e
 // revelando mais mundo. O limite é o tamanho real da região (1536×1024).
 function syncGameViewport(){
+ const shell=$('canvasShell');
+ // Em tela cheia, usar os pixels do contêiner (não o rect antigo do canvas).
+ // Isso trata rotação, barras móveis e telas altas/ultrawide em zoom 70%.
+ const expanded=Boolean(document.fullscreenElement===shell||shell.classList.contains('is-expanded'));
  const rect=cvs.getBoundingClientRect();
- if(rect.width<1||rect.height<1)return;
- const minScale=Math.max(1,960/rect.width,576/rect.height);
- const scale=Math.min(minScale,ZONE_W/rect.width,ZONE_H/rect.height);
- const nextW=Math.max(1,Math.min(ZONE_W,Math.round(rect.width*scale)));
- const nextH=Math.max(1,Math.min(ZONE_H,Math.round(rect.height*scale)));
+ const cssW=expanded?shell.clientWidth:rect.width;
+ const cssH=expanded?shell.clientHeight:rect.height;
+ if(cssW<1||cssH<1)return;
+ const minScale=Math.max(1,960/cssW,576/cssH);
+ const scale=Math.min(minScale,ZONE_W/cssW,ZONE_H/cssH);
+ const nextW=Math.max(1,Math.round(cssW*scale));
+ const nextH=Math.max(1,Math.round(cssH*scale));
  if(nextW===W&&nextH===H)return;
  W=nextW;H=nextH;cvs.width=W;cvs.height=H;
  ctx.imageSmoothingEnabled=false;
@@ -1457,8 +1463,10 @@ function syncGameViewport(){
 if(typeof ResizeObserver!=='undefined'){
  const viewportObserver=new ResizeObserver(syncGameViewport);
  viewportObserver.observe($('canvasShell'));
+ viewportObserver.observe(cvs);
 }
 window.addEventListener('resize',syncGameViewport);
+window.visualViewport?.addEventListener('resize',syncGameViewport);
 syncGameViewport();
 function canvasDraw(now,dt){
   ctx.imageSmoothingEnabled=false;
