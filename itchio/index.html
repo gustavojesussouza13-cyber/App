@@ -1,32 +1,48 @@
 <!doctype html>
 <html lang="pt-BR"><head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#10151e">
-<title>Os Peregrinos MMORPG — itch.io</title>
+<title>Os Peregrinos MMORPG — Itch.io</title>
 <style>
-*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#0b151c;color:#fff;font-family:system-ui,Segoe UI,sans-serif}
-#game{position:fixed;inset:0;width:100%;height:100%;border:0;background:#071721;display:block}
-#waiting{position:fixed;inset:0;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:12px;background:radial-gradient(circle at 50% 40%,#2b4e66,#132630 58%,#070e15);text-align:center;padding:24px;z-index:10;transition:opacity .3s,visibility .3s}
-#waiting.hidden{opacity:0;visibility:hidden;pointer-events:none}
-h1{font-family:Georgia,serif;letter-spacing:.08em;color:#ffe0a0;font-size:clamp(22px,5vw,44px);margin:0}p{margin:4px auto;max-width:540px;line-height:1.5;color:#e3ebef}
-a{color:#ffe0a0}.spin{height:36px;width:36px;border:3px solid #fff6;border-top-color:#ffd17d;border-radius:50%;animation:rotate 1s linear infinite}@keyframes rotate{to{transform:rotate(360deg)}}
-#fallback{display:none;background:#152734b8;padding:14px;border-radius:9px}#fallback.visible{display:block}
-@media(prefers-reduced-motion:reduce){.spin{animation:none}#waiting{transition:none}}
-</style></head><body>
-<!-- O jogo original roda no servidor oficial com WebSocket e banco existentes. -->
-<iframe id="game" title="Os Peregrinos — Mundo Aberto" 
- src="https://www.cronicasdaaurora.com.br/mundo.html?itch_embed=1"
- allow="fullscreen; autoplay; clipboard-write" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
-<div id="waiting" role="status" aria-live="polite">
- <div class="spin" aria-hidden="true"></div>
- <h1>OS PEREGRINOS</h1><p>Conectando ao MMORPG online...</p>
- <p id="fallback">O servidor pode estar iniciando ou seu navegador pode bloquear páginas incorporadas. <a href="https://www.cronicasdaaurora.com.br/mundo.html" target="_blank" rel="noopener noreferrer">Jogar diretamente no site oficial</a>.</p>
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#0b1624;color:#f8eac6;font-family:system-ui,-apple-system,Segoe UI,sans-serif}
+body{background:radial-gradient(ellipse at 35% 5%,#30465e,#0b1624 65%);display:grid;place-items:center;min-height:100vh}
+main{max-width:780px;margin:auto;padding:clamp(24px,7vw,72px);text-align:center}
+h1{font-family:Georgia,serif;font-size:clamp(36px,7vw,65px);line-height:1.05;letter-spacing:.04em;margin:15px auto}
+h1 small{display:block;font-size:.42em;letter-spacing:.3em;margin-top:12px}
+p{line-height:1.55;color:#cbd8da;font-size:clamp(15px,1.8vw,19px)}
+.symbol{color:#ffcc73;font-size:42px}
+.buttons{display:grid;gap:14px;max-width:560px;margin:28px auto}
+.button{display:block;padding:17px 20px;border-radius:12px;text-decoration:none;font:700 17px system-ui,sans-serif;cursor:pointer}
+.primary{background:linear-gradient(135deg,#ffe7a3,#cc9340);color:#23180e;border:1px solid #fee2a0}
+.secondary{background:#21374b;color:#f2ddaa;border:1px solid #d3ac6b}
+.note{border:1px solid #9a7d4e70;border-radius:12px;padding:15px;background:#172a38;font-size:14px}
+.note b{color:#ffe0a0}a{color:#ffe0a0}
+#embed{display:none;position:fixed;inset:0;z-index:4;background:#07101b}
+#embed.open{display:flex;flex-direction:column}
+.toolbar{min-height:56px;padding:9px 14px;display:flex;gap:14px;align-items:center;justify-content:space-between;background:#182b3e;font-size:13px}
+.toolbar button{background:#23384c;color:white;border:1px solid #bba474;border-radius:8px;cursor:pointer;padding:7px 12px}
+iframe{border:0;width:100%;flex:1;background:#10151e}
+@media(max-width:650px){.toolbar{flex-wrap:wrap}.buttons{margin-top:17px}}
+</style>
+</head><body>
+<main>
+<div class="symbol" aria-hidden="true">✦</div>
+<h1>OS PEREGRINOS <small>MMORPG</small></h1>
+<p>Um mundo para explorar. Uma história para construir.</p>
+<p>Seu MMORPG de fantasia online continua no mesmo servidor e mantém as contas e os personagens existentes.</p>
+<div class="buttons">
+<a class="button primary" href="https://www.cronicasdaaurora.com.br/mundo.html" target="_blank" rel="noopener noreferrer">▶ JOGAR NO SITE OFICIAL ↗</a>
+<button class="button secondary" id="tryEmbed" type="button">Experimentar dentro do itch.io</button>
+</div>
+<p class="note">🔒 <b>Já tem conta?</b> Clique em <b>Jogar no site oficial</b> para entrar e recuperar seu progresso. Alguns navegadores bloqueiam páginas ou cookies de autenticação incorporados em outros sites. Não crie uma nova conta por causa disso.</p>
+<p style="font-size:13px"><a target="_blank" rel="noopener noreferrer" href="https://www.cronicasdaaurora.com.br/mundo.html">www.cronicasdaaurora.com.br/mundo.html</a></p>
+</main>
+<div id="embed">
+<div class="toolbar"><button id="back" type="button">← Voltar</button><span>Se não carregar, jogue diretamente no site.</span><a target="_blank" rel="noopener noreferrer" href="https://www.cronicasdaaurora.com.br/mundo.html">Abrir site oficial ↗</a></div>
+<iframe id="game" title="Os Peregrinos - Mundo Aberto" allow="fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
 </div>
 <script>
-(()=>{const f=document.getElementById('game'),w=document.getElementById('waiting'),h=document.getElementById('fallback');
-let navigated=false;
-f.addEventListener('load',()=>{navigated=true;w.classList.add('hidden')});
-f.addEventListener('error',()=>h.classList.add('visible'));
-setTimeout(()=>{if(!navigated)h.classList.add('visible')},15000);
-})();
+(()=>{const o=document.getElementById('embed'),f=document.getElementById('game');
+document.getElementById('tryEmbed').addEventListener('click',()=>{o.classList.add('open');f.src='https://www.cronicasdaaurora.com.br/mundo.html?itch_embed=1'});
+document.getElementById('back').addEventListener('click',()=>{o.classList.remove('open');f.removeAttribute('src')})})();
 </script></body></html>
