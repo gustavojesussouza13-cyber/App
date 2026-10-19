@@ -9,9 +9,9 @@ import * as THREE from '/vendor/three.module.js';
 import {buildSceneryV4,SCENERY_V4_VERSION} from '/world-scenery-v4.mjs';
 import {preloadSceneryAtlas,atlasLoaded} from '/world-scenery-v6-asset-adapter.mjs';
 import {preloadV7Assets,isV7Ready,v7Stats} from '/world-scenery-v7-asset-loader.mjs';
-import {preloadV7Terrain,v7TerrainReady,v7TerrainStatus} from '/world-scenery-v7-terrain.mjs';
+import {preloadV7Terrain,v7TerrainReady,v7TerrainStatus,v7TerrainImage} from '/world-scenery-v7-terrain.mjs';
 import {preloadV72Assets,v72Ready,v72Status} from '/world-scenery-v72-asset-loader.mjs';
-import {buildCanonicalScenery,canonicalForegroundObjects} from '/world-scenery-v72-canonical.mjs?v=tree-occlusion-depth-v80';
+import {buildCanonicalScenery,canonicalForegroundObjects,paintOfficialV73Terrain} from '/world-scenery-v72-canonical.mjs?v=tree-occlusion-depth-v80';
 
 const ZONE_WIDTH = 1536;
 const ZONE_HEIGHT = 1024;
@@ -231,10 +231,12 @@ export function createWorld25D({shell,canvas,width=960,height=576,sceneryV4=true
 
   const scene=new THREE.Scene();
   scene.background=new THREE.Color('#506c63');
-  // V9.5: preencher a periferia da região com terreno real repetido.
-  // A malha 3x inclui TODA a câmera a 70% (inclusive 21:9/retrato).
-  // Os objetos, portas e limites jogáveis continuam dentro da região.
-  let outerTerrainTexture=null,outerTerrainSource=null;
+  // V9.6: a periferia é SEMPRE do próprio cenário 2.5D.
+  // É proibido usar sourceMap.canvas, que contém o mapa 2D clássico.
+  // O piso aprovado V7.3 é reconstruído com o mesmo atlas do centro,
+  // mas sem duplicar árvores/casas no trecho não jogável.
+  let outerTerrainTexture=null,outerTerrainSource=null,outerTerrainMode='';
+  let outerTerrainZone=NaN,outerTerrainBiome='';
   const outerGround=new THREE.Mesh(
     new THREE.PlaneGeometry(ZONE_WIDTH*3,ZONE_HEIGHT*3),
     new THREE.MeshBasicMaterial({color:'#506b5d',depthWrite:true})
@@ -242,26 +244,63 @@ export function createWorld25D({shell,canvas,width=960,height=576,sceneryV4=true
   outerGround.rotation.x=-Math.PI/2;
   outerGround.position.set(ZONE_WIDTH/2,-10,ZONE_HEIGHT/2);
   scene.add(outerGround);
-  function updateOuterTerrain(biome,sourceMap){
+  function updateOuterTerrain(zone,biome,sourceMap){
+    const atlas=useCanonical&&useSceneryV7&&lastSceneryV4?.modernTerrain
+      ?v7TerrainImage():null;
+    const nativeGround=layer?.getObjectByName('scenery-v4-ground');
+    const nativeTexture=nativeGround?.material?.map||null;
+    const mode=atlas&&sourceMap?.tileKind?'v73-floor':
+      nativeTexture?'native-2.5d-floor':'2.5d-biome-floor';
+    const source=mode==='v73-floor'?sourceMap.canvas:
+      mode==='native-2.5d-floor'?nativeTexture:null;
+    if(outerTerrainTexture&&source===outerTerrainSource&&mode===outerTerrainMode&&
+       zone===outerTerrainZone&&biome===outerTerrainBiome)return;
+    const oldTexture=outerTerrainTexture;
+    outerTerrainTexture=null;outerGround.material.map=null;
+    oldTexture?.dispose();
     const colors=palette[biome]||palette.meadow;
-    outerGround.material.color.set(sourceMap?.canvas?'#ffffff':colors[0]);
-    if(sourceMap?.canvas===outerTerrainSource)return;
-    if(outerTerrainTexture){
-      outerGround.material.map=null;
-      outerTerrainTexture.dispose();
-      outerTerrainTexture=null;
+    let texture=null;
+    if(mode==='v73-floor'){
+      const floorCanvas=document.createElement('canvas');
+      floorCanvas.width=ZONE_WIDTH;floorCanvas.height=ZONE_HEIGHT;
+      const g=floorCanvas.getContext('2d',{alpha:false});
+      if(g){
+        g.imageSmoothingEnabled=false;
+        if(paintOfficialV73Terrain(g,sourceMap,atlas)){
+          texture=new THREE.CanvasTexture(floorCanvas);
+          texture.colorSpace=THREE.SRGBColorSpace;
+          texture.magFilter=THREE.NearestFilter;
+          texture.minFilter=THREE.NearestMipmapNearestFilter;
+          // O piso central é o quadrado intermediário de uma malha 3x3.
+          // O deslocamento 1 faz o ladrilho CENTRAL ficar na orientação
+          // normal (UV 2..3); as extremidades são refletidas e encaixam
+          // pixel a pixel na borda, sem repetir o mapa 2D.
+          texture.wrapS=texture.wrapT=THREE.MirroredRepeatWrapping;
+          texture.repeat.set(3,3);
+          texture.offset.set(1,1);
+        }
+      }
     }
-    outerTerrainSource=sourceMap?.canvas||null;
-    if(outerTerrainSource){
-      const tex=new THREE.CanvasTexture(outerTerrainSource);
-      tex.colorSpace=THREE.SRGBColorSpace;
-      tex.wrapS=tex.wrapT=THREE.RepeatWrapping;
-      tex.repeat.set(3,3);
-      tex.magFilter=THREE.NearestFilter;
-      tex.minFilter=THREE.LinearMipmapLinearFilter;
-      outerTerrainTexture=tex;
-      outerGround.material.map=tex;
+    if(!texture&&nativeTexture){
+      // Compatibilidade com a aparência 2.5D V4 quando V7 não está ativa.
+      // Usa exclusivamente a textura do piso WebGL, nunca o Canvas 2D.
+      texture=nativeTexture.clone();
+      texture.wrapS=texture.wrapT=THREE.RepeatWrapping;
+      texture.repeat.set(nativeTexture.repeat.x*3,nativeTexture.repeat.y*3);
+      texture.offset.copy(nativeTexture.offset);
     }
+    if(!texture){
+      texture=groundTexture(zone,colors);
+      texture.repeat.multiplyScalar(3);
+    }
+    texture.needsUpdate=true;
+    outerTerrainTexture=texture;
+    outerTerrainSource=source;
+    outerTerrainMode=mode;
+    outerTerrainZone=zone;
+    outerTerrainBiome=biome;
+    outerGround.material.color.set('#ffffff');
+    outerGround.material.map=texture;
     outerGround.material.needsUpdate=true;
   }
   const camera=new THREE.OrthographicCamera(-width/2,width/2,height/2,-height/2,.1,2200);
@@ -275,7 +314,6 @@ export function createWorld25D({shell,canvas,width=960,height=576,sceneryV4=true
   let useSceneryV4=Boolean(sceneryV4),useSceneryDetail=true,useSceneryComposition=true,useSceneryAtlas=false,useSceneryV7=false,lastSceneryV4=null,useCanonical=false,activeMapSource=null;
   function rebuild(zone,biome,sourceMap=null) {
     foregroundProps=[];
-    outerGround.material.color.set((palette[biome]||palette.meadow)[0]);
     if(layer){
       scene.remove(layer);
       layer.traverse(o=>{
@@ -362,8 +400,10 @@ export function createWorld25D({shell,canvas,width=960,height=576,sceneryV4=true
   function render({zone=0,biome='pradaria',cameraX=0,cameraY=0,zoom=1,now=0,sourceMap=null}={}) {
     if(disposed)return false;
     const selected=biomeNames[biome]||biome;
-    updateOuterTerrain(selected,sourceMap);
     if(zone!==activeZone||selected!==activeBiome||(useCanonical&&sourceMap?.canvas&&sourceMap.canvas!==activeMapSource))rebuild(zone,selected,sourceMap);
+    // Reconstrução vem ANTES da periferia: ambos usam a mesma versão da
+    // arte 2.5D realmente carregada (não a tela clássica enviada ao renderer).
+    updateOuterTerrain(zone,selected,sourceMap);
     const stageZoom=Math.max(.7,Math.min(1.75,Number(zoom)||1));
     if(camera.zoom!==stageZoom){camera.zoom=stageZoom;camera.updateProjectionMatrix();}
     const cx=cameraX+width/(2*stageZoom),cz=cameraY+height/(2*stageZoom);
