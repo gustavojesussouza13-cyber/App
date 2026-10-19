@@ -231,6 +231,15 @@ export function createWorld25D({shell,canvas,width=960,height=576,sceneryV4=true
 
   const scene=new THREE.Scene();
   scene.background=new THREE.Color('#506c63');
+  // Solo periférico sob o cenário original quando o zoom exibe além da região.
+  // Não modifica geometria, colisões nem os objetos originais do mundo.
+  const outerGround=new THREE.Mesh(
+    new THREE.PlaneGeometry(ZONE_WIDTH*4,ZONE_HEIGHT*4),
+    new THREE.MeshBasicMaterial({color:'#506b5d',depthWrite:true})
+  );
+  outerGround.rotation.x=-Math.PI/2;
+  outerGround.position.set(ZONE_WIDTH/2,-10,ZONE_HEIGHT/2);
+  scene.add(outerGround);
   const camera=new THREE.OrthographicCamera(-width/2,width/2,height/2,-height/2,.1,2200);
   camera.up.set(0,0,-1);
   const ambient=new THREE.HemisphereLight('#e8f2df','#465447',2.1);
@@ -242,6 +251,7 @@ export function createWorld25D({shell,canvas,width=960,height=576,sceneryV4=true
   let useSceneryV4=Boolean(sceneryV4),useSceneryDetail=true,useSceneryComposition=true,useSceneryAtlas=false,useSceneryV7=false,lastSceneryV4=null,useCanonical=false,activeMapSource=null;
   function rebuild(zone,biome,sourceMap=null) {
     foregroundProps=[];
+    outerGround.material.color.set((palette[biome]||palette.meadow)[0]);
     if(layer){
       scene.remove(layer);
       layer.traverse(o=>{
@@ -325,11 +335,13 @@ export function createWorld25D({shell,canvas,width=960,height=576,sceneryV4=true
     activeZone=zone;
     activeBiome=biome;
   }
-  function render({zone=0,biome='pradaria',cameraX=0,cameraY=0,now=0,sourceMap=null}={}) {
+  function render({zone=0,biome='pradaria',cameraX=0,cameraY=0,zoom=1,now=0,sourceMap=null}={}) {
     if(disposed)return false;
     const selected=biomeNames[biome]||biome;
     if(zone!==activeZone||selected!==activeBiome||(useCanonical&&sourceMap?.canvas&&sourceMap.canvas!==activeMapSource))rebuild(zone,selected,sourceMap);
-    const cx=cameraX+width/2,cz=cameraY+height/2;
+    const stageZoom=Math.max(.7,Math.min(1.75,Number(zoom)||1));
+    if(camera.zoom!==stageZoom){camera.zoom=stageZoom;camera.updateProjectionMatrix();}
+    const cx=cameraX+width/(2*stageZoom),cz=cameraY+height/(2*stageZoom);
     camera.position.set(cx,1350,cz);
     camera.lookAt(cx,0,cz);
     if(shrine){
@@ -405,6 +417,7 @@ export function createWorld25D({shell,canvas,width=960,height=576,sceneryV4=true
     observer?.disconnect();
     window.removeEventListener('resize',alignBackdrop);
     document.removeEventListener('fullscreenchange',alignBackdrop);
+    outerGround.geometry.dispose();outerGround.material.dispose();
     renderer.dispose();
     renderer.domElement.remove();
     canvas.style.zIndex='';
