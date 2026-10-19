@@ -893,3 +893,6 @@ body>.bar .brand,body>.bar .brand strong{
  max-width:none!important;max-height:none!important;
  aspect-ratio:auto!important;object-fit:fill!important
 }
+
+/* V9.7: a bolsa tem janela própria; diário mantém quatro áreas independentes. */
+.layout .action-panel .tabrow{grid-template-columns:repeat(4,minmax(0,1fr))}
