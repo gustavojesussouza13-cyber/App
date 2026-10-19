@@ -859,3 +859,37 @@ body>.bar .brand,body>.bar .brand strong{
  position:absolute!important;flex:none!important;
  max-width:none!important;max-height:none!important;
 }
+
+
+/* V9.5 — preencher 100% da área de jogo em tela cheia, inclusive no zoom 70%.
+   Os dois renderizadores são sobrepostos e medidos pela área interna do shell.
+   Substitui o antigo flexbox de razão 5:3 que deixava bordas em alguns aparelhos. */
+#canvasShell:fullscreen,
+#canvasShell.is-expanded{
+ position:fixed!important;
+ inset:0!important;
+ width:100vw!important;
+ height:100vh!important;
+ height:100dvh!important;
+ max-width:none!important;max-height:none!important;
+ aspect-ratio:auto!important;
+ padding:0!important;border:0!important;outline:0!important;
+ display:block!important;overflow:hidden!important
+}
+#canvasShell:fullscreen > #game,
+#canvasShell.is-expanded > #game{
+ position:absolute!important;
+ top:0!important;left:0!important;right:0!important;bottom:0!important;
+ margin:0!important;padding:0!important;
+ width:100%!important;height:100%!important;
+ max-width:none!important;max-height:none!important;
+ aspect-ratio:auto!important;object-fit:fill!important;
+ image-rendering:pixelated
+}
+#canvasShell:fullscreen > #world25dBackdrop,
+#canvasShell.is-expanded > #world25dBackdrop{
+ position:absolute!important;inset:0!important;
+ width:100%!important;height:100%!important;
+ max-width:none!important;max-height:none!important;
+ aspect-ratio:auto!important;object-fit:fill!important
+}
