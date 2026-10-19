@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Laboratório do Guardião — Os Peregrinos</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,sans-serif;background:#0e1724;color:#eaf1ff}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 50% 5%,#263b58,#0e1724 65%);min-height:100vh}
+main{max-width:1100px;margin:auto;padding:30px 20px 56px}h1{font:700 clamp(27px,5vw,44px) Georgia,serif;color:#efdcaa;margin:10px 0}
+p{line-height:1.6;color:#b4c7dc}a{color:#a3cef4}
+.status{display:inline-flex;align-items:center;gap:8px;border:1px solid #68849b;border-radius:999px;padding:7px 12px;font-size:13px;color:#b8d4ee}
+.grid{display:grid;grid-template-columns:minmax(0,380px) 1fr;gap:26px;margin-top:24px}
+.stage{background:radial-gradient(ellipse at 50% 70%,#375873 0%,#25394f 39%,#152536 85%);border:1px solid #708ca8;border-radius:16px;padding:24px 12px;text-align:center}
+canvas{width:256px;height:320px;max-width:100%;image-rendering:pixelated;display:block;margin:0 auto}
+.stage small{display:block;margin-top:10px;color:#b9c9da}.controls{border:1px solid #465f77;border-radius:16px;background:#18283c;padding:22px}
+fieldset{padding:0;border:0;margin:0 0 24px}legend{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px;color:#e4d1a6}
+button{border:1px solid #667f98;background:#293f58;color:#e6f0fb;padding:10px 15px;border-radius:8px;margin:0 6px 8px 0;cursor:pointer;font-weight:600}
+button[aria-pressed=true]{background:#e8cb8e;border-color:#ffe4ad;color:#172438}
+button:disabled{opacity:.4;cursor:not-allowed}button:focus-visible,a:focus-visible{outline:3px solid #adddfc;outline-offset:3px}
+.note{background:#243348;border-left:3px solid #e0bf80;padding:14px 16px;border-radius:6px;font-size:14px}
+dl{display:grid;grid-template-columns:auto 1fr;gap:8px 16px;font-size:13px}dt{color:#9ab2cd}dd{margin:0}
+@media(max-width:750px){.grid{grid-template-columns:1fr}.stage{padding:10px}.controls{padding:18px}}
+</style>
+</head>
+<body><main>
+<a href="/mundo.html">← Abrir jogo experimental</a>
+<h1>Guardião · laboratório técnico</h1>
+<p>Ambiente isolado para verificar proporções, direções, caminhada e movimentos de combate do Guardião dentro do motor atual. O mundo oficial não foi alterado.</p>
+<div class="status" id="assetStatus" role="status" aria-live="polite">Carregando atlas PNG aprovado no repositório…</div>
+<div class="grid">
+<section class="stage" aria-label="Prévia técnica do Guardião">
+<canvas width="128" height="160" id="sprite" role="img" aria-label="Sprite do Guardião em tamanho técnico fixo"></canvas>
+<small>Canvas técnico fixo 128 × 160 · ampliação sem suavização</small>
+</section>
+<section class="controls" aria-label="Controles de inspeção">
+<fieldset><legend>Direção do corpo</legend><div id="directions">
+<button data-dir="2" aria-pressed="true">Frente</button><button data-dir="0" aria-pressed="false">Costas</button>
+<button data-dir="1" aria-pressed="false">Direita</button><button data-dir="3" aria-pressed="false">Esquerda</button>
+</div></fieldset>
+<fieldset><legend>Ação</legend><div id="actions">
+<button data-action="idle" aria-pressed="true">Parado</button><button data-action="walk" aria-pressed="false">Caminhada</button>
+<button data-action="attack" aria-pressed="false">Ataque técnico</button><button data-action="skill" aria-pressed="false">Habilidade técnica</button>
+<button data-action="hurt" aria-pressed="false">Recebe dano</button>
+<button disabled title="Não há quadros definitivos aprovados nesta versão">Morte · pendente</button>
+<button disabled title="Não há quadros definitivos aprovados nesta versão">Preparação · pendente</button>
+<button disabled title="Não há quadros definitivos aprovados nesta versão">Recuperação · pendente</button>
+</div></fieldset>
+<button id="toggle" type="button">Pausar animação</button>
+<p class="note">Atenção: esta prévia usa o PNG de Guardião <strong>já versionado</strong> (3 × 2 quadros de 64 × 80). Ataque e habilidade são testes de articulação do motor V8.3, <strong>não</strong> a spritesheet final redesenhada da última prévia artística.</p>
+<dl><dt>Fonte</dt><dd>guardiao-sprites-3x2-64x80.png</dd><dt>Tamanho da célula</dt><dd>64 × 80</dd><dt>Exibição estável</dt><dd>128 × 160</dd><dt>Regras</dt><dd>Sem interferir nas fortalezas 3D, contas ou MMORPG oficial</dd></dl>
+</section></div>
+</main>
+<script src="/appearance16.js"></script>
+<script src="/approved-classes25d.js"></script>
+<script src="/combat-poses-v83.js"></script>
+<script src="/appearance-sprite-v76.js"></script>
+<script>
+'use strict';
+const canvas=document.getElementById('sprite'),ctx=canvas.getContext('2d');
+const api=window.OsPeregrinosAppearanceSpriteV76,atlas=window.OsPeregrinosApprovedClasses25D;
+const status=document.getElementById('assetStatus'),toggle=document.getElementById('toggle');
+let dir=2,action='idle',active=true,started=performance.now(),frame=0,lastFrame=0;
+for(const button of document.querySelectorAll('[data-dir]')){
+ button.addEventListener('click',()=>{dir=Number(button.dataset.dir);for(const b of document.querySelectorAll('[data-dir]'))b.setAttribute('aria-pressed',String(b===button));render(performance.now());});
+}
+for(const button of document.querySelectorAll('[data-action]')){
+ button.addEventListener('click',()=>{action=button.dataset.action;started=performance.now();frame=0;for(const b of document.querySelectorAll('[data-action]'))b.setAttribute('aria-pressed',String(b===button));render(performance.now());});
+}
+toggle.addEventListener('click',()=>{active=!active;toggle.textContent=active?'Pausar animação':'Reiniciar animação';if(active){started=performance.now();requestAnimationFrame(tick);}});
+function render(now){
+ ctx.clearRect(0,0,128,160);ctx.imageSmoothingEnabled=false;
+ if(!atlas?.isReady('guardiao'))return;
+ const elapsed=(now-started)%(action==='walk'?960:action==='idle'?2000:420);
+ const drawAction=action==='idle'?'idle':action;
+ const ok=api?.draw(ctx,{role:'guardiao',dir,action:drawAction,frame,elapsed,
+   appearance:window.PeregrinosAppearance16?.DEFAULT,x:64,y:156,scale:1,documentRef:document});
+ if(!ok)status.textContent='Falha na renderização da classe: não substituir por fallback.';
+}
+function tick(now){
+ if(!active)return;
+ if(now-lastFrame>120){frame++;lastFrame=now;}
+ render(now);requestAnimationFrame(tick);
+}
+atlas.load('guardiao').then(ok=>{
+ status.textContent=ok?'PNG original carregado · prévia técnica pronta':'Não foi possível carregar PNG 192 × 160 do Guardião.';
+ if(ok)requestAnimationFrame(tick);
+});
+</script>
+</body></html>
