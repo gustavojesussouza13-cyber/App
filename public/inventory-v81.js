@@ -10,8 +10,8 @@
  if(typeof module==='object'&&module.exports)module.exports=api;
  if(root)root.OsPeregrinosInventoryV81=api;
 })(typeof globalThis!=='undefined'?globalThis:this,function(root){
- const VERSION='inventario-v98-somente-itens-20261019';
- const LIMIT=35,QUICK_COUNT=8;
+ const VERSION='inventario-v99-grade-classica-36-slots-20261021';
+ const LIMIT=27,QUICK_COUNT=9;
  const RELIC_WEAPON={guardiao:'lamina_aurora',arqueiro:'arco_alvorada',curandeiro:'cajado_misericordia',peregrino:'sabre_peregrino'};
  const IDS={
   pocao:{name:'Poção de vida',category:'consumables',tip:'Recupera até 65 pontos de vida. Uso confirmado pelo servidor.',icon:'red-potion'},
@@ -50,8 +50,8 @@
  }
  function defaultQuick(items){
   const ids=new Set(items.map(v=>v.id));
-  return ['pocao','superpocao','espada','arco','amuleto','chave','chave_coroa_aurora','manto_luz']
-   .map(id=>ids.has(id)?id:null);
+  return ['pocao','superpocao','espada','arco','amuleto','chave','chave_coroa_aurora','manto_luz',null]
+   .map(id=>id&&ids.has(id)?id:null);
  }
  function drawIcon(ctx,kind){
   if(!ctx||typeof ctx.fillRect!=='function')return false;
@@ -156,62 +156,105 @@
    if(sent)onMessage('Usando '+item.name+'…');
    return !!sent;
   }
-  function slot(parent,item,i,{quick=false}={}){
-   const el=doc.createElement('button');el.type='button';
-   el.className='op-slot'+(item?' occupied':'')+(state.selected===item?.id?' selected':'');
+  // A organização da mochila não altera inventário, contagem ou equipamento
+  // no servidor. Os nove atalhos são referências únicas a itens existentes.
+  function assignQuick(index,id){
+   if(index<0||index>=QUICK_COUNT||!find(id))return false;
+   for(let i=0;i<QUICK_COUNT;i++)if(state.quick[i]===id)state.quick[i]=null;
+   state.quick[index]=id;
+   state.selected=null;
+   render();
+   return true;
+  }
+  function slot(parent,item,i,{quick=false,inModal=false}={}){
+   const el=doc.createElement('button');
+   el.type='button';
+   el.className='op-slot'+(item?' occupied':'')+
+     (state.selected===item?.id&&inModal?' selected':'')+
+     (inModal?' op-mc-slot':'')+
+     (quick?' op-quick-slot':'');
    el.setAttribute('aria-label',item?item.name+' · '+item.count:'Espaço vazio');
-   if(quick){
-    el.classList.add('op-quick-slot');
-    const number=doc.createElement('span');number.className='op-hotkey';number.textContent=String(i+1);
+   if(quick&&!inModal){
+    const number=doc.createElement('span');
+    number.className='op-hotkey';number.textContent=String(i+1);
     el.append(number);
     el.setAttribute('aria-label',(i+1)+' · '+(item?item.name:'Vazio'));
    }
    if(item){
-    const icon=canvasIcon(item.icon);el.append(icon);
-    if(item.count>1){const count=doc.createElement('span');count.className='op-item-count';count.textContent=String(item.count);el.append(count)}
-    el.title=item.name+' ×'+item.count+' — '+item.tip;
-    el.onclick=()=>{
-     if(quick&&state.assign&&state.selected){state.quick[i]=state.selected;state.assign=false;render();return}
-     if(quick){if(item.canUse)use(item.id);else{open();state.selected=item.id;render()}return}
-     state.selected=item.id;state.assign=false;render();
-    };
-    if(!quick){
-     el.draggable=true;
-     el.addEventListener('dragstart',e=>{e.dataTransfer?.setData('text/plain',item.id)});
-     el.addEventListener('dblclick',()=>{if(item.canUse)use(item.id)});
+    el.append(canvasIcon(item.icon));
+    if(item.count>1){
+     const count=doc.createElement('span');count.className='op-item-count';
+     count.textContent=String(item.count);el.append(count);
     }
+    el.title=item.name+' ×'+item.count+' — '+item.tip;
+    el.draggable=true;
+    el.addEventListener('dragstart',e=>{
+     e.dataTransfer?.setData('text/plain',item.id);
+     if(e.dataTransfer)e.dataTransfer.effectAllowed='move';
+    });
+    // Consumíveis só são usados por duplo clique ou pela barra do mundo.
+    if(inModal)el.addEventListener('dblclick',()=>{if(item.canUse)use(item.id)});
+   }
+   if(inModal){
+    el.onclick=()=>{
+     if(quick){
+      if(state.selected){assignQuick(i,state.selected);return;}
+      if(item){
+       state.quick[i]=null;
+       state.selected=item.id;
+       render();return;
+      }
+     }else if(item){
+      state.selected=state.selected===item.id?null:item.id;
+      render();return;
+     }
+     state.selected=null;render();
+    };
    }else if(quick){
-    el.onclick=()=>{if(state.assign&&state.selected){state.quick[i]=state.selected;state.assign=false;render()}else open()};
+    el.onclick=()=>{
+     if(item?.canUse){use(item.id);return;}
+     if(item){open();state.selected=item.id;render();return;}
+     open();
+    };
    }
    if(quick){
     el.addEventListener('dragover',e=>e.preventDefault());
     el.addEventListener('drop',e=>{
-     e.preventDefault();const id=e.dataTransfer?.getData('text/plain');
-     if(find(id)){state.quick[i]=id;state.assign=false;render()}
+     e.preventDefault();
+     const id=e.dataTransfer?.getData('text/plain');
+     if(id)assignQuick(i,id);
+    });
+   }else if(inModal){
+    el.addEventListener('dragover',e=>e.preventDefault());
+    el.addEventListener('drop',e=>{
+     e.preventDefault();
+     const id=e.dataTransfer?.getData('text/plain');
+     if(!find(id))return;
+     for(let q=0;q<QUICK_COUNT;q++)if(state.quick[q]===id)state.quick[q]=null;
+     state.selected=null;render();
     });
    }
-   parent.append(el);return el;
+   parent.append(el);
+   return el;
   }
-  // V9.8: a janela apresenta exclusivamente itens que o jogador possui.
-  // Atalhos de teclado e a barra rápida DO JOGO permanecem independentes.
   function renderItems(){
    const grid=$$('opInventoryGrid');
    grid.replaceChildren();
-   grid.setAttribute('aria-label','Itens que você possui');
-   grid.style.setProperty('--owned-columns',String(Math.max(1,Math.min(7,state.items.length))));
-   if(!state.items.length){
-    const empty=doc.createElement('span');
-    empty.className='op-inventory-empty';
-    empty.textContent='Nenhum item';
-    grid.append(empty);
-    return;
-   }
-   for(let i=0;i<state.items.length;i++)slot(grid,state.items[i],i);
+   const equippedIds=new Set(state.quick.filter(id=>id&&find(id)));
+   const bagItems=state.items.filter(item=>!equippedIds.has(item.id));
+   // Três fileiras de nove espaços, como no inventário clássico.
+   // Itens adicionais permanecem acessíveis pela rolagem.
+   for(let i=0;i<Math.max(LIMIT,bagItems.length);i++)
+    slot(grid,bagItems[i]||null,i,{inModal:true});
+   const hotbar=$$('opInventoryHotbar');
+   hotbar.replaceChildren();
+   for(let i=0;i<QUICK_COUNT;i++)
+    slot(hotbar,find(state.quick[i]),i,{quick:true,inModal:true});
   }
   function renderBar(){
-   // Mantém somente a barra rápida EXTERNA, fora da janela da bolsa.
    quickbar.replaceChildren();
-   for(let i=0;i<QUICK_COUNT;i++)slot(quickbar,find(state.quick[i]),i,{quick:true});
+   for(let i=0;i<QUICK_COUNT;i++)
+    slot(quickbar,find(state.quick[i]),i,{quick:true});
    quickbar.hidden=!getState()?.connected;
   }
   function render(){
@@ -246,12 +289,16 @@
   function toggle(){return state.open?close():open()}
   function quickUse(index){
    if(!Number.isInteger(index)||index<0||index>=QUICK_COUNT)return false;
-   // A free slot is a valid keyboard destination when assigning an item.
-   if(state.open&&state.assign&&state.selected){state.quick[index]=state.selected;state.assign=false;render();return true}
+   if(state.open){
+    if(state.selected)return assignQuick(index,state.selected);
+    // Dentro da mochila, a tecla seleciona o item sem consumi-lo.
+    const item=find(state.quick[index]);
+    if(item){state.selected=item.id;render();return true;}
+    return false;
+   }
    const item=find(state.quick[index]);if(!item)return false;
    if(item.canUse)return use(item.id);
-   if(!state.open)open();
-   state.selected=item.id;render();return true;
+   open();state.selected=item.id;render();return true;
   }
   $$('opInventoryClose').addEventListener('click',close);
   $$('opInventoryBackdrop').addEventListener('click',close);
