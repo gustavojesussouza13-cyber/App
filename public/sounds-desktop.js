@@ -142,7 +142,7 @@
   function play(kind){
    if(!enabled||!(SFX[kind]||NOTES[kind]))return false;
    const now=clock(),prev=last.get(kind)??-Infinity;
-   const cooldown=kind==='footstep'?420:kind==='monster'?550:110;
+   const cooldown=kind==='footstep'?3300:kind==='monster'?1800:110;
    if(now-prev<cooldown)return false;
    last.set(kind,now);
    const file=SFX[kind];
