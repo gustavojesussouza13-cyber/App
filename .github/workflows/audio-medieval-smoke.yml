@@ -1,0 +1,29 @@
+name: Audio medieval Runway - smoke
+on:
+  pull_request:
+    branches: [os-peregrinos-online]
+    paths:
+      - 'public/sounds-desktop.js'
+      - 'public/mmo.js'
+      - 'public/mmo.css'
+      - 'server.js'
+      - 'tests/audio-desktop.test.js'
+      - 'public/assets/audio/**'
+  push:
+    branches: [feature/audio-medieval-runway-v1-20261020]
+    paths:
+      - '.github/workflows/audio-medieval-smoke.yml'
+permissions:
+  contents: read
+jobs:
+  audio-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check public/sounds-desktop.js
+      - run: node --check public/mmo.js
+      - run: node --check server.js
+      - run: node --test tests/audio-desktop.test.js
