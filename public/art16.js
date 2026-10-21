@@ -476,13 +476,22 @@ function create({ctx,W,H}){
     window.OsPeregrinosGuardiaoV91?.draw(g,guardiaoArtOptions)||
     window.OsPeregrinosGuardiaoV90?.draw(g,guardiaoArtOptions)
   ));
-  const newPeregrinoHero=!detailedGuardiao&&Boolean(useAurora25d&&p.role==='peregrino'&&
+  // V4 experimental: approved Archer animation has ONE exclusive painter.
+  // Other class atlas renderers must NEVER overlay it after a successful draw.
+  const newArcherHero=Boolean(useAurora25d&&p.role==='arqueiro'&&
+    window.OsPeregrinosArqueiroV4?.draw(g,{
+      role:'arqueiro',x:p.x,y:p.y,dir,appearance:p.appearance,now,
+      action:state.dead?'death':combatAction,
+      elapsed:state.dead?999:state.elapsed,frame:Math.floor(now/115),scale:.86,
+      glow:local
+    }));
+  const newPeregrinoHero=!newArcherHero&&!detailedGuardiao&&Boolean(useAurora25d&&p.role==='peregrino'&&
     window.OsPeregrinosPeregrinoV85?.draw(g,{
       x:p.x,y:p.y,dir,appearance:p.appearance,now,
       action:state.dead?'death':combatAction,elapsed:state.elapsed,
       scale:1.45,glow:local
     }));
-  const customizedHero=!detailedGuardiao&&!newPeregrinoHero&&Boolean(useAurora25d&&!state.dead&&
+  const customizedHero=!newArcherHero&&!detailedGuardiao&&!newPeregrinoHero&&Boolean(useAurora25d&&!state.dead&&
     window.OsPeregrinosAppearanceSpriteV76?.drawWorld(g,{
       role:p.role,x:p.x,y:p.y,dir,appearance:p.appearance,
       action:combatAction,frame:Math.floor(now/118),elapsed:state.elapsed
@@ -497,13 +506,13 @@ function create({ctx,W,H}){
    }));
   // As três artes aprovadas só substituem a aparência padrão no 2.5D.
   // Sem o arquivo PNG ou durante ataque/dano, usa os heróis atuais.
-  const approvedHero=!detailedGuardiao&&!customizedHero&&Boolean(useAurora25d&&p.role!=='peregrino'&&
+  const approvedHero=!newArcherHero&&!detailedGuardiao&&!customizedHero&&Boolean(useAurora25d&&p.role!=='peregrino'&&
     !state.hurt&&!attacking&&!state.dead&&
     window.OsPeregrinosApprovedClasses25D?.draw(g,{
       role:p.role,x:p.x,y:p.y,dir,appearance:p.appearance,now,
       action:moved?'walk':'idle',glow:local,scale:1.45
     }));
-  if(detailedGuardiao||newPeregrinoHero||customizedHero||runwayHero||approvedHero||(useAurora25d&&
+  if(newArcherHero||detailedGuardiao||newPeregrinoHero||customizedHero||runwayHero||approvedHero||(useAurora25d&&
    window.OsPeregrinosHeroesAurora25D?.draw(g,{
     role:p.role,x:p.x,y:p.y,dir,appearance:p.appearance,
     action:state.hurt?'hurt':attacking?'attack':moved?'walk':'idle',
