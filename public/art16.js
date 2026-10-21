@@ -497,7 +497,7 @@ function create({ctx,W,H}){
    }));
   // As três artes aprovadas só substituem a aparência padrão no 2.5D.
   // Sem o arquivo PNG ou durante ataque/dano, usa os heróis atuais.
-  const approvedHero=!customizedHero&&Boolean(useAurora25d&&p.role!=='peregrino'&&
+  const approvedHero=!detailedGuardiao&&!customizedHero&&Boolean(useAurora25d&&p.role!=='peregrino'&&
     !state.hurt&&!attacking&&!state.dead&&
     window.OsPeregrinosApprovedClasses25D?.draw(g,{
       role:p.role,x:p.x,y:p.y,dir,appearance:p.appearance,now,
