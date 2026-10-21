@@ -1,0 +1,30 @@
+[
+  {
+    "file": "sfx/passos-pedra.mp3",
+    "url": "https://dnznrvs05pmza.cloudfront.net/audio_sfx/faa83fed-472a-4137-95c2-7e6c02a4cae4/OP_SFX_passos_pedra.mp3?_jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJrZXlIYXNoIjoiN2E4YTc1MTYzMjA3NjJhYSIsImJ1Y2tldCI6InJ1bndheS10YXNrLWFydGlmYWN0cyIsInN0YWdlIjoicHJvZCIsImV4cCI6MTc5MjYzMzQ5NH0.GjfowbRz3GfSRp4txqkB41w4-aXBwa8Uk2ASedYyTkU"
+  },
+  {
+    "file": "sfx/coletar-item.mp3",
+    "url": "https://dnznrvs05pmza.cloudfront.net/audio_sfx/dc08e21b-1ea5-488d-a38f-38a886aed430/OP_SFX_coletar_item.mp3?_jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJrZXlIYXNoIjoiNjNmMGI1YzQ3ZDcwYWI2MCIsImJ1Y2tldCI6InJ1bndheS10YXNrLWFydGlmYWN0cyIsInN0YWdlIjoicHJvZCIsImV4cCI6MTc5MjY2ODM1Nn0.wDut9eMmwE0fkIxIlCVJUmAr4KGaNZCAS_icqd-y2yw"
+  },
+  {
+    "file": "sfx/inventario-clique.mp3",
+    "url": "https://dnznrvs05pmza.cloudfront.net/audio_sfx/d789ef26-750a-4d5e-a84d-34757bf28c35/OP_SFX_inventario_clique.mp3?_jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJrZXlIYXNoIjoiNzM5NDI0YTk1MTJjODgwMyIsImJ1Y2tldCI6InJ1bndheS10YXNrLWFydGlmYWN0cyIsInN0YWdlIjoicHJvZCIsImV4cCI6MTc5MjY0MDU1M30.85UUk9ODq5g5yxBBcxUsZm16EO1JHVQNxcfY1lLHjMo"
+  },
+  {
+    "file": "sfx/portal.mp3",
+    "url": "https://dnznrvs05pmza.cloudfront.net/audio_sfx/29c739a7-4b0c-4d6e-b4ee-cb91eb605388/OP_SFX_portal.mp3?_jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJrZXlIYXNoIjoiNzBkNGQxZDBlZWY2ZTNlMiIsImJ1Y2tldCI6InJ1bndheS10YXNrLWFydGlmYWN0cyIsInN0YWdlIjoicHJvZCIsImV4cCI6MTc5MjY4NTEzNn0.nHfAstta5-tvdqkaGAVnwrwNl6UD0RoLHy8HM-3Zo3Y"
+  },
+  {
+    "file": "ambience/floresta.mp3",
+    "url": "https://dnznrvs05pmza.cloudfront.net/audio_sfx/0927209e-edb3-464b-87de-51ee52c9e30e/OP_AMB_floresta.mp3?_jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJrZXlIYXNoIjoiZDhjNzNjN2M4MmViNjdmYiIsImJ1Y2tldCI6InJ1bndheS10YXNrLWFydGlmYWN0cyIsInN0YWdlIjoicHJvZCIsImV4cCI6MTc5MjY0MTQwNH0.0yNNJBpCNtaE0jGn2CyykJTPuDqvZJIA_bPz64k_MMM"
+  },
+  {
+    "file": "ambience/vilarejo.mp3",
+    "url": "https://dnznrvs05pmza.cloudfront.net/audio_sfx/c16258b5-5f1a-48e1-87a6-58a867e3155f/OP_AMB_vilarejo.mp3?_jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJrZXlIYXNoIjoiMWZmM2M3NzY3NGJkZDk1YSIsImJ1Y2tldCI6InJ1bndheS10YXNrLWFydGlmYWN0cyIsInN0YWdlIjoicHJvZCIsImV4cCI6MTc5MjY3MTYwNn0.vayUsDbUCMESjPAgEnQowUbUY_5lZ6vPM1yln-nY8ng"
+  },
+  {
+    "file": "ambience/masmorra.mp3",
+    "url": "https://dnznrvs05pmza.cloudfront.net/audio_sfx/f8a5fce2-5764-4fbe-8fa1-9c55bc5d2761/OP_AMB_masmorra.mp3?_jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJrZXlIYXNoIjoiYmFjYTkxY2FlZGRhNDc5NSIsImJ1Y2tldCI6InJ1bndheS10YXNrLWFydGlmYWN0cyIsInN0YWdlIjoicHJvZCIsImV4cCI6MTc5MjY1MDU3MH0.rfjGX-oxmjKf1RoYpdO1MChYztfASCiojjsUWQSsh0k"
+  }
+]
