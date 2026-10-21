@@ -111,7 +111,8 @@
   }
   function setScene(label){
    const name=String(label||'').toLocaleLowerCase('pt-BR');
-   const next=/masmorra|ruína|cripta|caverna|catacumba|calabouço|templo sombrio|subterrân/.test(name)?'dungeon':
+   const next=/menu inicial|tela inicial|^menu$/.test(name)?'theme':
+    /masmorra|ruína|cripta|caverna|catacumba|calabouço|templo sombrio|subterrân/.test(name)?'dungeon':
     /vila|cidade|aldeia|mercado|praça|taverna|refúgio|porto|castelo habitado/.test(name)?'village':'exploration';
    if(currentScene!==next){currentScene=next;syncBackground()}
    return next;
