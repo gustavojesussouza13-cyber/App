@@ -62,7 +62,7 @@ const classicChatGuard=new ChatGuard({cooldownMs:1600});
 const mobileCoop=new MobileCoop({send:(c,msg)=>send(c.socket,msg),maxRooms:5,canJoin:()=>players.size+world.count+mobileCoop.countPlayers()<MAX_PLAYERS});
 const sockets = new Set();
 const maintenanceNotices=new MaintenanceNotices();
-const MIME = {'.mjs':'application/javascript; charset=utf-8','.xml':'application/xml; charset=utf-8','.txt':'text/plain; charset=utf-8','.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'application/javascript; charset=utf-8','.png':'image/png','.webp':'image/webp','.jpg':'image/jpeg','.jpeg':'image/jpeg','.svg':'image/svg+xml','.ico':'image/x-icon'};
+const MIME = {'.mjs':'application/javascript; charset=utf-8','.xml':'application/xml; charset=utf-8','.txt':'text/plain; charset=utf-8','.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'application/javascript; charset=utf-8','.png':'image/png','.webp':'image/webp','.jpg':'image/jpeg','.jpeg':'image/jpeg','.svg':'image/svg+xml','.ico':'image/x-icon','.mp3':'audio/mpeg'};
 const decoder = new TextDecoder('utf-8', {fatal:true});
 const accountStore=process.env.DATABASE_URL?new AccountStore({databaseUrl:process.env.DATABASE_URL}):null;
 const world=new World({send,getOnline:()=>0,hasClassicName:name=>[...players.values()].some(p=>p.name.toLocaleLowerCase('pt-BR')===name.toLocaleLowerCase('pt-BR')),dataFile:process.env.DATA_FILE||path.join(__dirname,'data','world.sqlite'),autosave:true,persistentStore:accountStore});
