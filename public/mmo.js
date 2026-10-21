@@ -125,7 +125,7 @@ const latency=window.OsPeregrinosLatency.create();
 // Música medieval e efeitos são opt-in: clique/toque ativa o áudio.
 const desktopAudio=window.OsPeregrinosAudio.create({desktop:true});
 desktopAudio.bind($('audioToggle'));
-desktopAudio.setScene($('zoneTitle')?.textContent||'');
+desktopAudio.setScene('menu inicial');
 const pingIndicator=$('pingIndicator');
 function updatePingIndicator(){
  const {ms,quality}=latency.state();
