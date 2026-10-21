@@ -12,7 +12,7 @@
  const W=256,H=160,STEP_MS=118;
  const SOURCES=Object.freeze({
   walk:'/assets/curandeiro-v4/curandeiro-v4-caminhada-8x4.png?v=20261021-1',
-  action:'/assets/curandeiro-v4/curandeiro-v4-acoes-8x5.png?v=20261021-1'
+  action:'/assets/curandeiro-v4/curandeiro-v4-acoes-8x5-limpo.png?v=20261021-no-ghosts-v1'
  });
  const OUTFITS=Object.freeze({original:null,branco:'#d7d2c4',safira:'#315e9d',marinho:'#274b82',floresta:'#32784e',vermelho:'#a73c46',vinho:'#793845',violeta:'#7955a5',rosa:'#ae5a91',ocre:'#b99b50',grafite:'#5b6575',preto:'#424552',turquesa:'#368d91'});
  const CAPES=Object.freeze({nenhuma:null,marinho:'#31568c',musgo:'#377452',vinho:'#98434b',marfim:'#d5ccb9',rosa:'#b163a0'});
@@ -109,7 +109,7 @@
   return true;
  }
  if(typeof document!=='undefined')void load();
- return Object.freeze({VERSION:'curandeiro-v4-approved-art-experimental',SOURCES,WALK_FRAMES:8,WIDTH:W,HEIGHT:H,
+ return Object.freeze({VERSION:'curandeiro-v4-approved-art-experimental-no-ghosts',SOURCES,WALK_FRAMES:8,WIDTH:W,HEIGHT:H,
   OUTFITS,CAPES,SKINS,HAIR,EYES,normalizeDir,phase,style,plan,load,prepare,draw,applyPalette,
   isReady:()=>!!walkImage&&!!actionImage,hasFailed:()=>failed});
 });

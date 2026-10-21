@@ -63,7 +63,7 @@ test('Curandeiro V4: every walking direction has eight distinct complete transpa
  }
 });
 test('Curandeiro V4: healing, attack, hurt, and death are separate art poses, not old fallback',()=>{
- const atlas=pixels('curandeiro-v4-acoes-8x5.png',5);
+ const atlas=pixels('curandeiro-v4-acoes-8x5-limpo.png',5);
  for(const [row,required] of [[1,8],[2,8],[3,4],[4,4]]){
   const hashes=new Set();for(let col=0;col<required;col++){
    const q=cellInfo(atlas,col,row);assert.ok(q.opaque>1200);hashes.add(q.hash);
@@ -94,4 +94,39 @@ test('Curandeiro V4 remains experimental and cannot overlay old hero renderer',(
  assert.match(html,/curandeiro-v4-experimental\.js/);
  assert.match(html,/curandeiro-v4-single-painter/);
  assert.match(html,/guild-city-3d\.js\?v=pedestrians-upgrade-v4/);
+});
+test('Curandeiro V4: ataque e cura não contêm sprites vizinhos capturados no atlas',()=>{
+ const old=pixels('curandeiro-v4-acoes-8x5.png',5);
+ const cleaned=pixels('curandeiro-v4-acoes-8x5-limpo.png',5);
+ const right=[[1,2,153],[2,0,163],[2,1,157],[2,2,151],[2,3,150],[2,4,151],[2,5,148],[2,6,146]];
+ const left=[[1,6,94]];
+ let removed=0,unchanged=0;
+ for(const [r,c,cut] of right){
+  for(let y=0;y<160;y++)for(let x=0;x<256;x++){
+   const idx=(r*160+y)*cleaned.width+c*256+x;
+   const before=old.pix[idx],after=cleaned.pix[idx];
+   if(x>=cut){
+    if((old.transparent[before]??255)>25)removed++;
+    assert.equal(cleaned.transparent[after]??255,0,'stray neighboring pose in right margin '+r+':'+c);
+   }else{assert.equal(after,before,'original subject pixels must stay unchanged');unchanged++;}
+  }
+ }
+ for(const [r,c,cut] of left){
+  for(let y=0;y<160;y++)for(let x=0;x<256;x++){
+   const idx=(r*160+y)*cleaned.width+c*256+x;
+   if(x<cut){
+    if((old.transparent[old.pix[idx]]??255)>25)removed++;
+    assert.equal(cleaned.transparent[cleaned.pix[idx]]??255,0);
+   }else assert.equal(cleaned.pix[idx],old.pix[idx]);
+  }
+ }
+ assert.ok(removed>200,'regression must remove actual stray painted pixels');
+ assert.ok(unchanged>100000,'do not redraw the original healer');
+ const runtime=fs.readFileSync(path.join(root,'public/curandeiro-v4-experimental.js'),'utf8');
+ const lab=fs.readFileSync(path.join(root,'public/laboratorio-curandeiro-v4.html'),'utf8');
+ const mundo=fs.readFileSync(path.join(root,'public/mundo.html'),'utf8');
+ assert.match(runtime,/curandeiro-v4-acoes-8x5-limpo\.png/);
+ assert.match(lab,/healer-v4-clean-attack-heal-20261021/);
+ assert.match(mundo,/healer-v4-clean-attack-heal-20261021/);
+ assert.match(mundo,/guild-city-3d\.js\?v=pedestrians-upgrade-v4/);
 });
