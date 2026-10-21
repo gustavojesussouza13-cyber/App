@@ -13,6 +13,7 @@
 })(typeof globalThis!=='undefined'?globalThis:this,function(root,prior){
  const W=256,H=160,COLS=8,ROWS=4;
  const SOURCE='/assets/guardiao-v91/guardiao-walk-4x8-v91.png?v=20261019-v91';
+ const FRONT_BACK_SOURCE='/assets/guardiao-v93/guardiao-front-back-walk-4x4-256x160.png?v=20261021-v93';
  const OUTFITS=Object.freeze({
   vinho:'#a43d49',vermelho:'#c04443',floresta:'#347a52',safira:'#2559a2',
   ocre:'#b8944e',violeta:'#7852ac',rosa:'#bd568b',marfim:'#c5bcb0',
@@ -22,7 +23,7 @@
  const HAIR=Object.freeze({castanho:'#885d44',preto:'#353039',loiro:'#d3a85c',ruivo:'#bc6444',branco:'#dce0de',azul:'#526b9e',rosa:'#c37d9d'});
  const SKINS=Object.freeze({claro:'#f0cda8',dourado:'#dea978',oliva:'#b78a65',bronze:'#9e674a',escuro:'#76503f',profundo:'#52392f'});
  const DEFAULT=Object.freeze({outfit:'original',cape:'nenhuma',hairColor:'castanho',skin:'dourado'});
- let walkImage=null,loading=null,failed=false;
+ let walkImage=null,frontBackImage=null,loading=null,failed=false;
  const frameCache=new Map(),maxCache=240;
  const normalizeDir=d=>Number.isInteger(d)?((d%4+4)%4):2;
  const phase=(frame,now)=>{const k=Number.isFinite(frame)?Math.floor(frame):Math.floor((Number(now)||0)/112);return ((k%8)+8)%8;};
@@ -77,7 +78,7 @@
   return imageData;
  }
  function load(){
-  if(walkImage&&prior?.isReady?.())return Promise.resolve(true);
+  if(walkImage&&frontBackImage&&prior?.isReady?.())return Promise.resolve(true);
   if(loading)return loading;
   if(typeof Image==='undefined')return Promise.resolve(false);
   const walk=new Promise(resolve=>{
@@ -87,7 +88,18 @@
     else{failed=true;resolve(false)}};
    im.onerror=()=>{failed=true;resolve(false)};im.src=SOURCE;
   });
-  loading=Promise.all([walk,prior?.load?.()||Promise.resolve(false)]).then(([w,b])=>w&&b);
+  const frontBack=new Promise(resolve=>{
+   if(frontBackImage)return resolve(true);
+   const im=new Image();im.decoding='async';
+   im.onload=()=>{
+    const ok=im.naturalWidth===4*W&&im.naturalHeight===4*H;
+    if(ok){frontBackImage=im;frameCache.clear();}else failed=true;
+    resolve(ok);
+   };
+   im.onerror=()=>{failed=true;resolve(false)};
+   im.src=FRONT_BACK_SOURCE;
+  });
+  loading=Promise.all([walk,frontBack,prior?.load?.()||Promise.resolve(false)]).then(([w,f,b])=>w&&f&&b);
   return loading;
  }
  function prepare({dir=2,action='idle',now=0,frame=null,elapsed=0,appearance=null,documentRef=root.document}={}){
@@ -101,7 +113,13 @@
   const canvas=documentRef.createElement('canvas');canvas.width=W;canvas.height=H;
   const ctx=canvas.getContext('2d',{willReadFrequently:true});if(!ctx)return null;
   ctx.imageSmoothingEnabled=false;
-  if(action==='walk'&&walkImage){ctx.drawImage(walkImage,p*W,d*H,W,H,0,0,W,H);}
+  if(action==='walk'&&frontBackImage&&(d===0||d===2)){
+   // The approved 4x4 sheet: 8 rear cells, then 8 front cells.
+   // No interpolation, overlays or generated redraws.
+   const row=(d===0?0:2)+Math.floor(p/4);
+   ctx.drawImage(frontBackImage,(p%4)*W,row*H,W,H,0,0,W,H);
+  }
+  else if(action==='walk'&&walkImage){ctx.drawImage(walkImage,p*W,d*H,W,H,0,0,W,H);}
   else if(!prior?.draw?.(ctx,{role:'guardiao',x:W/2,y:148,dir:d,action,now,frame,elapsed,scale:1,glow:false}))return null;
   const c=colors(palette);
   if((c.outfit||c.cape||c.hair||c.skin||c.hideCape)&&ctx.getImageData&&ctx.putImageData){
@@ -124,7 +142,7 @@
  }
  function drawWorld(ctx,options={}){return draw(ctx,{...options,role:'guardiao',scale:.86});}
  if(typeof document!=='undefined')void load();
- return Object.freeze({VERSION:'guardiao-v91-four-direction-walk-customizable',SOURCE,WIDTH:W,HEIGHT:H,
+ return Object.freeze({VERSION:'guardiao-v93-front-back-approved-16frames',SOURCE,FRONT_BACK_SOURCE,WIDTH:W,HEIGHT:H,
   DIRECTIONS:4,WALK_FRAMES:8,OUTFITS,CAPES,HAIR,SKINS,load,prepare,draw,drawWorld,
-  normalize,colors,tint,phase,normalizeDir,isReady:()=>!!walkImage&&!!prior?.isReady?.(),hasFailed:()=>failed});
+  normalize,colors,tint,phase,normalizeDir,isReady:()=>!!walkImage&&!!frontBackImage&&!!prior?.isReady?.(),hasFailed:()=>failed});
 });
