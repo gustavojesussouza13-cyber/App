@@ -60,7 +60,7 @@ test('motor de áudio carrega antes do jogo e controle é visível em telas de t
  const html=read('mundo.html'),css=read('mmo.css'),game=read('mmo.js');
  assert.ok(html.indexOf('/sounds-desktop.js')<html.indexOf('/mmo.js'));
  assert.match(html,/id="audioToggle"/);
- assert.match(css,/\\.desktop-audio-toggle\\{padding:7px 9px/);
+ assert.match(css,/\.desktop-audio-toggle\{padding:7px 9px/);
  assert.match(game,/desktopAudio\.bind\(\$\('audioToggle'\)\)/);
  assert.match(game,/desktopAudio\.play\('hurt'\)/);
  assert.match(game,/desktopAudio\.play\(msg\.projectile==='arrow'\?'arrow':msg\.projectile==='holy-bolt'\?'magic':'hit'\)/);
