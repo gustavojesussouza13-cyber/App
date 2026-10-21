@@ -122,11 +122,10 @@ const spriteActions={monsters:new Map(),players:new Map(),fallen:[],localHurtAt:
 const armyArt=window.PeregrinosArmyPixel16;
 let troopShots=[];
 const latency=window.OsPeregrinosLatency.create();
-// Sons são opt-in, apenas para desktop; não alteram controles móveis.
-const desktopAudio=window.OsPeregrinosAudio.create({
- desktop:Boolean(window.matchMedia?.('(hover: hover) and (pointer: fine)').matches)
-});
+// Música medieval e efeitos são opt-in: clique/toque ativa o áudio.
+const desktopAudio=window.OsPeregrinosAudio.create({desktop:true});
 desktopAudio.bind($('audioToggle'));
+desktopAudio.setScene('menu inicial');
 const pingIndicator=$('pingIndicator');
 function updatePingIndicator(){
  const {ms,quality}=latency.state();
@@ -160,7 +159,7 @@ const inventoryUI=window.OsPeregrinosInventoryV81.create({
  onOpened:()=>{keys.clear();joystick.release()},
  onClosed:()=>{if($('welcomeOverlay').hidden)$('game').focus({preventScroll:true})}
 });
-$('openInventoryBtn').onclick=()=>inventoryUI.toggle();
+$('openInventoryBtn').onclick=()=>{desktopAudio.play('inventory');inventoryUI.toggle()};
 // Cada abertura do site cria uma nova jornada Visitante. O token existe
 // somente nesta execução da página; queda da conexão reutiliza o token.
 // Dados de contas cadastradas continuam no servidor, sob login/senha.
@@ -439,7 +438,7 @@ function dispatch(msg){
   if(session.story?.stage===0)alert('✦ Fale com Lia, a Acendedora! Aproxime-se e pressione E.');
  }
  $('game').focus();
- }else if(msg.type==='character'){character(msg);
+ }else if(msg.type==='character'){character(msg);desktopAudio.setScene($('zoneTitle')?.textContent||'');
  }else if(msg.type==='appearanceChanged'){
   const person=session.players.get(msg.id);
   if(person)person.appearance=appearanceArt.normalize(msg.appearance);
@@ -454,9 +453,9 @@ function dispatch(msg){
   defenseTargets=Array.isArray(msg.defenseTargets)?msg.defenseTargets:[];
   if(!defenseTargets.some(t=>t.id===defenseTargetId))defenseTargetId=null;
   if(tab==='social'&&socialSection==='guilds'&&defenseTargets.length)drawTab();
- }else if(msg.type==='travel'){chatBubbles.clear();defenseTargets=[];defenseTargetId=null;desktopAudio.play('travel');session.zone=msg.zone;session.region=msg.region||null;visibleKingdomBases=[];session.portals=msg.portals||[];session.x=msg.x;session.y=msg.y;session.target=null;session.monsters.clear();monsterMotion.clear();playerMotion.clear();combatFx.clear();if(typeof clearMonsterSheet==='function')clearMonsterSheet();classSkillFx.clear();$('zoneTitle').textContent=msg.name;alert('✦ '+msg.name);drawTravel();
+ }else if(msg.type==='travel'){chatBubbles.clear();defenseTargets=[];defenseTargetId=null;desktopAudio.play('travel');session.zone=msg.zone;session.region=msg.region||null;visibleKingdomBases=[];session.portals=msg.portals||[];session.x=msg.x;session.y=msg.y;session.target=null;session.monsters.clear();monsterMotion.clear();playerMotion.clear();combatFx.clear();if(typeof clearMonsterSheet==='function')clearMonsterSheet();classSkillFx.clear();$('zoneTitle').textContent=msg.name;desktopAudio.setScene(msg.name);alert('✦ '+msg.name);drawTravel();
  }else if(msg.type==='hit'){if(msg.zone===session.zone){
-  if(typeof desktopAudio!=='undefined')desktopAudio.play(msg.projectile==='arrow'?'arrow':msg.projectile==='holy-bolt'?'magic':'hit');
+  if(typeof desktopAudio!=='undefined'){desktopAudio.play(msg.projectile==='arrow'?'arrow':msg.projectile==='holy-bolt'?'magic':'hit');desktopAudio.enterCombat(Boolean(msg.boss));}
   const m=session.monsters.get(msg.monster);if(m)m.hp=msg.remaining;
    if(selectedMonsterSheet?.id===msg.monster)updateMonsterLife();
   spriteActions.monsters.set(msg.monster,{action:'hurt',at:performance.now()});
@@ -478,7 +477,7 @@ function dispatch(msg){
   if(selectedMonsterSheet?.id===msg.monster)renderMonsterSheet(msg.sheet);
   alert('⚔ '+(monster?.name||'Uma criatura')+' evoluiu após vencer um jogador: nível '+msg.level+' · '+msg.rank);
  }
- }else if(msg.type==='monsterLoot'){say('','Espólio encontrado: '+msg.name,'sys');
+ }else if(msg.type==='monsterLoot'){desktopAudio.play('pickup');say('','Espólio encontrado: '+msg.name,'sys');
  }else if(msg.type==='troopStrike'){if(msg.zone===session.zone){
    const now=performance.now();
    troopShots.push({from:{x:msg.x,y:msg.y-25},to:{x:msg.to?.x||msg.x,y:(msg.to?.y||msg.y)-22},
@@ -489,7 +488,7 @@ function dispatch(msg){
  }else if(msg.type==='healed'){if(msg.zone===session.zone){
    const now=performance.now();
    classSkillFx.trigger({...msg,kind:'healer-recovery',duration:1050},now);
-   if(typeof desktopAudio!=='undefined')desktopAudio.play('magic');
+   if(typeof desktopAudio!=='undefined')desktopAudio.play('heal');
    // Vida e XP continuam sendo informados pelo servidor, nunca calculados aqui.
    fx.push({x:msg.x,y:msg.y-60,text:'+'+msg.amount+' VIDA',t:now,color:'#9bf5b9'});
    for(let i=0;i<3;i++)fx.push({x:msg.x-22+i*22,y:msg.y-25-(i%2)*12,
@@ -498,17 +497,17 @@ function dispatch(msg){
  }
  }else if(msg.type==='skillEffect'){if(msg.zone===session.zone){
    const now=performance.now();
-   classSkillFx.trigger(msg,now);
+   classSkillFx.trigger(msg,now);desktopAudio.play(/ice|gelo|frost/i.test(String(msg.kind||''))?'ice':'magic');
    if(msg.kind==='pilgrim-renewal')spriteActions.players.set(msg.targetId===session.id?session.name:msg.targetId,{action:'attack',at:now});
  }
  }else if(msg.type==='monsterWindup'){if(msg.zone===session.zone){
    const m=session.monsters.get(msg.monster);
    if(m){
-    spriteActions.monsters.set(msg.monster,{action:'attack',at:performance.now()});
+    spriteActions.monsters.set(msg.monster,{action:'attack',at:performance.now()});desktopAudio.play('monster');desktopAudio.enterCombat(Boolean(msg.boss));
     fx.push({x:m.x,y:m.y,text:msg.boss?'⚠ CHEFE! ESQUIVE!':'⚠ GOLPE!',t:performance.now(),color:msg.boss?'#ff9a73':'#ffd06b'});
    }
  }
- }else if(msg.type==='hurt'){spriteActions.localHurtAt=performance.now();if(typeof desktopAudio!=='undefined')desktopAudio.play('hurt');fx.push({x:session.x,y:session.y,text:'−'+msg.damage,t:performance.now(),color:'#ff8d83'});if(session.characters?.hp<=0)$('deathVeil').hidden=false;
+ }else if(msg.type==='hurt'){spriteActions.localHurtAt=performance.now();if(typeof desktopAudio!=='undefined'){desktopAudio.play('hurt');desktopAudio.enterCombat(false);}fx.push({x:session.x,y:session.y,text:'−'+msg.damage,t:performance.now(),color:'#ff8d83'});if(session.characters?.hp<=0)$('deathVeil').hidden=false;
  }else if(msg.type==='defeated'){if(msg.zone===session.zone){if(typeof desktopAudio!=='undefined')desktopAudio.play(msg.boss?'boss':'victory');
    const fallen=session.monsters.get(msg.monster);const now=performance.now();
    if(fallen){spriteActions.fallen.push({...fallen,defeatedAt:now});if(spriteActions.fallen.length>12)spriteActions.fallen.shift()}
@@ -1539,7 +1538,7 @@ let lastFrame=0;function tick(t){
   if(dx||dy){const l=Math.hypot(dx,dy),vx=dx/l,vy=dy/l;
    session.x=clamp(session.x+vx*166*dt,24,ZONE_W-24);
    session.y=clamp(session.y+vy*166*dt,24,ZONE_H-24);
-   session.dir=Math.abs(dx)>Math.abs(dy)?dx>0?1:3:dy>0?2:0;
+   session.dir=Math.abs(dx)>Math.abs(dy)?dx>0?1:3:dy>0?2:0;desktopAudio.play('footstep');
    // As bordas das áreas procedurais não são paredes. O servidor
    // verifica a direção e faz a transição para o mapa vizinho.
    if(session.region?.frontier&&t-lastBorderRequest>1150){
@@ -1557,7 +1556,7 @@ setInterval(()=>{
  updatePingIndicator();
 },1000);
 updatePingIndicator();
-window.addEventListener('pagehide',()=>{joystick.release();try{socket?.close()}catch{}});
+window.addEventListener('pagehide',()=>{desktopAudio.pause();joystick.release();try{socket?.close()}catch{}});
 // Restaurar uma aba do histórico (BFCache) também inicia uma nova jornada.
 window.addEventListener('pageshow',event=>{if(event.persisted)location.reload()});
 // Nunca iniciar Visitante automaticamente: sempre pedir nome e classe.

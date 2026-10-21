@@ -180,7 +180,7 @@ body.world-fullscreen{overflow:hidden!important}
 .ping-indicator[data-quality="offline"]{opacity:.8}
 
 
-/* Efeitos sonoros opcionais exclusivamente para computadores com mouse. */
+/* Trilha medieval e efeitos opcionais em desktop e dispositivos móveis. */
 .desktop-audio-toggle{
  appearance:none;background:#13372f;border:1px solid #8ba98d;
  border-radius:18px;padding:7px 12px;color:#f0d79e;
@@ -189,7 +189,7 @@ body.world-fullscreen{overflow:hidden!important}
 .desktop-audio-toggle:hover,.desktop-audio-toggle:focus-visible{background:#265348}
 .desktop-audio-toggle[aria-pressed="true"]{border-color:#ddb967;color:#ffe1a2}
 .desktop-audio-toggle:disabled{opacity:.4;cursor:not-allowed}
-@media (hover: none),(pointer: coarse){.desktop-audio-toggle{display:none!important}}
+@media (hover: none),(pointer: coarse){.desktop-audio-toggle{padding:7px 9px;font-size:10px;max-width:46vw;white-space:normal}}
 
 
 /* Reestilização autoral desktop: pergaminho escuro, metal de Auren e cristais da Aurora.
