@@ -1,0 +1,32 @@
+[
+  {
+    "file": "music/tema-principal.mp3",
+    "url": "https://dnznrvs05pmza.cloudfront.net/lyria3-pro/c97a500a-bfa1-4a25-a4da-dca947cde1cf/Os_Peregrinos___Tema_Principal.mp3?_jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJrZXlIYXNoIjoiMTQzMDY0NTkyMTcyNmFiMyIsImJ1Y2tldCI6InJ1bndheS10YXNrLWFydGlmYWN0cyIsInN0YWdlIjoicHJvZCIsImV4cCI6MTc5MjY1NDkzN30.W4bh6J3Pg2Zbqd_m040aFzSvRI-65G0n3l-u-Dkjdy8",
+    "durationSeconds": 177.24075
+  },
+  {
+    "file": "music/exploracao.mp3",
+    "url": "https://dnznrvs05pmza.cloudfront.net/lyria3-pro/f1f020d1-d846-4bf8-ad45-703b2b1fcc08/Os_Peregrinos___Caminhos_do_Reino.mp3?_jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJrZXlIYXNoIjoiODUzYmNmZWU5ZTA4ZjE1YyIsImJ1Y2tldCI6InJ1bndheS10YXNrLWFydGlmYWN0cyIsInN0YWdlIjoicHJvZCIsImV4cCI6MTc5MjY2MjM4Mn0.77xlYWzGziAZ_e1hYdrs98nGtaAmp-GkUf9dVtYB3P0",
+    "durationSeconds": 169.534625
+  },
+  {
+    "file": "music/vilarejo.mp3",
+    "url": "https://dnznrvs05pmza.cloudfront.net/lyria3-pro/9a31e425-defc-4466-9690-542826bbc0b9/Os_Peregrinos___Vila_dos_Viajantes.mp3?_jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJrZXlIYXNoIjoiZTU3NjkxYWM5OWNhODY5YyIsImJ1Y2tldCI6InJ1bndheS10YXNrLWFydGlmYWN0cyIsInN0YWdlIjoicHJvZCIsImV4cCI6MTc5MjY1NTQwNH0.tyuwYFiJsKLNEAAmQSZJ6VHNyM3CgwDgMQ3eKpq9s08",
+    "durationSeconds": 176.613833
+  },
+  {
+    "file": "music/masmorra.mp3",
+    "url": "https://dnznrvs05pmza.cloudfront.net/lyria3-pro/bf150919-c688-40ea-9555-a5de9d3389ca/Os_Peregrinos___Ru_nas_e_Masmorras.mp3?_jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJrZXlIYXNoIjoiNjk4MzcxMTc4OWI0ZTBhOSIsImJ1Y2tldCI6InJ1bndheS10YXNrLWFydGlmYWN0cyIsInN0YWdlIjoicHJvZCIsImV4cCI6MTc5MjY4NTg0N30.SppsN96Z10X5E2deowK-dnTB4nWpLVZeSSXTfjjg9Bk",
+    "durationSeconds": 172.564833
+  },
+  {
+    "file": "music/combate.mp3",
+    "url": "https://dnznrvs05pmza.cloudfront.net/lyria3-pro/eed3c7b8-9671-4d40-8735-233516d2fec4/Os_Peregrinos___L_minas_em_Combate.mp3?_jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJrZXlIYXNoIjoiZTVlYTQzYjRhNjU2MDU0ZSIsImJ1Y2tldCI6InJ1bndheS10YXNrLWFydGlmYWN0cyIsInN0YWdlIjoicHJvZCIsImV4cCI6MTc5MjYzNDQyMH0.B5-WotIl-tspfpODL2Nmw2dHaalWi_YZAfqedDVwkf0",
+    "durationSeconds": 142.393417
+  },
+  {
+    "file": "music/guardiao-da-aurora.mp3",
+    "url": "https://dnznrvs05pmza.cloudfront.net/lyria3-pro/1e6196e9-36ec-41c6-858a-1974ba70b92d/Os_Peregrinos___Guardi_o_da_Aurora.mp3?_jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJrZXlIYXNoIjoiZWQ3MGRhZTZkM2EyZTI1NyIsImJ1Y2tldCI6InJ1bndheS10YXNrLWFydGlmYWN0cyIsInN0YWdlIjoicHJvZCIsImV4cCI6MTc5MjY2NTA2Mn0.8dCih4VfBo4hfqUSeXZ0sSB742btvgYj0bEj6eO3A4k",
+    "durationSeconds": 174.550167
+  }
+]
