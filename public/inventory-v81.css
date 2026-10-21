@@ -368,3 +368,27 @@
   bottom:calc(max(5px,env(safe-area-inset-bottom)) + 88px)!important;
  }
 }
+
+/* V9.10 — Barra de nove atalhos FIXA na parte inferior central do mapa.
+   Sem afastamento automático de 122px em dispositivos de toque. */
+#canvasShell #opQuickbar,
+#canvasShell:has(.touch-controls:not([hidden])) #opQuickbar{
+ position:absolute;
+ left:50%;
+ right:auto;
+ top:auto;
+ bottom:max(3px,env(safe-area-inset-bottom));
+ transform:translateX(-50%);
+ margin:0;
+ justify-content:center;
+}
+@media(pointer:coarse){
+ #canvasShell #opQuickbar,
+ #canvasShell:has(.touch-controls:not([hidden])) #opQuickbar{
+  left:50%;
+  right:auto;
+  top:auto;
+  bottom:max(3px,env(safe-area-inset-bottom));
+  transform:translateX(-50%);
+ }
+}
