@@ -360,3 +360,11 @@
  #opInventory .op-inventory-panel.op-mc-panel{padding-top:25px;padding-bottom:7px}
  #opInventory .op-mc-divider{height:7px}
 }
+
+/* V9.10 — quickbar anchored closer to the bottom edge, including fullscreen. */
+#canvasShell #opQuickbar{bottom:max(4px,env(safe-area-inset-bottom))!important}
+@media(pointer:coarse){
+ #canvasShell:has(.touch-controls:not([hidden])) #opQuickbar{
+  bottom:calc(max(5px,env(safe-area-inset-bottom)) + 88px)!important;
+ }
+}
