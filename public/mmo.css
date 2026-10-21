@@ -896,3 +896,12 @@ body>.bar .brand,body>.bar .brand strong{
 
 /* V9.7: a bolsa tem janela própria; diário mantém quatro áreas independentes. */
 .layout .action-panel .tabrow{grid-template-columns:repeat(4,minmax(0,1fr))}
+
+/* V9.11 — O joystick e os botões não devem cobrir a barra de 9 espaços.
+   Elevar somente os controles de toque quando a barra realmente está visível.
+   A barra permanece, sem exceções, na borda inferior central. */
+@media(pointer:coarse){
+ #canvasShell:has(#opQuickbar:not([hidden])):not(:has(#opInventory:not([hidden]))) .touch-controls:not([hidden]){
+  bottom:calc(max(8px,env(safe-area-inset-bottom)) + 54px)!important;
+ }
+}
