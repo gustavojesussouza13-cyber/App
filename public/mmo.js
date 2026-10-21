@@ -844,7 +844,7 @@ const keyAction=e=>{
  const editing=e.target?.matches?.('input,textarea,select,[contenteditable="true"]');
  if(inventoryUI?.openState){
   if(e.code==='Escape'||e.code==='KeyI'){if(!e.repeat){inventoryUI.close();}e.preventDefault();return}
-  if(/^Digit[1-8]$/.test(e.code)&&!e.repeat){inventoryUI.quickUse(Number(e.code.slice(-1))-1);e.preventDefault();return}
+  if(/^Digit[1-9]$/.test(e.code)&&!e.repeat){inventoryUI.quickUse(Number(e.code.slice(-1))-1);e.preventDefault();return}
   // All game controls are disabled while the bag is being inspected.
   if(!editing)e.preventDefault();
   return;
@@ -852,7 +852,7 @@ const keyAction=e=>{
  if(!editing&&e.code==='KeyI'&&!e.repeat&&session.connected&&$('welcomeOverlay').hidden&&$('npcDialogue').hidden){
   inventoryUI.open();e.preventDefault();return;
  }
- if(!editing&&/^Digit[1-8]$/.test(e.code)&&!e.repeat&&session.connected&&$('welcomeOverlay').hidden&&$('npcDialogue').hidden){
+ if(!editing&&/^Digit[1-9]$/.test(e.code)&&!e.repeat&&session.connected&&$('welcomeOverlay').hidden&&$('npcDialogue').hidden){
   if(inventoryUI.quickUse(Number(e.code.slice(-1))-1)){e.preventDefault();return}
  }
  if(!$('npcDialogue').hidden){if(e.code==='Escape'){closeDialogue();e.preventDefault()}else if(e.code==='Enter'||e.code==='Space'){advanceDialogue();e.preventDefault()}return}if(e.target.matches('input,textarea,select,button,a,[contenteditable="true"]'))return;
