@@ -163,13 +163,6 @@
  touch-action:manipulation;pointer-events:none;object-fit:contain;
 }
 @media(pointer:coarse){
- /* The 2x2 battle controls occupy the actual bottom-right corner.
-    Keep all eight slots immediately ABOVE them, still inside the map. */
- #canvasShell:has(.touch-controls:not([hidden])) #opQuickbar{
-  bottom:calc(max(9px,env(safe-area-inset-bottom)) + 119px);
-  right:max(8px,env(safe-area-inset-right));
-  gap:2px;padding:3px;
- }
  #canvasShell #opQuickbar .op-quick-slot{
   width:clamp(24px,3.1vw,40px);height:clamp(24px,3.1vw,40px);
  }
@@ -342,12 +335,6 @@
 #canvasShell #opQuickbar .op-quick-slot:focus-visible{
  background:#aaa;border-color:#ffffbf;
 }
-@media(pointer:coarse){
- #canvasShell:has(.touch-controls:not([hidden])) #opQuickbar{
-  bottom:calc(max(8px,env(safe-area-inset-bottom)) + 122px);
-  left:50%;right:auto;
- }
-}
 @media(max-width:400px){
  #opInventory{--mc-cell:clamp(24px,6.7vw,32px)}
  #opInventory .op-inventory-panel.op-mc-panel{padding:29px 9px 10px}
@@ -361,34 +348,28 @@
  #opInventory .op-mc-divider{height:7px}
 }
 
-/* V9.10 — quickbar anchored closer to the bottom edge, including fullscreen. */
-#canvasShell #opQuickbar{bottom:max(4px,env(safe-area-inset-bottom))!important}
-@media(pointer:coarse){
- #canvasShell:has(.touch-controls:not([hidden])) #opQuickbar{
-  bottom:calc(max(5px,env(safe-area-inset-bottom)) + 88px)!important;
- }
-}
-
-/* V9.10 — Barra de nove atalhos FIXA na parte inferior central do mapa.
-   Sem afastamento automático de 122px em dispositivos de toque. */
+/* V9.11 — regra única, sem offsets móveis legados.
+   Nos dispositivos de toque a barra é FIXA na base do jogo;
+   não herda o deslocamento +88px que sobrepunha a V9.10. */
 #canvasShell #opQuickbar,
 #canvasShell:has(.touch-controls:not([hidden])) #opQuickbar{
- position:absolute;
- left:50%;
- right:auto;
- top:auto;
- bottom:max(3px,env(safe-area-inset-bottom));
- transform:translateX(-50%);
- margin:0;
+ position:absolute!important;
+ left:50%!important;
+ right:auto!important;
+ top:auto!important;
+ bottom:max(2px,env(safe-area-inset-bottom))!important;
+ transform:translateX(-50%)!important;
+ margin:0!important;
  justify-content:center;
 }
-@media(pointer:coarse){
- #canvasShell #opQuickbar,
- #canvasShell:has(.touch-controls:not([hidden])) #opQuickbar{
-  left:50%;
-  right:auto;
-  top:auto;
-  bottom:max(3px,env(safe-area-inset-bottom));
-  transform:translateX(-50%);
- }
+/* Fullscreen real ou emulado: ancorar à janela visível, não à
+   caixa calculada do mapa, que varia com a orientação do telefone. */
+#canvasShell:fullscreen #opQuickbar,
+#canvasShell.is-expanded #opQuickbar{
+ position:fixed!important;
+ left:50%!important;
+ right:auto!important;
+ top:auto!important;
+ bottom:max(2px,env(safe-area-inset-bottom))!important;
+ transform:translateX(-50%)!important;
 }
