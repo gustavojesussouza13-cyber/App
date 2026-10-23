@@ -1,0 +1,115 @@
+{
+  "questions": [
+    {
+      "id": "interesses",
+      "title": "O que você gosta de fazer na Guilda da Luz?",
+      "description": "Escolha quantas opções quiser.",
+      "options": [
+        {
+          "role": "RPG de mesa",
+          "label": "RPG de mesa",
+          "emoji": "🎲",
+          "description": "Campanhas, sessões e aventuras"
+        },
+        {
+          "role": "Fantasia e histórias",
+          "label": "Fantasia e histórias",
+          "emoji": "🧙",
+          "description": "Mundos, narrativas e personagens"
+        },
+        {
+          "role": "Jogos digitais",
+          "label": "Jogos digitais",
+          "emoji": "🎮",
+          "description": "Jogos online e cooperativos"
+        },
+        {
+          "role": "Estudos bíblicos",
+          "label": "Estudos bíblicos",
+          "emoji": "📖",
+          "description": "Conversas e estudos da Palavra"
+        },
+        {
+          "role": "Oração e comunhão",
+          "label": "Oração e comunhão",
+          "emoji": "🙏",
+          "description": "Comunidade, apoio e oração"
+        },
+        {
+          "role": "Louvor e música",
+          "label": "Louvor e música",
+          "emoji": "🎵",
+          "description": "Música e momentos de louvor"
+        }
+      ]
+    },
+    {
+      "id": "sistemas",
+      "title": "Quais sistemas de RPG você joga?",
+      "description": "Pode marcar mais de um ou deixar em branco.",
+      "options": [
+        {
+          "role": "D&D 5e",
+          "label": "D&D 5e",
+          "emoji": "🐉",
+          "description": "Dungeons & Dragons"
+        },
+        {
+          "role": "Tormenta20",
+          "label": "Tormenta20",
+          "emoji": "⚔️",
+          "description": "Tormenta20"
+        },
+        {
+          "role": "Ordem Paranormal",
+          "label": "Ordem Paranormal",
+          "emoji": "👁️",
+          "description": "Investigação e mistério"
+        },
+        {
+          "role": "Pathfinder 2e",
+          "label": "Pathfinder 2e",
+          "emoji": "🛡️",
+          "description": "Pathfinder segunda edição"
+        },
+        {
+          "role": "Outros sistemas",
+          "label": "Outros sistemas",
+          "emoji": "📜",
+          "description": "Indie, autorais e outros"
+        }
+      ]
+    },
+    {
+      "id": "avisos",
+      "title": "Quais notificações deseja receber?",
+      "description": "Escolha apenas o que realmente quer acompanhar.",
+      "options": [
+        {
+          "role": "Avisos de eventos",
+          "label": "Eventos da guilda",
+          "emoji": "📅",
+          "description": "Atividades e encontros"
+        },
+        {
+          "role": "Avisos de mesas",
+          "label": "Mesas de RPG",
+          "emoji": "🎲",
+          "description": "Novas mesas e vagas"
+        },
+        {
+          "role": "Avisos de estudos",
+          "label": "Estudos e devocionais",
+          "emoji": "📖",
+          "description": "Encontros e mensagens"
+        },
+        {
+          "role": "Avisos de novidades",
+          "label": "Novidades e sorteios",
+          "emoji": "🎉",
+          "description": "Comunicados opcionais"
+        }
+      ]
+    }
+  ]
+}
